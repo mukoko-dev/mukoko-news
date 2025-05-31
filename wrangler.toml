@@ -6,8 +6,8 @@ compatibility_flags = ["nodejs_compat"]
 # KV namespace for storing articles
 [[kv_namespaces]]
 binding = "NEWS_STORAGE"
-preview_id = "your-preview-kv-id"
-id = "your-production-kv-id"
+preview_id = "f1d7dbeace544fd8a27913140179eafe"
+id = "8c0d18bb55514ab8a5267688c19ed0a1"
 
 # Cron trigger for hourly updates
 [triggers]
