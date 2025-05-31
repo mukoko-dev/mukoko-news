@@ -189,6 +189,7 @@
 
         /* Article Cards */
         .article-card {
+            position: relative;
             background: var(--card-light);
             border: 1px solid var(--border-light);
             border-radius: 12px;
@@ -205,6 +206,13 @@
         .article-image {
             width: 100%;
             height: 200px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+        }
+
+        .article-image.no-image {
             background: linear-gradient(135deg, var(--primary), var(--accent));
             display: flex;
             align-items: center;
@@ -214,20 +222,23 @@
             font-weight: bold;
         }
 
-        .article-content {
-            padding: 16px;
-        }
-
         .article-category {
-            display: inline-block;
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            z-index: 1;
             background: var(--accent);
             color: white;
-            padding: 4px 8px;
+            padding: 6px 12px;
             border-radius: 4px;
             font-size: 12px;
             font-weight: bold;
             text-transform: uppercase;
-            margin-bottom: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .article-content {
+            padding: 16px;
         }
 
         .article-title {
@@ -432,9 +443,13 @@
                     <button class="filter-btn active" data-category="all">All News</button>
                     <button class="filter-btn" data-category="politics">Politics</button>
                     <button class="filter-btn" data-category="economy">Economy</button>
-                    <button class="filter-btn" data-category="harare">Harare</button>
-                    <button class="filter-btn" data-category="sports">Sports</button>
                     <button class="filter-btn" data-category="business">Business</button>
+                    <button class="filter-btn" data-category="sports">Sports</button>
+                    <button class="filter-btn" data-category="harare">Harare</button>
+                    <button class="filter-btn" data-category="education">Education</button>
+                    <button class="filter-btn" data-category="technology">Technology</button>
+                    <button class="filter-btn" data-category="health">Health</button>
+                    <button class="filter-btn" data-category="environment">Environment</button>
                 </div>
             </div>
         </div>
@@ -752,29 +767,51 @@
                 var encodedUrl = encodeURIComponent(article.url);
                 var encodedTitleAndUrl = encodeURIComponent(article.title + ' - ' + article.url);
 
-                return '<article class="article-card">' +
-                    '<div class="article-image">' + articleIcon + '</div>' +
-                    '<div class="article-content">' +
-                        '<span class="article-category" style="background-color: ' + categoryColor + '">' + article.category + '</span>' +
-                        '<h2 class="article-title">' +
-                            '<a href="' + article.url + '" target="_blank">' + article.title + '</a>' +
-                        '</h2>' +
-                        '<p class="article-summary">' + article.summary + '</p>' +
-                        '<div class="article-meta">' +
-                            '<span class="article-source">' + article.source + '</span>' +
-                            '<span class="article-time">' + timeAgo + '</span>' +
-                        '</div>' +
-                        '<div class="article-actions">' +
-                            '<a href="https://wa.me/?text=' + encodedTitleAndUrl + '" class="share-btn" target="_blank">WhatsApp</a>' +
-                            '<a href="https://twitter.com/intent/tweet?text=' + encodedTitle + '&url=' + encodedUrl + '" class="share-btn" target="_blank">Twitter</a>' +
-                            '<a href="https://www.facebook.com/sharer/sharer.php?u=' + encodedUrl + '" class="share-btn" target="_blank">Facebook</a>' +
-                        '</div>' +
-                    '</div>' +
-                '</article>';
+                // Handle image
+                var imageHtml = article.image 
+                    ? `<div class="article-image" style="background-image: url('${article.image}')"></div>`
+                    : `<div class="article-image no-image">${articleIcon}</div>`;
+
+                return `<article class="article-card">
+                    <span class="article-category" style="background-color: ${categoryColor}">${article.category}</span>
+                    ${imageHtml}
+                    <div class="article-content">
+                        <h2 class="article-title">
+                            <a href="${article.url}" target="_blank">${article.title}</a>
+                        </h2>
+                        <p class="article-summary">${article.summary}</p>
+                        <div class="article-meta">
+                            <span class="article-source">${article.source}</span>
+                            <span class="article-time">${timeAgo}</span>
+                        </div>
+                        <div class="article-actions">
+                            <a href="https://wa.me/?text=${encodedTitleAndUrl}" class="share-btn" target="_blank">WhatsApp</a>
+                            <a href="https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}" class="share-btn" target="_blank">Twitter</a>
+                            <a href="https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}" class="share-btn" target="_blank">Facebook</a>
+                        </div>
+                    </div>
+                </article>`;
             } catch (error) {
                 console.error('Create article card error:', error);
                 return '<div>Error loading article</div>';
             }
+        }
+
+        // Update the category colors
+        function getCategoryColor(category) {
+            var colors = {
+                politics: '#dc2626',      // Red
+                economy: '#059669',       // Green
+                business: '#0891b2',      // Blue
+                sports: '#ea580c',        // Orange
+                harare: '#7c3aed',        // Purple
+                education: '#2563eb',     // Blue
+                technology: '#4f46e5',    // Indigo
+                health: '#16a34a',        // Green
+                environment: '#15803d',   // Dark Green
+                'default': '#1e3a8a'      // Navy
+            };
+            return colors[category] || colors['default'];
         }
 
         function getArticleIcon(category) {
@@ -787,18 +824,6 @@
                 'default': '📰 News'
             };
             return icons[category] || icons['default'];
-        }
-
-        function getCategoryColor(category) {
-            var colors = {
-                politics: '#dc2626',
-                economy: '#059669',
-                harare: '#7c3aed',
-                sports: '#ea580c',
-                business: '#0891b2',
-                'default': '#1e3a8a'
-            };
-            return colors[category] || colors['default'];
         }
 
         function formatTimeAgo(date) {

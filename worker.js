@@ -173,46 +173,60 @@ async function updateFeeds(env) {
 }
 
 async function fetchRSSFeed(source) {
-  try {
-    const response = await fetch(source.url, {
-      headers: {
-        'User-Agent': 'HarareMetro/1.0 (+https://www.hararemetro.co.zw)'
-      }
-    });
+    try {
+        const response = await fetch(source.url, {
+            headers: {
+                'User-Agent': 'HarareMetro/1.0 (+https://www.hararemetro.co.zw)'
+            }
+        });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const xmlText = await response.text();
+        const parser = new XMLParser({
+            ignoreAttributes: false,
+            attributeNamePrefix: "@_"
+        });
+
+        const parsed = parser.parse(xmlText);
+        const items = parsed.rss?.channel?.item || parsed.feed?.entry || [];
+        
+        if (!Array.isArray(items)) {
+            return [items].filter(Boolean);
+        }
+
+        return items.map(item => ({
+            id: generateId(item.title || item.link),
+            title: cleanText(item.title),
+            summary: cleanText(item.description || item.summary || '').substring(0, 300),
+            url: item.link || item.id,
+            publishedAt: parseDate(item.pubDate || item.published || item.updated),
+            source: source.name,
+            category: determineCategory(item.title + ' ' + (item.description || '')),
+            keywords: extractKeywords(item.title + ' ' + (item.description || '')),
+            relevanceScore: calculateRelevance(item.title + ' ' + (item.description || '')),
+            // Extract image from media:content, enclosure, or from description HTML
+            image: item['media:content']?.['@_url'] || 
+                  item.enclosure?.['@_url'] ||
+                  extractImageFromHTML(item.description || '')
+        }));
+
+    } catch (error) {
+        console.error(`RSS fetch error for ${source.name}:`, error);
+        throw error;
     }
+}
 
-    const xmlText = await response.text();
-    const parser = new XMLParser({
-      ignoreAttributes: false,
-      attributeNamePrefix: "@_"
-    });
-
-    const parsed = parser.parse(xmlText);
-    const items = parsed.rss?.channel?.item || parsed.feed?.entry || [];
-    
-    if (!Array.isArray(items)) {
-      return [items].filter(Boolean);
+// Add this helper function to extract images from HTML content
+function extractImageFromHTML(html) {
+    try {
+        const imgMatch = html.match(/<img[^>]+src="([^">]+)"/);
+        return imgMatch ? imgMatch[1] : null;
+    } catch {
+        return null;
     }
-
-    return items.map(item => ({
-      id: generateId(item.title || item.link),
-      title: cleanText(item.title),
-      summary: cleanText(item.description || item.summary || '').substring(0, 300),
-      url: item.link || item.id,
-      publishedAt: parseDate(item.pubDate || item.published || item.updated),
-      source: source.name,
-      category: determineCategory(item.title + ' ' + (item.description || '')),
-      keywords: extractKeywords(item.title + ' ' + (item.description || '')),
-      relevanceScore: calculateRelevance(item.title + ' ' + (item.description || ''))
-    }));
-
-  } catch (error) {
-    console.error(`RSS fetch error for ${source.name}:`, error);
-    throw error;
-  }
 }
 
 function processArticles(articles) {
