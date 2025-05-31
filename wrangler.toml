@@ -37,9 +37,8 @@ crons = ["0 * * * *"]
 command = "npm run build"
 watch_dir = "src"
 
-[rules]
+# Rules as an array
+[[rules]]
 type = "ESModule"
+globs = ["**/*.js"]
 fallthrough = true
-
-[node_compat]
-enabled = true
