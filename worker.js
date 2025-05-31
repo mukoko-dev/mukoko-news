@@ -54,7 +54,11 @@ const CATEGORY_KEYWORDS = {
   economy: ['economy', 'economic', 'inflation', 'currency', 'budget', 'finance', 'bank', 'investment', 'gdp', 'trade'],
   business: ['business', 'company', 'entrepreneur', 'startup', 'market', 'industry', 'corporate', 'commerce'],
   sports: ['sport', 'football', 'soccer', 'cricket', 'rugby', 'warriors', 'dynamos', 'caps united', 'highlanders', 'afcon'],
-  harare: ['harare', 'capital', 'city council', 'mayor', 'cbd', 'avondale', 'borrowdale', 'chitungwiza']
+  harare: ['harare', 'capital', 'city council', 'mayor', 'cbd', 'avondale', 'borrowdale', 'chitungwiza'],
+  education: ['education', 'school', 'university', 'college', 'student', 'teacher', 'classroom'],
+  technology: ['technology', 'tech', 'innovation', 'internet', 'software', 'hardware', 'gadget'],
+  health: ['health', 'hospital', 'clinic', 'doctor', 'nurse', 'disease', 'epidemic', 'vaccine'],
+  environment: ['environment', 'climate', 'pollution', 'conservation', 'wildlife', 'nature', 'zoo']
 };
 
 export default {
