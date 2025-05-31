@@ -2,7 +2,7 @@
 
 A fast, mobile-first news aggregation site focused on Harare and Zimbabwe news. Built with Cloudflare Workers and Pages for maximum performance and global reach.
 
-**🌐 Live Site:** [https://harare-metro.co.zw](https://harare-metro.co.zw)
+**🌐 Live Site:** [https://www.harare-metro.co.zw](https://www.hararemetro.co.zw)
 
 **Created by Nyuchi Web Services**  
 **Lead Developer:** Bryan Fawcett (@bryanfawcett)  

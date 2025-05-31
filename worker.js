@@ -176,7 +176,7 @@ async function fetchRSSFeed(source) {
   try {
     const response = await fetch(source.url, {
       headers: {
-        'User-Agent': 'HarareMetro/1.0 (+https://harare-metro.co.zw)'
+        'User-Agent': 'HarareMetro/1.0 (+https://www.hararemetro.co.zw)'
       }
     });
 
