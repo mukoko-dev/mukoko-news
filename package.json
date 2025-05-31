@@ -19,9 +19,11 @@
     "date-fns": "^2.30.0",
     "fast-xml-parser": "^5.2.3",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "strnum": "^2.1.1"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250531.0",
     "@tailwindcss/typography": "^0.5.10",
     "@types/react": "^18.2.37",
     "@types/react-dom": "^18.2.15",
