@@ -80,7 +80,6 @@ jobs:
         run: |
           response=$(curl -s -o /dev/null -w "%{http_code}" -A "Mozilla/5.0" "https://www.hararemetro.co.zw")
           echo "HTTP Status: $response"
-
           if [[ "$response" == "200" ]]; then
             echo "✅ Site is loading correctly"
           else
