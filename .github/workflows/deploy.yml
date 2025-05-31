@@ -31,7 +31,12 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: '.'
-          command: deploy --env ${{ github.ref == 'refs/heads/main' && 'production' || 'staging' }}
+          command: |
+            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+              wrangler deploy
+            else
+              wrangler deploy --env staging
+            fi
 
   deploy-pages:
     runs-on: ubuntu-latest

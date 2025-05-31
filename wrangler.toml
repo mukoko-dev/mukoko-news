@@ -9,6 +9,13 @@ compatibility_flags = ["nodejs_compat"]
 binding = "NEWS_STORAGE" 
 id = "8c0d18bb55514ab8a5267688c19ed0a1"
 
+# Production environment
+[env.production]
+name = "harare-metro"
+[[env.production.kv_namespaces]]
+binding = "NEWS_STORAGE"
+id = "8c0d18bb55514ab8a5267688c19ed0a1"
+
 # Development environment
 [env.development]
 name = "harare-metro-dev"
