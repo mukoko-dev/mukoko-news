@@ -62,3 +62,6 @@ playwright-report/
 
 # Local development
 .wrangler.toml.local
+
+# Lint
+eslint.config.mjs
