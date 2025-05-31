@@ -82,7 +82,7 @@ In `index.html`, `privacy.html`, and `terms.html`, replace `YOUR_WORKER_URL`:
 var API_BASE = 'YOUR_WORKER_URL';
 
 // With your actual worker URL:
-var API_BASE = 'https://harare-metro-worker.your-subdomain.workers.dev';
+var API_BASE = 'https://harare-metro-worker.nyuchi.workers.dev';
 ```
 
 ## Cloudflare Configuration
