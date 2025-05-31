@@ -13,12 +13,18 @@ jobs:
     runs-on: ubuntu-latest
     name: Deploy Cloudflare Worker
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-      - run: npm ci
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Deploy to Cloudflare Workers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -28,3 +34,29 @@ jobs:
           else
             npx wrangler deploy --env staging
           fi
+
+  deploy-pages:
+    runs-on: ubuntu-latest
+    name: Deploy to Cloudflare Pages
+    needs: deploy-worker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update API endpoint in HTML
+        run: |
+          WORKER_URL="https://harare-metro.${{ secrets.CLOUDFLARE_DOMAIN }}"
+          if [ "${{ github.ref }}" != "refs/heads/main" ]; then
+            WORKER_URL="https://harare-metro-staging.${{ secrets.CLOUDFLARE_DOMAIN }}"
+          fi
+          sed -i "s|YOUR_WORKER_URL|$WORKER_URL|g" src/services/config.js
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: harare-metro
+          directory: dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.ref_name }}

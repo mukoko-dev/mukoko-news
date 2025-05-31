@@ -1,0 +1,38 @@
+name = "harare-metro"
+main = "worker.js"
+compatibility_date = "2024-05-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Production environment
+[[kv_namespaces]]
+binding = "NEWS_STORAGE" 
+id = "8c0d18bb55514ab8a5267688c19ed0a1"
+
+[env.production]
+name = "harare-metro"
+[[env.production.kv_namespaces]]
+binding = "NEWS_STORAGE"
+id = "8c0d18bb55514ab8a5267688c19ed0a1"
+
+# Development environment
+[env.development]
+name = "harare-metro-dev"
+[[env.development.kv_namespaces]]
+binding = "NEWS_STORAGE"
+preview_id = "f1d7dbeace544fd8a27913140179eafe"
+
+# Staging environment  
+[env.staging]
+name = "harare-metro-staging"
+[[env.staging.kv_namespaces]]
+binding = "NEWS_STORAGE"
+id = "8285d3e2d6a44bbb86df44b17555d04f"
+
+[triggers]
+crons = ["0 * * * *"]
+
+[vars]
+ENVIRONMENT = "production"
+
+[build]
+command = "npm run build"
