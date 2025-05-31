@@ -441,15 +441,20 @@
                 </div>
                 <div class="filter-buttons">
                     <button class="filter-btn active" data-category="all">All News</button>
+                    <button class="filter-btn" data-category="general">General</button>
                     <button class="filter-btn" data-category="politics">Politics</button>
                     <button class="filter-btn" data-category="economy">Economy</button>
                     <button class="filter-btn" data-category="business">Business</button>
                     <button class="filter-btn" data-category="sports">Sports</button>
+                    <button class="filter-btn" data-category="football">Football</button>
                     <button class="filter-btn" data-category="harare">Harare</button>
-                    <button class="filter-btn" data-category="education">Education</button>
+                    <button class="filter-btn" data-category="bulawayo">Bulawayo</button>
                     <button class="filter-btn" data-category="technology">Technology</button>
+                    <button class="filter-btn" data-category="innovation">Innovation</button>
                     <button class="filter-btn" data-category="health">Health</button>
-                    <button class="filter-btn" data-category="environment">Environment</button>
+                    <button class="filter-btn" data-category="wellness">Wellness</button>
+                    <button class="filter-btn" data-category="analysis">Analysis</button>
+                    <button class="filter-btn" data-category="diaspora">Diaspora</button>
                 </div>
             </div>
         </div>
@@ -797,30 +802,45 @@
             }
         }
 
-        // Update the category colors
+        // Update the category colors function
         function getCategoryColor(category) {
             var colors = {
-                politics: '#dc2626',      // Red
-                economy: '#059669',       // Green
-                business: '#0891b2',      // Blue
-                sports: '#ea580c',        // Orange
-                harare: '#7c3aed',        // Purple
-                education: '#2563eb',     // Blue
-                technology: '#4f46e5',    // Indigo
-                health: '#16a34a',        // Green
-                environment: '#15803d',   // Dark Green
-                'default': '#1e3a8a'      // Navy
+                general: '#1e3a8a',    // Navy
+                politics: '#dc2626',    // Red
+                economy: '#059669',     // Green
+                business: '#0891b2',    // Blue
+                sports: '#ea580c',      // Orange
+                football: '#f59e0b',    // Amber
+                harare: '#7c3aed',      // Purple
+                bulawayo: '#6366f1',    // Indigo
+                technology: '#4f46e5',  // Blue
+                innovation: '#8b5cf6',  // Purple
+                health: '#16a34a',      // Green
+                wellness: '#10b981',    // Emerald
+                analysis: '#64748b',    // Slate
+                diaspora: '#6d28d9',    // Violet
+                'default': '#1e3a8a'    // Navy
             };
             return colors[category] || colors['default'];
         }
 
+        // Update the article icons
         function getArticleIcon(category) {
             var icons = {
+                general: '📰 News',
                 politics: '🏛️ Politics',
                 economy: '📈 Economy',
-                harare: '🏙️ Harare',
-                sports: '⚽ Sports',
                 business: '💼 Business',
+                sports: '🏆 Sports',
+                football: '⚽ Football',
+                harare: '🏙️ Harare',
+                bulawayo: '🌆 Bulawayo',
+                technology: '💻 Tech',
+                innovation: '🚀 Innovation',
+                health: '🏥 Health',
+                wellness: '🌿 Wellness',
+                analysis: '📊 Analysis',
+                diaspora: '✈️ Diaspora',
                 'default': '📰 News'
             };
             return icons[category] || icons['default'];
