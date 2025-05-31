@@ -3,13 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Harare Metro - Latest News & Updates</title>
-    <meta name="description" content="Harare Metro - Your source for the latest news from Zimbabwe's capital and beyond. Fast, mobile-first news aggregation.">
     
+    <!-- SEO Meta Tags -->
+    <title>Harare Metro - Latest News & Updates from Zimbabwe's Capital</title>
+    <meta name="description" content="Get real-time news updates from Harare and Zimbabwe. Coverage includes politics, business, sports, technology, and local news from trusted Zimbabwe media sources.">
+    <meta name="keywords" content="harare news, zimbabwe news, politics, business, sports, technology">
+    <meta name="author" content="Nyuchi">
+    <meta name="robots" content="index, follow">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://hararemetro.co.zw/">
+    <meta property="og:title" content="Harare Metro - Zimbabwe's Capital News Aggregator">
+    <meta property="og:description" content="Stay informed with latest news from Harare and Zimbabwe. Real-time updates on politics, business, sports, and local events.">
+    <meta property="og:image" content="https://hararemetro.co.zw/social-share.png">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://hararemetro.co.zw/">
+    <meta name="twitter:title" content="Harare Metro - Zimbabwe's Capital News Aggregator">
+    <meta name="twitter:description" content="Stay informed with latest news from Harare and Zimbabwe. Real-time updates on politics, business, sports, and local events.">
+    <meta name="twitter:image" content="https://hararemetro.co.zw/social-share.png">
+
     <!-- Favicon and App Icons -->
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="manifest" href="manifest.json">
+    <link rel="canonical" href="https://hararemetro.co.zw/">
+
+    <!-- Google Search Console Verification -->
+    <meta name="google-site-verification" content="google-site-verification=hL1Lx6WYu86-hY_rdHM2yik6LkEAEVcv9wvjYSpmOhk">
+
+    
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-57N7QLVH7K"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-57N7QLVH7K');
+    </script>
+
+
+    <!-- Schema.org Markup -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "NewsMediaOrganization",
+        "name": "Harare Metro",
+        "url": "https://hararemetro.co.zw",
+        "logo": "https://hararemetro.co.zw/logo.png",
+        "sameAs": [
+            "https://twitter.com/hararemetro",
+            "https://facebook.com/hararemetro"
+        ],
+        "description": "Real-time news aggregation from Zimbabwe's trusted media sources, focusing on Harare and national news."
+    }
+    </script>
 
     <style>
         :root {
@@ -822,6 +873,11 @@
                 var activeCategory = document.querySelector('.filter-btn.active');
                 var category = activeCategory ? activeCategory.getAttribute('data-category') : 'all';
                 applyFilters(searchTerm, category);
+                
+                // Track search terms
+                if (searchTerm.length > 2) {
+                    trackEvent('Search', 'Query', searchTerm);
+                }
             } catch (error) {
                 console.error('Search error:', error);
             }
@@ -840,6 +896,9 @@
                 var searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
                 var category = event.target.getAttribute('data-category');
                 applyFilters(searchTerm, category);
+                
+                // Track category filter usage
+                trackEvent('Filter', 'Category', category);
             } catch (error) {
                 console.error('Filter error:', error);
             }
@@ -909,12 +968,15 @@
                     ? `<div class="article-image" style="background-image: url('${article.image}')"></div>`
                     : `<div class="article-image no-image">${articleIcon}</div>`;
 
+                // Add onclick event to track article clicks
                 return `<article class="article-card">
                     <span class="article-category" style="background-color: ${categoryColor}">${article.category}</span>
                     ${imageHtml}
                     <div class="article-content">
                         <h2 class="article-title">
-                            <a href="${article.url}" target="_blank">${article.title}</a>
+                            <a href="${article.url}" 
+                               target="_blank" 
+                               onclick="trackEvent('Article', 'Click', '${article.title}')">${article.title}</a>
                         </h2>
                         <p class="article-summary">${article.summary}</p>
                         <div class="article-meta">
