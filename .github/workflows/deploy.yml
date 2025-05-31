@@ -62,7 +62,7 @@ jobs:
           projectName: harare-metro
           directory: .
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-  
+
   test-deployment:
     runs-on: ubuntu-latest
     name: Test Deployment
@@ -71,8 +71,8 @@ jobs:
     steps:
       - name: Test Worker API
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" "https://harare-metro-worker.nyuchi.workers.dev/api/news")
-          if [ $response -eq 200 ]; then
+          response=$(curl -s -o /dev/null -w "%{http_code}" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" "https://harare-metro-worker.nyuchi.workers.dev/api/news")
+          if [ "$response" -eq 200 ]; then
             echo "✅ Worker API is responding correctly"
           else
             echo "❌ Worker API failed with status $response"
@@ -81,12 +81,11 @@ jobs:
 
       - name: Test Pages Deployment
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" -A "Mozilla/5.0" "https://www.hararemetro.co.zw")
+          response=$(curl -s -o /dev/null -w "%{http_code}" -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36" "https://www.hararemetro.co.zw")
           echo "HTTP Status: $response"
-          if [[ "$response" == "200" ]]; then
+          if [ "$response" == "200" ]; then
             echo "✅ Site is loading correctly"
           else
             echo "❌ Site failed with status $response"
             exit 1
           fi
-
