@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harare Metro - Latest News & Updates</title>
+    <meta name="description" content="Harare Metro - Your source for the latest news from Zimbabwe's capital and beyond. Fast, mobile-first news aggregation.">
+    
+    <style>
+        :root {
+            --bg-light: #ffffff;
+            --bg-dark: #2d2d2d;
+            --text-light: #333333;
+            --text-dark: #f0f0f0;
+            --primary: #1e3a8a;
+            --secondary: #64748b;
+            --accent: #3b82f6;
+            --border-light: #e5e7eb;
+            --border-dark: #4a5568;
+            --card-light: #ffffff;
+            --card-dark: #3a3a3a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        [data-theme="dark"] {
+            --bg-light: var(--bg-dark);
+            --text-light: var(--text-dark);
+            --border-light: var(--border-dark);
+            --card-light: var(--card-dark);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        /* Header */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .theme-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .search-btn:hover {
+            background: rgba(255,255,255,0.4) !important;
+            transform: scale(1.05);
+        }
+
+        .search-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Search and Filters */
+        .controls {
+            background: var(--card-light);
+            border-bottom: 1px solid var(--border-light);
+            padding: 16px 0;
+        }
+
+        .search-filter-bar {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 16px;
+            background: var(--bg-light);
+            color: var(--text-light);
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: 2px solid var(--border-light);
+            background: var(--bg-light);
+            color: var(--text-light);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .filter-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary);
+        }
+
+        /* News Grid */
+        .news-grid {
+            padding: 24px 0;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .news-grid {
+                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            }
+            
+            .search-filter-bar {
+                flex-direction: row;
+                align-items: center;
+            }
+            
+            .search-box {
+                flex: 1;
+                max-width: 400px;
+            }
+        }
+
+        /* Article Cards */
+        .article-card {
+            background: var(--card-light);
+            border: 1px solid var(--border-light);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .article-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .article-image {
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .article-content {
+            padding: 16px;
+        }
+
+        .article-category {
+            display: inline-block;
+            background: var(--accent);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .article-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .article-title a {
+            color: var(--text-light);
+            text-decoration: none;
+        }
+
+        .article-title a:hover {
+            color: var(--primary);
+        }
+
+        .article-summary {
+            color: var(--secondary);
+            font-size: 14px;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .article-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--secondary);
+            margin-bottom: 12px;
+        }
+
+        .article-source {
+            font-weight: bold;
+        }
+
+        .article-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+
+        .share-btn {
+            padding: 6px 12px;
+            border: 1px solid var(--border-light);
+            background: var(--bg-light);
+            color: var(--text-light);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .share-btn:hover {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        /* Loading and Empty States */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--secondary);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--secondary);
+        }
+
+        .empty-state h3 {
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 767px) {
+            .header-content {
+                justify-content: space-between;
+                align-items: center;
+            }
+            
+            .logo {
+                font-size: 20px;
+            }
+            
+            .header-controls {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+            
+            .header-controls button {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            
+            .header-controls #update-status {
+                display: none; /* Hide on mobile to save space */
+            }
+            
+            .article-title {
+                font-size: 16px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .header-controls {
+                flex-direction: column;
+                align-items: flex-end;
+                gap: 4px;
+            }
+            
+            .header-controls button {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+        }
+
+        /* Footer */
+        .footer {
+            background: var(--card-light);
+            border-top: 1px solid var(--border-light);
+            padding: 24px 0;
+            margin-top: 40px;
+        }
+
+        .footer-content {
+            text-align: center;
+            color: var(--secondary);
+            font-size: 14px;
+        }
+
+        .footer-content p {
+            margin-bottom: 8px;
+        }
+
+        .footer-content a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        .footer-content a:hover {
+            text-decoration: underline;
+        }
+
+        .developer-credit {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-light);
+            font-size: 12px;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            background: var(--card-light);
+            border-bottom: 1px solid var(--border-light);
+            padding: 8px 0;
+            text-align: center;
+            font-size: 14px;
+            color: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="#" class="logo">🏙️ Harare Metro</a>
+                <div class="header-controls">
+                    <button class="theme-toggle search-btn" onclick="focusSearch()" style="margin-right: 8px;">🔍 Search</button>
+                    <button class="theme-toggle refresh-btn" onclick="refreshNews()" style="margin-right: 8px;">🔄 Refresh</button>
+                    <span id="update-status">Last updated: --</span>
+                    <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="status-bar">
+        <div class="container">
+            <span id="article-count">Loading news...</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="container">
+            <div class="search-filter-bar">
+                <div class="search-box">
+                    <input type="text" class="search-input" placeholder="Search news... (e.g., Harare, politics, economy)" id="searchInput">
+                </div>
+                <div class="filter-buttons">
+                    <button class="filter-btn active" data-category="all">All News</button>
+                    <button class="filter-btn" data-category="politics">Politics</button>
+                    <button class="filter-btn" data-category="economy">Economy</button>
+                    <button class="filter-btn" data-category="harare">Harare</button>
+                    <button class="filter-btn" data-category="sports">Sports</button>
+                    <button class="filter-btn" data-category="business">Business</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        <div class="container">
+            <div class="news-grid" id="newsGrid">
+                <!-- Loading state -->
+                <div class="loading" id="loadingState">
+                    <p>📡 Loading latest news from Zimbabwe...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <p>&copy; 2025 Nyuchi - Harare Metro. All rights reserved.</p>
+                <p>
+                    <a href="privacy.html">Privacy Policy</a> | 
+                    <a href="terms.html">Terms of Service</a> | 
+                    <a href="#" onclick="refreshNews(); return false;">Refresh News</a>
+                </p>
+                <div class="developer-credit">
+                    <p>Developed by <strong>Bryan Fawcett</strong> in collaboration with <strong>Claude AI</strong></p>
+                    <p>Organization: <strong>Nyuchi</strong> 🏙️</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // API Configuration - Update this with your Worker URL
+        var API_BASE = 'YOUR_WORKER_URL'; // Will be replaced during deployment
+        
+        // Sample news data (fallback if API is unavailable)
+        var sampleNews = [
+            {
+                id: 1,
+                title: "Harare City Council Announces New Infrastructure Development Plans",
+                summary: "The City of Harare has unveiled ambitious plans for infrastructure development across the capital, focusing on road improvements and water supply systems.",
+                category: "harare",
+                source: "Herald Zimbabwe",
+                publishedAt: "2025-05-30T10:30:00Z",
+                url: "https://example.com/article1",
+                keywords: ["harare", "infrastructure", "development"]
+            },
+            {
+                id: 2,
+                title: "Zimbabwe Economic Growth Projections for 2025 Show Positive Trends",
+                summary: "Latest economic indicators suggest Zimbabwe's economy is on a recovery path with projected growth of 3.5% for 2025, driven by mining and agriculture sectors.",
+                category: "economy",
+                source: "NewsDay Zimbabwe",
+                publishedAt: "2025-05-30T08:15:00Z",
+                url: "https://example.com/article2",
+                keywords: ["economy", "growth", "mining", "agriculture"]
+            },
+            {
+                id: 3,
+                title: "Warriors Gear Up for AFCON Qualifiers with Training Camp in Harare",
+                summary: "The Zimbabwe national football team begins intensive training in Harare as they prepare for crucial Africa Cup of Nations qualifying matches.",
+                category: "sports",
+                source: "ZBC Sport",
+                publishedAt: "2025-05-30T06:45:00Z",
+                url: "https://example.com/article3",
+                keywords: ["sports", "football", "warriors", "harare", "afcon"]
+            },
+            {
+                id: 4,
+                title: "New Business Licenses Streamlined for Small Enterprises",
+                summary: "Government introduces digital platform for business registration, reducing processing time from weeks to days for small and medium enterprises.",
+                category: "business",
+                source: "Business Weekly",
+                publishedAt: "2025-05-29T16:20:00Z",
+                url: "https://example.com/article4",
+                keywords: ["business", "licenses", "digital", "sme"]
+            },
+            {
+                id: 5,
+                title: "Parliament Debates Constitutional Amendments in Historic Session",
+                summary: "Members of Parliament engage in heated debates over proposed constitutional amendments that could reshape Zimbabwe's political landscape.",
+                category: "politics",
+                source: "Parliament News",
+                publishedAt: "2025-05-29T14:10:00Z",
+                url: "https://example.com/article5",
+                keywords: ["politics", "parliament", "constitution", "amendments"]
+            },
+            {
+                id: 6,
+                title: "Harare International Festival Brings Cultural Celebration to Capital",
+                summary: "Annual cultural festival showcases Zimbabwe's rich heritage with performances, art exhibitions, and traditional cuisine in downtown Harare.",
+                category: "harare",
+                source: "Culture Today",
+                publishedAt: "2025-05-29T12:00:00Z",
+                url: "https://example.com/article6",
+                keywords: ["harare", "culture", "festival", "heritage", "arts"]
+            }
+        ];
+
+        var currentArticles = sampleNews;
+        var filteredArticles = currentArticles;
+
+        // Initialize the app
+        document.addEventListener('DOMContentLoaded', function() {
+            try {
+                initializeApp();
+            } catch (error) {
+                console.error('Initialization error:', error);
+            }
+        });
+
+        function initializeApp() {
+            loadTheme();
+            setupEventListeners();
+            loadNews();
+        }
+
+        // Load news from API or fallback to sample data
+        function loadNews() {
+            // Show loading state
+            showLoading();
+            
+            // Try to fetch from API first
+            if (API_BASE !== 'YOUR_WORKER_URL') {
+                fetchNewsFromAPI()
+                    .then(function(articles) {
+                        if (articles && articles.length > 0) {
+                            currentArticles = articles;
+                            filteredArticles = currentArticles;
+                            displayArticles(currentArticles);
+                            updateStatus();
+                            updateArticleCount();
+                        } else {
+                            // Fallback to sample data
+                            useSampleData();
+                        }
+                    })
+                    .catch(function(error) {
+                        console.error('API fetch failed:', error);
+                        useSampleData();
+                    });
+            } else {
+                // Development mode - use sample data
+                useSampleData();
+            }
+        }
+
+        function fetchNewsFromAPI() {
+            return fetch(API_BASE + '/api/news')
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('API response not ok: ' + response.status);
+                    }
+                    return response.json();
+                })
+                .catch(function(error) {
+                    console.error('API fetch error:', error);
+                    throw error;
+                });
+        }
+
+        function useSampleData() {
+            console.log('Using sample data');
+            currentArticles = sampleNews;
+            filteredArticles = currentArticles;
+            displayArticles(currentArticles);
+            updateStatus();
+            updateArticleCount();
+        }
+
+        function showLoading() {
+            var newsGrid = document.getElementById('newsGrid');
+            newsGrid.innerHTML = '<div class="loading" id="loadingState"><p>🏙️ Loading latest news from Harare Metro...</p></div>';
+        }
+
+        // Focus search input
+        function focusSearch() {
+            try {
+                var searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.focus();
+                    searchInput.select(); // Also select any existing text
+                    
+                    // Scroll search into view if needed
+                    searchInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            } catch (error) {
+                console.warn('Focus search error:', error.message);
+            }
+        }
+
+        // Refresh news data
+        function refreshNews() {
+            var refreshBtn = document.querySelector('.refresh-btn');
+            if (refreshBtn) {
+                refreshBtn.textContent = '🔄 Refreshing...';
+                refreshBtn.disabled = true;
+            }
+            
+            loadNews();
+            
+            setTimeout(function() {
+                if (refreshBtn) {
+                    refreshBtn.textContent = '🔄 Refresh';
+                    refreshBtn.disabled = false;
+                }
+            }, 2000);
+        }
+
+        function setupEventListeners() {
+            try {
+                // Search functionality
+                var searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.addEventListener('input', handleSearch);
+                }
+
+                // Filter buttons
+                var filterButtons = document.querySelectorAll('.filter-btn');
+                for (var i = 0; i < filterButtons.length; i++) {
+                    filterButtons[i].addEventListener('click', handleFilter);
+                }
+            } catch (error) {
+                console.error('Event listener setup error:', error);
+            }
+        }
+
+        function handleSearch(event) {
+            try {
+                var searchTerm = event.target.value.toLowerCase();
+                var activeCategory = document.querySelector('.filter-btn.active');
+                var category = activeCategory ? activeCategory.getAttribute('data-category') : 'all';
+                applyFilters(searchTerm, category);
+            } catch (error) {
+                console.error('Search error:', error);
+            }
+        }
+
+        function handleFilter(event) {
+            try {
+                // Update active filter button
+                var allFilterBtns = document.querySelectorAll('.filter-btn');
+                for (var i = 0; i < allFilterBtns.length; i++) {
+                    allFilterBtns[i].classList.remove('active');
+                }
+                event.target.classList.add('active');
+                
+                var searchInput = document.getElementById('searchInput');
+                var searchTerm = searchInput ? searchInput.value.toLowerCase() : '';
+                var category = event.target.getAttribute('data-category');
+                applyFilters(searchTerm, category);
+            } catch (error) {
+                console.error('Filter error:', error);
+            }
+        }
+
+        function applyFilters(searchTerm, category) {
+            try {
+                searchTerm = searchTerm || '';
+                category = category || 'all';
+                
+                filteredArticles = currentArticles.filter(function(article) {
+                    var matchesSearch = !searchTerm || 
+                        article.title.toLowerCase().indexOf(searchTerm) !== -1 ||
+                        article.summary.toLowerCase().indexOf(searchTerm) !== -1 ||
+                        article.keywords.some(function(keyword) {
+                            return keyword.toLowerCase().indexOf(searchTerm) !== -1;
+                        });
+
+                    var matchesCategory = category === 'all' || article.category === category;
+
+                    return matchesSearch && matchesCategory;
+                });
+
+                displayArticles(filteredArticles);
+                updateArticleCount();
+            } catch (error) {
+                console.error('Filter application error:', error);
+            }
+        }
+
+        function displayArticles(articles) {
+            try {
+                var newsGrid = document.getElementById('newsGrid');
+                var loadingState = document.getElementById('loadingState');
+                
+                if (loadingState && loadingState.parentNode) {
+                    loadingState.parentNode.removeChild(loadingState);
+                }
+
+                if (articles.length === 0) {
+                    newsGrid.innerHTML = '<div class="empty-state"><h3>No articles found</h3><p>Try adjusting your search or filter criteria</p></div>';
+                    return;
+                }
+
+                var htmlContent = '';
+                for (var i = 0; i < articles.length; i++) {
+                    htmlContent += createArticleCard(articles[i]);
+                }
+                newsGrid.innerHTML = htmlContent;
+            } catch (error) {
+                console.error('Display articles error:', error);
+            }
+        }
+
+        function createArticleCard(article) {
+            try {
+                var publishedDate = new Date(article.publishedAt);
+                var timeAgo = formatTimeAgo(publishedDate);
+                var categoryColor = getCategoryColor(article.category);
+                var articleIcon = getArticleIcon(article.category);
+                var encodedTitle = encodeURIComponent(article.title);
+                var encodedUrl = encodeURIComponent(article.url);
+                var encodedTitleAndUrl = encodeURIComponent(article.title + ' - ' + article.url);
+
+                return '<article class="article-card">' +
+                    '<div class="article-image">' + articleIcon + '</div>' +
+                    '<div class="article-content">' +
+                        '<span class="article-category" style="background-color: ' + categoryColor + '">' + article.category + '</span>' +
+                        '<h2 class="article-title">' +
+                            '<a href="' + article.url + '" target="_blank">' + article.title + '</a>' +
+                        '</h2>' +
+                        '<p class="article-summary">' + article.summary + '</p>' +
+                        '<div class="article-meta">' +
+                            '<span class="article-source">' + article.source + '</span>' +
+                            '<span class="article-time">' + timeAgo + '</span>' +
+                        '</div>' +
+                        '<div class="article-actions">' +
+                            '<a href="https://wa.me/?text=' + encodedTitleAndUrl + '" class="share-btn" target="_blank">WhatsApp</a>' +
+                            '<a href="https://twitter.com/intent/tweet?text=' + encodedTitle + '&url=' + encodedUrl + '" class="share-btn" target="_blank">Twitter</a>' +
+                            '<a href="https://www.facebook.com/sharer/sharer.php?u=' + encodedUrl + '" class="share-btn" target="_blank">Facebook</a>' +
+                        '</div>' +
+                    '</div>' +
+                '</article>';
+            } catch (error) {
+                console.error('Create article card error:', error);
+                return '<div>Error loading article</div>';
+            }
+        }
+
+        function getArticleIcon(category) {
+            var icons = {
+                politics: '🏛️ Politics',
+                economy: '📈 Economy',
+                harare: '🏙️ Harare',
+                sports: '⚽ Sports',
+                business: '💼 Business',
+                'default': '📰 News'
+            };
+            return icons[category] || icons['default'];
+        }
+
+        function getCategoryColor(category) {
+            var colors = {
+                politics: '#dc2626',
+                economy: '#059669',
+                harare: '#7c3aed',
+                sports: '#ea580c',
+                business: '#0891b2',
+                'default': '#1e3a8a'
+            };
+            return colors[category] || colors['default'];
+        }
+
+        function formatTimeAgo(date) {
+            try {
+                var now = new Date();
+                var diffInMinutes = Math.floor((now - date) / (1000 * 60));
+                
+                if (diffInMinutes < 60) {
+                    return diffInMinutes + 'm ago';
+                } else if (diffInMinutes < 1440) {
+                    return Math.floor(diffInMinutes / 60) + 'h ago';
+                } else {
+                    return Math.floor(diffInMinutes / 1440) + 'd ago';
+                }
+            } catch (error) {
+                return 'Recently';
+            }
+        }
+
+        function updateStatus() {
+            try {
+                var updateStatus = document.getElementById('update-status');
+                if (updateStatus) {
+                    var now = new Date();
+                    updateStatus.textContent = 'Last updated: ' + now.toLocaleTimeString();
+                }
+            } catch (error) {
+                console.error('Update status error:', error);
+            }
+        }
+
+        function updateArticleCount() {
+            try {
+                var articleCount = document.getElementById('article-count');
+                if (articleCount) {
+                    articleCount.textContent = filteredArticles.length + ' articles available';
+                }
+            } catch (error) {
+                console.error('Update count error:', error);
+            }
+        }
+
+        // Theme functionality with localStorage fallback
+        function isLocalStorageAvailable() {
+            try {
+                var test = '__localStorage_test__';
+                localStorage.setItem(test, test);
+                localStorage.removeItem(test);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function toggleTheme() {
+            try {
+                var body = document.body;
+                var themeButton = document.querySelector('.theme-toggle');
+                
+                if (body.getAttribute('data-theme') === 'dark') {
+                    body.removeAttribute('data-theme');
+                    if (themeButton) themeButton.textContent = '🌙 Dark';
+                    if (isLocalStorageAvailable()) {
+                        localStorage.setItem('theme', 'light');
+                    }
+                } else {
+                    body.setAttribute('data-theme', 'dark');
+                    if (themeButton) themeButton.textContent = '☀️ Light';
+                    if (isLocalStorageAvailable()) {
+                        localStorage.setItem('theme', 'dark');
+                    }
+                }
+            } catch (error) {
+                console.warn('Theme toggle error:', error.message);
+                // Fallback: still toggle theme even if we can't save preference
+                var body = document.body;
+                var themeButton = document.querySelector('.theme-toggle');
+                
+                if (body.getAttribute('data-theme') === 'dark') {
+                    body.removeAttribute('data-theme');
+                    if (themeButton) themeButton.textContent = '🌙 Dark';
+                } else {
+                    body.setAttribute('data-theme', 'dark');
+                    if (themeButton) themeButton.textContent = '☀️ Light';
+                }
+            }
+        }
+
+        function loadTheme() {
+            try {
+                if (isLocalStorageAvailable()) {
+                    var savedTheme = localStorage.getItem('theme');
+                    var themeButton = document.querySelector('.theme-toggle');
+                    
+                    if (savedTheme === 'dark') {
+                        document.body.setAttribute('data-theme', 'dark');
+                        if (themeButton) themeButton.textContent = '☀️ Light';
+                    }
+                }
+            } catch (error) {
+                console.warn('Load theme error:', error.message);
+                // Gracefully continue without saved theme preference
+                // Default to light theme
+            }
+        }
+
+        // Simulate periodic updates (in production, this would fetch from your API)
+        try {
+            setInterval(updateStatus, 60000); // Update status every minute
+        } catch (error) {
+            console.error('Interval setup error:', error);
+        }
+    </script>
+</body>
+</html>

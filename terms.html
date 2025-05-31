@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service - Harare Metro</title>
+    <meta name="description" content="Harare Metro Terms of Service - Rules and guidelines for using our news aggregation service.">
+    
+    <style>
+        :root {
+            --bg-light: #ffffff;
+            --bg-dark: #2d2d2d;
+            --text-light: #333333;
+            --text-dark: #f0f0f0;
+            --primary: #1e3a8a;
+            --secondary: #64748b;
+            --accent: #3b82f6;
+            --border-light: #e5e7eb;
+            --border-dark: #4a5568;
+            --card-light: #ffffff;
+            --card-dark: #3a3a3a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            background-color: var(--bg-light);
+            color: var(--text-light);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        [data-theme="dark"] {
+            --bg-light: var(--bg-dark);
+            --text-light: var(--text-dark);
+            --border-light: var(--border-dark);
+            --card-light: var(--card-dark);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 16px;
+        }
+
+        /* Header */
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 16px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: white;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            transition: background 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .theme-toggle {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+        }
+
+        .theme-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Main Content */
+        main {
+            padding: 40px 0;
+        }
+
+        .terms-content {
+            background: var(--card-light);
+            border-radius: 12px;
+            padding: 32px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid var(--border-light);
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 16px;
+            font-size: 32px;
+        }
+
+        h2 {
+            color: var(--primary);
+            margin-top: 32px;
+            margin-bottom: 16px;
+            font-size: 24px;
+            border-bottom: 2px solid var(--border-light);
+            padding-bottom: 8px;
+        }
+
+        h3 {
+            color: var(--text-light);
+            margin-top: 24px;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+
+        p {
+            margin-bottom: 16px;
+            color: var(--text-light);
+        }
+
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 16px;
+        }
+
+        li {
+            margin-bottom: 8px;
+            color: var(--text-light);
+        }
+
+        .last-updated {
+            background: var(--accent);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-weight: bold;
+        }
+
+        .important-notice {
+            background: rgba(220, 38, 38, 0.1);
+            border-left: 4px solid #dc2626;
+            padding: 16px;
+            margin: 24px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .important-notice strong {
+            color: #dc2626;
+        }
+
+        .contact-info {
+            background: rgba(30, 58, 138, 0.1);
+            border-left: 4px solid var(--primary);
+            padding: 16px;
+            margin: 24px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .contact-info strong {
+            color: var(--primary);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--card-light);
+            border-top: 1px solid var(--border-light);
+            padding: 24px 0;
+            text-align: center;
+            color: var(--secondary);
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* Responsive */
+        @media (max-width: 767px) {
+            .header-content {
+                justify-content: center;
+                text-align: center;
+            }
+            
+            .logo {
+                font-size: 20px;
+            }
+            
+            .terms-content {
+                padding: 24px 16px;
+            }
+            
+            h1 {
+                font-size: 28px;
+            }
+            
+            h2 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <a href="index.html" class="logo">🏙️ Harare Metro</a>
+                <div class="nav-links">
+                    <a href="index.html">Home</a>
+                    <a href="privacy.html">Privacy</a>
+                    <button class="theme-toggle" onclick="toggleTheme()">🌙 Dark</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            <div class="terms-content">
+                <div class="last-updated">
+                    📅 Last Updated: May 30, 2025
+                </div>
+
+                <h1>Terms of Service</h1>
+
+                <p>Welcome to Harare Metro. These Terms of Service ("Terms") govern your use of our news aggregation service operated by Nyuchi Web Services. By accessing or using our service, you agree to be bound by these Terms.</p>
+
+                <h2>1. Acceptance of Terms</h2>
+
+                <p>By accessing and using Harare Metro ("the Service"), you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these Terms, please do not use our Service.</p>
+
+                <h2>2. Description of Service</h2>
+
+                <p>Harare Metro is a news aggregation service that:</p>
+                <ul>
+                    <li>Collects and displays publicly available news articles from various Zimbabwe news sources</li>
+                    <li>Provides search and filtering capabilities for news content</li>
+                    <li>Offers social sharing features</li>
+                    <li>Delivers content through a mobile-first, responsive web interface</li>
+                </ul>
+
+                <h2>3. Acceptable Use</h2>
+
+                <h3>3.1 Permitted Uses</h3>
+                <p>You may use Harare Metro for:</p>
+                <ul>
+                    <li>Reading and staying informed about news from Zimbabwe</li>
+                    <li>Sharing articles through provided social media links</li>
+                    <li>Searching and filtering news content</li>
+                    <li>Personal, non-commercial use</li>
+                </ul>
+
+                <h3>3.2 Prohibited Uses</h3>
+                <p>You must not:</p>
+                <ul>
+                    <li>Use the Service for any unlawful purpose or to solicit unlawful activity</li>
+                    <li>Attempt to gain unauthorized access to our systems or networks</li>
+                    <li>Use automated systems (bots, scrapers) to access the Service</li>
+                    <li>Interfere with or disrupt the Service or servers</li>
+                    <li>Reproduce, distribute, or create derivative works from our content without permission</li>
+                    <li>Use the Service to spread misinformation or harmful content</li>
+                </ul>
+
+                <h2>4. Content and Intellectual Property</h2>
+
+                <h3>4.1 News Content</h3>
+                <p>The news articles displayed on Harare Metro are sourced from various Zimbabwe news outlets. We do not own this content and it remains the property of the original publishers. We provide:</p>
+                <ul>
+                    <li>Article headlines and summaries</li>
+                    <li>Links to original source articles</li>
+                    <li>Attribution to source publications</li>
+                </ul>
+
+                <h3>4.2 Service Content</h3>
+                <p>The Harare Metro platform, including its design, features, and aggregation technology, is owned by Nyuchi Web Services and protected by intellectual property laws.</p>
+
+                <h3>4.3 Fair Use</h3>
+                <p>Our use of news content falls under fair use provisions for:</p>
+                <ul>
+                    <li>News reporting and commentary</li>
+                    <li>Educational and informational purposes</li>
+                    <li>Non-commercial aggregation with proper attribution</li>
+                </ul>
+
+                <h2>5. Privacy and Data Protection</h2>
+
+                <p>Your privacy is important to us. Our collection and use of personal information is governed by our <a href="privacy.html">Privacy Policy</a>, which is incorporated into these Terms by reference.</p>
+
+                <h2>6. Third-Party Services</h2>
+
+                <p>Harare Metro integrates with third-party services:</p>
+                <ul>
+                    <li><strong>Social Media Platforms:</strong> When you share content, you'll be subject to the terms of those platforms</li>
+                    <li><strong>News Sources:</strong> When you click through to read full articles, you'll be subject to the source website's terms</li>
+                    <li><strong>Cloudflare:</strong> Our hosting and performance infrastructure</li>
+                </ul>
+
+                <h2>7. Service Availability</h2>
+
+                <h3>7.1 Uptime</h3>
+                <p>While we strive for high availability, we do not guarantee uninterrupted access to the Service. We may experience downtime for:</p>
+                <ul>
+                    <li>Scheduled maintenance</li>
+                    <li>Technical issues</li>
+                    <li>Third-party service interruptions</li>
+                </ul>
+
+                <h3>7.2 Content Updates</h3>
+                <p>News content is updated automatically from RSS feeds. We do not guarantee:</p>
+                <ul>
+                    <li>Immediate availability of breaking news</li>
+                    <li>Completeness of news coverage</li>
+                    <li>Accuracy of third-party content</li>
+                </ul>
+
+                <h2>8. Disclaimers</h2>
+
+                <div class="important-notice">
+                    <p><strong>Important:</strong> The following disclaimers limit our liability.</p>
+                </div>
+
+                <h3>8.1 Content Accuracy</h3>
+                <p>Harare Metro aggregates content from third-party sources. We:</p>
+                <ul>
+                    <li>Do not verify the accuracy of news content</li>
+                    <li>Are not responsible for errors in source material</li>
+                    <li>Recommend verifying important information from original sources</li>
+                </ul>
+
+                <h3>8.2 Editorial Independence</h3>
+                <p>We do not control the editorial content of news sources and do not endorse any particular viewpoint or political position.</p>
+
+                <h3>8.3 Service "As Is"</h3>
+                <p>The Service is provided "as is" without warranties of any kind, either express or implied, including but not limited to:</p>
+                <ul>
+                    <li>Merchantability</li>
+                    <li>Fitness for a particular purpose</li>
+                    <li>Non-infringement</li>
+                    <li>Continuous availability</li>
+                </ul>
+
+                <h2>9. Limitation of Liability</h2>
+
+                <p>To the maximum extent permitted by law, Nyuchi Web Services and Bryan Fawcett shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to:</p>
+                <ul>
+                    <li>Loss of profits or data</li>
+                    <li>Service interruptions</li>
+                    <li>Decisions made based on information from the Service</li>
+                    <li>Any damages arising from use of third-party content</li>
+                </ul>
+
+                <h2>10. Indemnification</h2>
+
+                <p>You agree to indemnify and hold harmless Nyuchi Web Services, Bryan Fawcett, and our affiliates from any claims, damages, or expenses arising from your use of the Service or violation of these Terms.</p>
+
+                <h2>11. Modifications to Terms</h2>
+
+                <p>We reserve the right to modify these Terms at any time. When we do:</p>
+                <ul>
+                    <li>We will update the "Last Updated" date</li>
+                    <li>Significant changes will be announced on the Service</li>
+                    <li>Your continued use constitutes acceptance of the new Terms</li>
+                </ul>
+
+                <h2>12. Termination</h2>
+
+                <p>We may terminate or suspend your access to the Service:</p>
+                <ul>
+                    <li>For violation of these Terms</li>
+                    <li>For abusive or harmful behavior</li>
+                    <li>At our sole discretion</li>
+                </ul>
+
+                <p>You may discontinue use of the Service at any time.</p>
+
+                <h2>13. Governing Law and Jurisdiction</h2>
+
+                <p>These Terms are governed by the laws of Zimbabwe. Any disputes will be resolved in the courts of Zimbabwe, and you consent to the jurisdiction of such courts.</p>
+
+                <h2>14. Contact Information</h2>
+
+                <div class="contact-info">
+                    <p><strong>Service Provider:</strong> Nyuchi Web Services</p>
+                    <p><strong>Lead Developer:</strong> Bryan Fawcett (@bryanfawcett)</p>
+                    <p><strong>Website:</strong> <a href="https://nyuchi.com">https://nyuchi.com</a></p>
+                    <p><strong>Email:</strong> <a href="mailto:hello@nyuchi.com">hello@nyuchi.com</a></p>
+                    <p><strong>Service URL:</strong> <a href="https://harare-metro.co.zw">https://harare-metro.co.zw</a></p>
+                </div>
+
+                <h2>15. Severability</h2>
+
+                <p>If any provision of these Terms is found to be unenforceable, the remaining provisions will remain in full force and effect.</p>
+
+                <h2>16. Entire Agreement</h2>
+
+                <p>These Terms, together with our Privacy Policy, constitute the entire agreement between you and Nyuchi regarding the use of the Service.</p>
+
+                <div class="important-notice">
+                    <p><strong>Questions?</strong> If you have any questions about these Terms, please contact us at hello@nyuchi.com before using the Service.</p>
+                </div>
+
+                <p><em>By using Harare Metro, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.</em></p>
+            </div>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Nyuchi Web Services - Harare Metro. Created by Bryan Fawcett (@bryanfawcett) in collaboration with Claude AI.</p>
+            <p>
+                <a href="index.html">Home</a> | 
+                <a href="privacy.html">Privacy Policy</a> | 
+                <a href="terms.html">Terms of Service</a>
+            </p>
+            <p style="margin-top: 8px; font-size: 12px;">
+                <a href="https://nyuchi.com" target="_blank" rel="noopener">nyuchi.com</a> | 
+                <a href="https://github.com/nyuchitech" target="_blank" rel="noopener">GitHub</a> | 
+                <a href="mailto:hello@nyuchi.com">hello@nyuchi.com</a>
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        // Theme functionality with localStorage fallback
+        function isLocalStorageAvailable() {
+            try {
+                var test = '__localStorage_test__';
+                localStorage.setItem(test, test);
+                localStorage.removeItem(test);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function toggleTheme() {
+            try {
+                var body = document.body;
+                var themeButton = document.querySelector('.theme-toggle');
+                
+                if (body.getAttribute('data-theme') === 'dark') {
+                    body.removeAttribute('data-theme');
+                    if (themeButton) themeButton.textContent = '🌙 Dark';
+                    if (isLocalStorageAvailable()) {
+                        localStorage.setItem('theme', 'light');
+                    }
+                } else {
+                    body.setAttribute('data-theme', 'dark');
+                    if (themeButton) themeButton.textContent = '☀️ Light';
+                    if (isLocalStorageAvailable()) {
+                        localStorage.setItem('theme', 'dark');
+                    }
+                }
+            } catch (error) {
+                console.warn('Theme toggle error:', error.message);
+                // Fallback: still toggle theme even if we can't save preference
+                var body = document.body;
+                var themeButton = document.querySelector('.theme-toggle');
+                
+                if (body.getAttribute('data-theme') === 'dark') {
+                    body.removeAttribute('data-theme');
+                    if (themeButton) themeButton.textContent = '🌙 Dark';
+                } else {
+                    body.setAttribute('data-theme', 'dark');
+                    if (themeButton) themeButton.textContent = '☀️ Light';
+                }
+            }
+        }
+
+        function loadTheme() {
+            try {
+                if (isLocalStorageAvailable()) {
+                    var savedTheme = localStorage.getItem('theme');
+                    var themeButton = document.querySelector('.theme-toggle');
+                    
+                    if (savedTheme === 'dark') {
+                        document.body.setAttribute('data-theme', 'dark');
+                        if (themeButton) themeButton.textContent = '☀️ Light';
+                    }
+                }
+            } catch (error) {
+                console.warn('Load theme error:', error.message);
+                // Gracefully continue without saved theme preference
+            }
+        }
+
+        // Load theme on page load
+        document.addEventListener('DOMContentLoaded', loadTheme);
+    </script>
+</body>
+</html>

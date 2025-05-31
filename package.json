@@ -1,0 +1,50 @@
+{
+  "name": "harare-metro",
+  "version": "1.0.0",
+  "description": "Harare Metro - Mobile-first news aggregation site for Zimbabwe's capital with RSS feed processing",
+  "main": "worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "build": "echo 'No build step required for this worker'",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "eslint worker.js",
+    "lint:fix": "eslint worker.js --fix",
+    "update-feeds": "wrangler invoke harare-metro-worker --env production /api/update",
+    "logs": "wrangler tail"
+  },
+  "keywords": [
+    "harare",
+    "metro",
+    "zimbabwe",
+    "news",
+    "rss",
+    "cloudflare-workers",
+    "mobile-first"
+  ],
+  "author": "Bryan Fawcett <hello@nyuchi.com>",
+  "license": "MIT",
+  "dependencies": {
+    "fast-xml-parser": "^4.3.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240512.0",
+    "wrangler": "^3.57.1",
+    "eslint": "^8.57.0",
+    "vitest": "^1.6.0",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nyuchitech/harare-metro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/nyuchitech/harare-metro/issues"
+  },
+  "homepage": "https://harare-metro.co.zw"
+}

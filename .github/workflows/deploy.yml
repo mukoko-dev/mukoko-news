@@ -1,0 +1,127 @@
+# .github/workflows/deploy.yml
+name: Deploy Harare Metro
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    # Deploy daily at 6 AM UTC to ensure fresh content
+    - cron: '0 6 * * *'
+
+jobs:
+  deploy-worker:
+    runs-on: ubuntu-latest
+    name: Deploy Cloudflare Worker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint code
+        run: npm run lint
+
+      - name: Deploy to Cloudflare Workers (Staging)
+        if: github.ref == 'refs/heads/develop'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          environment: 'staging'
+
+      - name: Deploy to Cloudflare Workers (Production)
+        if: github.ref == 'refs/heads/main'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          environment: 'production'
+
+      - name: Trigger initial RSS update
+        if: github.ref == 'refs/heads/main'
+        run: |
+          sleep 30  # Wait for worker deployment
+          curl -X GET "https://harare-metro-worker.harare-metro.workers.dev/api/update"
+
+  deploy-pages:
+    runs-on: ubuntu-latest
+    name: Deploy to Cloudflare Pages
+    needs: deploy-worker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Update API endpoint in HTML
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/main" ]; then
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker.harare-metro.workers.dev|g' index.html
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker.harare-metro.workers.dev|g' privacy.html
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker.harare-metro.workers.dev|g' terms.html
+          else
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker-staging.harare-metro.workers.dev|g' index.html
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker-staging.harare-metro.workers.dev|g' privacy.html
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker-staging.harare-metro.workers.dev|g' terms.html
+          fi
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: harare-metro
+          directory: .
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+
+  test-deployment:
+    runs-on: ubuntu-latest
+    name: Test Deployment
+    needs: [deploy-worker, deploy-pages]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Test Worker API
+        run: |
+          # Test the news API endpoint
+          response=$(curl -s -o /dev/null -w "%{http_code}" "https://harare-metro-worker.harare-metro.workers.dev/api/news")
+          if [ $response -eq 200 ]; then
+            echo "✅ Worker API is responding correctly"
+          else
+            echo "❌ Worker API failed with status $response"
+            exit 1
+          fi
+
+      - name: Test Pages Deployment
+        run: |
+          # Test the main site
+          response=$(curl -s -o /dev/null -w "%{http_code}" "https://harare-metro.co.zw")
+          if [ $response -eq 200 ]; then
+            echo "✅ Site is loading correctly"
+          else
+            echo "❌ Site failed with status $response"
+            exit 1
+          fi
+
+  notify:
+    runs-on: ubuntu-latest
+    name: Notify Deployment Status
+    needs: [deploy-worker, deploy-pages, test-deployment]
+    if: always() && github.ref == 'refs/heads/main'
+    steps:
+      - name: Deployment Success
+        if: needs.deploy-worker.result == 'success' && needs.deploy-pages.result == 'success'
+        run: |
+          echo "🎉 Harare Metro site deployed successfully!"
+          echo "🔗 Site: https://harare-metro.co.zw"
+          echo "🔗 API: https://harare-metro-worker.harare-metro.workers.dev"
+
+      - name: Deployment Failure
+        if: needs.deploy-worker.result == 'failure' || needs.deploy-pages.result == 'failure'
+        run: |
+          echo "❌ Deployment failed. Check the logs above."
+          exit 1
