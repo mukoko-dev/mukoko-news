@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build:worker": "node worker.build.js",
+    "build": "npm run build:worker && vite build",
     "preview": "vite preview",
     "deploy": "npm run build && wrangler pages publish dist",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
@@ -16,6 +17,7 @@
     "@heroicons/react": "^2.0.18",
     "axios": "^1.6.2",
     "date-fns": "^2.30.0",
+    "fast-xml-parser": "^5.2.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
