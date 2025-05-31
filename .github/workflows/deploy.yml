@@ -1,4 +1,3 @@
-# .github/workflows/deploy.yml
 name: Deploy Harare Metro
 
 on:
@@ -87,7 +86,6 @@ jobs:
     steps:
       - name: Test Worker API
         run: |
-          # Test the news API endpoint
           response=$(curl -s -o /dev/null -w "%{http_code}" "https://harare-metro-worker.harare-metro.workers.dev/api/news")
           if [ $response -eq 200 ]; then
             echo "✅ Worker API is responding correctly"
@@ -98,7 +96,6 @@ jobs:
 
       - name: Test Pages Deployment
         run: |
-          # Test the main site
           response=$(curl -s -o /dev/null -w "%{http_code}" "https://harare-metro.co.zw")
           if [ $response -eq 200 ]; then
             echo "✅ Site is loading correctly"
@@ -106,22 +103,3 @@ jobs:
             echo "❌ Site failed with status $response"
             exit 1
           fi
-
-  notify:
-    runs-on: ubuntu-latest
-    name: Notify Deployment Status
-    needs: [deploy-worker, deploy-pages, test-deployment]
-    if: always() && github.ref == 'refs/heads/main'
-    steps:
-      - name: Deployment Success
-        if: needs.deploy-worker.result == 'success' && needs.deploy-pages.result == 'success'
-        run: |
-          echo "🎉 Harare Metro site deployed successfully!"
-          echo "🔗 Site: https://harare-metro.co.zw"
-          echo "🔗 API: https://harare-metro-worker.harare-metro.workers.dev"
-
-      - name: Deployment Failure
-        if: needs.deploy-worker.result == 'failure' || needs.deploy-pages.result == 'failure'
-        run: |
-          echo "❌ Deployment failed. Check the logs above."
-          exit 1
