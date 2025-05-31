@@ -1,0 +1,14 @@
+name = "harare-metro"
+compatibility_date = "2024-05-01"
+main = "./worker/index.js"
+preview_urls = true
+workers_dev = true
+
+[assets]
+directory = "./dist/client"
+binding = "ASSETS"
+
+[[kv_namespaces]]
+binding = "NEWS_STORAGE"
+id = "your-production-kv-id"
+preview_id = "your-preview-kv-id"

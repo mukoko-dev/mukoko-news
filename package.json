@@ -1,0 +1,32 @@
+{
+  "name": "harare-metro",
+  "version": "1.0.0",
+  "main": "dist/worker/index.js",
+  "scripts": {
+    "build": "vite build && cp -r worker dist/",
+    "deploy": "npm run build && wrangler deploy",
+    "dev": "wrangler dev",
+    "preview": "wrangler dev --local",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@cloudflare/kv-asset-handler": "^0.3.0",
+    "@heroicons/react": "^2.0.18",
+    "fast-xml-parser": "^4.3.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240314.0",
+    "@types/react": "^18.2.64",
+    "@types/react-dom": "^18.2.21",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.18",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.4.2",
+    "vite": "^6.3.5",
+    "vitest": "^3.1.4",
+    "wrangler": "^4.18.0"
+  }
+}
