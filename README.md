@@ -2,11 +2,6 @@
 
 A fast, mobile-first news aggregation site focused on Harare and Zimbabwe news. Built with Cloudflare Workers and Pages for maximum performance and global reach.
 
-**🌐 Live Site:** [https://harare-metro.co.zw](https://harare-metro.co.zw)
-
-**Created by Nyuchi Web Services**  
-**Lead Developer:** Bryan Fawcett (@bryanfawcett)
-
 ## ✨ Features
 
 - **📱 Mobile-First Design** - Optimized for quick information access on mobile devices
@@ -47,7 +42,7 @@ harare-metro/
 ├── worker.js               # Cloudflare Worker (RSS aggregation)
 ├── wrangler.toml           # Cloudflare configuration
 ├── package.json            # Dependencies & scripts
-├── setup.sh                # Automated setup script ⭐
+├── setup.sh                # Automated setup script
 ├── worker.test.js          # Tests for Worker functionality
 ├── .github/workflows/
 │   └── deploy.yml          # Auto-deployment pipeline
@@ -65,25 +60,11 @@ harare-metro/
 - GitHub account
 - Git installed
 
-### 1. Use Setup Script (Recommended)
-
-```bash
-# Download and run the setup script
-curl -O https://raw.githubusercontent.com/nyuchitech/harare-metro/main/setup.sh
-chmod +x setup.sh
-./setup.sh
-
-# Or clone the repository first
-git clone https://github.com/nyuchitech/harare-metro.git
-cd harare-metro
-chmod +x setup.sh && ./setup.sh
-```
-
-### 2. Manual Setup
+### 1. Clone and Setup
 
 ```bash
 # Clone the repository
-git clone https://github.com/nyuchitech/harare-metro.git
+git clone https://github.com/yourusername/harare-metro.git
 cd harare-metro
 
 # Install dependencies
@@ -93,7 +74,7 @@ npm install
 npx wrangler login
 ```
 
-### 3. Create Cloudflare Resources
+### 2. Create Cloudflare Resources
 
 ```bash
 # Create KV namespace for article storage
@@ -103,7 +84,7 @@ npx wrangler kv:namespace create "NEWS_STORAGE" --preview
 # Note the IDs returned and update wrangler.toml
 ```
 
-### 4. Update Configuration
+### 3. Update Configuration
 
 1. **Update `wrangler.toml`** with your KV namespace IDs:
 ```toml
@@ -113,13 +94,13 @@ preview_id = "your-preview-kv-id-here"
 id = "your-production-kv-id-here"
 ```
 
-2. **Update HTML files** with your Worker URL:
+2. **Update `index.html`** with your Worker URL:
 ```javascript
 // Replace YOUR_WORKER_URL with your actual worker URL
-const API_BASE = 'https://harare-metro-worker.harare-metro.workers.dev';
+const API_BASE = 'https://zimbabwe-news-worker.your-subdomain.workers.dev';
 ```
 
-### 5. Deploy
+### 4. Deploy Worker
 
 ```bash
 # Deploy to staging
@@ -132,7 +113,7 @@ npm run deploy
 curl https://harare-metro-worker.harare-metro.workers.dev/api/news
 ```
 
-### 6. Setup GitHub Actions
+### 5. Setup GitHub Actions
 
 1. Go to your GitHub repository settings
 2. Add these secrets:
@@ -140,6 +121,14 @@ curl https://harare-metro-worker.harare-metro.workers.dev/api/news
    - `CLOUDFLARE_ACCOUNT_ID` - Your Cloudflare account ID
 
 3. Update the workflow file URLs with your actual domains
+
+### 6. Deploy to Cloudflare Pages
+
+1. Connect your GitHub repo to Cloudflare Pages
+2. Set build settings:
+   - Build command: `echo "Static site - no build needed"`
+   - Output directory: `/`
+3. Deploy!
 
 ## 🛠️ Development
 
@@ -171,7 +160,139 @@ const RSS_SOURCES = [
 ];
 ```
 
-## 📊 News Sources
+### Debugging & Troubleshooting
+
+```bash
+# Check worker status
+wrangler deployments
+
+# View live logs
+wrangler tail --format=pretty
+
+# Test worker locally
+wrangler dev
+# Then visit: http://localhost:8787/api/news
+
+# Validate configuration
+wrangler whoami              # Verify you're logged in
+cat wrangler.toml           # Check configuration
+
+# KV Storage debugging
+wrangler kv namespace list                    # List your namespaces
+wrangler kv key list --namespace-id=<ID>     # Check stored data
+wrangler kv key get "articles" --namespace-id=<ID>  # View articles
+
+# Force redeploy
+wrangler deploy --force
+
+# Check account limits
+wrangler whoami --json      # Get account details
+```
+
+### Common Issues & Solutions
+
+**Issue: "Namespace not found"**
+```bash
+# List your KV namespaces
+wrangler kv namespace list
+# Update wrangler.toml with correct IDs
+```
+
+**Issue: "Authentication failed"**
+```bash
+# Re-authenticate
+wrangler logout
+wrangler login
+```
+
+**Issue: "Worker not updating"**
+```bash
+# Check deployment status
+wrangler deployments
+# Force deploy
+wrangler deploy --force
+```
+
+**Issue: "RSS feeds not updating"**
+```bash
+# Check cron triggers
+wrangler triggers
+# Manual update trigger
+curl -X GET "https://harare-metro-worker.harare-metro.workers.dev/api/update"
+```
+
+### Customizing Categories
+
+Update the `CATEGORY_KEYWORDS` object in `worker.js`:
+
+```javascript
+const CATEGORY_KEYWORDS = {
+  politics: ['parliament', 'government', 'election'],
+  economy: ['economy', 'inflation', 'currency'],
+  // ... add your categories
+};
+```
+
+## 📊 Monitoring
+
+### Check Feed Updates
+
+```bash
+# View last update status
+curl https://your-worker-url.workers.dev/api/update
+
+# Check stored articles
+curl https://your-worker-url.workers.dev/api/news
+```
+
+### Cloudflare Analytics
+
+Monitor your site performance:
+- **Pages Analytics** - Page views, unique visitors
+- **Workers Analytics** - API requests, response times
+- **KV Analytics** - Storage usage
+
+## 🔧 Configuration Options
+
+### Update Frequency
+
+Modify the cron schedule in `wrangler.toml`:
+
+```toml
+[triggers]
+crons = ["0 */2 * * *"]  # Every 2 hours
+# crons = ["0 8,20 * * *"]  # Twice daily at 8 AM and 8 PM
+```
+
+### RSS Source Timeout
+
+Adjust fetch timeout in `worker.js`:
+
+```javascript
+const response = await fetch(source.url, {
+  headers: {
+    'User-Agent': 'ZimbabweNews/1.0'
+  },
+  // Add timeout if needed
+  signal: AbortSignal.timeout(10000) // 10 seconds
+});
+```
+
+## 🎨 Customization
+
+### Colors and Styling
+
+Update CSS variables in `index.html`:
+
+```css
+:root {
+  --primary: #1e3a8a;        /* Navy blue */
+  --bg-light: #ffffff;       /* White background */
+  --bg-dark: #2d2d2d;        /* Charcoal background */
+}
+```
+
+### News Sources
 
 Current sources include:
 - Herald Zimbabwe
@@ -181,6 +302,15 @@ Current sources include:
 - Business Weekly
 - Zimbabwe Independent
 
+Add more by updating the `RSS_SOURCES` array.
+
+## 🔒 Security
+
+- **No API Keys Exposed** - All processing happens server-side
+- **CORS Enabled** - Secure cross-origin requests
+- **Rate Limiting** - Built-in Cloudflare protection
+- **Input Sanitization** - HTML tags stripped from RSS content
+
 ## 📈 Performance
 
 Expected performance metrics:
@@ -189,33 +319,69 @@ Expected performance metrics:
 - **Lighthouse Score**: 90+ on mobile
 - **Uptime**: 99.9% (Cloudflare SLA)
 
-## 🔒 Privacy & Terms
+## 🔍 Quick Commands Reference
 
-- [Privacy Policy](./privacy.html) - How we collect, use, and protect your information
-- [Terms of Service](./terms.html) - Rules and guidelines for using our service
+```bash
+# 🚀 Essential Commands
+npm run dev              # Start local development
+npm run deploy           # Deploy to production
+npm run logs             # View live logs
+npm run deployments     # Check deployment status
 
-Both pages are fully responsive and include:
-- **GDPR-compliant privacy practices**
-- **Clear terms of service**
-- **Zimbabwe law compliance**
-- **Contact information for legal inquiries**
+# 🛠️ Development Workflow
+wrangler dev             # Local development server
+wrangler deploy          # Deploy to Cloudflare
+wrangler tail            # Real-time logs
+wrangler deployments    # Deployment history
 
-## 💖 Sponsor Development
+# 🗂️ KV Storage Commands
+npm run kv:list                              # List KV namespaces
+wrangler kv key list --namespace-id=<ID>    # List stored keys
+wrangler kv key get "articles" --namespace-id=<ID>  # Get articles data
 
-Support ongoing development and new features:
+# 🔧 Maintenance
+npm run deploy:force     # Force redeploy
+npm run whoami          # Check authentication
+npm run audit           # Security audit
+```
 
-- **💖 GitHub Sponsors** - [Sponsor @bryanfawcett](https://github.com/sponsors/bryanfawcett)
-- **☕ Buy me a coffee** - [buymeacoffee.com/bryanfawcett](https://buymeacoffee.com/bryanfawcett)
-- **🏢 Professional services** - Custom development and consulting available
+## 🐛 Troubleshooting
 
-Your sponsorship helps maintain this free service and develop new features for the Zimbabwe tech community.
+### Worker Not Updating
 
-## 📞 Contact
+```bash
+# Check cron triggers
+npx wrangler cron-trigger list
 
-- **Website**: [https://nyuchi.com](https://nyuchi.com)
-- **GitHub**: [https://github.com/nyuchitech](https://github.com/nyuchitech)
-- **Email**: [hello@nyuchi.com](mailto:hello@nyuchi.com)
-- **Issues**: [GitHub Issues](https://github.com/nyuchitech/harare-metro/issues)
+# Manual update
+curl -X GET "https://your-worker-url.workers.dev/api/update"
+```
+
+### RSS Feed Issues
+
+```bash
+# Check worker logs
+npm run logs
+
+# Test individual feeds
+curl -I "https://www.herald.co.zw/feed/"
+```
+
+### Deployment Issues
+
+```bash
+# Verify wrangler authentication
+npx wrangler whoami
+
+# Check KV namespaces
+npx wrangler kv:namespace list
+```
+
+## 📞 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/harare-metro/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/harare-metro/discussions)
+- **Email**: your-email@example.com
 
 ## 📄 License
 
@@ -229,20 +395,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## 🏆 Credits
+## 📸 Screenshots
 
-**Created by Nyuchi Web Services**
-- **Lead Developer**: Bryan Fawcett (@bryanfawcett)
-- **Development Assistant**: Claude AI
-- **Organization**: [Nyuchi Web Services](https://nyuchi.com)
+### Mobile View
+![Mobile Screenshot](docs/mobile-view.png)
 
-**Special Thanks:**
-- Zimbabwe news organizations for providing RSS feeds
-- Cloudflare for hosting and edge infrastructure
-- Open source community for tools and libraries
+### Desktop View
+![Desktop Screenshot](docs/desktop-view.png)
 
-**Professional Services:**
-For custom web development, mobile apps, and tech consulting in Zimbabwe and beyond, visit [nyuchi.com](https://nyuchi.com).
+### Dark Mode
+![Dark Mode Screenshot](docs/dark-mode.png)
 
 ---
 

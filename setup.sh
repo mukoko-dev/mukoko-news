@@ -29,13 +29,20 @@ cat > package.json << 'PACKAGE_EOF'
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "deploy:staging": "wrangler deploy --env staging",
+    "deploy:force": "wrangler deploy --force",
     "build": "echo 'No build step required for this worker'",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "lint": "eslint worker.js",
     "lint:fix": "eslint worker.js --fix",
-    "update-feeds": "wrangler invoke harare-metro-worker --env production /api/update",
-    "logs": "wrangler tail"
+    "logs": "wrangler tail",
+    "logs:pretty": "wrangler tail --format=pretty",
+    "deployments": "wrangler deployments",
+    "whoami": "wrangler whoami",
+    "kv:list": "wrangler kv namespace list",
+    "audit": "npm audit",
+    "audit-fix": "npm audit fix",
+    "update-deps": "npm update"
   },
   "keywords": [
     "harare",
@@ -72,6 +79,25 @@ cat > package.json << 'PACKAGE_EOF'
 }
 PACKAGE_EOF
 
+echo "📝 Creating package.json..."
+
+# Validate that package.json was created correctly
+if [ -f "package.json" ]; then
+    echo "   ✅ package.json created"
+    # Validate JSON syntax
+    if command -v node >/dev/null 2>&1; then
+        if node -e "JSON.parse(require('fs').readFileSync('package.json', 'utf8'))" 2>/dev/null; then
+            echo "   ✅ package.json is valid JSON"
+        else
+            echo "   ❌ package.json has invalid JSON syntax"
+            echo "   📄 Please copy the package.json from the Claude artifacts manually"
+        fi
+    fi
+else
+    echo "   ❌ Failed to create package.json"
+fi
+
+echo ""
 echo "🔧 Creating wrangler.toml..."
 
 # Create wrangler.toml
@@ -1106,10 +1132,11 @@ echo "5. Set up Cloudflare Workers and Pages"
 echo "6. Configure custom domain: harare-metro.co.zw"
 echo ""
 echo "🔧 Setup Cloudflare:"
-echo "   npx wrangler login"
-echo "   npx wrangler kv:namespace create \"NEWS_STORAGE\""
-echo "   npx wrangler kv:namespace create \"NEWS_STORAGE\" --preview"
+echo "   wrangler login"
+echo "   wrangler kv namespace create \"NEWS_STORAGE\""
+echo "   wrangler kv namespace create \"NEWS_STORAGE\" --preview"
 echo "   # Update wrangler.toml with the returned IDs"
+echo "   wrangler deploy"
 echo ""
 echo "🌐 Live site: https://harare-metro.co.zw"
 echo "📧 Contact: hello@nyuchi.com"

@@ -24,7 +24,7 @@
     "cloudflare-workers",
     "mobile-first"
   ],
-  "author": "Bryan Fawcett <hello@nyuchi.com>",
+  "author": "Your Name",
   "license": "MIT",
   "dependencies": {
     "fast-xml-parser": "^4.3.2"
@@ -41,10 +41,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nyuchitech/harare-metro.git"
+    "url": "https://github.com/yourusername/harare-metro.git"
   },
   "bugs": {
-    "url": "https://github.com/nyuchitech/harare-metro/issues"
+    "url": "https://github.com/yourusername/harare-metro/issues"
   },
-  "homepage": "https://harare-metro.co.zw"
+  "homepage": "https://github.com/yourusername/harare-metro#readme"
 }
