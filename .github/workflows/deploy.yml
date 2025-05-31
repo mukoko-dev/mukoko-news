@@ -47,7 +47,7 @@ jobs:
         if: github.ref == 'refs/heads/main'
         run: |
           sleep 30  # Wait for worker deployment
-          curl -X GET "https://harare-metro-worker.harare-metro.workers.dev/api/update"
+          curl -X GET "https://harare-metro-worker.nyuchi.workers.dev/api/update"
 
   deploy-pages:
     runs-on: ubuntu-latest
@@ -60,13 +60,13 @@ jobs:
       - name: Update API endpoint in HTML
         run: |
           if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker.harare-metro.workers.dev|g' index.html
-            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker.harare-metro.workers.dev|g' privacy.html
-            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker.harare-metro.workers.dev|g' terms.html
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker.nyuchi.workers.dev|g' index.html
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker.nyuchi.workers.dev|g' privacy.html
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker.nyuchi.workers.dev|g' terms.html
           else
-            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker-staging.harare-metro.workers.dev|g' index.html
-            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker-staging.harare-metro.workers.dev|g' privacy.html
-            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker-staging.harare-metro.workers.dev|g' terms.html
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker-staging.nyuchi.workers.dev|g' index.html
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker-staging.nyuchi.workers.dev|g' privacy.html
+            sed -i 's|YOUR_WORKER_URL|https://harare-metro-worker-staging.nyuchi.workers.dev|g' terms.html
           fi
 
       - name: Deploy to Cloudflare Pages
@@ -86,7 +86,7 @@ jobs:
     steps:
       - name: Test Worker API
         run: |
-          response=$(curl -s -o /dev/null -w "%{http_code}" "https://harare-metro-worker.harare-metro.workers.dev/api/news")
+          response=$(curl -s -o /dev/null -w "%{http_code}" "https://harare-metro-worker.nyuchi.workers.dev/api/news")
           if [ $response -eq 200 ]; then
             echo "✅ Worker API is responding correctly"
           else
