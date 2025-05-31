@@ -1,64 +1,36 @@
 {
   "name": "harare-metro",
   "version": "1.0.0",
-  "description": "Harare Metro - Mobile-first news aggregation site for Zimbabwe's capital with RSS feed processing",
-  "main": "worker.js",
+  "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "deploy:staging": "wrangler deploy --env staging",
-    "deploy:force": "wrangler deploy --force",
-    "build": "echo 'No build step required for this worker'",
-    "test": "vitest",
-    "test:watch": "vitest --watch",
-    "lint": "eslint worker.js",
-    "lint:fix": "eslint worker.js --fix",
-    "logs": "wrangler tail",
-    "logs:pretty": "wrangler tail --format=pretty",
-    "deployments": "wrangler deployments list",
-    "whoami": "wrangler whoami",
-    "kv:list": "wrangler kv namespace list",
-    "audit": "npm audit",
-    "audit-fix": "npm audit fix",
-    "update-deps": "npm update"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && wrangler pages publish dist",
+    "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "start:worker": "wrangler dev worker.js"
   },
-  "keywords": [
-    "harare",
-    "metro",
-    "zimbabwe",
-    "news",
-    "rss",
-    "cloudflare-workers",
-    "mobile-first"
-  ],
-  "author": "Bryan Fawcett <hello@nyuchi.com>",
-  "license": "MIT",
   "dependencies": {
-    "fast-xml-parser": "^4.3.2"
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.0.18",
+    "axios": "^1.6.2",
+    "date-fns": "^2.30.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240512.0",
-    "@eslint/css": "^0.8.1",
-    "@eslint/js": "^9.28.0",
-    "@eslint/json": "^0.12.0",
-    "@eslint/markdown": "^6.4.0",
-    "eslint": "^8.57.1",
-    "eslint-plugin-react": "^7.37.5",
-    "globals": "^16.2.0",
-    "typescript": "^5.4.5",
-    "typescript-eslint": "^8.33.0",
-    "vitest": "^3.1.4",
-    "wrangler": "^4.0.0"
-  },
-  "engines": {
-    "node": ">=20.0.0"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/nyuchitech/harare-metro.git"
-  },
-  "bugs": {
-    "url": "https://github.com/nyuchitech/harare-metro/issues"
-  },
-  "homepage": "https://harare-metro.co.zw"
+    "@tailwindcss/typography": "^0.5.10",
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.2.0",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.53.0",
+    "eslint-plugin-react": "^7.33.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "vite": "^5.0.0",
+    "wrangler": "^3.15.0"
+  }
 }
