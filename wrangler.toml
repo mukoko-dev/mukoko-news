@@ -34,3 +34,7 @@ name = "harare-metro-worker-staging"
 
 [env.staging.vars]
 ENVIRONMENT = "staging"
+
+# Production environment
+[env.production]
+ENVIRONMENT = "production"
