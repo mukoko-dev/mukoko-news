@@ -28,15 +28,12 @@ jobs:
 
       - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           workingDirectory: '.'
-          command: |
-            if [ "${{ github.ref }}" = "refs/heads/main" ]; then
-              wrangler deploy
-            else
-              wrangler deploy --env staging
-            fi
+          command: >
+            wrangler deploy $([ "${{ github.ref }}" = "refs/heads/main" ] && echo "" || echo "--env staging")
 
   deploy-pages:
     runs-on: ubuntu-latest
