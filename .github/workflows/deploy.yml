@@ -97,7 +97,8 @@ jobs:
       - name: Test Pages Deployment
         run: |
           response=$(curl -s -o /dev/null -w "%{http_code}" "https://www.hararemetro.co.zw")
-          if [ $response -eq 200 ]; then
+          echo "HTTP Status: $response"
+          if [[ "$response" == "200" ]]; then
             echo "✅ Site is loading correctly"
           else
             echo "❌ Site failed with status $response"
