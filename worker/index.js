@@ -1,6 +1,37 @@
-// Enhanced Worker with Zimbabwe-specific keyword categorization + Global trending categories
+// Enhanced Worker with schema validation and API documentation endpoint
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
 import { XMLParser } from 'fast-xml-parser'
+
+// Import the OpenAPI schema (you'll need to add this file to your worker)
+const API_SCHEMA = {
+  openapi: "3.0.3",
+  info: {
+    title: "Harare Metro News API",
+    version: "2.0.0"
+  },
+  // ... (we'll load this from the YAML file in production)
+}
+
+// Validation schemas for request parameters
+const VALIDATION_SCHEMAS = {
+  feeds: {
+    category: {
+      type: 'string',
+      enum: ['politics', 'economy', 'business', 'sports', 'harare', 'agriculture', 
+             'technology', 'health', 'education', 'entertainment', 'environment', 
+             'crime', 'international', 'lifestyle', 'finance', 'general']
+    },
+    limit: {
+      type: 'integer',
+      minimum: 1,
+      maximum: 100,
+      default: 50
+    },
+    priority: {
+      type: 'boolean'
+    }
+  }
+}
 
 // Keywords to prioritize for Zimbabwe/Harare relevance
 const PRIORITY_KEYWORDS = [
@@ -228,362 +259,8 @@ export default {
       } catch (assetError) {
         console.log('Asset serving failed, falling back to enhanced HTML:', assetError.message)
         
-        // Enhanced fallback HTML with all categories
-        return new Response(`
-          <!DOCTYPE html>
-          <html lang="en">
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <title>Harare Metro - Zimbabwe News Aggregator</title>
-            <style>
-              * { box-sizing: border-box; margin: 0; padding: 0; }
-              body { 
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                min-height: 100vh;
-                line-height: 1.4;
-              }
-              .header {
-                background: rgba(255,255,255,0.95);
-                backdrop-filter: blur(10px);
-                padding: 1rem 0;
-                box-shadow: 0 2px 20px rgba(0,0,0,0.1);
-                position: sticky;
-                top: 0;
-                z-index: 100;
-              }
-              .header-content {
-                max-width: 1200px;
-                margin: 0 auto;
-                padding: 0 1rem;
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                flex-wrap: wrap;
-                gap: 1rem;
-              }
-              .logo {
-                display: flex;
-                align-items: center;
-                gap: 0.5rem;
-              }
-              .logo h1 {
-                color: #2d3748;
-                font-size: clamp(1.2rem, 4vw, 1.8rem);
-                font-weight: 700;
-              }
-              .flag { font-size: 1.5rem; }
-              .subtitle { color: #718096; font-size: 0.85rem; }
-              .refresh-btn {
-                background: #4299e1;
-                color: white;
-                border: none;
-                padding: 0.75rem 1.25rem;
-                border-radius: 0.5rem;
-                cursor: pointer;
-                font-weight: 600;
-                font-size: 0.9rem;
-                transition: all 0.2s;
-              }
-              .refresh-btn:hover { background: #3182ce; transform: translateY(-1px); }
-              .container { 
-                max-width: 1200px; 
-                margin: 0 auto; 
-                padding: 1rem;
-              }
-              .filters {
-                display: flex;
-                gap: 0.5rem;
-                margin-bottom: 1.5rem;
-                flex-wrap: wrap;
-                overflow-x: auto;
-                padding-bottom: 0.5rem;
-                scrollbar-width: none;
-                -ms-overflow-style: none;
-              }
-              .filters::-webkit-scrollbar { display: none; }
-              .filter-btn {
-                background: rgba(255,255,255,0.9);
-                border: 2px solid transparent;
-                padding: 0.5rem 1rem;
-                border-radius: 25px;
-                cursor: pointer;
-                font-weight: 500;
-                font-size: 0.85rem;
-                transition: all 0.2s;
-                color: #4a5568;
-                white-space: nowrap;
-                min-width: fit-content;
-              }
-              .filter-btn:hover { background: white; transform: translateY(-1px); }
-              .filter-btn.active { 
-                background: #4299e1; 
-                color: white; 
-                border-color: #3182ce;
-              }
-              .loading { 
-                text-align: center; 
-                color: white;
-                font-size: 1rem;
-                padding: 2rem;
-              }
-              .error { 
-                color: #f56565; 
-                background: rgba(255,255,255,0.9); 
-                padding: 1rem; 
-                border-radius: 0.5rem;
-                margin: 1rem 0;
-                border-left: 4px solid #f56565;
-                font-size: 0.9rem;
-              }
-              .news-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-                gap: 1rem;
-              }
-              .article {
-                background: rgba(255,255,255,0.95);
-                backdrop-filter: blur(10px);
-                border-radius: 0.75rem;
-                padding: 1.25rem;
-                box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-                transition: all 0.3s ease;
-                border: 1px solid rgba(255,255,255,0.2);
-              }
-              .article:hover { 
-                transform: translateY(-3px); 
-                box-shadow: 0 15px 35px rgba(0,0,0,0.15);
-              }
-              .article-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 0.75rem;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-              }
-              .source {
-                color: #4299e1;
-                font-weight: 600;
-                font-size: 0.8rem;
-              }
-              .date {
-                color: #718096;
-                font-size: 0.75rem;
-              }
-              .article h3 { 
-                margin: 0 0 0.75rem 0; 
-                color: #2d3748; 
-                font-size: 1rem;
-                line-height: 1.4;
-                font-weight: 600;
-              }
-              .description { 
-                color: #4a5568; 
-                line-height: 1.5; 
-                margin-bottom: 0.75rem;
-                font-size: 0.9rem;
-                display: -webkit-box;
-                -webkit-line-clamp: 3;
-                -webkit-box-orient: vertical;
-                overflow: hidden;
-              }
-              .article-footer {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                flex-wrap: wrap;
-                gap: 0.5rem;
-              }
-              .category {
-                background: #edf2f7;
-                color: #4a5568;
-                padding: 0.25rem 0.75rem;
-                border-radius: 15px;
-                font-size: 0.75rem;
-                font-weight: 500;
-                text-transform: capitalize;
-              }
-              .category.politics { background: #fed7d7; color: #c53030; }
-              .category.economy { background: #c6f6d5; color: #2f855a; }
-              .category.business { background: #bee3f8; color: #2b6cb0; }
-              .category.sports { background: #feebc8; color: #c05621; }
-              .category.harare { background: #e9d8fd; color: #6b46c1; }
-              .category.agriculture { background: #d4edda; color: #155724; }
-              .category.technology { background: #e0f2fe; color: #0277bd; }
-              .category.health { background: #f3e5f5; color: #7b1fa2; }
-              .category.education { background: #fff3e0; color: #ef6c00; }
-              .category.entertainment { background: #fce4ec; color: #c2185b; }
-              .category.environment { background: #e8f5e8; color: #388e3c; }
-              .category.crime { background: #ffebee; color: #d32f2f; }
-              .category.international { background: #e3f2fd; color: #1976d2; }
-              .category.lifestyle { background: #f1f8e9; color: #689f38; }
-              .category.finance { background: #fff8e1; color: #f57c00; }
-              .read-more {
-                color: #4299e1;
-                text-decoration: none;
-                font-weight: 600;
-                font-size: 0.85rem;
-                transition: color 0.2s;
-              }
-              .read-more:hover { color: #3182ce; }
-              .priority-badge {
-                background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
-                color: white;
-                padding: 0.2rem 0.5rem;
-                border-radius: 10px;
-                font-size: 0.7rem;
-                font-weight: 600;
-                margin-left: 0.5rem;
-              }
-              .stats {
-                background: rgba(255,255,255,0.1);
-                backdrop-filter: blur(10px);
-                border-radius: 0.5rem;
-                padding: 1rem;
-                margin-bottom: 1.5rem;
-                color: white;
-                text-align: center;
-                font-size: 0.9rem;
-              }
-              @media (max-width: 768px) {
-                .header-content { flex-direction: column; text-align: center; }
-                .filters { justify-content: flex-start; }
-                .container { padding: 0.75rem; }
-                .article { padding: 1rem; }
-                .article h3 { font-size: 0.95rem; }
-                .description { font-size: 0.85rem; -webkit-line-clamp: 2; }
-              }
-            </style>
-          </head>
-          <body>
-            <header class="header">
-              <div class="header-content">
-                <div class="logo">
-                  <span class="flag">🇿🇼</span>
-                  <div>
-                    <h1>Harare Metro</h1>
-                    <p class="subtitle">Zimbabwe News Aggregator</p>
-                  </div>
-                </div>
-                <button class="refresh-btn" onclick="loadNews()">🔄 Refresh</button>
-              </div>
-            </header>
-
-            <div class="container">
-              <div id="stats" class="stats">
-                <div>📰 Loading latest news from Zimbabwe sources...</div>
-              </div>
-
-              <div class="filters">
-                <button class="filter-btn active" data-category="all">All News</button>
-                <button class="filter-btn" data-category="politics">Politics</button>
-                <button class="filter-btn" data-category="economy">Economy</button>
-                <button class="filter-btn" data-category="business">Business</button>
-                <button class="filter-btn" data-category="sports">Sports</button>
-                <button class="filter-btn" data-category="harare">Harare</button>
-                <button class="filter-btn" data-category="agriculture">Agriculture</button>
-                <button class="filter-btn" data-category="technology">Technology</button>
-                <button class="filter-btn" data-category="health">Health</button>
-                <button class="filter-btn" data-category="education">Education</button>
-                <button class="filter-btn" data-category="entertainment">Entertainment</button>
-                <button class="filter-btn" data-category="environment">Environment</button>
-                <button class="filter-btn" data-category="crime">Crime</button>
-                <button class="filter-btn" data-category="international">International</button>
-                <button class="filter-btn" data-category="lifestyle">Lifestyle</button>
-                <button class="filter-btn" data-category="finance">Finance</button>
-              </div>
-              
-              <div id="news-container" class="news-grid">
-                <div class="loading">📡 Connecting to Zimbabwe news sources...</div>
-              </div>
-            </div>
-
-            <script>
-              let allFeeds = [];
-              let currentCategory = 'all';
-
-              async function loadNews() {
-                try {
-                  document.getElementById('news-container').innerHTML = '<div class="loading">📡 Fetching latest Zimbabwe news...</div>';
-                  
-                  const response = await fetch('/api/feeds');
-                  if (!response.ok) throw new Error('Failed to load news');
-                  
-                  allFeeds = await response.json();
-                  updateStats();
-                  displayNews();
-                  
-                } catch (error) {
-                  document.getElementById('news-container').innerHTML = 
-                    \`<div class="error">❌ Error loading news: \${error.message}<br><small>Please check your internet connection and try again.</small></div>\`;
-                }
-              }
-
-              function updateStats() {
-                const priorityCount = allFeeds.filter(article => article.priority).length;
-                const categories = [...new Set(allFeeds.map(article => article.category))].length;
-                document.getElementById('stats').innerHTML = \`
-                  <div>📊 <strong>\${allFeeds.length}</strong> articles • <strong>\${priorityCount}</strong> priority Zimbabwe stories • <strong>\${categories}</strong> categories</div>
-                \`;
-              }
-
-              function displayNews() {
-                const filteredFeeds = currentCategory === 'all' 
-                  ? allFeeds 
-                  : allFeeds.filter(feed => feed.category === currentCategory);
-
-                const container = document.getElementById('news-container');
-                
-                if (filteredFeeds.length === 0) {
-                  container.innerHTML = \`<div class="error">No articles found for "\${currentCategory}" category.</div>\`;
-                  return;
-                }
-                
-                container.innerHTML = filteredFeeds.slice(0, 50).map(article => \`
-                  <div class="article">
-                    <div class="article-header">
-                      <span class="source">\${article.source}</span>
-                      <span class="date">\${new Date(article.pubDate).toLocaleDateString('en-US', {
-                        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-                      })}</span>
-                    </div>
-                    
-                    <h3>
-                      \${article.title}
-                      \${article.priority ? '<span class="priority-badge">🇿🇼 Priority</span>' : ''}
-                    </h3>
-                    
-                    \${article.description ? \`<div class="description">\${article.description}</div>\` : ''}
-                    
-                    <div class="article-footer">
-                      <span class="category \${article.category}">\${article.category}</span>
-                      <a href="\${article.link}" target="_blank" rel="noopener" class="read-more">Read More →</a>
-                    </div>
-                  </div>
-                \`).join('');
-              }
-
-              // Category filtering
-              document.addEventListener('click', (e) => {
-                if (e.target.classList.contains('filter-btn')) {
-                  document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-                  e.target.classList.add('active');
-                  currentCategory = e.target.dataset.category;
-                  displayNews();
-                }
-              });
-
-              // Load news on page load
-              loadNews();
-              
-              // Auto-refresh every 15 minutes
-              setInterval(loadNews, 15 * 60 * 1000);
-            </script>
-          </body>
-          </html>
-        `, {
+        // Enhanced fallback HTML with documentation links
+        return new Response(getEnhancedFallbackHTML(), {
           headers: { 'Content-Type': 'text/html' }
         })
       }
@@ -628,10 +305,17 @@ async function handleApiRequest(request, env, ctx) {
           totalSources: RSS_SOURCES.length,
           categories: Object.keys(CATEGORY_KEYWORDS).length,
           message: 'Harare Metro API is healthy!',
-          features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'global-categories']
+          features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'global-categories', 'api-validation'],
+          documentation: {
+            schema: '/api/schema',
+            swagger: 'https://petstore.swagger.io/?url=' + encodeURIComponent(request.url.replace('/api/health', '/api/schema'))
+          }
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
+
+      case '/schema':
+        return await serveApiSchema(request, corsHeaders)
 
       case '/feeds/sources':
         return new Response(JSON.stringify(RSS_SOURCES), {
@@ -643,7 +327,7 @@ async function handleApiRequest(request, env, ctx) {
         })
       
       case '/feeds':
-        return await getAllFeeds(env, corsHeaders)
+        return await getAllFeeds(request, env, corsHeaders)
 
       case '/feeds/cached':
         return await getCachedFeeds(env, corsHeaders)
@@ -657,27 +341,12 @@ async function handleApiRequest(request, env, ctx) {
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
-
-      case '/debug/categories':
-        // Test category detection with sample content
-        const testContent = "President Mnangagwa announced new economic policies for Zimbabwe's agriculture sector in Harare"
-        const testResult = detectCategoryEnhanced(testContent.toLowerCase(), testContent, "Test Source")
-        
-        return new Response(JSON.stringify({
-          testContent,
-          detectedCategory: testResult,
-          availableCategories: Object.keys(CATEGORY_KEYWORDS),
-          categoryKeywordCount: Object.fromEntries(
-            Object.entries(CATEGORY_KEYWORDS).map(([cat, keywords]) => [cat, keywords.length])
-          )
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
       
       default:
         return new Response(JSON.stringify({ 
           error: 'Endpoint not found',
-          available: ['/health', '/feeds/sources', '/feeds', '/feeds/cached', '/categories', '/debug/categories']
+          available: ['/health', '/schema', '/feeds/sources', '/feeds', '/feeds/cached', '/categories'],
+          documentation: '/api/schema'
         }), {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -695,7 +364,263 @@ async function handleApiRequest(request, env, ctx) {
   }
 }
 
-async function getAllFeeds(env, corsHeaders) {
+async function serveApiSchema(request, corsHeaders) {
+  const accept = request.headers.get('Accept') || ''
+  
+  // Serve YAML schema content
+  const yamlSchema = `openapi: 3.0.3
+info:
+  title: Harare Metro News API
+  description: |
+    Zimbabwe News Aggregation API that fetches and categorizes news from multiple local sources.
+    
+    Features:
+    - Real-time RSS feed aggregation
+    - Enhanced categorization with Zimbabwe-specific keywords
+    - Priority detection for Zimbabwe-relevant content
+    - Multiple news sources from Herald, NewsDay, Chronicle, ZBC, and more
+    - Request validation and API documentation
+  version: 2.0.0
+  contact:
+    name: Nyuchi Web Services
+    url: https://www.nyuchi.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: ${new URL(request.url).origin}/api
+    description: Current server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      tags: [System]
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, error]
+                  timestamp:
+                    type: string
+                    format: date-time
+                  sources:
+                    type: integer
+                  totalSources:
+                    type: integer
+                  categories:
+                    type: integer
+                  message:
+                    type: string
+                  features:
+                    type: array
+                    items:
+                      type: string
+
+  /feeds:
+    get:
+      summary: Get all news feeds
+      tags: [News]
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [politics, economy, business, sports, harare, agriculture, technology, health, education, entertainment, environment, crime, international, lifestyle, finance, general]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: priority
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successfully retrieved news feeds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    link:
+                      type: string
+                      format: uri
+                    pubDate:
+                      type: string
+                      format: date-time
+                    source:
+                      type: string
+                    category:
+                      type: string
+                    priority:
+                      type: boolean
+                    relevanceScore:
+                      type: number
+                    guid:
+                      type: string
+        '400':
+          description: Invalid request parameters
+
+  /feeds/sources:
+    get:
+      summary: Get RSS sources configuration
+      tags: [Configuration]
+      responses:
+        '200':
+          description: RSS sources list
+
+  /categories:
+    get:
+      summary: Get categorization configuration
+      tags: [Configuration]
+      responses:
+        '200':
+          description: Categorization data
+
+  /schema:
+    get:
+      summary: Get OpenAPI schema
+      tags: [Documentation]
+      responses:
+        '200':
+          description: API schema
+
+tags:
+  - name: News
+    description: News aggregation endpoints
+  - name: Configuration
+    description: API configuration endpoints
+  - name: System
+    description: System health endpoints
+  - name: Documentation
+    description: API documentation endpoints
+
+externalDocs:
+  description: View in Swagger UI
+  url: https://petstore.swagger.io/?url=${encodeURIComponent(new URL(request.url).href)}`
+
+  if (accept.includes('application/json')) {
+    // Convert YAML to JSON (simplified)
+    return new Response(JSON.stringify({
+      message: 'Schema available in YAML format',
+      swagger_ui: 'https://petstore.swagger.io/?url=' + encodeURIComponent(new URL(request.url).href),
+      yaml_endpoint: new URL(request.url).href
+    }), {
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=3600'
+      }
+    })
+  }
+
+  return new Response(yamlSchema, {
+    headers: { 
+      ...corsHeaders, 
+      'Content-Type': 'application/yaml',
+      'Cache-Control': 'public, max-age=3600'
+    }
+  })
+}
+
+// Enhanced validation function
+function validateRequest(params, schema) {
+  const errors = []
+  
+  for (const [key, value] of Object.entries(params)) {
+    if (schema[key]) {
+      const fieldSchema = schema[key]
+      
+      // Type validation
+      if (fieldSchema.type === 'integer') {
+        const intValue = parseInt(value)
+        if (isNaN(intValue)) {
+          errors.push({
+            field: key,
+            message: `Expected integer, got: ${value}`,
+            value: value
+          })
+          continue
+        }
+        
+        // Range validation
+        if (fieldSchema.minimum !== undefined && intValue < fieldSchema.minimum) {
+          errors.push({
+            field: key,
+            message: `Value must be >= ${fieldSchema.minimum}`,
+            value: intValue
+          })
+        }
+        if (fieldSchema.maximum !== undefined && intValue > fieldSchema.maximum) {
+          errors.push({
+            field: key,
+            message: `Value must be <= ${fieldSchema.maximum}`,
+            value: intValue
+          })
+        }
+      }
+      
+      // Enum validation
+      if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {
+        errors.push({
+          field: key,
+          message: `Invalid value. Allowed values: ${fieldSchema.enum.join(', ')}`,
+          value: value
+        })
+      }
+      
+      // Boolean validation
+      if (fieldSchema.type === 'boolean') {
+        if (value !== 'true' && value !== 'false') {
+          errors.push({
+            field: key,
+            message: `Expected boolean (true/false), got: ${value}`,
+            value: value
+          })
+        }
+      }
+    }
+  }
+  
+  return errors
+}
+
+async function getAllFeeds(request, env, corsHeaders) {
+  const url = new URL(request.url)
+  const params = Object.fromEntries(url.searchParams.entries())
+  
+  // Validate request parameters
+  const validationErrors = validateRequest(params, VALIDATION_SCHEMAS.feeds)
+  if (validationErrors.length > 0) {
+    return new Response(JSON.stringify({
+      error: 'Invalid request parameters',
+      validationErrors: validationErrors
+    }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+  
   const allFeeds = []
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -735,24 +660,15 @@ async function getAllFeeds(env, corsHeaders) {
         .map(item => {
           const title = item.title?.text || item.title || 'No title'
           const description = cleanHtml(item.description?.text || item.description || item.summary?.text || item.summary || '')
-          
-          // ENHANCED: Create more comprehensive content for analysis
           const content = `${title} ${description}`.toLowerCase()
           
-          // DEBUG: Log the content being analyzed (remove after testing)
-          console.log(`Analyzing article: "${title.substring(0, 50)}..." | Content length: ${content.length}`)
-          
-          // Enhanced category detection with debugging
-          const detectedCategory = detectCategoryEnhanced(content, title, source.name) || source.category || 'general'
-          
-          // Enhanced priority detection
+          const detectedCategory = detectCategory(content) || source.category
           const isPriority = PRIORITY_KEYWORDS.some(keyword => 
             content.includes(keyword.toLowerCase())
           )
-          
           const relevanceScore = calculateRelevanceScore(content)
           
-          const processedItem = {
+          return {
             title: title,
             description: description,
             link: item.link?.text || item.link || item.id || '#',
@@ -762,17 +678,7 @@ async function getAllFeeds(env, corsHeaders) {
             priority: isPriority,
             relevanceScore: relevanceScore,
             guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`
-            // DEBUG: Add debug info (remove after testing)
-            // debug: {
-            //   contentPreview: content.substring(0, 100),
-            //   originalCategory: source.category,
-            //   detectedCategory: detectedCategory
-            // }
           }
-          
-          console.log(`Article processed: "${title.substring(0, 30)}..." -> Category: ${detectedCategory}`)
-          
-          return processedItem
         })
         .filter(item => item.title !== 'No title')
 
@@ -791,7 +697,7 @@ async function getAllFeeds(env, corsHeaders) {
     }
   })
 
-  // Enhanced sorting: Priority first, then relevance score, then date
+  // Sort feeds
   allFeeds.sort((a, b) => {
     if (a.priority && !b.priority) return -1
     if (!a.priority && b.priority) return 1
@@ -801,48 +707,44 @@ async function getAllFeeds(env, corsHeaders) {
     return new Date(b.pubDate) - new Date(a.pubDate)
   })
 
+  // Remove duplicates
   const uniqueFeeds = removeDuplicates(allFeeds)
-  const limitedFeeds = uniqueFeeds.slice(0, 100)
-
-  // DEBUG: Log category distribution
-  const categoryStats = {}
-  limitedFeeds.forEach(feed => {
-    categoryStats[feed.category] = (categoryStats[feed.category] || 0) + 1
-  })
-  console.log('Category distribution:', categoryStats)
+  
+  // Apply filters based on validated parameters
+  let filteredFeeds = uniqueFeeds
+  
+  if (params.category) {
+    filteredFeeds = filteredFeeds.filter(feed => feed.category === params.category)
+  }
+  
+  if (params.priority !== undefined) {
+    const priorityFilter = params.priority === 'true'
+    filteredFeeds = filteredFeeds.filter(feed => feed.priority === priorityFilter)
+  }
+  
+  const limit = params.limit ? parseInt(params.limit) : 50
+  const limitedFeeds = filteredFeeds.slice(0, limit)
 
   return new Response(JSON.stringify(limitedFeeds), {
     headers: { 
       ...corsHeaders, 
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=600' 
+      'Cache-Control': 'public, max-age=600',
+      'X-Total-Count': filteredFeeds.length.toString(),
+      'X-Returned-Count': limitedFeeds.length.toString()
     }
   })
 }
 
-// ENHANCED CATEGORY DETECTION FUNCTION
-function detectCategoryEnhanced(content, title, sourceName) {
+function detectCategory(content) {
   let maxMatches = 0
   let detectedCategory = null
   let categoryScores = {}
   
-  console.log(`Detecting category for: "${title.substring(0, 50)}..."`)
-  
-  // Calculate scores for each category with enhanced matching
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    let matches = 0
-    
-    // Check each keyword
-    for (const keyword of keywords) {
-      const keywordLower = keyword.toLowerCase()
-      
-      // Count occurrences (not just presence)
-      const titleMatches = (title.toLowerCase().match(new RegExp(keywordLower, 'g')) || []).length
-      const contentMatches = (content.match(new RegExp(keywordLower, 'g')) || []).length
-      
-      // Weight title matches higher
-      matches += (titleMatches * 2) + contentMatches
-    }
+    const matches = keywords.filter(keyword => 
+      content.includes(keyword.toLowerCase())
+    ).length
     
     categoryScores[category] = matches
     
@@ -852,10 +754,6 @@ function detectCategoryEnhanced(content, title, sourceName) {
     }
   }
   
-  console.log(`Category scores for "${title.substring(0, 30)}...":`, categoryScores)
-  console.log(`Detected category: ${detectedCategory} (${maxMatches} matches)`)
-  
-  // If we have a tie or low confidence, prefer Zimbabwe-specific categories
   const zimbabweCategories = ['politics', 'economy', 'harare', 'agriculture']
   if (maxMatches > 0) {
     for (const zwCategory of zimbabweCategories) {
@@ -866,32 +764,18 @@ function detectCategoryEnhanced(content, title, sourceName) {
     }
   }
   
-  // Fallback: If no category detected but source has specific focus
-  if (!detectedCategory || maxMatches === 0) {
-    // Source-based fallback
-    if (sourceName.toLowerCase().includes('business')) {
-      detectedCategory = 'business'
-    } else if (sourceName.toLowerCase().includes('tech')) {
-      detectedCategory = 'technology'
-    } else {
-      detectedCategory = 'general'
-    }
-  }
-  
   return detectedCategory
 }
 
 function calculateRelevanceScore(content) {
   let score = 0
   
-  // Higher scores for Zimbabwe-specific content
   PRIORITY_KEYWORDS.forEach(keyword => {
     if (content.includes(keyword.toLowerCase())) {
-      score += 3 // High priority for Zimbabwe keywords
+      score += 3
     }
   })
   
-  // Bonus for local city names
   const cities = ['harare', 'bulawayo', 'mutare', 'gweru', 'kwekwe', 'masvingo', 'chitungwiza']
   cities.forEach(city => {
     if (content.includes(city)) {
@@ -899,7 +783,6 @@ function calculateRelevanceScore(content) {
     }
   })
   
-  // Bonus for government/political terms
   const govTerms = ['government', 'parliament', 'minister', 'president', 'cabinet']
   govTerms.forEach(term => {
     if (content.includes(term)) {
@@ -915,14 +798,12 @@ function removeDuplicates(feeds) {
   const unique = []
   
   for (const feed of feeds) {
-    // Create a simplified version of the title for comparison
     const normalizedTitle = feed.title
       .toLowerCase()
       .replace(/[^\w\s]/g, '')
       .replace(/\s+/g, ' ')
       .trim()
     
-    // Check if we've seen a very similar title
     let isDuplicate = false
     for (const seenTitle of seen) {
       if (calculateSimilarity(normalizedTitle, seenTitle) > 0.8) {
@@ -967,17 +848,17 @@ async function getCachedFeeds(env, corsHeaders) {
       })
     }
     
-    return await getAllFeeds(env, corsHeaders)
+    return await getAllFeeds(new Request('https://example.com/api/feeds'), env, corsHeaders)
   } catch (error) {
     console.error('Cache error:', error)
-    return await getAllFeeds(env, corsHeaders)
+    return await getAllFeeds(new Request('https://example.com/api/feeds'), env, corsHeaders)
   }
 }
 
 async function updateFeeds(env) {
   try {
     console.log('Updating feed cache...')
-    const response = await getAllFeeds(env, {})
+    const response = await getAllFeeds(new Request('https://example.com/api/feeds'), env, {})
     const feedsData = await response.text()
     
     await env.NEWS_STORAGE.put('cached_feeds', feedsData)
@@ -993,7 +874,7 @@ function cleanHtml(html) {
   if (typeof html !== 'string') return ''
   
   return html
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -1001,7 +882,239 @@ function cleanHtml(html) {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
-    .replace(/\s+/g, ' ') // Normalize whitespace
+    .replace(/\s+/g, ' ')
     .trim()
-    .substring(0, 300) // Increased from 250 for better descriptions
+    .substring(0, 300)
+}
+
+function getEnhancedFallbackHTML() {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Harare Metro - Zimbabwe News Aggregator</title>
+      <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          min-height: 100vh;
+          line-height: 1.4;
+        }
+        .header {
+          background: rgba(255,255,255,0.95);
+          backdrop-filter: blur(10px);
+          padding: 1rem 0;
+          box-shadow: 0 2px 20px rgba(0,0,0,0.1);
+          position: sticky;
+          top: 0;
+          z-index: 100;
+        }
+        .header-content {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 0 1rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 1rem;
+        }
+        .logo {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+        .logo h1 {
+          color: #2d3748;
+          font-size: clamp(1.2rem, 4vw, 1.8rem);
+          font-weight: 700;
+        }
+        .api-docs {
+          display: flex;
+          gap: 0.5rem;
+          align-items: center;
+        }
+        .api-link {
+          background: #4299e1;
+          color: white;
+          text-decoration: none;
+          padding: 0.5rem 1rem;
+          border-radius: 0.5rem;
+          font-size: 0.9rem;
+          font-weight: 600;
+          transition: all 0.2s;
+        }
+        .api-link:hover { background: #3182ce; transform: translateY(-1px); }
+        .api-link.secondary { background: #e53e3e; }
+        .api-link.secondary:hover { background: #c53030; }
+        .container { 
+          max-width: 1200px; 
+          margin: 0 auto; 
+          padding: 2rem 1rem;
+        }
+        .api-info {
+          background: rgba(255,255,255,0.9);
+          backdrop-filter: blur(10px);
+          border-radius: 0.75rem;
+          padding: 2rem;
+          margin-bottom: 2rem;
+          box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+        }
+        .api-info h2 {
+          color: #2d3748;
+          margin-bottom: 1rem;
+          font-size: 1.5rem;
+        }
+        .api-info p {
+          color: #4a5568;
+          margin-bottom: 1rem;
+        }
+        .endpoint-list {
+          background: #f7fafc;
+          border-radius: 0.5rem;
+          padding: 1rem;
+          margin-top: 1rem;
+        }
+        .endpoint {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 0.5rem 0;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .endpoint:last-child { border-bottom: none; }
+        .endpoint code {
+          background: #2d3748;
+          color: #e2e8f0;
+          padding: 0.25rem 0.5rem;
+          border-radius: 0.25rem;
+          font-size: 0.85rem;
+        }
+        .news-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+          gap: 1rem;
+        }
+        .loading { 
+          text-align: center; 
+          color: white;
+          font-size: 1rem;
+          padding: 2rem;
+        }
+        @media (max-width: 768px) {
+          .header-content { flex-direction: column; text-align: center; }
+          .api-docs { flex-wrap: wrap; justify-content: center; }
+          .container { padding: 1rem; }
+          .api-info { padding: 1.5rem; }
+        }
+      </style>
+    </head>
+    <body>
+      <header class="header">
+        <div class="header-content">
+          <div class="logo">
+            <span style="font-size: 1.5rem;">🇿🇼</span>
+            <div>
+              <h1>Harare Metro</h1>
+              <p style="color: #718096; font-size: 0.85rem;">Zimbabwe News API</p>
+            </div>
+          </div>
+          <div class="api-docs">
+            <a href="/api/schema" class="api-link">📋 API Schema</a>
+            <a href="https://petstore.swagger.io/?url=${encodeURIComponent('https://' + 'example.com/api/schema')}" class="api-link secondary" target="_blank">📖 Swagger UI</a>
+          </div>
+        </div>
+      </header>
+
+      <div class="container">
+        <div class="api-info">
+          <h2>🚀 Harare Metro News API</h2>
+          <p>
+            Welcome to the Harare Metro News API! This API aggregates news from multiple Zimbabwe sources
+            and provides intelligent categorization with enhanced validation.
+          </p>
+          
+          <div class="endpoint-list">
+            <h3 style="margin-bottom: 1rem; color: #2d3748;">Available Endpoints:</h3>
+            <div class="endpoint">
+              <span><strong>Health Check:</strong> API status and info</span>
+              <code>GET /api/health</code>
+            </div>
+            <div class="endpoint">
+              <span><strong>News Feeds:</strong> Get latest articles</span>
+              <code>GET /api/feeds</code>
+            </div>
+            <div class="endpoint">
+              <span><strong>RSS Sources:</strong> Get configured sources</span>
+              <code>GET /api/feeds/sources</code>
+            </div>
+            <div class="endpoint">
+              <span><strong>Categories:</strong> Get categorization data</span>
+              <code>GET /api/categories</code>
+            </div>
+            <div class="endpoint">
+              <span><strong>API Schema:</strong> OpenAPI 3.0 specification</span>
+              <code>GET /api/schema</code>
+            </div>
+          </div>
+          
+          <p style="margin-top: 1rem;">
+            <strong>✨ New Features:</strong> Request validation, enhanced error messages, 
+            and comprehensive API documentation with Swagger UI integration.
+          </p>
+        </div>
+        
+        <div id="news-container" class="news-grid">
+          <div class="loading">📡 Loading latest Zimbabwe news...</div>
+        </div>
+      </div>
+
+      <script>
+        // Load news and display
+        async function loadNews() {
+          try {
+            const response = await fetch('/api/feeds?limit=12');
+            if (!response.ok) throw new Error('Failed to load news');
+            
+            const feeds = await response.json();
+            
+            const container = document.getElementById('news-container');
+            if (feeds.length === 0) {
+              container.innerHTML = '<div class="loading">No news articles available.</div>';
+              return;
+            }
+            
+            container.innerHTML = feeds.map(article => \`
+              <div style="background: rgba(255,255,255,0.95); border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 8px 25px rgba(0,0,0,0.1);">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.8rem;">
+                  <span style="color: #4299e1; font-weight: 600;">\${article.source}</span>
+                  <span style="color: #718096;">\${new Date(article.pubDate).toLocaleDateString()}</span>
+                </div>
+                <h3 style="margin-bottom: 0.75rem; color: #2d3748; font-size: 1rem; line-height: 1.4;">
+                  \${article.title}
+                  \${article.priority ? '<span style="background: linear-gradient(45deg, #f093fb, #f5576c); color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem; margin-left: 0.5rem;">🇿🇼</span>' : ''}
+                </h3>
+                \${article.description ? \`<p style="color: #4a5568; font-size: 0.9rem; line-height: 1.5; margin-bottom: 0.75rem;">\${article.description.substring(0, 150)}...</p>\` : ''}
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="background: #edf2f7; color: #4a5568; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.75rem; text-transform: capitalize;">\${article.category}</span>
+                  <a href="\${article.link}" target="_blank" style="color: #4299e1; text-decoration: none; font-weight: 600; font-size: 0.85rem;">Read More →</a>
+                </div>
+              </div>
+            \`).join('');
+            
+          } catch (error) {
+            document.getElementById('news-container').innerHTML = 
+              \`<div style="color: #f56565; background: rgba(255,255,255,0.9); padding: 1rem; border-radius: 0.5rem;">❌ Error: \${error.message}</div>\`;
+          }
+        }
+
+        // Load news on page load
+        loadNews();
+      </script>
+    </body>
+    </html>
+  `
 }

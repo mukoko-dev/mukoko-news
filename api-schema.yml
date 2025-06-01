@@ -1,0 +1,471 @@
+openapi: 3.0.3
+info:
+  title: Harare Metro News API
+  description: |
+    Zimbabwe News Aggregation API that fetches and categorizes news from multiple local sources.
+    
+    Features:
+    - Real-time RSS feed aggregation
+    - Enhanced categorization with Zimbabwe-specific keywords
+    - Priority detection for Zimbabwe-relevant content
+    - Multiple news sources from Herald, NewsDay, Chronicle, ZBC, and more
+  version: 2.0.0
+  contact:
+    name: Nyuchi Web Services
+    url: https://www.nyuchi.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://www.hararemetro.co.zw/api
+    description: Production server
+  - url: https://staging.hararemetro.co.zw/api
+    description: Staging server
+  - url: http://localhost:8787/api
+    description: Development server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns API health status and configuration information
+      operationId: getHealth
+      tags:
+        - System
+      responses:
+        '200':
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+
+  /feeds:
+    get:
+      summary: Get all news feeds
+      description: |
+        Fetches and aggregates news from all enabled RSS sources. 
+        Articles are automatically categorized and prioritized based on Zimbabwe relevance.
+      operationId: getAllFeeds
+      tags:
+        - News
+      parameters:
+        - name: category
+          in: query
+          description: Filter by category
+          required: false
+          schema:
+            type: string
+            enum: 
+              - politics
+              - economy
+              - business
+              - sports
+              - harare
+              - agriculture
+              - technology
+              - health
+              - education
+              - entertainment
+              - environment
+              - crime
+              - international
+              - lifestyle
+              - finance
+              - general
+        - name: limit
+          in: query
+          description: Maximum number of articles to return
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 50
+        - name: priority
+          in: query
+          description: Filter by priority status
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Successfully retrieved news feeds
+          headers:
+            Cache-Control:
+              description: Cache directive
+              schema:
+                type: string
+                example: "public, max-age=600"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Article'
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /feeds/cached:
+    get:
+      summary: Get cached news feeds
+      description: Returns cached news feeds with metadata about cache status
+      operationId: getCachedFeeds
+      tags:
+        - News
+      responses:
+        '200':
+          description: Successfully retrieved cached feeds
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CachedFeedsResponse'
+
+  /feeds/sources:
+    get:
+      summary: Get RSS sources configuration
+      description: Returns list of all configured RSS sources and their status
+      operationId: getRssSources
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Successfully retrieved RSS sources
+          headers:
+            Cache-Control:
+              description: Cache directive
+              schema:
+                type: string
+                example: "public, max-age=3600"
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RssSource'
+
+  /categories:
+    get:
+      summary: Get categorization configuration
+      description: Returns available categories, keywords, and priority terms used for article classification
+      operationId: getCategories
+      tags:
+        - Configuration
+      responses:
+        '200':
+          description: Successfully retrieved categorization data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoriesResponse'
+
+  /schema:
+    get:
+      summary: Get OpenAPI schema
+      description: Returns the OpenAPI 3.0 schema for this API
+      operationId: getSchema
+      tags:
+        - Documentation
+      responses:
+        '200':
+          description: Successfully retrieved API schema
+          content:
+            application/yaml:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: object
+
+components:
+  schemas:
+    Article:
+      type: object
+      required:
+        - title
+        - link
+        - pubDate
+        - source
+        - category
+        - priority
+        - guid
+      properties:
+        title:
+          type: string
+          description: Article headline
+          example: "Zimbabwe Economy Shows Signs of Recovery"
+          minLength: 1
+          maxLength: 500
+        description:
+          type: string
+          nullable: true
+          description: Article summary or excerpt
+          example: "Latest economic indicators suggest Zimbabwe's economy is stabilizing..."
+          maxLength: 1000
+        link:
+          type: string
+          format: uri
+          description: URL to the full article
+          example: "https://www.herald.co.zw/economy-recovery-signs/"
+        pubDate:
+          type: string
+          format: date-time
+          description: Publication date in ISO 8601 format
+          example: "2024-01-15T10:30:00Z"
+        source:
+          type: string
+          description: News source name
+          example: "Herald Zimbabwe"
+          minLength: 1
+          maxLength: 100
+        category:
+          type: string
+          enum: 
+            - politics
+            - economy
+            - business
+            - sports
+            - harare
+            - agriculture
+            - technology
+            - health
+            - education
+            - entertainment
+            - environment
+            - crime
+            - international
+            - lifestyle
+            - finance
+            - general
+          description: Auto-detected article category
+          example: "economy"
+        priority:
+          type: boolean
+          description: Whether article contains Zimbabwe-priority keywords
+          example: true
+        relevanceScore:
+          type: number
+          description: Relevance score for Zimbabwe content (higher = more relevant)
+          example: 5
+          minimum: 0
+        guid:
+          type: string
+          description: Unique identifier for the article
+          example: "herald-zimbabwe-2024-01-15-economy"
+          minLength: 1
+          maxLength: 200
+
+    RssSource:
+      type: object
+      required:
+        - name
+        - url
+        - category
+        - enabled
+      properties:
+        name:
+          type: string
+          description: Display name of the news source
+          example: "Herald Zimbabwe"
+          minLength: 1
+          maxLength: 100
+        url:
+          type: string
+          format: uri
+          description: RSS feed URL
+          example: "https://www.herald.co.zw/feed/"
+        category:
+          type: string
+          description: Default category for this source
+          example: "general"
+          minLength: 1
+          maxLength: 50
+        enabled:
+          type: boolean
+          description: Whether this source is currently active
+          example: true
+
+    HealthResponse:
+      type: object
+      required:
+        - status
+        - timestamp
+        - sources
+        - totalSources
+        - categories
+        - message
+        - features
+      properties:
+        status:
+          type: string
+          enum: [ok, error]
+          example: "ok"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        sources:
+          type: integer
+          description: Number of enabled RSS sources
+          example: 8
+          minimum: 0
+        totalSources:
+          type: integer
+          description: Total number of configured RSS sources
+          example: 10
+          minimum: 0
+        categories:
+          type: integer
+          description: Number of available categories
+          example: 16
+          minimum: 0
+        message:
+          type: string
+          example: "Harare Metro API is healthy!"
+          minLength: 1
+        features:
+          type: array
+          items:
+            type: string
+          example: ["enhanced-categorization", "priority-detection", "zimbabwe-focus", "global-categories"]
+
+    CachedFeedsResponse:
+      type: object
+      required:
+        - feeds
+        - cached
+      properties:
+        feeds:
+          type: array
+          items:
+            $ref: '#/components/schemas/Article'
+        lastUpdated:
+          type: string
+          format: date-time
+          nullable: true
+          description: When feeds were last updated
+          example: "2024-01-15T10:30:00Z"
+        cached:
+          type: boolean
+          description: Whether this response came from cache
+          example: true
+
+    CategoriesResponse:
+      type: object
+      required:
+        - categories
+        - keywords
+        - priority
+        - totalCategories
+      properties:
+        categories:
+          type: array
+          items:
+            type: string
+          description: List of available category names
+          example: ["politics", "economy", "business", "sports"]
+        keywords:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Keywords used for each category detection
+          example:
+            politics: ["parliament", "government", "election"]
+            economy: ["economy", "inflation", "currency"]
+        priority:
+          type: array
+          items:
+            type: string
+          description: Keywords that mark articles as high priority
+          example: ["harare", "zimbabwe", "parliament", "mnangagwa"]
+        totalCategories:
+          type: integer
+          description: Total number of categories
+          example: 16
+          minimum: 0
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Internal server error"
+          minLength: 1
+        message:
+          type: string
+          description: Detailed error message
+          example: "Failed to fetch RSS feeds"
+        available:
+          type: array
+          items:
+            type: string
+          description: Available endpoints (for 404 errors)
+          example: ["/health", "/feeds", "/feeds/sources"]
+        validationErrors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: Field that failed validation
+              message:
+                type: string
+                description: Validation error message
+              value:
+                description: Invalid value provided
+          description: Detailed validation errors (for 400 errors)
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    NotFound:
+      description: Endpoint not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    
+    ServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+tags:
+  - name: News
+    description: News aggregation and retrieval endpoints
+  - name: Configuration  
+    description: API configuration and metadata endpoints
+  - name: System
+    description: System health and status endpoints
+  - name: Documentation
+    description: API documentation endpoints
+
+security: []
+
+externalDocs:
+  description: Harare Metro GitHub Repository
+  url: https://github.com/nyuchitech/harare-metro
