@@ -1,0 +1,189 @@
+// Add these improvements to your existing worker/index.js
+
+// 1. Add rate limiting to prevent abuse
+const RATE_LIMIT_REQUESTS = 100 // requests per minute per IP
+const rateLimitMap = new Map()
+
+function checkRateLimit(ip) {
+  const now = Date.now()
+  const windowStart = now - 60000 // 1 minute window
+  
+  if (!rateLimitMap.has(ip)) {
+    rateLimitMap.set(ip, [])
+  }
+  
+  const requests = rateLimitMap.get(ip)
+  // Remove old requests
+  const recentRequests = requests.filter(time => time > windowStart)
+  
+  if (recentRequests.length >= RATE_LIMIT_REQUESTS) {
+    return false
+  }
+  
+  recentRequests.push(now)
+  rateLimitMap.set(ip, recentRequests)
+  return true
+}
+
+// 2. Enhanced handleApiRequest with rate limiting
+async function handleApiRequest(request, env, ctx) {
+  const url = new URL(request.url)
+  const path = url.pathname.replace('/api', '')
+  const clientIP = request.headers.get('CF-Connecting-IP') || 'unknown'
+
+  // Rate limiting check
+  if (!checkRateLimit(clientIP)) {
+    return new Response(JSON.stringify({ 
+      error: 'Rate limit exceeded',
+      message: 'Too many requests. Please try again later.'
+    }), {
+      status: 429,
+      headers: { 
+        'Content-Type': 'application/json',
+        'Retry-After': '60'
+      }
+    })
+  }
+
+  // CORS headers (keep your existing ones)
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Max-Age': '86400',
+  }
+
+  // Handle preflight requests
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+
+  try {
+    switch (path) {
+      case '/feeds':
+        return await getAllFeeds(env, corsHeaders)
+      
+      case '/feeds/sources':
+        return new Response(JSON.stringify(RSS_SOURCES), {
+          headers: { 
+            ...corsHeaders, 
+            'Content-Type': 'application/json',
+            'Cache-Control': 'public, max-age=3600'
+          }
+        })
+      
+      case '/feeds/cached':
+        return await getCachedFeeds(env, corsHeaders)
+      
+      case '/health':
+        return new Response(JSON.stringify({ 
+          status: 'ok', 
+          timestamp: new Date().toISOString(),
+          sources: RSS_SOURCES.length,
+          version: '1.0.0'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+
+      // 3. Add analytics endpoint
+      case '/analytics':
+        return await getAnalytics(env, corsHeaders)
+      
+      default:
+        return new Response(JSON.stringify({ error: 'Endpoint not found' }), {
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+    }
+  } catch (error) {
+    console.error('API error:', error)
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      message: error.message 
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+}
+
+// 4. Add analytics function
+async function getAnalytics(env, corsHeaders) {
+  try {
+    const analytics = await env.NEWS_STORAGE.get('analytics')
+    const data = analytics ? JSON.parse(analytics) : {
+      totalRequests: 0,
+      lastUpdate: new Date().toISOString(),
+      sourceStatus: {}
+    }
+
+    return new Response(JSON.stringify(data), {
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=300'
+      }
+    })
+  } catch (error) {
+    console.error('Analytics error:', error)
+    return new Response(JSON.stringify({ error: 'Analytics unavailable' }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+}
+
+// 5. Enhanced updateFeeds with analytics
+async function updateFeeds(env) {
+  try {
+    console.log('Updating feed cache...')
+    
+    // Track source success/failure
+    const sourceStatus = {}
+    
+    const response = await getAllFeeds(env, {})
+    const feedsData = await response.text()
+    const feeds = JSON.parse(feedsData)
+    
+    // Update analytics
+    const analytics = {
+      totalRequests: feeds.length,
+      lastUpdate: new Date().toISOString(),
+      sourceStatus: sourceStatus,
+      feedCount: feeds.length
+    }
+    
+    await Promise.all([
+      env.NEWS_STORAGE.put('cached_feeds', feedsData),
+      env.NEWS_STORAGE.put('last_updated', new Date().toISOString()),
+      env.NEWS_STORAGE.put('analytics', JSON.stringify(analytics))
+    ])
+    
+    console.log(`Feed cache updated successfully - ${feeds.length} articles`)
+  } catch (error) {
+    console.error('Failed to update feed cache:', error)
+  }
+}
+
+// 6. Enhanced cleanHtml function with better security
+function cleanHtml(html) {
+  if (typeof html !== 'string') return ''
+  
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove scripts
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '') // Remove iframes
+    .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '') // Remove objects
+    .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '') // Remove embeds
+    .replace(/<[^>]*>/g, '') // Remove all other HTML tags
+    .replace(/&nbsp;/g, ' ') // Replace &nbsp; with space
+    .replace(/&amp;/g, '&') // Replace &amp; with &
+    .replace(/&lt;/g, '<') // Replace &lt; with <
+    .replace(/&gt;/g, '>') // Replace &gt; with >
+    .replace(/&quot;/g, '"') // Replace &quot; with "
+    .replace(/&#39;/g, "'") // Replace &#39; with '
+    .replace(/&#x27;/g, "'") // Replace &#x27; with '
+    .replace(/&#x2F;/g, "/") // Replace &#x2F; with /
+    .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+    .trim()
+    .substring(0, 300) // Limit description length
+}

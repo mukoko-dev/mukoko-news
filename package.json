@@ -1,32 +1,56 @@
 {
   "name": "harare-metro",
   "version": "1.0.0",
-  "main": "dist/worker/index.js",
+  "type": "module",
+  "description": "Zimbabwe News Aggregator - Cloudflare Worker + React SPA",
   "scripts": {
-    "build": "vite build && cp -r worker dist/",
+    "dev": "vite",
+    "dev:worker": "wrangler dev",
+    "dev:both": "./scripts/dev-start.sh",
+    "build": "vite build",
+    "build:check": "vite build --mode development",
+    "preview": "vite preview",
     "deploy": "npm run build && wrangler deploy",
-    "dev": "wrangler dev",
-    "preview": "wrangler dev --local",
-    "test": "vitest"
+    "deploy:staging": "npm run build && wrangler deploy --env staging",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf dist node_modules/.vite",
+    "setup": "npm install && npm run build"
   },
   "dependencies": {
-    "@cloudflare/kv-asset-handler": "^0.3.0",
-    "@heroicons/react": "^2.0.18",
-    "fast-xml-parser": "^4.3.2",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "@cloudflare/kv-asset-handler": "^0.3.4",
+    "@heroicons/react": "^2.2.0",
+    "fast-xml-parser": "^4.5.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240314.0",
-    "@types/react": "^18.2.64",
-    "@types/react-dom": "^18.2.21",
-    "@vitejs/plugin-react": "^4.2.1",
-    "autoprefixer": "^10.4.18",
-    "postcss": "^8.4.35",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5.4.2",
+    "@cloudflare/workers-types": "^4.20250531.0",
+    "@types/react": "^18.3.23",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^4.5.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^8.57.0",
+    "eslint-plugin-react": "^7.34.1",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "postcss": "^8.5.4",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
     "vite": "^6.3.5",
     "vitest": "^3.1.4",
     "wrangler": "^4.18.0"
-  }
+  },
+  "keywords": [
+    "zimbabwe",
+    "news",
+    "rss",
+    "cloudflare",
+    "worker",
+    "react"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
 }
