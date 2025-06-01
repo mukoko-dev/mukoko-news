@@ -761,13 +761,13 @@ async function getAllFeeds(env, corsHeaders) {
             category: detectedCategory,
             priority: isPriority,
             relevanceScore: relevanceScore,
-            guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`,
+            guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`
             // DEBUG: Add debug info (remove after testing)
-            debug: {
-              contentPreview: content.substring(0, 100),
-              originalCategory: source.category,
-              detectedCategory: detectedCategory
-            }
+            // debug: {
+            //   contentPreview: content.substring(0, 100),
+            //   originalCategory: source.category,
+            //   detectedCategory: detectedCategory
+            // }
           }
           
           console.log(`Article processed: "${title.substring(0, 30)}..." -> Category: ${detectedCategory}`)
@@ -815,7 +815,7 @@ async function getAllFeeds(env, corsHeaders) {
     headers: { 
       ...corsHeaders, 
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=60' // Reduced cache time for testing
+      'Cache-Control': 'public, max-age=600' 
     }
   })
 }
