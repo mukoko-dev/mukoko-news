@@ -16,6 +16,81 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline'
 
+// Logo Component
+const Logo = ({ 
+  variant = 'main', // 'main', 'horizontal', 'compact'
+  theme = 'light', // 'light', 'dark'
+  size = 'md' // 'sm', 'md', 'lg'
+}) => {
+  const sizes = {
+    sm: { main: [120, 36], horizontal: [180, 30], compact: [48, 24] },
+    md: { main: [200, 60], horizontal: [300, 50], compact: [80, 40] },
+    lg: { main: [280, 84], horizontal: [420, 70], compact: [112, 56] }
+  }
+  
+  const colors = {
+    light: { stroke: '#000', fill: '#000', subtitle: '#666' },
+    dark: { stroke: '#fff', fill: '#fff', subtitle: '#ccc' }
+  }
+  
+  const [width, height] = sizes[size][variant]
+  const { stroke, fill, subtitle } = colors[theme]
+  
+  if (variant === 'main') {
+    return (
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="logo-main">
+        <rect x="2" y="2" width={width-4} height={height-4} fill="none" stroke={stroke} strokeWidth="2"/>
+        <rect x="6" y="6" width={width-12} height={height-12} fill="none" stroke={stroke} strokeWidth="1"/>
+        <text x={width/2} y={height*0.63} textAnchor="middle" 
+              fontFamily="Georgia, Times New Roman, serif" 
+              fontSize={height*0.53} 
+              fontWeight="bold" 
+              fill={fill}>HM</text>
+        <text x={width/2} y={height*0.83} textAnchor="middle" 
+              fontFamily="Georgia, Times New Roman, serif" 
+              fontSize={height*0.13} 
+              fill={subtitle}
+              letterSpacing="2px">HARARE METRO</text>
+      </svg>
+    )
+  }
+  
+  if (variant === 'horizontal') {
+    return (
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="logo-horizontal">
+        <text x={width*0.17} y={height*0.64} textAnchor="middle" 
+              fontFamily="Georgia, Times New Roman, serif" 
+              fontSize={height*0.56} 
+              fontWeight="bold" 
+              fill={fill}>HM</text>
+        <line x1={width*0.28} y1={height*0.2} x2={width*0.28} y2={height*0.8} 
+              stroke={stroke} strokeWidth="2"/>
+        <text x={width*0.37} y={height*0.44} 
+              fontFamily="Georgia, Times New Roman, serif" 
+              fontSize={height*0.28} 
+              fontWeight="bold" 
+              fill={fill}>HARARE</text>
+        <text x={width*0.37} y={height*0.72} 
+              fontFamily="Georgia, Times New Roman, serif" 
+              fontSize={height*0.28} 
+              fill={subtitle}>METRO</text>
+      </svg>
+    )
+  }
+  
+  // compact variant
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="logo-compact">
+      <rect x="2" y="2" width={width-4} height={height-4} fill="none" stroke={stroke} strokeWidth="1.5"/>
+      <text x={width/2} y={height*0.65} textAnchor="middle" 
+            fontFamily="Georgia, Times New Roman, serif" 
+            fontSize={height*0.4} 
+            fontWeight="bold" 
+            fill={fill}>HM</text>
+    </svg>
+  )
+}
+
 // All available categories with display info
 const CATEGORIES = [
   { id: 'all', label: 'All News', icon: '📰', primary: true },
@@ -232,7 +307,7 @@ function App() {
       <div className={`min-h-screen ${currentColors.bg} flex items-center justify-center`}>
         <div className="text-center text-white px-4">
           <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
-          <h2 className="text-lg font-semibold mb-2">Loading Zimbabwe News</h2>
+          <h2 className="text-lg font-semibold mb-2">Loading Harare Metro News</h2>
           <p className="text-white/80 text-sm">Connecting to local news sources...</p>
         </div>
       </div>
@@ -263,18 +338,30 @@ function App() {
 
   return (
     <div className={`min-h-screen ${currentColors.bg} flex flex-col`}>
-      {/* Header - Optimized for mobile */}
+      {/* Header - Updated with Logo */}
       <header className={`${currentColors.headerBg} backdrop-blur-sm shadow-lg sticky top-0 z-50`}>
         <div className="w-full px-3 sm:px-4">
           <div className="flex items-center justify-between h-14 sm:h-16">
+            {/* Logo Section */}
             <div className="flex items-center space-x-2 min-w-0">
-              <span className="text-lg sm:text-xl">🇿🇼</span>
-              <div className="min-w-0">
-                <h1 className={`text-sm sm:text-lg font-bold ${currentColors.text} truncate`}>
+              {/* Use compact logo on mobile, horizontal on larger screens */}
+              <div className="hidden sm:block">
+                <Logo 
+                  variant="horizontal" 
+                  theme={getCurrentTheme()} 
+                  size="sm" 
+                />
+              </div>
+              <div className="sm:hidden">
+                <Logo 
+                  variant="compact" 
+                  theme={getCurrentTheme()} 
+                  size="sm" 
+                />
+              </div>
+              <div className="min-w-0 ml-2 sm:hidden">
+                <p className={`text-xs ${currentColors.textSecondary}`}>
                   Harare Metro
-                </h1>
-                <p className={`text-xs ${currentColors.textSecondary} hidden sm:block`}>
-                  Zimbabwe News
                 </p>
               </div>
             </div>
@@ -467,7 +554,7 @@ function App() {
         )}
       </div>
 
-      {/* Footer - Compact */}
+      {/* Footer - Updated */}
       <footer className={`${currentColors.footerBg} backdrop-blur-sm ${currentColors.border} border-t mt-8`}>
         <div className="px-3 sm:px-4 py-4 sm:py-6">
           <div className="text-center text-white max-w-4xl mx-auto">
@@ -485,7 +572,7 @@ function App() {
               Nyuchi Web Services
             </a>
             <p className="text-xs opacity-80 mt-1">
-              © {new Date().getFullYear()} All rights reserved
+              © {new Date().getFullYear()} Harare Metro. All rights reserved
             </p>
           </div>
         </div>
