@@ -124,7 +124,7 @@ const CATEGORY_KEYWORDS = {
   ]
 };
 
-// RSS feed sources for Zimbabwe news (unchanged but can add more sources)
+// RSS feed sources for Zimbabwe news
 const RSS_SOURCES = [
   {
     name: 'Herald Zimbabwe',
@@ -657,11 +657,27 @@ async function handleApiRequest(request, env, ctx) {
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
+
+      case '/debug/categories':
+        // Test category detection with sample content
+        const testContent = "President Mnangagwa announced new economic policies for Zimbabwe's agriculture sector in Harare"
+        const testResult = detectCategoryEnhanced(testContent.toLowerCase(), testContent, "Test Source")
+        
+        return new Response(JSON.stringify({
+          testContent,
+          detectedCategory: testResult,
+          availableCategories: Object.keys(CATEGORY_KEYWORDS),
+          categoryKeywordCount: Object.fromEntries(
+            Object.entries(CATEGORY_KEYWORDS).map(([cat, keywords]) => [cat, keywords.length])
+          )
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
       
       default:
         return new Response(JSON.stringify({ 
           error: 'Endpoint not found',
-          available: ['/health', '/feeds/sources', '/feeds', '/feeds/cached', '/categories']
+          available: ['/health', '/feeds/sources', '/feeds', '/feeds/cached', '/categories', '/debug/categories']
         }), {
           status: 404,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -692,7 +708,7 @@ async function getAllFeeds(env, corsHeaders) {
   const feedPromises = enabledSources.map(async (source) => {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000) // Increased timeout for slower connections
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
       
       const response = await fetch(source.url, {
         headers: { 
@@ -715,24 +731,28 @@ async function getAllFeeds(env, corsHeaders) {
       const items = channel?.item || channel?.entry || []
       
       const processedItems = (Array.isArray(items) ? items : [items])
-        .slice(0, 20) // Increased from 15 to get more articles
+        .slice(0, 20)
         .map(item => {
           const title = item.title?.text || item.title || 'No title'
           const description = cleanHtml(item.description?.text || item.description || item.summary?.text || item.summary || '')
+          
+          // ENHANCED: Create more comprehensive content for analysis
           const content = `${title} ${description}`.toLowerCase()
           
-          // Enhanced category detection with multiple passes
-          const detectedCategory = detectCategory(content) || source.category
+          // DEBUG: Log the content being analyzed (remove after testing)
+          console.log(`Analyzing article: "${title.substring(0, 50)}..." | Content length: ${content.length}`)
           
-          // Enhanced priority detection with more keywords
+          // Enhanced category detection with debugging
+          const detectedCategory = detectCategoryEnhanced(content, title, source.name) || source.category || 'general'
+          
+          // Enhanced priority detection
           const isPriority = PRIORITY_KEYWORDS.some(keyword => 
             content.includes(keyword.toLowerCase())
           )
           
-          // Calculate relevance score for Zimbabwe content
           const relevanceScore = calculateRelevanceScore(content)
           
-          return {
+          const processedItem = {
             title: title,
             description: description,
             link: item.link?.text || item.link || item.id || '#',
@@ -741,8 +761,18 @@ async function getAllFeeds(env, corsHeaders) {
             category: detectedCategory,
             priority: isPriority,
             relevanceScore: relevanceScore,
-            guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`
+            guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`,
+            // DEBUG: Add debug info (remove after testing)
+            debug: {
+              contentPreview: content.substring(0, 100),
+              originalCategory: source.category,
+              detectedCategory: detectedCategory
+            }
           }
+          
+          console.log(`Article processed: "${title.substring(0, 30)}..." -> Category: ${detectedCategory}`)
+          
+          return processedItem
         })
         .filter(item => item.title !== 'No title')
 
@@ -763,43 +793,56 @@ async function getAllFeeds(env, corsHeaders) {
 
   // Enhanced sorting: Priority first, then relevance score, then date
   allFeeds.sort((a, b) => {
-    // Priority articles first
     if (a.priority && !b.priority) return -1
     if (!a.priority && b.priority) return 1
-    
-    // Then by relevance score (Zimbabwe content gets higher scores)
     if (a.relevanceScore !== b.relevanceScore) {
       return b.relevanceScore - a.relevanceScore
     }
-    
-    // Finally by date
     return new Date(b.pubDate) - new Date(a.pubDate)
   })
 
-  // Remove duplicates based on title similarity
   const uniqueFeeds = removeDuplicates(allFeeds)
-  
   const limitedFeeds = uniqueFeeds.slice(0, 100)
+
+  // DEBUG: Log category distribution
+  const categoryStats = {}
+  limitedFeeds.forEach(feed => {
+    categoryStats[feed.category] = (categoryStats[feed.category] || 0) + 1
+  })
+  console.log('Category distribution:', categoryStats)
 
   return new Response(JSON.stringify(limitedFeeds), {
     headers: { 
       ...corsHeaders, 
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=600' // Reduced cache time for fresher content
+      'Cache-Control': 'public, max-age=60' // Reduced cache time for testing
     }
   })
 }
 
-function detectCategory(content) {
+// ENHANCED CATEGORY DETECTION FUNCTION
+function detectCategoryEnhanced(content, title, sourceName) {
   let maxMatches = 0
   let detectedCategory = null
   let categoryScores = {}
   
-  // Calculate scores for each category
+  console.log(`Detecting category for: "${title.substring(0, 50)}..."`)
+  
+  // Calculate scores for each category with enhanced matching
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    const matches = keywords.filter(keyword => 
-      content.includes(keyword.toLowerCase())
-    ).length
+    let matches = 0
+    
+    // Check each keyword
+    for (const keyword of keywords) {
+      const keywordLower = keyword.toLowerCase()
+      
+      // Count occurrences (not just presence)
+      const titleMatches = (title.toLowerCase().match(new RegExp(keywordLower, 'g')) || []).length
+      const contentMatches = (content.match(new RegExp(keywordLower, 'g')) || []).length
+      
+      // Weight title matches higher
+      matches += (titleMatches * 2) + contentMatches
+    }
     
     categoryScores[category] = matches
     
@@ -809,7 +852,10 @@ function detectCategory(content) {
     }
   }
   
-  // If we have a tie, prefer Zimbabwe-specific categories
+  console.log(`Category scores for "${title.substring(0, 30)}...":`, categoryScores)
+  console.log(`Detected category: ${detectedCategory} (${maxMatches} matches)`)
+  
+  // If we have a tie or low confidence, prefer Zimbabwe-specific categories
   const zimbabweCategories = ['politics', 'economy', 'harare', 'agriculture']
   if (maxMatches > 0) {
     for (const zwCategory of zimbabweCategories) {
@@ -817,6 +863,18 @@ function detectCategory(content) {
         detectedCategory = zwCategory
         break
       }
+    }
+  }
+  
+  // Fallback: If no category detected but source has specific focus
+  if (!detectedCategory || maxMatches === 0) {
+    // Source-based fallback
+    if (sourceName.toLowerCase().includes('business')) {
+      detectedCategory = 'business'
+    } else if (sourceName.toLowerCase().includes('tech')) {
+      detectedCategory = 'technology'
+    } else {
+      detectedCategory = 'general'
     }
   }
   
