@@ -16,6 +16,7 @@ export default defineConfig({
     },
     sourcemap: false,
     minify: 'esbuild',
+    target: 'es2018'
   },
   server: {
     port: 5173,
