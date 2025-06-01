@@ -1,4 +1,4 @@
-// Enhanced Worker with Zimbabwe-specific keyword categorization
+// Enhanced Worker with Zimbabwe-specific keyword categorization + Global trending categories
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
 import { XMLParser } from 'fast-xml-parser'
 
@@ -11,17 +11,120 @@ const PRIORITY_KEYWORDS = [
   'warriors', 'dynamos', 'caps united', 'highlanders'
 ];
 
-// Category mapping based on keywords
+// Enhanced category mapping with global trending categories
 const CATEGORY_KEYWORDS = {
-  politics: ['parliament', 'government', 'election', 'party', 'minister', 'president', 'policy', 'zanu', 'mdc', 'opposition', 'mnangagwa', 'chamisa'],
-  economy: ['economy', 'economic', 'inflation', 'currency', 'budget', 'finance', 'bank', 'investment', 'gdp', 'trade', 'bond', 'rtgs', 'usd'],
-  business: ['business', 'company', 'entrepreneur', 'startup', 'market', 'industry', 'corporate', 'commerce', 'mining', 'tobacco'],
-  sports: ['sport', 'football', 'soccer', 'cricket', 'rugby', 'warriors', 'dynamos', 'caps united', 'highlanders', 'afcon'],
-  harare: ['harare', 'capital', 'city council', 'mayor', 'cbd', 'avondale', 'borrowdale', 'chitungwiza'],
-  agriculture: ['agriculture', 'farming', 'maize', 'cotton', 'tobacco', 'crop', 'harvest', 'farmer', 'irrigation', 'drought']
+  // Zimbabwe-specific categories (highest priority)
+  politics: [
+    'parliament', 'government', 'election', 'party', 'minister', 'president', 'policy', 
+    'zanu', 'mdc', 'opposition', 'mnangagwa', 'chamisa', 'cabinet', 'senate', 'mp', 
+    'constituency', 'voter', 'ballot', 'democracy', 'governance', 'corruption',
+    'sanctions', 'diplomatic', 'ambassador'
+  ],
+  economy: [
+    'economy', 'economic', 'inflation', 'currency', 'budget', 'finance', 'bank', 
+    'investment', 'gdp', 'trade', 'bond', 'rtgs', 'usd', 'forex', 'revenue',
+    'tax', 'fiscal', 'monetary', 'debt', 'loan', 'imf', 'world bank', 'stock exchange',
+    'zse', 'commodity', 'export', 'import', 'manufacturing'
+  ],
+  business: [
+    'business', 'company', 'entrepreneur', 'startup', 'market', 'industry', 
+    'corporate', 'commerce', 'mining', 'tobacco', 'retail', 'wholesale',
+    'sme', 'tender', 'procurement', 'partnership', 'merger', 'acquisition',
+    'ceo', 'director', 'shareholder', 'profit', 'revenue', 'growth'
+  ],
+  
+  // Sports (enhanced)
+  sports: [
+    'sport', 'football', 'soccer', 'cricket', 'rugby', 'warriors', 'dynamos', 
+    'caps united', 'highlanders', 'afcon', 'fifa', 'world cup', 'olympics',
+    'athletics', 'boxing', 'tennis', 'golf', 'swimming', 'basketball',
+    'volleyball', 'netball', 'hockey', 'cycling', 'marathon'
+  ],
+  
+  // Local/Regional
+  harare: [
+    'harare', 'capital', 'city council', 'mayor', 'cbd', 'avondale', 'borrowdale', 
+    'chitungwiza', 'municipality', 'ward', 'councillor', 'rates', 'water',
+    'sewer', 'roads', 'traffic', 'parking', 'housing', 'suburbs'
+  ],
+  agriculture: [
+    'agriculture', 'farming', 'maize', 'cotton', 'tobacco', 'crop', 'harvest', 
+    'farmer', 'irrigation', 'drought', 'rain', 'season', 'seed', 'fertilizer',
+    'pesticide', 'livestock', 'cattle', 'poultry', 'dairy', 'horticulture',
+    'land reform', 'a1', 'a2', 'commercial farming'
+  ],
+
+  // Global trending categories
+  technology: [
+    'technology', 'tech', 'digital', 'internet', 'mobile', 'smartphone', 'app',
+    'software', 'ai', 'artificial intelligence', 'blockchain', 'crypto', 'bitcoin',
+    'fintech', 'ecommerce', 'social media', 'facebook', 'twitter', 'whatsapp',
+    'google', 'microsoft', 'apple', 'innovation', 'startup', 'coding', 'programming',
+    'cybersecurity', 'data', 'cloud', 'iot', 'automation', '5g', 'broadband'
+  ],
+  
+  health: [
+    'health', 'medical', 'hospital', 'doctor', 'nurse', 'patient', 'treatment',
+    'medicine', 'vaccine', 'covid', 'pandemic', 'virus', 'disease', 'illness',
+    'mental health', 'wellness', 'fitness', 'nutrition', 'diet', 'exercise',
+    'pharmacy', 'clinic', 'surgery', 'emergency', 'maternal', 'child health',
+    'hiv', 'aids', 'malaria', 'tuberculosis', 'cancer', 'diabetes'
+  ],
+  
+  education: [
+    'education', 'school', 'university', 'college', 'student', 'teacher', 'lecturer',
+    'exam', 'zimsec', 'o level', 'a level', 'degree', 'graduation', 'scholarship',
+    'tuition', 'fees', 'curriculum', 'syllabus', 'learning', 'literacy',
+    'primary school', 'secondary school', 'higher education', 'vocational training',
+    'apprenticeship', 'skills development'
+  ],
+  
+  entertainment: [
+    'entertainment', 'music', 'movie', 'film', 'celebrity', 'artist', 'musician',
+    'actor', 'actress', 'concert', 'show', 'performance', 'festival', 'awards',
+    'album', 'single', 'video', 'streaming', 'netflix', 'youtube', 'television',
+    'radio', 'podcast', 'comedy', 'drama', 'documentary', 'theatre', 'dance',
+    'culture', 'tradition', 'heritage'
+  ],
+  
+  environment: [
+    'environment', 'climate', 'weather', 'conservation', 'wildlife', 'nature',
+    'pollution', 'green', 'renewable', 'solar', 'sustainability', 'recycling',
+    'carbon', 'emissions', 'deforestation', 'biodiversity', 'ecosystem',
+    'national park', 'safari', 'tourism', 'eco-tourism', 'endangered species',
+    'global warming', 'climate change', 'drought', 'flood', 'cyclone'
+  ],
+  
+  crime: [
+    'crime', 'police', 'arrest', 'court', 'judge', 'trial', 'sentence', 'prison',
+    'theft', 'robbery', 'murder', 'assault', 'fraud', 'corruption', 'bribery',
+    'investigation', 'detective', 'evidence', 'witness', 'victim', 'justice',
+    'law', 'legal', 'attorney', 'lawyer', 'magistrate', 'bail', 'fine'
+  ],
+  
+  international: [
+    'international', 'global', 'world', 'foreign', 'embassy', 'diplomat', 'un',
+    'africa', 'sadc', 'south africa', 'botswana', 'zambia', 'mozambique',
+    'malawi', 'namibia', 'china', 'usa', 'uk', 'europe', 'brexit', 'trade war',
+    'sanctions', 'peacekeeping', 'humanitarian', 'refugee', 'migration'
+  ],
+  
+  lifestyle: [
+    'lifestyle', 'fashion', 'beauty', 'travel', 'food', 'recipe', 'cooking',
+    'restaurant', 'hotel', 'vacation', 'holiday', 'wedding', 'family',
+    'parenting', 'relationship', 'dating', 'home', 'property', 'real estate',
+    'car', 'vehicle', 'shopping', 'consumer', 'brand', 'luxury'
+  ],
+  
+  finance: [
+    'finance', 'financial', 'money', 'cash', 'loan', 'credit', 'debt', 'savings',
+    'pension', 'insurance', 'investment', 'stock', 'share', 'dividend', 'interest',
+    'mortgage', 'microfinance', 'banking', 'mobile money', 'ecocash', 'onemoney',
+    'telecash', 'fintech', 'cryptocurrency', 'forex', 'exchange rate'
+  ]
 };
 
-// RSS feed sources for Zimbabwe news
+// RSS feed sources for Zimbabwe news (unchanged but can add more sources)
 const RSS_SOURCES = [
   {
     name: 'Herald Zimbabwe',
@@ -70,6 +173,19 @@ const RSS_SOURCES = [
     url: 'https://www.zimlive.com/feed/',
     category: 'general',
     enabled: true
+  },
+  // Additional Zimbabwe sources you might want to add
+  {
+    name: 'NewZimbabwe',
+    url: 'https://www.newzimbabwe.com/feed/',
+    category: 'general',
+    enabled: false // Set to true when ready
+  },
+  {
+    name: 'Zimbabwe Independent',
+    url: 'https://www.theindependent.co.zw/feed/',
+    category: 'general',
+    enabled: false // Set to true when ready
   }
 ]
 
@@ -112,7 +228,7 @@ export default {
       } catch (assetError) {
         console.log('Asset serving failed, falling back to enhanced HTML:', assetError.message)
         
-        // Enhanced fallback HTML with Zimbabwe focus
+        // Enhanced fallback HTML with all categories
         return new Response(`
           <!DOCTYPE html>
           <html lang="en">
@@ -121,13 +237,12 @@ export default {
             <meta name="viewport" content="width=device-width, initial-scale=1.0" />
             <title>Harare Metro - Zimbabwe News Aggregator</title>
             <style>
-              * { box-sizing: border-box; }
+              * { box-sizing: border-box; margin: 0; padding: 0; }
               body { 
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-                margin: 0;
-                padding: 0;
                 background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
                 min-height: 100vh;
+                line-height: 1.4;
               }
               .header {
                 background: rgba(255,255,255,0.95);
@@ -145,6 +260,8 @@ export default {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
+                flex-wrap: wrap;
+                gap: 1rem;
               }
               .logo {
                 display: flex;
@@ -152,35 +269,40 @@ export default {
                 gap: 0.5rem;
               }
               .logo h1 {
-                margin: 0;
                 color: #2d3748;
-                font-size: 1.8rem;
+                font-size: clamp(1.2rem, 4vw, 1.8rem);
                 font-weight: 700;
               }
               .flag { font-size: 1.5rem; }
-              .subtitle { color: #718096; font-size: 0.9rem; margin: 0; }
+              .subtitle { color: #718096; font-size: 0.85rem; }
               .refresh-btn {
                 background: #4299e1;
                 color: white;
                 border: none;
-                padding: 0.75rem 1.5rem;
+                padding: 0.75rem 1.25rem;
                 border-radius: 0.5rem;
                 cursor: pointer;
                 font-weight: 600;
+                font-size: 0.9rem;
                 transition: all 0.2s;
               }
               .refresh-btn:hover { background: #3182ce; transform: translateY(-1px); }
               .container { 
                 max-width: 1200px; 
                 margin: 0 auto; 
-                padding: 2rem 1rem;
+                padding: 1rem;
               }
               .filters {
                 display: flex;
                 gap: 0.5rem;
-                margin-bottom: 2rem;
+                margin-bottom: 1.5rem;
                 flex-wrap: wrap;
+                overflow-x: auto;
+                padding-bottom: 0.5rem;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
               }
+              .filters::-webkit-scrollbar { display: none; }
               .filter-btn {
                 background: rgba(255,255,255,0.9);
                 border: 2px solid transparent;
@@ -188,8 +310,11 @@ export default {
                 border-radius: 25px;
                 cursor: pointer;
                 font-weight: 500;
+                font-size: 0.85rem;
                 transition: all 0.2s;
                 color: #4a5568;
+                white-space: nowrap;
+                min-width: fit-content;
               }
               .filter-btn:hover { background: white; transform: translateY(-1px); }
               .filter-btn.active { 
@@ -200,8 +325,8 @@ export default {
               .loading { 
                 text-align: center; 
                 color: white;
-                font-size: 1.1rem;
-                padding: 3rem;
+                font-size: 1rem;
+                padding: 2rem;
               }
               .error { 
                 color: #f56565; 
@@ -210,54 +335,59 @@ export default {
                 border-radius: 0.5rem;
                 margin: 1rem 0;
                 border-left: 4px solid #f56565;
+                font-size: 0.9rem;
               }
               .news-grid {
                 display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-                gap: 1.5rem;
+                grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+                gap: 1rem;
               }
               .article {
                 background: rgba(255,255,255,0.95);
                 backdrop-filter: blur(10px);
                 border-radius: 0.75rem;
-                padding: 1.5rem;
-                box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+                padding: 1.25rem;
+                box-shadow: 0 8px 25px rgba(0,0,0,0.1);
                 transition: all 0.3s ease;
                 border: 1px solid rgba(255,255,255,0.2);
               }
               .article:hover { 
-                transform: translateY(-5px); 
-                box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+                transform: translateY(-3px); 
+                box-shadow: 0 15px 35px rgba(0,0,0,0.15);
               }
               .article-header {
                 display: flex;
                 justify-content: space-between;
                 align-items: center;
-                margin-bottom: 1rem;
+                margin-bottom: 0.75rem;
                 flex-wrap: wrap;
                 gap: 0.5rem;
               }
               .source {
                 color: #4299e1;
                 font-weight: 600;
-                font-size: 0.9rem;
+                font-size: 0.8rem;
               }
               .date {
                 color: #718096;
-                font-size: 0.8rem;
+                font-size: 0.75rem;
               }
               .article h3 { 
-                margin: 0 0 1rem 0; 
+                margin: 0 0 0.75rem 0; 
                 color: #2d3748; 
-                font-size: 1.1rem;
+                font-size: 1rem;
                 line-height: 1.4;
                 font-weight: 600;
               }
               .description { 
                 color: #4a5568; 
-                line-height: 1.6; 
-                margin-bottom: 1rem;
-                font-size: 0.95rem;
+                line-height: 1.5; 
+                margin-bottom: 0.75rem;
+                font-size: 0.9rem;
+                display: -webkit-box;
+                -webkit-line-clamp: 3;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
               }
               .article-footer {
                 display: flex;
@@ -271,8 +401,9 @@ export default {
                 color: #4a5568;
                 padding: 0.25rem 0.75rem;
                 border-radius: 15px;
-                font-size: 0.8rem;
+                font-size: 0.75rem;
                 font-weight: 500;
+                text-transform: capitalize;
               }
               .category.politics { background: #fed7d7; color: #c53030; }
               .category.economy { background: #c6f6d5; color: #2f855a; }
@@ -280,18 +411,27 @@ export default {
               .category.sports { background: #feebc8; color: #c05621; }
               .category.harare { background: #e9d8fd; color: #6b46c1; }
               .category.agriculture { background: #d4edda; color: #155724; }
+              .category.technology { background: #e0f2fe; color: #0277bd; }
+              .category.health { background: #f3e5f5; color: #7b1fa2; }
+              .category.education { background: #fff3e0; color: #ef6c00; }
+              .category.entertainment { background: #fce4ec; color: #c2185b; }
+              .category.environment { background: #e8f5e8; color: #388e3c; }
+              .category.crime { background: #ffebee; color: #d32f2f; }
+              .category.international { background: #e3f2fd; color: #1976d2; }
+              .category.lifestyle { background: #f1f8e9; color: #689f38; }
+              .category.finance { background: #fff8e1; color: #f57c00; }
               .read-more {
                 color: #4299e1;
                 text-decoration: none;
                 font-weight: 600;
-                font-size: 0.9rem;
+                font-size: 0.85rem;
                 transition: color 0.2s;
               }
               .read-more:hover { color: #3182ce; }
               .priority-badge {
                 background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
                 color: white;
-                padding: 0.25rem 0.5rem;
+                padding: 0.2rem 0.5rem;
                 border-radius: 10px;
                 font-size: 0.7rem;
                 font-weight: 600;
@@ -305,11 +445,15 @@ export default {
                 margin-bottom: 1.5rem;
                 color: white;
                 text-align: center;
+                font-size: 0.9rem;
               }
               @media (max-width: 768px) {
-                .news-grid { grid-template-columns: 1fr; }
-                .header-content { flex-direction: column; gap: 1rem; }
-                .filters { justify-content: center; }
+                .header-content { flex-direction: column; text-align: center; }
+                .filters { justify-content: flex-start; }
+                .container { padding: 0.75rem; }
+                .article { padding: 1rem; }
+                .article h3 { font-size: 0.95rem; }
+                .description { font-size: 0.85rem; -webkit-line-clamp: 2; }
               }
             </style>
           </head>
@@ -323,7 +467,7 @@ export default {
                     <p class="subtitle">Zimbabwe News Aggregator</p>
                   </div>
                 </div>
-                <button class="refresh-btn" onclick="loadNews()">🔄 Refresh News</button>
+                <button class="refresh-btn" onclick="loadNews()">🔄 Refresh</button>
               </div>
             </header>
 
@@ -341,6 +485,14 @@ export default {
                 <button class="filter-btn" data-category="harare">Harare</button>
                 <button class="filter-btn" data-category="agriculture">Agriculture</button>
                 <button class="filter-btn" data-category="technology">Technology</button>
+                <button class="filter-btn" data-category="health">Health</button>
+                <button class="filter-btn" data-category="education">Education</button>
+                <button class="filter-btn" data-category="entertainment">Entertainment</button>
+                <button class="filter-btn" data-category="environment">Environment</button>
+                <button class="filter-btn" data-category="crime">Crime</button>
+                <button class="filter-btn" data-category="international">International</button>
+                <button class="filter-btn" data-category="lifestyle">Lifestyle</button>
+                <button class="filter-btn" data-category="finance">Finance</button>
               </div>
               
               <div id="news-container" class="news-grid">
@@ -371,8 +523,9 @@ export default {
 
               function updateStats() {
                 const priorityCount = allFeeds.filter(article => article.priority).length;
+                const categories = [...new Set(allFeeds.map(article => article.category))].length;
                 document.getElementById('stats').innerHTML = \`
-                  <div>📊 <strong>\${allFeeds.length}</strong> articles loaded • <strong>\${priorityCount}</strong> priority Zimbabwe stories</div>
+                  <div>📊 <strong>\${allFeeds.length}</strong> articles • <strong>\${priorityCount}</strong> priority Zimbabwe stories • <strong>\${categories}</strong> categories</div>
                 \`;
               }
 
@@ -405,8 +558,8 @@ export default {
                     \${article.description ? \`<div class="description">\${article.description}</div>\` : ''}
                     
                     <div class="article-footer">
-                      <span class="category \${article.category}">\${article.category.charAt(0).toUpperCase() + article.category.slice(1)}</span>
-                      <a href="\${article.link}" target="_blank" rel="noopener" class="read-more">Read Full Article →</a>
+                      <span class="category \${article.category}">\${article.category}</span>
+                      <a href="\${article.link}" target="_blank" rel="noopener" class="read-more">Read More →</a>
                     </div>
                   </div>
                 \`).join('');
@@ -425,8 +578,8 @@ export default {
               // Load news on page load
               loadNews();
               
-              // Auto-refresh every 10 minutes
-              setInterval(loadNews, 10 * 60 * 1000);
+              // Auto-refresh every 15 minutes
+              setInterval(loadNews, 15 * 60 * 1000);
             </script>
           </body>
           </html>
@@ -471,9 +624,11 @@ async function handleApiRequest(request, env, ctx) {
         return new Response(JSON.stringify({ 
           status: 'ok', 
           timestamp: new Date().toISOString(),
-          sources: RSS_SOURCES.length,
+          sources: RSS_SOURCES.filter(s => s.enabled).length,
+          totalSources: RSS_SOURCES.length,
+          categories: Object.keys(CATEGORY_KEYWORDS).length,
           message: 'Harare Metro API is healthy!',
-          features: ['keyword-categorization', 'priority-detection', 'zimbabwe-focus']
+          features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'global-categories']
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
@@ -497,7 +652,8 @@ async function handleApiRequest(request, env, ctx) {
         return new Response(JSON.stringify({
           categories: Object.keys(CATEGORY_KEYWORDS),
           keywords: CATEGORY_KEYWORDS,
-          priority: PRIORITY_KEYWORDS
+          priority: PRIORITY_KEYWORDS,
+          totalCategories: Object.keys(CATEGORY_KEYWORDS).length
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         })
@@ -536,12 +692,12 @@ async function getAllFeeds(env, corsHeaders) {
   const feedPromises = enabledSources.map(async (source) => {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 8000)
+      const timeoutId = setTimeout(() => controller.abort(), 10000) // Increased timeout for slower connections
       
       const response = await fetch(source.url, {
         headers: { 
-          'User-Agent': 'Harare Metro News Aggregator/1.0',
-          'Accept': 'application/rss+xml, application/xml, text/xml'
+          'User-Agent': 'Harare Metro News Aggregator/2.0 (Zimbabwe)',
+          'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml'
         },
         signal: controller.signal
       })
@@ -559,19 +715,22 @@ async function getAllFeeds(env, corsHeaders) {
       const items = channel?.item || channel?.entry || []
       
       const processedItems = (Array.isArray(items) ? items : [items])
-        .slice(0, 15)
+        .slice(0, 20) // Increased from 15 to get more articles
         .map(item => {
           const title = item.title?.text || item.title || 'No title'
           const description = cleanHtml(item.description?.text || item.description || item.summary?.text || item.summary || '')
           const content = `${title} ${description}`.toLowerCase()
           
-          // Determine category based on keywords
+          // Enhanced category detection with multiple passes
           const detectedCategory = detectCategory(content) || source.category
           
-          // Check for priority content
+          // Enhanced priority detection with more keywords
           const isPriority = PRIORITY_KEYWORDS.some(keyword => 
             content.includes(keyword.toLowerCase())
           )
+          
+          // Calculate relevance score for Zimbabwe content
+          const relevanceScore = calculateRelevanceScore(content)
           
           return {
             title: title,
@@ -581,7 +740,8 @@ async function getAllFeeds(env, corsHeaders) {
             source: source.name,
             category: detectedCategory,
             priority: isPriority,
-            guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}`
+            relevanceScore: relevanceScore,
+            guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`
           }
         })
         .filter(item => item.title !== 'No title')
@@ -601,20 +761,31 @@ async function getAllFeeds(env, corsHeaders) {
     }
   })
 
-  // Sort by priority first, then by date
+  // Enhanced sorting: Priority first, then relevance score, then date
   allFeeds.sort((a, b) => {
+    // Priority articles first
     if (a.priority && !b.priority) return -1
     if (!a.priority && b.priority) return 1
+    
+    // Then by relevance score (Zimbabwe content gets higher scores)
+    if (a.relevanceScore !== b.relevanceScore) {
+      return b.relevanceScore - a.relevanceScore
+    }
+    
+    // Finally by date
     return new Date(b.pubDate) - new Date(a.pubDate)
   })
 
-  const limitedFeeds = allFeeds.slice(0, 100)
+  // Remove duplicates based on title similarity
+  const uniqueFeeds = removeDuplicates(allFeeds)
+  
+  const limitedFeeds = uniqueFeeds.slice(0, 100)
 
   return new Response(JSON.stringify(limitedFeeds), {
     headers: { 
       ...corsHeaders, 
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=900'
+      'Cache-Control': 'public, max-age=600' // Reduced cache time for fresher content
     }
   })
 }
@@ -622,11 +793,15 @@ async function getAllFeeds(env, corsHeaders) {
 function detectCategory(content) {
   let maxMatches = 0
   let detectedCategory = null
+  let categoryScores = {}
   
+  // Calculate scores for each category
   for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
     const matches = keywords.filter(keyword => 
       content.includes(keyword.toLowerCase())
     ).length
+    
+    categoryScores[category] = matches
     
     if (matches > maxMatches) {
       maxMatches = matches
@@ -634,7 +809,85 @@ function detectCategory(content) {
     }
   }
   
+  // If we have a tie, prefer Zimbabwe-specific categories
+  const zimbabweCategories = ['politics', 'economy', 'harare', 'agriculture']
+  if (maxMatches > 0) {
+    for (const zwCategory of zimbabweCategories) {
+      if (categoryScores[zwCategory] === maxMatches) {
+        detectedCategory = zwCategory
+        break
+      }
+    }
+  }
+  
   return detectedCategory
+}
+
+function calculateRelevanceScore(content) {
+  let score = 0
+  
+  // Higher scores for Zimbabwe-specific content
+  PRIORITY_KEYWORDS.forEach(keyword => {
+    if (content.includes(keyword.toLowerCase())) {
+      score += 3 // High priority for Zimbabwe keywords
+    }
+  })
+  
+  // Bonus for local city names
+  const cities = ['harare', 'bulawayo', 'mutare', 'gweru', 'kwekwe', 'masvingo', 'chitungwiza']
+  cities.forEach(city => {
+    if (content.includes(city)) {
+      score += 2
+    }
+  })
+  
+  // Bonus for government/political terms
+  const govTerms = ['government', 'parliament', 'minister', 'president', 'cabinet']
+  govTerms.forEach(term => {
+    if (content.includes(term)) {
+      score += 1
+    }
+  })
+  
+  return score
+}
+
+function removeDuplicates(feeds) {
+  const seen = new Set()
+  const unique = []
+  
+  for (const feed of feeds) {
+    // Create a simplified version of the title for comparison
+    const normalizedTitle = feed.title
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+    
+    // Check if we've seen a very similar title
+    let isDuplicate = false
+    for (const seenTitle of seen) {
+      if (calculateSimilarity(normalizedTitle, seenTitle) > 0.8) {
+        isDuplicate = true
+        break
+      }
+    }
+    
+    if (!isDuplicate) {
+      seen.add(normalizedTitle)
+      unique.push(feed)
+    }
+  }
+  
+  return unique
+}
+
+function calculateSimilarity(str1, str2) {
+  const words1 = str1.split(' ')
+  const words2 = str2.split(' ')
+  const intersection = words1.filter(word => words2.includes(word))
+  const union = [...new Set([...words1, ...words2])]
+  return intersection.length / union.length
 }
 
 async function getCachedFeeds(env, corsHeaders) {
@@ -682,14 +935,15 @@ function cleanHtml(html) {
   if (typeof html !== 'string') return ''
   
   return html
-    .replace(/<[^>]*>/g, '')
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
+    .replace(/&apos;/g, "'")
+    .replace(/\s+/g, ' ') // Normalize whitespace
     .trim()
-    .substring(0, 250)
+    .substring(0, 300) // Increased from 250 for better descriptions
 }
