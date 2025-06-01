@@ -1,5 +1,5 @@
 name = "harare-metro"
-compatibility_date = "2024-05-01"
+compatibility_date = "2025-05-01"
 main = "./worker/index.js"
 
 [assets]
@@ -16,3 +16,15 @@ crons = ["0 */6 * * *"]
 
 [placement]
 mode = "smart"
+
+# Production environment with custom domain
+[[routes]]
+pattern = "www.hararemetro.co.zw/*"
+zone_name = "hararemetro.co.zw"
+
+# Staging environment configuration
+[env.staging]
+name = "harare-metro-staging"
+[[env.staging.routes]]
+pattern = "staging.hararemetro.co.zw/*"
+zone_name = "hararemetro.co.zw"
