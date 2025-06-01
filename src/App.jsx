@@ -1,12 +1,46 @@
-import React, { useState, useEffect } from 'react'
-import { NewspaperIcon, ArrowPathIcon, CalendarIcon, TagIcon, HeartIcon, SunIcon, MoonIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline'
+import React, { useState, useEffect, useCallback } from 'react'
+import { 
+  NewspaperIcon, 
+  ArrowPathIcon, 
+  FunnelIcon,
+  ClockIcon,
+  StarIcon,
+  GlobeAltIcon,
+  SunIcon,
+  MoonIcon,
+  ComputerDesktopIcon,
+  HeartIcon,
+  CalendarIcon,
+  TagIcon
+} from '@heroicons/react/24/outline'
+
+// All available categories with display info
+const CATEGORIES = [
+  { id: 'all', label: 'All News', icon: '📰', primary: true },
+  { id: 'politics', label: 'Politics', icon: '🏛️', primary: true },
+  { id: 'economy', label: 'Economy', icon: '💰', primary: true },
+  { id: 'business', label: 'Business', icon: '💼', primary: true },
+  { id: 'sports', label: 'Sports', icon: '⚽', primary: true },
+  { id: 'harare', label: 'Harare', icon: '🏙️', primary: true },
+  { id: 'agriculture', label: 'Agriculture', icon: '🌾', primary: true },
+  { id: 'technology', label: 'Technology', icon: '💻', primary: false },
+  { id: 'health', label: 'Health', icon: '🏥', primary: false },
+  { id: 'education', label: 'Education', icon: '🎓', primary: false },
+  { id: 'entertainment', label: 'Entertainment', icon: '🎭', primary: false },
+  { id: 'environment', label: 'Environment', icon: '🌍', primary: false },
+  { id: 'crime', label: 'Crime', icon: '🚔', primary: false },
+  { id: 'international', label: 'International', icon: '🌐', primary: false },
+  { id: 'lifestyle', label: 'Lifestyle', icon: '✨', primary: false },
+  { id: 'finance', label: 'Finance', icon: '💳', primary: false }
+]
 
 function App() {
   const [feeds, setFeeds] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [stats, setStats] = useState({ total: 0, priority: 0 })
+  const [showAllCategories, setShowAllCategories] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState(null)
   const [theme, setTheme] = useState('system')
 
   // Zimbabwe-inspired color schemes
@@ -90,53 +124,75 @@ function App() {
 
   const currentColors = themes[getCurrentTheme()]
 
-  useEffect(() => {
-    fetchFeeds()
-  }, [])
-
-  const fetchFeeds = async () => {
+  const loadFeeds = useCallback(async () => {
     try {
       setLoading(true)
       setError(null)
+      
       const response = await fetch('/api/feeds')
-      if (!response.ok) throw new Error('Failed to fetch feeds')
+      if (!response.ok) {
+        throw new Error(`Failed to load news: ${response.status}`)
+      }
+      
       const data = await response.json()
       setFeeds(data)
-      
-      // Calculate stats
-      const priorityCount = data.filter(article => article.priority).length
-      setStats({ total: data.length, priority: priorityCount })
+      setLastUpdated(new Date())
     } catch (err) {
       setError(err.message)
+      console.error('Error loading feeds:', err)
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadFeeds()
+    
+    // Auto-refresh every 10 minutes
+    const interval = setInterval(loadFeeds, 10 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [loadFeeds])
 
   const filteredFeeds = selectedCategory === 'all' 
     ? feeds 
     : feeds.filter(feed => feed.category === selectedCategory)
 
-  const categories = [
-    'all', 'politics', 'economy', 'business', 'sports', 
-    'harare', 'agriculture', 'technology'
-  ]
+  const priorityCount = feeds.filter(feed => feed.priority).length
+  const categoryCount = new Set(feeds.map(feed => feed.category)).size
 
-  const getCategoryColor = (category) => {
-    const colors = {
-      politics: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
-      economy: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', 
-      business: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-      sports: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
-      harare: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-      agriculture: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
-      technology: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
-      general: 'bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300'
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString)
+      const now = new Date()
+      const diffMs = now - date
+      const diffMins = Math.floor(diffMs / (1000 * 60))
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+
+      if (diffMins < 60) {
+        return `${diffMins}m ago`
+      } else if (diffHours < 24) {
+        return `${diffHours}h ago`
+      } else if (diffDays < 7) {
+        return `${diffDays}d ago`
+      } else {
+        return date.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric' 
+        })
+      }
+    } catch {
+      return 'Recent'
     }
-    return colors[category] || colors.general
   }
 
-  if (loading) {
+  const primaryCategories = CATEGORIES.filter(cat => cat.primary)
+  const secondaryCategories = CATEGORIES.filter(cat => !cat.primary)
+  const categoriesToShow = showAllCategories 
+    ? CATEGORIES 
+    : primaryCategories
+
+  if (loading && feeds.length === 0) {
     return (
       <div className={`min-h-screen ${currentColors.bg} flex items-center justify-center`}>
         <div className="text-center text-white">
@@ -148,7 +204,7 @@ function App() {
     )
   }
 
-  if (error) {
+  if (error && feeds.length === 0) {
     return (
       <div className={`min-h-screen ${currentColors.bg} flex items-center justify-center`}>
         <div className="text-center max-w-md mx-auto p-6">
@@ -159,7 +215,7 @@ function App() {
             </h2>
             <p className={`${currentColors.textSecondary} mb-4`}>{error}</p>
             <button 
-              onClick={fetchFeeds}
+              onClick={loadFeeds}
               className={`${currentColors.accent} text-white px-6 py-2 rounded-lg transition-colors font-medium`}
             >
               Try Again
@@ -178,9 +234,14 @@ function App() {
           <div className="flex items-center justify-between h-16 min-w-0">
             <div className="flex items-center space-x-2 min-w-0 flex-shrink-0">
               <span className="text-xl sm:text-2xl">🇿🇼</span>
-              <h1 className={`text-lg sm:text-xl font-bold ${currentColors.text} truncate`}>
-                Harare Metro
-              </h1>
+              <div>
+                <h1 className={`text-lg sm:text-xl font-bold ${currentColors.text} truncate`}>
+                  Harare Metro
+                </h1>
+                <p className={`text-xs ${currentColors.textSecondary} hidden sm:block`}>
+                  Zimbabwe News Aggregator
+                </p>
+              </div>
             </div>
             
             <div className="flex items-center space-x-1 bg-white/10 backdrop-blur-sm rounded-lg p-1 flex-shrink-0">
@@ -218,7 +279,7 @@ function App() {
                 <ComputerDesktopIcon className="h-3 w-3 sm:h-4 sm:w-4" />
               </button>
               <button
-                onClick={fetchFeeds}
+                onClick={loadFeeds}
                 disabled={loading}
                 className={`p-1.5 sm:p-2 rounded-md transition-colors ${currentColors.textMuted} hover:text-green-400 disabled:opacity-50`}
                 title="Refresh news"
@@ -230,133 +291,107 @@ function App() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 w-full px-4 py-6 overflow-x-hidden">
+      <div className="flex-1 max-w-6xl mx-auto w-full px-4 py-4">
         {/* Stats */}
-        <div className={`${currentColors.statsBg} backdrop-blur-sm rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 ${currentColors.textLight} text-center max-w-full`}>
-          <div className="flex justify-center items-center space-x-6 sm:space-x-12">
-            <div>
-              <div className="text-2xl sm:text-3xl font-bold">{stats.total}</div>
-              <div className="text-xs sm:text-sm opacity-80">Articles Loaded</div>
+        <div className={`${currentColors.statsBg} backdrop-blur-md rounded-xl p-4 mb-6 ${currentColors.textLight}`}>
+          <div className="flex items-center justify-between text-sm flex-wrap gap-2">
+            <div className="flex items-center space-x-4 flex-wrap gap-2">
+              <span className="flex items-center space-x-1">
+                <NewspaperIcon className="h-4 w-4" />
+                <span>{feeds.length} articles</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <StarIcon className="h-4 w-4" />
+                <span>{priorityCount} priority</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <FunnelIcon className="h-4 w-4" />
+                <span>{categoryCount} categories</span>
+              </span>
             </div>
-            <div>
-              <div className="text-2xl sm:text-3xl font-bold">{stats.priority}</div>
-              <div className="text-xs sm:text-sm opacity-80">Priority Stories</div>
-            </div>
+            {lastUpdated && (
+              <span className="flex items-center space-x-1 text-xs opacity-75">
+                <ClockIcon className="h-3 w-3" />
+                <span>Updated {formatDate(lastUpdated)}</span>
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Category Filter */}
-        <div className="mb-6 sm:mb-8 w-full overflow-hidden">
-          <div className="flex overflow-x-auto scrollbar-hide gap-2 sm:gap-3 pb-2 -mx-1 px-1" style={{scrollbarWidth: 'none', msOverflowStyle: 'none'}}>
-            {categories.map(category => (
+        {/* Category Filters */}
+        <div className="mb-6">
+          <div className="flex flex-wrap gap-2 mb-3">
+            {categoriesToShow.map((category) => (
               <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`flex-shrink-0 px-4 sm:px-6 py-2 sm:py-3 rounded-full text-sm sm:text-base font-semibold transition-all whitespace-nowrap ${
-                  selectedCategory === category
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`flex items-center space-x-1 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 whitespace-nowrap ${
+                  selectedCategory === category.id
                     ? `${currentColors.accent} text-white shadow-lg`
                     : `${currentColors.cardBg} ${currentColors.text} hover:shadow-md backdrop-blur-sm`
                 }`}
               >
-                {category.charAt(0).toUpperCase() + category.slice(1)}
+                <span>{category.icon}</span>
+                <span>{category.label}</span>
               </button>
             ))}
           </div>
+          
+          {/* Show More/Less Categories Button */}
+          {secondaryCategories.length > 0 && (
+            <button
+              onClick={() => setShowAllCategories(!showAllCategories)}
+              className={`${currentColors.textLight} hover:text-white text-sm font-medium flex items-center space-x-1 opacity-80 hover:opacity-100 transition-opacity`}
+            >
+              <span>
+                {showAllCategories ? 'Show Less' : `+${secondaryCategories.length} More Categories`}
+              </span>
+            </button>
+          )}
         </div>
 
-        {/* News Grid */}
-        {filteredFeeds.length === 0 ? (
-          <div className="text-center py-12 sm:py-16 px-4">
-            <div className={`${currentColors.statsBg} backdrop-blur-sm rounded-xl p-6 sm:p-10 ${currentColors.textLight} max-w-md mx-auto`}>
-              <NewspaperIcon className="h-16 sm:h-20 w-16 sm:w-20 mx-auto mb-4 sm:mb-6 opacity-60" />
-              <h3 className="text-lg sm:text-xl font-medium mb-3">
-                No articles found
-              </h3>
-              <p className="opacity-80 text-sm sm:text-base">
-                {selectedCategory === 'all' 
-                  ? 'No news articles are currently available.' 
-                  : `No articles found in the "${selectedCategory}" category.`
-                }
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="w-full max-w-7xl mx-auto">
-            <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-              {filteredFeeds.slice(0, 50).map((article, index) => (
-                <article 
-                  key={article.guid || index} 
-                  className={`${currentColors.cardBg} backdrop-blur-sm rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:transform hover:-translate-y-1 ${currentColors.border} border w-full min-w-0`}
-                >
-                  {/* Article Header */}
-                  <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2 min-w-0">
-                    <span className={`text-xs sm:text-sm font-semibold ${currentColors.accentText} truncate flex-shrink-0`}>
-                      {article.source}
-                    </span>
-                    <div className={`flex items-center text-xs ${currentColors.textMuted} flex-shrink-0`}>
-                      <CalendarIcon className="h-3 w-3 mr-1 flex-shrink-0" />
-                      <span className="whitespace-nowrap">
-                        {new Date(article.pubDate).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Title with Priority Badge */}
-                  <h2 className={`text-base sm:text-lg font-semibold ${currentColors.text} mb-3 sm:mb-4 line-clamp-2 leading-tight min-w-0`}>
-                    <span className="break-words">{article.title}</span>
-                    {article.priority && (
-                      <span className="ml-2 inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white whitespace-nowrap">
-                        🇿🇼 Priority
-                      </span>
-                    )}
-                  </h2>
-                  
-                  {/* Description */}
-                  {article.description && (
-                    <p className={`${currentColors.textSecondary} text-sm mb-4 sm:mb-5 line-clamp-3 leading-relaxed break-words`}>
-                      {article.description}
-                    </p>
-                  )}
-                  
-                  {/* Footer */}
-                  <div className="flex items-center justify-between mt-auto gap-2 min-w-0">
-                    <div className="flex items-center min-w-0 flex-shrink">
-                      <TagIcon className={`h-3 w-3 mr-1 ${currentColors.textMuted} flex-shrink-0`} />
-                      <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full font-medium ${getCategoryColor(article.category)} truncate`}>
-                        {article.category}
-                      </span>
-                    </div>
-                    
-                    <a
-                      href={article.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={`${currentColors.accentText} text-xs sm:text-sm font-medium inline-flex items-center group transition-colors flex-shrink-0`}
-                    >
-                      <span className="hidden sm:inline">Read Article</span>
-                      <span className="sm:hidden">Read</span>
-                      <svg className="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </a>
-                  </div>
-                </article>
-              ))}
-            </div>
+        {/* Content */}
+        {error && feeds.length > 0 && (
+          <div className="bg-red-500/90 backdrop-blur-md text-white p-4 rounded-xl mb-6">
+            <h3 className="font-semibold mb-2">Error Refreshing News</h3>
+            <p className="text-sm opacity-90">{error}</p>
+            <button
+              onClick={loadFeeds}
+              className="mt-3 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+            >
+              Try Again
+            </button>
           </div>
         )}
-      </main>
+
+        {filteredFeeds.length === 0 ? (
+          <div className={`${currentColors.statsBg} backdrop-blur-md ${currentColors.textLight} p-8 rounded-xl text-center`}>
+            <FunnelIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <h3 className="text-lg font-semibold mb-2">No Articles Found</h3>
+            <p className="text-sm opacity-75">
+              {selectedCategory === 'all' 
+                ? 'No news articles are currently available.' 
+                : `No articles found in the "${CATEGORIES.find(c => c.id === selectedCategory)?.label}" category.`
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredFeeds.slice(0, 50).map((article, index) => (
+              <ArticleCard 
+                key={article.guid || index} 
+                article={article} 
+                currentColors={currentColors}
+              />
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Footer */}
       <footer className={`${currentColors.footerBg} backdrop-blur-sm ${currentColors.border} border-t mt-12 sm:mt-16 w-full`}>
         <div className="w-full px-4 py-6 sm:py-10">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 text-white max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 text-white max-w-6xl mx-auto">
             
             {/* Company Info */}
             <div className="text-center md:text-left">
@@ -409,7 +444,7 @@ function App() {
           </div>
 
           {/* Copyright */}
-          <div className="border-t border-white/20 mt-6 sm:mt-8 pt-4 sm:pt-6 text-center max-w-7xl mx-auto">
+          <div className="border-t border-white/20 mt-6 sm:mt-8 pt-4 sm:pt-6 text-center max-w-6xl mx-auto">
             <p className="text-xs sm:text-sm text-white break-words">
               © {new Date().getFullYear()} Nyuchi Web Services - Harare Metro. All rights reserved.
             </p>
@@ -418,6 +453,92 @@ function App() {
       </footer>
     </div>
   )
+}
+
+function ArticleCard({ article, currentColors }) {
+  const categoryInfo = CATEGORIES.find(cat => cat.id === article.category)
+  
+  return (
+    <article className={`${currentColors.cardBg} backdrop-blur-sm rounded-xl shadow-lg p-4 sm:p-6 hover:shadow-xl transition-all duration-300 hover:transform hover:-translate-y-1 ${currentColors.border} border w-full min-w-0`}>
+      {/* Article Header */}
+      <div className="flex items-center justify-between mb-3 sm:mb-4 gap-2 min-w-0">
+        <span className={`text-xs sm:text-sm font-semibold ${currentColors.accentText} truncate flex-shrink-0`}>
+          {article.source}
+        </span>
+        <div className={`flex items-center text-xs ${currentColors.textMuted} flex-shrink-0`}>
+          <CalendarIcon className="h-3 w-3 mr-1 flex-shrink-0" />
+          <span className="whitespace-nowrap">
+            {new Date(article.pubDate).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })}
+          </span>
+        </div>
+      </div>
+      
+      {/* Title with Priority Badge */}
+      <h2 className={`text-base sm:text-lg font-semibold ${currentColors.text} mb-3 sm:mb-4 line-clamp-2 leading-tight min-w-0`}>
+        <span className="break-words">{article.title}</span>
+        {article.priority && (
+          <span className="ml-2 inline-flex items-center px-2 sm:px-3 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white whitespace-nowrap">
+            🇿🇼 Priority
+          </span>
+        )}
+      </h2>
+      
+      {/* Description */}
+      {article.description && (
+        <p className={`${currentColors.textSecondary} text-sm mb-4 sm:mb-5 line-clamp-3 leading-relaxed break-words`}>
+          {article.description}
+        </p>
+      )}
+      
+      {/* Footer */}
+      <div className="flex items-center justify-between mt-auto gap-2 min-w-0">
+        <div className="flex items-center min-w-0 flex-shrink">
+          <TagIcon className={`h-3 w-3 mr-1 ${currentColors.textMuted} flex-shrink-0`} />
+          <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 rounded-full font-medium ${getCategoryColor(article.category)} truncate`}>
+            {categoryInfo?.icon || '📰'} {article.category}
+          </span>
+        </div>
+        
+        <a
+          href={article.link}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${currentColors.accentText} text-xs sm:text-sm font-medium inline-flex items-center group transition-colors flex-shrink-0`}
+        >
+          <span className="hidden sm:inline">Read Article</span>
+          <span className="sm:hidden">Read</span>
+          <GlobeAltIcon className="w-3 h-3 ml-1 group-hover:translate-x-0.5 transition-transform flex-shrink-0" />
+        </a>
+      </div>
+    </article>
+  )
+}
+
+function getCategoryColor(category) {
+  const colors = {
+    politics: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    economy: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300', 
+    business: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+    sports: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300',
+    harare: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+    agriculture: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+    technology: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+    health: 'bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300',
+    education: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+    entertainment: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/30 dark:text-fuchsia-300',
+    environment: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300',
+    crime: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
+    international: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300',
+    lifestyle: 'bg-lime-100 text-lime-800 dark:bg-lime-900/30 dark:text-lime-300',
+    finance: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
+    general: 'bg-gray-100 text-gray-800 dark:bg-gray-700/30 dark:text-gray-300'
+  }
+  return colors[category] || colors.general
 }
 
 export default App
