@@ -1,37 +1,6 @@
-// Enhanced Worker with schema validation and API documentation endpoint
+// Enhanced Worker with SSR support for SEO
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
 import { XMLParser } from 'fast-xml-parser'
-
-// Import the OpenAPI schema (you'll need to add this file to your worker)
-const API_SCHEMA = {
-  openapi: "3.0.3",
-  info: {
-    title: "Harare Metro News API",
-    version: "2.0.0"
-  },
-  // ... (we'll load this from the YAML file in production)
-}
-
-// Validation schemas for request parameters
-const VALIDATION_SCHEMAS = {
-  feeds: {
-    category: {
-      type: 'string',
-      enum: ['politics', 'economy', 'business', 'sports', 'harare', 'agriculture', 
-             'technology', 'health', 'education', 'entertainment', 'environment', 
-             'crime', 'international', 'lifestyle', 'finance', 'general']
-    },
-    limit: {
-      type: 'integer',
-      minimum: 1,
-      maximum: 100,
-      default: 50
-    },
-    priority: {
-      type: 'boolean'
-    }
-  }
-}
 
 // Keywords to prioritize for Zimbabwe/Harare relevance
 const PRIORITY_KEYWORDS = [
@@ -210,26 +179,439 @@ const RSS_SOURCES = [
     name: 'NewZimbabwe',
     url: 'https://www.newzimbabwe.com/feed/',
     category: 'general',
-    enabled: false // Set to true when ready
+    enabled: true // Set to true when ready
   },
   {
     name: 'Zimbabwe Independent',
     url: 'https://www.theindependent.co.zw/feed/',
     category: 'general',
     enabled: false // Set to true when ready
-  }
+  },
+  { name: 'NewZimbabwe', url: 'https://www.newzimbabwe.com/feed/', category: 'general', enabled: true },
+  { name: 'The Sunday Mail', url: 'https://www.sundaymail.co.zw/feed/', category: 'general', enabled: true },
+  { name: '263Chat', url: 'https://www.263chat.com/feed/', category: 'general', enabled: true },
+  { name: 'iHarare', url: 'https://iharare.com/feed/', category: 'general', enabled: false },
+  { name: 'Bulawayo24', url: 'https://bulawayo24.com/feeds-rss-rss.rss', category: 'general', enabled: true },
+  { name: 'Zimbabwe Situation', url: 'https://www.zimbabwesituation.com/feed/', category: 'general', enabled: false },
+  { name: 'ZW News', url: 'https://zwnews.com/feed/', category: 'general', enabled: true },
+  { name: 'My Zimbabwe', url: 'https://www.myzimbabwe.co.zw/feed/', category: 'general', enabled: true },
+  { name: 'NewsDzeZimbabwe', url: 'https://www.newsdzezimbabwe.co.uk/feeds/posts/default?alt=rss', category: 'general', enabled: false },
+  { name: 'Daily News', url: 'https://dailynews.co.zw/feed/', category: 'general', enabled: true },
+  { name: 'ZimEye', url: 'https://www.zimeye.net/feed/', category: 'general', enabled: true },
+  { name: 'Zim Morning Post', url: 'https://zimmorningpost.com/feed/', category: 'general', enabled: true },
+  { name: 'Mbare Times', url: 'https://mbaretimes.com/feed/', category: 'general', enabled: false },
+  { name: 'Nehanda Radio', url: 'https://nehandaradio.com/feed/', category: 'general', enabled: false },
+  { name: 'Pindula News', url: 'https://news.pindula.co.zw/feed/', category: 'general', enabled: false }
 ]
+
+// Validation schemas for request parameters
+const VALIDATION_SCHEMAS = {
+  feeds: {
+    category: {
+      type: 'string',
+      enum: ['politics', 'economy', 'business', 'sports', 'harare', 'agriculture', 
+             'technology', 'health', 'education', 'entertainment', 'environment', 
+             'crime', 'international', 'lifestyle', 'finance', 'general']
+    },
+    limit: {
+      type: 'integer',
+      minimum: 1,
+      maximum: 100,
+      default: 50
+    },
+    priority: {
+      type: 'boolean'
+    }
+  }
+}
+
+// Define CATEGORIES constant for SSR
+const CATEGORIES = [
+  { id: 'all', label: 'All News', icon: '📰', primary: true },
+  { id: 'politics', label: 'Politics', icon: '🏛️', primary: true },
+  { id: 'economy', label: 'Economy', icon: '💰', primary: true },
+  { id: 'business', label: 'Business', icon: '💼', primary: true },
+  { id: 'sports', label: 'Sports', icon: '⚽', primary: true },
+  { id: 'harare', label: 'Harare', icon: '🏙️', primary: true },
+  { id: 'agriculture', label: 'Agriculture', icon: '🌾', primary: true },
+  { id: 'technology', label: 'Technology', icon: '💻', primary: false },
+  { id: 'health', label: 'Health', icon: '🏥', primary: false },
+  { id: 'education', label: 'Education', icon: '🎓', primary: false },
+  { id: 'entertainment', label: 'Entertainment', icon: '🎭', primary: false },
+  { id: 'environment', label: 'Environment', icon: '🌍', primary: false },
+  { id: 'crime', label: 'Crime', icon: '🚔', primary: false },
+  { id: 'international', label: 'International', icon: '🌐', primary: false },
+  { id: 'lifestyle', label: 'Lifestyle', icon: '✨', primary: false },
+  { id: 'finance', label: 'Finance', icon: '💳', primary: false }
+]
+
+// SEO-friendly HTML template for server-side rendering
+function generateSEOHTML(feeds, category = 'all', searchQuery = '') {
+  const categoryInfo = category !== 'all' 
+    ? CATEGORIES.find(cat => cat.id === category) 
+    : { label: 'All News', id: 'all' }
+  
+  // Generate dynamic metadata based on feeds
+  const uniqueSources = [...new Set(feeds.map(feed => feed.source))]
+  const popularCategories = [...new Set(feeds.slice(0, 10).map(feed => feed.category))]
+  
+  let title = 'Harare Metro - Zimbabwe News Aggregator'
+  let description = 'Stay informed with the latest news from Zimbabwe. '
+  let keywords = [
+    // General Zimbabwe terms
+    'Zimbabwe news',
+    'Harare news',
+    'Bulawayo news',
+    'Zimbabwe politics',
+    'Zimbabwe economy',
+    'Zimbabwe business',
+    'Zimbabwe sports',
+    'Zimbabwe technology',
+    
+    // Major news sources
+    'Herald Zimbabwe',
+    'NewsDay Zimbabwe',
+    'Chronicle Zimbabwe',
+    'ZBC News',
+    'Business Weekly Zimbabwe',
+    'Techzim',
+    'The Standard Zimbabwe',
+    'ZimLive',
+    'NewZimbabwe',
+    'The Sunday Mail',
+    '263Chat',
+    'iHarare',
+    'Bulawayo24',
+    'Zimbabwe Situation',
+    'ZW News',
+    'My Zimbabwe',
+    'NewsDzeZimbabwe',
+    'Daily News Zimbabwe',
+    'ZimEye',
+    'Zim Morning Post',
+    'Mbare Times',
+    'Nehanda Radio',
+    'Pindula News',
+    
+    // Additional relevant terms
+    'Zimbabwe breaking news',
+    'Zimbabwe latest news',
+    'Zimbabwe today',
+    'Zimbabwe headlines',
+    'Zimbabwe news today',
+    'Zim news',
+    'Zimbabwean news',
+    'news Zimbabwe',
+    'Zimbabwe news online',
+    'Zimbabwe news live',
+    'Zimbabwe news 24/7',
+    'Zimbabwe independent news',
+    'Zimbabwe diaspora news',
+    'Zimbabwe entertainment news',
+    'Zimbabwe financial news'
+  ]
+
+  if (category !== 'all') {
+    title = `${categoryInfo.label} News Zimbabwe | Harare Metro`
+    description = `Latest ${categoryInfo.label.toLowerCase()} news and updates from Zimbabwe. `
+    keywords.unshift(`Zimbabwe ${categoryInfo.label.toLowerCase()}`)
+    keywords.unshift(`${categoryInfo.label} news Zimbabwe`)
+  }
+
+  if (searchQuery) {
+    title = `Search: ${searchQuery} | Harare Metro`
+    description = `Search results for "${searchQuery}" in Zimbabwe news. `
+  }
+
+  description += `Real-time aggregation from ${uniqueSources.slice(0, 3).join(', ')} and more trusted local sources.`
+  
+  // Add sources and categories to keywords
+  keywords.push(...uniqueSources)
+  popularCategories.forEach(cat => {
+    if (cat !== 'general') {
+      keywords.push(`Zimbabwe ${cat}`)
+    }
+  })
+
+  const keywordsString = keywords.join(', ')
+  const canonicalUrl = `https://www.hararemetro.co.zw${category !== 'all' ? `/?category=${category}` : ''}${searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : ''}`
+
+  // Generate structured data
+  const websiteStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Harare Metro",
+    "description": "Zimbabwe News Aggregator - Real-time news from trusted local sources",
+    "url": "https://www.hararemetro.co.zw",
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": "https://www.hararemetro.co.zw/?search={search_term_string}"
+      },
+      "query-input": "required name=search_term_string"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Harare Metro",
+      "alternateName": "HM News",
+      "url": "https://www.hararemetro.co.zw",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://www.hararemetro.co.zw/logo.png",
+        "width": 512,
+        "height": 512
+      }
+    }
+  }
+
+  const newsArticles = feeds.slice(0, 5).map(article => ({
+    "@type": "NewsArticle",
+    "headline": article.title,
+    "description": article.description || "",
+    "datePublished": article.pubDate,
+    "author": {
+      "@type": "Organization",
+      "name": article.source
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": article.source
+    },
+    "url": article.link,
+    "articleSection": article.category
+  }))
+
+  const newsListStructuredData = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    "name": "Latest Zimbabwe News",
+    "itemListElement": newsArticles.map((article, index) => ({
+      "@type": "ListItem",
+      "position": index + 1,
+      "item": article
+    }))
+  }
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  
+  <!-- Primary Meta Tags -->
+  <title>${title}</title>
+  <meta name="title" content="${title}" />
+  <meta name="description" content="${description}" />
+  <meta name="keywords" content="${keywordsString}" />
+  <meta name="author" content="Nyuchi Web Services" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="googlebot" content="index, follow" />
+  <link rel="canonical" href="${canonicalUrl}" />
+  
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="${canonicalUrl}" />
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="${description}" />
+  <meta property="og:image" content="https://www.hararemetro.co.zw/og-image.png" />
+  <meta property="og:site_name" content="Harare Metro" />
+  <meta property="og:locale" content="en_ZW" />
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image" />
+  <meta property="twitter:url" content="${canonicalUrl}" />
+  <meta property="twitter:title" content="${title}" />
+  <meta property="twitter:description" content="${description}" />
+  <meta property="twitter:image" content="https://www.hararemetro.co.zw/twitter-image.png" />
+  <meta property="twitter:site" content="@hararemetro" />
+  
+  <!-- Geo Tags -->
+  <meta name="geo.region" content="ZW" />
+  <meta name="geo.placename" content="Harare" />
+  <meta name="geo.position" content="-17.8292;31.0522" />
+  <meta name="ICBM" content="-17.8292, 31.0522" />
+  
+  <!-- Theme Color -->
+  <meta name="theme-color" content="#059669" />
+  <meta name="msapplication-TileColor" content="#059669" />
+  
+  <!-- Favicons -->
+  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  
+  <!-- Structured Data -->
+  <script type="application/ld+json">
+    ${JSON.stringify(websiteStructuredData)}
+  </script>
+  <script type="application/ld+json">
+    ${JSON.stringify(newsListStructuredData)}
+  </script>
+  
+  <!-- Preconnect to improve performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  
+  <style>
+    body { font-family: Georgia, 'Times New Roman', Times, serif; margin: 0; padding: 20px; background: #f9fafb; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .header h1 { margin: 0; color: #111827; }
+    .header p { margin: 10px 0 0 0; color: #6b7280; }
+    .stats { display: flex; gap: 20px; margin-top: 15px; }
+    .stat { font-size: 14px; color: #374151; }
+    .article { background: white; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .article h2 { margin: 0 0 10px 0; color: #111827; font-size: 20px; }
+    .article-meta { font-size: 14px; color: #6b7280; margin-bottom: 10px; }
+    .article-description { color: #374151; line-height: 1.6; margin-bottom: 10px; }
+    .article-footer { display: flex; justify-content: space-between; align-items: center; }
+    .category { background: #f3f4f6; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #374151; }
+    .read-more { color: #059669; text-decoration: none; font-weight: 500; }
+    .priority { background: linear-gradient(to right, #10b981, #fbbf24); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 8px; }
+    @media (max-width: 640px) { 
+      body { padding: 10px; }
+      .stats { flex-direction: column; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Harare Metro - Zimbabwe News Aggregator</h1>
+      <p>${description}</p>
+      <div class="stats">
+        <span class="stat">📰 ${feeds.length} Articles</span>
+        <span class="stat">⭐ ${feeds.filter(f => f.priority).length} Priority</span>
+        <span class="stat">📁 ${new Set(feeds.map(f => f.category)).size} Categories</span>
+        <span class="stat">📡 ${uniqueSources.length} Sources</span>
+      </div>
+    </div>
+    
+    <noscript>
+      <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+        <p style="margin: 0; color: #92400e;">
+          JavaScript is disabled. You're viewing a basic version of Harare Metro. 
+          Enable JavaScript for the full interactive experience with real-time updates, 
+          search, and filtering capabilities.
+        </p>
+      </div>
+    </noscript>
+    
+    ${feeds.slice(0, 10).map(article => `
+      <article class="article">
+        <div class="article-meta">
+          <strong>${article.source}</strong> • ${new Date(article.pubDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+        </div>
+        <h2>
+          ${article.title}
+          ${article.priority ? '<span class="priority">🇿🇼 Priority</span>' : ''}
+        </h2>
+        ${article.description ? `<p class="article-description">${article.description}</p>` : ''}
+        <div class="article-footer">
+          <span class="category">${article.category}</span>
+          <a href="${article.link}" class="read-more" target="_blank" rel="noopener noreferrer">
+            Read Full Article →
+          </a>
+        </div>
+      </article>
+    `).join('')}
+    
+    <div style="text-align: center; margin-top: 40px; color: #6b7280;">
+      <p>Showing latest 10 articles. Enable JavaScript to view all ${feeds.length} articles with filtering and search.</p>
+      <p style="margin-top: 20px;">
+        Made with ❤️ for Zimbabwe by 
+        <a href="https://www.nyuchi.com" style="color: #059669;" target="_blank" rel="noopener noreferrer">
+          Nyuchi Web Services
+        </a>
+      </p>
+    </div>
+  </div>
+  
+  <!-- Load React app -->
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>`
+}
+
+// Check if request is from a bot/crawler
+function isBot(userAgent) {
+  const botPatterns = [
+    'googlebot', 'bingbot', 'slurp', 'duckduckbot', 'baiduspider', 
+    'yandexbot', 'facebookexternalhit', 'twitterbot', 'linkedinbot',
+    'whatsapp', 'telegram', 'slack', 'discord', 'pinterest', 'applebot',
+    'semrushbot', 'ahrefsbot', 'mj12bot', 'dotbot'
+  ]
+  
+  const ua = userAgent.toLowerCase()
+  return botPatterns.some(bot => ua.includes(bot))
+}
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url)
-    console.log('Request:', url.pathname)
+    const userAgent = request.headers.get('User-Agent') || ''
+    
+    console.log('Request:', url.pathname, 'User-Agent:', userAgent)
     
     try {
       // Handle API routes first (highest priority)
       if (url.pathname.startsWith('/api/')) {
         console.log('Handling API request:', url.pathname)
         return await handleApiRequest(request, env, ctx)
+      }
+
+      // For bots and crawlers, or when specifically requested, serve SSR version
+      if (isBot(userAgent) || url.searchParams.get('_escaped_fragment_') !== null) {
+        console.log('Bot detected, serving SSR version')
+        
+        try {
+          // Get feeds for SSR
+          const category = url.searchParams.get('category') || 'all'
+          const searchQuery = url.searchParams.get('search') || ''
+          
+          // Fetch feeds from KV storage or API
+          let feeds = []
+          try {
+            const cachedFeeds = await env.NEWS_STORAGE.get('cached_feeds')
+            if (cachedFeeds) {
+              feeds = JSON.parse(cachedFeeds)
+            }
+          } catch (e) {
+            console.error('Failed to get cached feeds:', e)
+          }
+          
+          // Filter feeds based on category and search
+          if (category !== 'all') {
+            feeds = feeds.filter(feed => feed.category === category)
+          }
+          
+          if (searchQuery) {
+            const query = searchQuery.toLowerCase()
+            feeds = feeds.filter(feed => 
+              feed.title.toLowerCase().includes(query) ||
+              feed.description?.toLowerCase().includes(query) ||
+              feed.source.toLowerCase().includes(query)
+            )
+          }
+          
+          // Generate SSR HTML
+          const html = generateSEOHTML(feeds, category, searchQuery)
+          
+          return new Response(html, {
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              'Cache-Control': 'public, max-age=3600',
+              'X-Robots-Tag': 'index, follow'
+            }
+          })
+        } catch (error) {
+          console.error('SSR Error:', error)
+          // Fall back to regular SPA if SSR fails
+        }
       }
 
       // Try to serve static assets from KV
@@ -305,7 +687,7 @@ async function handleApiRequest(request, env, ctx) {
           totalSources: RSS_SOURCES.length,
           categories: Object.keys(CATEGORY_KEYWORDS).length,
           message: 'Harare Metro API is healthy!',
-          features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'global-categories', 'api-validation'],
+          features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'global-categories', 'api-validation', 'ssr-seo'],
           documentation: {
             schema: '/api/schema',
             swagger: 'https://petstore.swagger.io/?url=' + encodeURIComponent(request.url.replace('/api/health', '/api/schema'))

@@ -2,7 +2,7 @@
   "name": "harare-metro",
   "version": "1.0.0",
   "type": "module",
-  "description": "Harare Metro - News aggrgator for people in and aroudn Zimbabwe",
+  "description": "Harare Metro - News aggregator for people in and around Zimbabwe",
   "scripts": {
     "dev": "vite",
     "dev:worker": "wrangler dev",
@@ -24,7 +24,8 @@
     "@heroicons/react": "^2.2.0",
     "fast-xml-parser": "^4.5.3",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-helmet-async": "^2.0.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250531.0",
@@ -41,8 +42,15 @@
     "rss",
     "cloudflare",
     "worker",
-    "react"
+    "react",
+    "seo",
+    "news-aggregator",
+    "harare",
+    "herald",
+    "newsday",
+    "chronicle",
+    "zbc"
   ],
-  "author": "Bryan Fawcett",
+  "author": "Nyuchi Web Services",
   "license": "MIT"
 }

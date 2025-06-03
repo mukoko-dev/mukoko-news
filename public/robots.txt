@@ -1,0 +1,18 @@
+# Harare Metro Robots.txt
+# https://www.hararemetro.co.zw
+
+User-agent: *
+Allow: /
+Disallow: /api/
+Allow: /api/schema
+
+# Sitemaps
+Sitemap: https://www.hararemetro.co.zw/sitemap.xml
+
+# Crawl-delay
+Crawl-delay: 1
+
+# Zimbabwe news aggregator - optimized for search engines
+# Categories: politics, economy, business, sports, harare, agriculture, 
+# technology, health, education, entertainment, environment, crime, 
+# international, lifestyle, finance
