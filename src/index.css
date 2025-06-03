@@ -2,23 +2,99 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Performance optimizations for low-end devices */
-* {
-  /* Reduce paint complexity */
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  /* Optimize scrolling */
-  -webkit-overflow-scrolling: touch;
+/* Global Typography - Georgia serif to match branding */
+@layer base {
+  html {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+  }
+  
+  body {
+    margin: 0;
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-display: swap;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    line-height: 1.6;
+  }
+
+  /* Better typography hierarchy */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-weight: 700;
+    line-height: 1.3;
+  }
+
+  /* Improve reading for all text */
+  p, span, div {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+  }
+
+  /* Better button typography */
+  button {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-weight: 500;
+  }
+
+  /* Input typography */
+  input, textarea {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+  }
 }
 
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  /* Optimize for low-end devices */
-  font-display: swap;
-  text-rendering: optimizeSpeed;
+/* Custom font utility classes */
+@layer utilities {
+  .font-serif {
+    font-family: Georgia, 'Times New Roman', Times, serif;
+  }
+  
+  /* Better text sizes for readability */
+  .text-article-title {
+    font-size: 1.25rem;
+    line-height: 1.4;
+    font-weight: 700;
+  }
+  
+  .text-article-description {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+  
+  .text-source {
+    font-size: 0.875rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
+  }
+
+  /* Enhanced contrast for accessibility */
+  .text-high-contrast {
+    color: #000000;
+  }
+  
+  .dark .text-high-contrast {
+    color: #ffffff;
+  }
+  
+  .text-medium-contrast {
+    color: #374151;
+  }
+  
+  .dark .text-medium-contrast {
+    color: #d1d5db;
+  }
+  
+  .text-low-contrast {
+    color: #6b7280;
+  }
+  
+  .dark .text-low-contrast {
+    color: #9ca3af;
+  }
+}
+
+/* Performance optimizations for low-end devices */
+* {
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Hide scrollbar for category slider */
@@ -31,13 +107,14 @@ body {
   display: none;  /* Chrome, Safari and Opera */
 }
 
-/* Optimized line clamping */
+/* Improved line clamping with better spacing */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  line-height: 1.5;
 }
 
 .line-clamp-3 {
@@ -46,6 +123,7 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
   word-break: break-word;
+  line-height: 1.6;
 }
 
 /* Performance improvements for animations */
@@ -60,10 +138,11 @@ body {
     perspective: 1000px;
   }
   
-  /* Optimize hover effects for mobile */
+  /* Better hover effects */
   @media (hover: hover) {
     .hover-lift:hover {
-      transform: translateY(-2px);
+      transform: translateY(-4px);
+      transition: transform 0.2s ease-out;
     }
   }
   
@@ -77,11 +156,16 @@ body {
   }
 }
 
-/* Critical loading styles */
+/* Better loading skeleton */
 .loading-skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
   background-size: 200% 100%;
   animation: loading 1.5s infinite;
+}
+
+.dark .loading-skeleton {
+  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
+  background-size: 200% 100%;
 }
 
 @keyframes loading {
@@ -101,13 +185,183 @@ img {
   decoding: async;
 }
 
-/* Focus styles for accessibility */
-.focus-ring:focus {
-  outline: 2px solid #059669;
+/* Enhanced focus styles for accessibility */
+.focus-ring:focus,
+button:focus,
+input:focus,
+a:focus {
+  outline: 2px solid #374151;
   outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.dark .focus-ring:focus,
+.dark button:focus,
+.dark input:focus,
+.dark a:focus {
+  outline-color: #d1d5db;
+}
+
+/* Better button states */
+button {
+  transition: all 0.2s ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Category button improvements */
+.category-button {
+  transition: all 0.2s ease;
+  min-height: 44px; /* Better touch targets */
+  font-weight: 500;
+}
+
+.category-button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.dark .category-button:hover {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}
+
+/* Card improvements */
+.article-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.article-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
+}
+
+.dark .article-card:hover {
+  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.3);
+}
+
+/* Better spacing utilities */
+.section-spacing {
+  padding: 1.5rem 0;
+}
+
+@media (min-width: 640px) {
+  .section-spacing {
+    padding: 2rem 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  .section-spacing {
+    padding: 2.5rem 0;
+  }
+}
+
+/* Improved container max-width for better readability */
+.content-container {
+  max-width: 90rem; /* Wider for better use of space */
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .content-container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .content-container {
+    padding: 0 2rem;
+  }
+}
+
+/* Typography scale for better hierarchy */
+.text-heading-1 {
+  font-size: 2.25rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.text-heading-2 {
+  font-size: 1.875rem;
+  line-height: 1.25;
+  font-weight: 700;
+}
+
+.text-heading-3 {
+  font-size: 1.5rem;
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+.text-body-large {
+  font-size: 1.125rem;
+  line-height: 1.6;
+}
+
+.text-body {
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.text-body-small {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.text-caption {
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+/* Better mobile touch targets */
+@media (max-width: 768px) {
+  button, 
+  .category-button,
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .category-button {
+    border: 2px solid currentColor;
+  }
+  
+  .article-card {
+    border: 2px solid currentColor;
+  }
 }
 
 /* Minimize reflows */
 .stable-layout {
   contain: layout style paint;
+}
+
+/* Print styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  
+  .article-card {
+    border: 1px solid #ccc !important;
+    page-break-inside: avoid;
+    margin-bottom: 1rem;
+  }
 }

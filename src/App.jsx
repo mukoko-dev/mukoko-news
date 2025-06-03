@@ -122,35 +122,39 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchActive, setIsSearchActive] = useState(false)
 
-  // Zimbabwe-inspired color schemes (optimized for performance)
+  // Clean monochrome color schemes with better contrast
   const themes = {
     light: {
-      bg: 'bg-gradient-to-br from-green-500 via-yellow-400 to-red-500',
+      bg: 'bg-gray-50',
       headerBg: 'bg-white/95',
-      cardBg: 'bg-white/95',
-      statsBg: 'bg-white/20',
-      footerBg: 'bg-white/20',
+      cardBg: 'bg-white',
+      statsBg: 'bg-gray-100',
+      footerBg: 'bg-gray-800',
       text: 'text-gray-900',
-      textSecondary: 'text-gray-600',
+      textSecondary: 'text-gray-700',
       textLight: 'text-white',
       textMuted: 'text-gray-500',
-      border: 'border-white/30',
-      accent: 'bg-green-600 hover:bg-green-700',
-      accentText: 'text-green-600 hover:text-green-700'
+      border: 'border-gray-200',
+      accent: 'bg-gray-900 hover:bg-gray-800',
+      accentText: 'text-gray-900 hover:text-gray-700',
+      categoryButton: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
+      categoryButtonActive: 'bg-gray-900 text-white border-gray-900'
     },
     dark: {
-      bg: 'bg-gradient-to-br from-gray-900 via-green-900 to-gray-800',
-      headerBg: 'bg-gray-900/95',
-      cardBg: 'bg-gray-800/95',
-      statsBg: 'bg-gray-800/40',
-      footerBg: 'bg-gray-900/40',
+      bg: 'bg-gray-900',
+      headerBg: 'bg-gray-800/95',
+      cardBg: 'bg-gray-800',
+      statsBg: 'bg-gray-700',
+      footerBg: 'bg-gray-800',
       text: 'text-white',
-      textSecondary: 'text-gray-300',
+      textSecondary: 'text-gray-200',
       textLight: 'text-white',
       textMuted: 'text-gray-400',
-      border: 'border-gray-700/50',
-      accent: 'bg-green-600 hover:bg-green-500',
-      accentText: 'text-green-400 hover:text-green-300'
+      border: 'border-gray-600',
+      accent: 'bg-white hover:bg-gray-100',
+      accentText: 'text-white hover:text-gray-200',
+      categoryButton: 'bg-gray-700 border border-gray-600 text-gray-200 hover:bg-gray-600',
+      categoryButtonActive: 'bg-white text-gray-900 border-white'
     }
   }
 
@@ -304,11 +308,11 @@ function App() {
 
   if (loading && feeds.length === 0) {
     return (
-      <div className={`min-h-screen ${currentColors.bg} flex items-center justify-center`}>
-        <div className="text-center text-white px-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-white border-t-transparent mx-auto mb-4"></div>
-          <h2 className="text-lg font-semibold mb-2">Loading Harare Metro News</h2>
-          <p className="text-white/80 text-sm">Connecting to local news sources...</p>
+      <div className={`min-h-screen ${currentColors.bg} flex items-center justify-center font-serif`}>
+        <div className={`text-center ${currentColors.text} px-4`}>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-gray-900 mx-auto mb-6"></div>
+          <h2 className="text-xl font-semibold mb-3">Loading Zimbabwe News</h2>
+          <p className={`${currentColors.textMuted} text-base`}>Connecting to local news sources...</p>
         </div>
       </div>
     )
@@ -316,17 +320,17 @@ function App() {
 
   if (error && feeds.length === 0) {
     return (
-      <div className={`min-h-screen ${currentColors.bg} flex items-center justify-center p-4`}>
-        <div className="text-center max-w-sm mx-auto">
-          <div className={`${currentColors.cardBg} backdrop-blur-sm rounded-xl p-6 shadow-xl`}>
-            <div className="text-red-500 text-4xl mb-4">❌</div>
-            <h2 className={`text-lg font-semibold ${currentColors.text} mb-2`}>
+      <div className={`min-h-screen ${currentColors.bg} flex items-center justify-center p-4 font-serif`}>
+        <div className="text-center max-w-md mx-auto">
+          <div className={`${currentColors.cardBg} rounded-xl p-8 shadow-xl ${currentColors.border} border`}>
+            <div className="text-red-500 text-5xl mb-6">❌</div>
+            <h2 className={`text-xl font-semibold ${currentColors.text} mb-3`}>
               Failed to Load News
             </h2>
-            <p className={`${currentColors.textSecondary} mb-4 text-sm`}>{error}</p>
+            <p className={`${currentColors.textSecondary} mb-6 text-base`}>{error}</p>
             <button 
               onClick={loadFeeds}
-              className={`${currentColors.accent} text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm`}
+              className={`${currentColors.accent} text-white px-6 py-3 rounded-lg transition-colors font-medium text-base`}
             >
               Try Again
             </button>
@@ -337,32 +341,28 @@ function App() {
   }
 
   return (
-    <div className={`min-h-screen ${currentColors.bg} flex flex-col`}>
-      {/* Header - Updated with Logo */}
-      <header className={`${currentColors.headerBg} backdrop-blur-sm shadow-lg sticky top-0 z-50`}>
+    <div className={`min-h-screen ${currentColors.bg} flex flex-col font-serif`}>
+      {/* Header - Reduced padding */}
+      <header className={`${currentColors.headerBg} backdrop-blur-sm shadow-lg sticky top-0 z-50 ${currentColors.border} border-b`}>
         <div className="w-full px-3 sm:px-4">
-          <div className="flex items-center justify-between h-14 sm:h-16">
+          <div className="flex items-center justify-between h-12 sm:h-14">
             {/* Logo Section */}
             <div className="flex items-center space-x-2 min-w-0">
-              {/* Use compact logo on mobile, horizontal on larger screens */}
-              <div className="hidden sm:block">
+              {/* Use horizontal logo on tablet, desktop and larger (769px and up) */}
+              <div className="hidden md:block">
                 <Logo 
                   variant="horizontal" 
                   theme={getCurrentTheme()} 
                   size="sm" 
                 />
               </div>
-              <div className="sm:hidden">
+              {/* Use compact logo on mobile only (768px and below) */}
+              <div className="md:hidden">
                 <Logo 
                   variant="compact" 
                   theme={getCurrentTheme()} 
                   size="sm" 
                 />
-              </div>
-              <div className="min-w-0 ml-2 sm:hidden">
-                <p className={`text-xs ${currentColors.textSecondary}`}>
-                  Harare Metro
-                </p>
               </div>
             </div>
             
@@ -370,24 +370,24 @@ function App() {
               {/* Search Button */}
               <button
                 onClick={handleSearchToggle}
-                className={`p-2 rounded-md transition-colors ${
+                className={`p-2 rounded-lg transition-colors ${
                   isSearchActive 
-                    ? 'bg-green-500 text-white' 
-                    : `${currentColors.textMuted} hover:text-green-400`
+                    ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' 
+                    : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
                 }`}
                 title="Search news"
               >
                 <MagnifyingGlassIcon className="h-4 w-4" />
               </button>
               
-              {/* Theme Controls - Compressed for mobile */}
-              <div className="flex items-center bg-white/10 backdrop-blur-sm rounded-lg p-0.5">
+              {/* Theme Controls */}
+              <div className={`flex items-center ${currentColors.cardBg} ${currentColors.border} border rounded-lg p-0.5`}>
                 <button
                   onClick={() => changeTheme('light')}
                   className={`p-1.5 rounded transition-colors ${
                     theme === 'light' 
-                      ? 'bg-white/20 text-yellow-400' 
-                      : `${currentColors.textMuted} hover:text-yellow-400`
+                      ? 'bg-yellow-100 text-yellow-600' 
+                      : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
                   }`}
                 >
                   <SunIcon className="h-3 w-3" />
@@ -396,8 +396,8 @@ function App() {
                   onClick={() => changeTheme('dark')}
                   className={`p-1.5 rounded transition-colors ${
                     theme === 'dark' 
-                      ? 'bg-white/20 text-blue-400' 
-                      : `${currentColors.textMuted} hover:text-blue-400`
+                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' 
+                      : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
                   }`}
                 >
                   <MoonIcon className="h-3 w-3" />
@@ -406,8 +406,8 @@ function App() {
                   onClick={() => changeTheme('system')}
                   className={`p-1.5 rounded transition-colors ${
                     theme === 'system' 
-                      ? 'bg-white/20 text-green-400' 
-                      : `${currentColors.textMuted} hover:text-green-400`
+                      ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300' 
+                      : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
                   }`}
                 >
                   <ComputerDesktopIcon className="h-3 w-3" />
@@ -418,7 +418,7 @@ function App() {
               <button
                 onClick={loadFeeds}
                 disabled={loading}
-                className={`p-2 rounded-md transition-colors ${currentColors.textMuted} hover:text-green-400 disabled:opacity-50`}
+                className={`p-2 rounded-lg transition-colors ${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50`}
                 title="Refresh news"
               >
                 <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -428,10 +428,10 @@ function App() {
         </div>
       </header>
 
-      <div className="flex-1 max-w-6xl mx-auto w-full px-3 sm:px-4 py-3 sm:py-4">
+      <div className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-5">
         {/* Search Bar */}
         {isSearchActive && (
-          <div className={`${currentColors.cardBg} backdrop-blur-sm rounded-lg p-3 mb-4 shadow-lg`}>
+          <div className={`${currentColors.statsBg} rounded-xl p-3 mb-4 ${currentColors.border} border`}>
             <div className="relative">
               <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${currentColors.textMuted}`} />
               <input
@@ -439,7 +439,7 @@ function App() {
                 placeholder="Search news..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white/90 ${currentColors.text} placeholder-gray-500 text-sm`}
+                className={`w-full pl-10 pr-10 py-2 bg-transparent ${currentColors.text} placeholder-gray-400 text-sm font-serif focus:outline-none`}
                 autoFocus
               />
               {searchQuery && (
@@ -459,21 +459,21 @@ function App() {
           </div>
         )}
 
-        {/* Stats - Compact for mobile */}
-        <div className={`${currentColors.statsBg} backdrop-blur-md rounded-lg p-3 mb-4 ${currentColors.textLight}`}>
-          <div className="flex items-center justify-between text-xs sm:text-sm">
-            <div className="flex items-center space-x-3">
-              <span className="flex items-center space-x-1">
-                <NewspaperIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span>{filteredFeeds.length}</span>
+        {/* Stats - Reduced padding */}
+        <div className={`${currentColors.statsBg} rounded-xl p-3 mb-4 ${currentColors.border} border`}>
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center space-x-4">
+              <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
+                <NewspaperIcon className="h-4 w-4" />
+                <span>{filteredFeeds.length} Articles</span>
               </span>
-              <span className="flex items-center space-x-1">
-                <StarIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span>{priorityCount}</span>
+              <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
+                <StarIcon className="h-4 w-4" />
+                <span>{priorityCount} Priority</span>
               </span>
             </div>
             {lastUpdated && (
-              <span className="flex items-center space-x-1 opacity-75">
+              <span className={`flex items-center space-x-1.5 ${currentColors.textMuted}`}>
                 <ClockIcon className="h-3 w-3" />
                 <span className="hidden sm:inline">Updated </span>
                 <span>{formatDate(lastUpdated)}</span>
@@ -482,19 +482,18 @@ function App() {
           </div>
         </div>
 
-        {/* Category Filters - Horizontal Scroll on Mobile */}
-        <div className="mb-4 sm:mb-6">
-          {/* Scrollable Categories */}
+        {/* Category Filters - Reduced padding */}
+        <div className="mb-5">
           <div className="overflow-x-auto scrollbar-hide pb-2">
             <div className="flex gap-2 min-w-max">
               {categoriesToShow.map((category) => (
                 <button
                   key={category.id}
                   onClick={() => setSelectedCategory(category.id)}
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-full text-xs sm:text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                  className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
                     selectedCategory === category.id
-                      ? `${currentColors.accent} text-white shadow-lg`
-                      : `${currentColors.cardBg} ${currentColors.text} hover:shadow-md backdrop-blur-sm`
+                      ? currentColors.categoryButtonActive
+                      : currentColors.categoryButton
                   }`}
                 >
                   <span className="text-sm">{category.icon}</span>
@@ -508,31 +507,31 @@ function App() {
           {secondaryCategories.length > 0 && (
             <button
               onClick={() => setShowAllCategories(!showAllCategories)}
-              className={`${currentColors.textLight} hover:text-white text-xs sm:text-sm font-medium opacity-80 hover:opacity-100 transition-opacity mt-2`}
+              className={`${currentColors.textMuted} hover:${currentColors.text} text-sm font-medium transition-colors mt-2`}
             >
-              {showAllCategories ? 'Show Less' : `+${secondaryCategories.length} More`}
+              {showAllCategories ? '← Show Less Categories' : `+ Show ${secondaryCategories.length} More Categories`}
             </button>
           )}
         </div>
 
         {/* Error Message */}
         {error && feeds.length > 0 && (
-          <div className="bg-red-500/90 backdrop-blur-md text-white p-3 rounded-lg mb-4">
-            <h3 className="font-semibold mb-1 text-sm">Error Refreshing</h3>
-            <p className="text-xs opacity-90">{error}</p>
+          <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg mb-6 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200">
+            <h3 className="font-semibold mb-2">Error Refreshing</h3>
+            <p className="text-sm">{error}</p>
           </div>
         )}
 
-        {/* Content - Optimized Grid */}
+        {/* Content - Better spacing and larger text */}
         {filteredFeeds.length === 0 ? (
-          <div className={`${currentColors.statsBg} backdrop-blur-md ${currentColors.textLight} p-6 rounded-lg text-center`}>
-            <div className="text-3xl mb-2">
+          <div className={`${currentColors.cardBg} ${currentColors.border} border p-12 rounded-xl text-center`}>
+            <div className="text-6xl mb-4">
               {searchQuery ? '🔍' : '📰'}
             </div>
-            <h3 className="text-sm font-semibold mb-1">
+            <h3 className={`text-xl font-semibold ${currentColors.text} mb-2`}>
               {searchQuery ? 'No Search Results' : 'No Articles Found'}
             </h3>
-            <p className="text-xs opacity-75">
+            <p className={`text-base ${currentColors.textMuted}`}>
               {searchQuery 
                 ? `No articles match "${searchQuery}"` 
                 : selectedCategory === 'all' 
@@ -542,8 +541,8 @@ function App() {
             </p>
           </div>
         ) : (
-          <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredFeeds.slice(0, 50).map((article, index) => (
+          <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+            {filteredFeeds.slice(0, 30).map((article, index) => (
               <ArticleCard 
                 key={article.guid || index} 
                 article={article} 
@@ -554,24 +553,24 @@ function App() {
         )}
       </div>
 
-      {/* Footer - Updated */}
-      <footer className={`${currentColors.footerBg} backdrop-blur-sm ${currentColors.border} border-t mt-8`}>
-        <div className="px-3 sm:px-4 py-4 sm:py-6">
+      {/* Footer */}
+      <footer className={`${currentColors.footerBg} ${currentColors.border} border-t mt-12`}>
+        <div className="px-4 sm:px-6 py-8">
           <div className="text-center text-white max-w-4xl mx-auto">
-            <div className="flex items-center justify-center mb-2">
-              <span>Made with</span>
-              <HeartIcon className="h-4 w-4 mx-1 text-red-400" />
-              <span>for Zimbabwe</span>
+            <div className="flex items-center justify-center mb-3">
+              <span className="text-base">Made with</span>
+              <HeartIcon className="h-5 w-5 mx-2 text-red-400" />
+              <span className="text-base">for Zimbabwe</span>
             </div>
             <a 
               href="https://www.nyuchi.com" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="text-green-300 hover:text-white transition-colors text-sm"
+              className="text-gray-300 hover:text-white transition-colors text-base font-medium"
             >
               Nyuchi Web Services
             </a>
-            <p className="text-xs opacity-80 mt-1">
+            <p className="text-sm text-gray-400 mt-2">
               © {new Date().getFullYear()} Harare Metro. All rights reserved
             </p>
           </div>
@@ -585,13 +584,13 @@ function ArticleCard({ article, currentColors }) {
   const categoryInfo = CATEGORIES.find(cat => cat.id === article.category)
   
   return (
-    <article className={`${currentColors.cardBg} backdrop-blur-sm rounded-lg shadow-lg p-3 sm:p-4 hover:shadow-xl transition-all duration-300 hover:transform hover:-translate-y-0.5 ${currentColors.border} border`}>
-      {/* Article Header - Compact */}
-      <div className="flex items-center justify-between mb-2 gap-2">
-        <span className={`text-xs font-semibold ${currentColors.accentText} truncate`}>
+    <article className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm p-6 hover:shadow-md transition-all duration-300 hover:transform hover:-translate-y-1`}>
+      {/* Article Header - Better spacing */}
+      <div className="flex items-center justify-between mb-4 gap-3">
+        <span className={`text-sm font-semibold ${currentColors.accentText} truncate`}>
           {article.source}
         </span>
-        <div className={`flex items-center text-xs ${currentColors.textMuted}`}>
+        <div className={`flex items-center text-sm ${currentColors.textMuted}`}>
           <span className="whitespace-nowrap">
             {new Date(article.pubDate).toLocaleDateString('en-US', {
               month: 'short',
@@ -601,27 +600,27 @@ function ArticleCard({ article, currentColors }) {
         </div>
       </div>
       
-      {/* Title with Priority Badge - Optimized */}
-      <h2 className={`text-sm sm:text-base font-semibold ${currentColors.text} mb-2 sm:mb-3 line-clamp-2 leading-tight`}>
+      {/* Title - Much larger and better spacing */}
+      <h2 className={`text-lg sm:text-xl font-bold ${currentColors.text} mb-4 leading-tight`}>
         {article.title}
         {article.priority && (
-          <span className="ml-1 inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
-            🇿🇼
+          <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
+            🇿🇼 Priority
           </span>
         )}
       </h2>
       
-      {/* Description - Mobile optimized */}
+      {/* Description - Larger text */}
       {article.description && (
-        <p className={`${currentColors.textSecondary} text-xs sm:text-sm mb-3 line-clamp-2 sm:line-clamp-3 leading-relaxed`}>
+        <p className={`${currentColors.textSecondary} text-base mb-4 leading-relaxed line-clamp-3`}>
           {article.description}
         </p>
       )}
       
-      {/* Footer - Compact */}
-      <div className="flex items-center justify-between gap-2">
-        <span className={`text-xs px-2 py-1 rounded-full font-medium ${getCategoryColor(article.category)} truncate flex-shrink-0`}>
-          <span className="hidden sm:inline">{categoryInfo?.icon || '📰'} </span>
+      {/* Footer - Better spacing */}
+      <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
+        <span className={`text-sm px-3 py-1.5 rounded-full font-medium ${getCategoryColor(article.category)} truncate flex-shrink-0`}>
+          <span className="mr-1.5">{categoryInfo?.icon || '📰'}</span>
           {article.category}
         </span>
         
@@ -629,10 +628,10 @@ function ArticleCard({ article, currentColors }) {
           href={article.link}
           target="_blank"
           rel="noopener noreferrer"
-          className={`${currentColors.accentText} text-xs font-medium inline-flex items-center group transition-colors`}
+          className={`${currentColors.accentText} text-sm font-medium inline-flex items-center group transition-colors hover:underline`}
         >
-          <span>Read</span>
-          <GlobeAltIcon className="w-3 h-3 ml-0.5 group-hover:translate-x-0.5 transition-transform" />
+          <span>Read Full Article</span>
+          <GlobeAltIcon className="w-4 h-4 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
         </a>
       </div>
     </article>
@@ -640,23 +639,24 @@ function ArticleCard({ article, currentColors }) {
 }
 
 function getCategoryColor(category) {
+  // Zimbabwe flag colors for categories only
   const colors = {
-    politics: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-    economy: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300', 
-    business: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-    sports: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
-    harare: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-    agriculture: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
-    technology: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
-    health: 'bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300',
-    education: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
-    entertainment: 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-300',
-    environment: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-300',
-    crime: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-    international: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
-    lifestyle: 'bg-lime-100 text-lime-700 dark:bg-lime-900/30 dark:text-lime-300',
-    finance: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300',
-    general: 'bg-gray-100 text-gray-700 dark:bg-gray-700/30 dark:text-gray-300'
+    politics: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+    economy: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200', 
+    business: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
+    sports: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
+    harare: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+    agriculture: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+    technology: 'bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-200',
+    health: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+    education: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+    entertainment: 'bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-200',
+    environment: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+    crime: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
+    international: 'bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-200',
+    lifestyle: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
+    finance: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
+    general: 'bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-200'
   }
   return colors[category] || colors.general
 }
