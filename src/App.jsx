@@ -370,7 +370,7 @@ function App() {
               {/* Search Button */}
               <button
                 onClick={handleSearchToggle}
-                className={`p-2 rounded-lg transition-colors ${
+                className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
                   isSearchActive 
                     ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' 
                     : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
@@ -384,7 +384,7 @@ function App() {
               <div className={`flex items-center ${currentColors.cardBg} ${currentColors.border} border rounded-lg p-0.5`}>
                 <button
                   onClick={() => changeTheme('light')}
-                  className={`p-1.5 rounded transition-colors ${
+                  className={`p-1.5 rounded transition-colors flex items-center justify-center ${
                     theme === 'light' 
                       ? 'bg-yellow-100 text-yellow-600' 
                       : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
@@ -394,7 +394,7 @@ function App() {
                 </button>
                 <button
                   onClick={() => changeTheme('dark')}
-                  className={`p-1.5 rounded transition-colors ${
+                  className={`p-1.5 rounded transition-colors flex items-center justify-center ${
                     theme === 'dark' 
                       ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' 
                       : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
@@ -404,7 +404,7 @@ function App() {
                 </button>
                 <button
                   onClick={() => changeTheme('system')}
-                  className={`p-1.5 rounded transition-colors ${
+                  className={`p-1.5 rounded transition-colors flex items-center justify-center ${
                     theme === 'system' 
                       ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300' 
                       : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
@@ -418,7 +418,7 @@ function App() {
               <button
                 onClick={loadFeeds}
                 disabled={loading}
-                className={`p-2 rounded-lg transition-colors ${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50`}
+                className={`p-2 rounded-lg transition-colors flex items-center justify-center ${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50`}
                 title="Refresh news"
               >
                 <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
