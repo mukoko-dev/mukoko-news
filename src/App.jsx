@@ -114,10 +114,11 @@ const CATEGORIES = [
   { id: 'finance', label: 'Finance', icon: '💳', primary: false }
 ]
 
-// Enhanced ArticleCard component with optimized image loading
+// Enhanced ArticleCard component with high-quality image loading
 function ArticleCard({ article, currentColors }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [imageLoadTime, setImageLoadTime] = useState(null)
   
   const categoryInfo = CATEGORIES.find(cat => cat.id === article.category)
   
@@ -125,39 +126,39 @@ function ArticleCard({ article, currentColors }) {
   const hasImage = article.optimizedImageUrl && !imageError
   const showImagePlaceholder = !hasImage && !imageError
 
-  // Check if user prefers reduced data
-  const shouldLoadImages = useMemo(() => {
-    if (typeof navigator !== 'undefined' && 'connection' in navigator) {
-      const connection = navigator.connection
-      if (connection.saveData || connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
-        return false
-      }
-    }
-    
-    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-data: reduce)').matches) {
-      return false
-    }
-    
-    return true
-  }, [])
-
   const handleImageLoad = () => {
     setImageLoaded(true)
+    setImageLoadTime(Date.now())
   }
 
   const handleImageError = () => {
     setImageError(true)
     setImageLoaded(false)
+    console.warn('Image failed to load:', article.optimizedImageUrl)
   }
 
+  // Determine image size based on screen size and priority
+  const getImageUrl = () => {
+    if (!article.imageUrl) return null
+    
+    // Use higher quality for priority articles
+    const quality = article.priority ? '95' : '90'
+    const width = window.innerWidth > 1024 ? '800' : window.innerWidth > 768 ? '600' : '500'
+    
+    return `/api/image-proxy?url=${encodeURIComponent(article.imageUrl)}&w=${width}&q=${quality}`
+  }
+
+  // Use the optimized URL or generate one
+  const imageUrl = article.optimizedImageUrl || getImageUrl()
+
   return (
-    <article className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 hover:transform hover:-translate-y-1`}>
-      {/* Image Section - Mobile First Design */}
-      {hasImage && shouldLoadImages && (
+    <article className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 hover:transform hover:-translate-y-1 article-card`}>
+      {/* High-Quality Image Section */}
+      {hasImage && (
         <div className="relative w-full h-48 sm:h-52 bg-gray-100 dark:bg-gray-700 overflow-hidden">
-          {/* Loading placeholder */}
+          {/* Loading placeholder with shimmer */}
           {!imageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 article-image">
               <div className="animate-pulse flex flex-col items-center">
                 <PhotoIcon className="h-12 w-12 text-gray-400 mb-2" />
                 <div className="text-xs text-gray-500 dark:text-gray-400">Loading image...</div>
@@ -165,55 +166,67 @@ function ArticleCard({ article, currentColors }) {
             </div>
           )}
           
-          {/* Actual Image */}
+          {/* High-Quality Image */}
           <img
-            src={article.optimizedImageUrl}
+            src={imageUrl}
             alt={article.title}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
+            className={`w-full h-full object-cover transition-opacity duration-500 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
             onLoad={handleImageLoad}
             onError={handleImageError}
             loading="lazy"
             decoding="async"
-            // Mobile-first optimization attributes
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            // Optimized responsive sizing for high quality
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 400px"
+            // Ensure crisp image rendering
+            style={{ 
+              imageRendering: 'auto',
+              filter: 'none',
+              backfaceVisibility: 'hidden',
+              transform: 'translateZ(0)'
+            }}
           />
           
           {/* Image overlay with priority badge */}
           {article.priority && (
             <div className="absolute top-3 right-3">
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white shadow-lg">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white shadow-lg priority-badge">
                 🇿🇼 Priority
               </span>
+            </div>
+          )}
+          
+          {/* Image load performance indicator for development */}
+          {process.env.NODE_ENV === 'development' && imageLoadTime && (
+            <div className="absolute bottom-2 left-2 text-xs bg-black bg-opacity-50 text-white px-1 rounded">
+              Loaded: {Date.now() - imageLoadTime}ms
             </div>
           )}
         </div>
       )}
       
       {/* Image placeholder for articles without images */}
-      {(showImagePlaceholder || !shouldLoadImages) && (
+      {showImagePlaceholder && (
         <div className="w-full h-32 sm:h-36 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-3xl mb-2">{categoryInfo?.icon || '📰'}</div>
+            <div className="text-3xl mb-2 category-icon">{categoryInfo?.icon || '📰'}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
               {article.category}
             </div>
-            {!shouldLoadImages && (
-              <div className="text-xs text-gray-400 mt-1">Data Saver Mode</div>
-            )}
           </div>
         </div>
       )}
 
       {/* Content Section - Optimized for reading */}
       <div className="p-4 sm:p-5">
-        {/* Article Header - Reduced spacing for mobile */}
+        {/* Article Header */}
         <div className="flex items-center justify-between mb-3 gap-2">
-          <span className={`text-sm font-semibold ${currentColors.accentText} truncate`}>
+          <span className={`text-sm font-semibold ${currentColors.accentText} truncate article-source`}>
             {article.source}
           </span>
           <div className={`flex items-center text-xs ${currentColors.textMuted}`}>
+            <ClockIcon className="w-3 h-3 mr-1" />
             <span className="whitespace-nowrap">
               {new Date(article.pubDate).toLocaleDateString('en-US', {
                 month: 'short',
@@ -226,26 +239,26 @@ function ArticleCard({ article, currentColors }) {
         </div>
         
         {/* Title - Optimized sizing for mobile readability */}
-        <h2 className={`text-base sm:text-lg font-bold ${currentColors.text} mb-3 leading-tight line-clamp-3`}>
+        <h2 className={`text-base sm:text-lg font-bold ${currentColors.text} mb-3 leading-tight line-clamp-3 article-title`}>
           {article.title}
           {/* Priority badge for articles without images */}
-          {article.priority && (!hasImage || !shouldLoadImages) && (
-            <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
+          {article.priority && (!hasImage) && (
+            <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white priority-badge">
               🇿🇼
             </span>
           )}
         </h2>
         
-        {/* Description - Responsive text sizing */}
+        {/* Description */}
         {article.description && (
           <p className={`${currentColors.textSecondary} text-sm sm:text-base mb-4 leading-relaxed line-clamp-2 sm:line-clamp-3`}>
             {article.description}
           </p>
         )}
         
-        {/* Footer - Improved mobile layout */}
+        {/* Footer */}
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-          <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium ${getCategoryColor(article.category)} truncate flex-shrink-0`}>
+          <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium ${getCategoryColor(article.category)} truncate flex-shrink-0 category-tag`}>
             <span className="mr-1">{categoryInfo?.icon || '📰'}</span>
             <span className="hidden sm:inline">{article.category}</span>
           </span>
@@ -367,7 +380,7 @@ function App() {
       setLoading(true)
       setError(null)
       
-      const response = await fetch('/api/feeds')
+      const response = await fetch('/api/feeds?limit=50')
       if (!response.ok) {
         throw new Error(`Failed to load news: ${response.status}`)
       }
@@ -571,13 +584,12 @@ function App() {
         url={seoData.url}
       />
       <div className={`min-h-screen ${currentColors.bg} flex flex-col font-serif`}>
-        {/* Header - Reduced padding */}
+        {/* Header */}
         <header className={`${currentColors.headerBg} backdrop-blur-sm shadow-lg sticky top-0 z-50 ${currentColors.border} border-b`}>
           <div className="w-full px-3 sm:px-4">
             <div className="flex items-center justify-between h-12 sm:h-14">
               {/* Logo Section */}
               <div className="flex items-center space-x-2 min-w-0">
-                {/* Use horizontal logo on tablet, desktop and larger (769px and up) */}
                 <div className="hidden md:block">
                   <Logo 
                     variant="horizontal" 
@@ -585,7 +597,6 @@ function App() {
                     size="sm" 
                   />
                 </div>
-                {/* Use compact logo on mobile only (768px and below) */}
                 <div className="md:hidden">
                   <Logo 
                     variant="compact" 
@@ -715,7 +726,7 @@ function App() {
             </div>
           </div>
 
-          {/* Category Filters - Reduced padding */}
+          {/* Category Filters */}
           <div className="mb-5">
             <div className="overflow-x-auto scrollbar-hide pb-2">
               <div className="flex gap-2 min-w-max">
@@ -723,7 +734,7 @@ function App() {
                   <button
                     key={category.id}
                     onClick={() => setSelectedCategory(category.id)}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 category-button ${
                       selectedCategory === category.id
                         ? currentColors.categoryButtonActive
                         : currentColors.categoryButton
@@ -755,7 +766,7 @@ function App() {
             </div>
           )}
 
-          {/* Content - Better spacing and larger text */}
+          {/* Content - High-quality news grid */}
           {filteredFeeds.length === 0 ? (
             <div className={`${currentColors.cardBg} ${currentColors.border} border p-12 rounded-xl text-center`}>
               <div className="text-6xl mb-4">
@@ -774,7 +785,7 @@ function App() {
               </p>
             </div>
           ) : (
-            <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+            <div className="news-grid grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
               {filteredFeeds.slice(0, 30).map((article, index) => (
                 <ArticleCard 
                   key={article.guid || index} 
@@ -815,7 +826,7 @@ function App() {
 }
 
 function getCategoryColor(category) {
-  // Zimbabwe flag colors for categories only
+  // Zimbabwe flag colors for categories
   const colors = {
     politics: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
     economy: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200', 
