@@ -1,4 +1,4 @@
-// Enhanced Worker with High-Quality Image Processing for Zimbabwe News
+// Enhanced Worker with SSR support for SEO and Simple Image Extraction
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
 import { XMLParser } from 'fast-xml-parser'
 
@@ -40,10 +40,7 @@ const TRUSTED_IMAGE_DOMAINS = [
   'cloudinary.com',
   'imgur.com',
   'gravatar.com',
-  'amazonaws.com',
-  'googleusercontent.com',
-  'fbcdn.net',
-  'twimg.com'
+  'amazonaws.com'
 ]
 
 // Keywords to prioritize for Zimbabwe/Harare relevance
@@ -351,7 +348,7 @@ const CATEGORIES = [
   { id: 'finance', label: 'Finance', icon: '💳', primary: false }
 ]
 
-// Enhanced image extraction function
+// Simple image extraction function - returns original URL
 function extractImageFromContent(content, link, enclosure = null, mediaContent = null) {
   if (!content && !enclosure && !mediaContent) return null
 
@@ -371,7 +368,7 @@ function extractImageFromContent(content, link, enclosure = null, mediaContent =
   
   // Second priority: Extract from content
   if (content) {
-    // Extract img src attributes with better regex
+    // Extract img src attributes
     const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
     let match
     while ((match = imgRegex.exec(content)) !== null) {
@@ -419,94 +416,8 @@ function extractImageFromContent(content, link, enclosure = null, mediaContent =
     })
     .filter(img => IMAGE_PATTERNS.some(pattern => pattern.test(img)))
   
-  // Return the first valid image
+  // Return the first valid image URL directly
   return validImages.length > 0 ? validImages[0] : null
-}
-
-// High-quality image proxy handler
-async function handleImageProxy(request, env) {
-  const url = new URL(request.url)
-  const imageUrl = url.searchParams.get('url')
-  // Enhanced defaults for better quality - users have 4G/WiFi
-  const width = url.searchParams.get('w') || '800'    // Increased from 400
-  const quality = url.searchParams.get('q') || '90'   // Increased from 75
-  
-  if (!imageUrl) {
-    return new Response('Missing image URL', { status: 400 })
-  }
-
-  try {
-    // Validate the image URL is from trusted domains
-    const imageUrlObj = new URL(imageUrl)
-    const isTrusted = TRUSTED_IMAGE_DOMAINS.some(domain => 
-      imageUrlObj.hostname.includes(domain)
-    )
-    
-    if (!isTrusted) {
-      return new Response('Untrusted image domain', { status: 403 })
-    }
-
-    // Check cache first
-    const cacheKey = `image:${imageUrl}:${width}:${quality}`
-    const cached = await env.NEWS_STORAGE.get(cacheKey, { type: 'arrayBuffer' })
-    
-    if (cached) {
-      return new Response(cached, {
-        headers: {
-          'Content-Type': 'image/jpeg',
-          'Cache-Control': 'public, max-age=86400', // 24 hours
-          'Access-Control-Allow-Origin': '*',
-          'X-Cache': 'HIT'
-        }
-      })
-    }
-
-    // Fetch original image with better headers
-    const imageResponse = await fetch(imageUrl, {
-      headers: {
-        'User-Agent': 'Harare Metro News Aggregator/2.0 (Zimbabwe; High-Quality Images)',
-        'Accept': 'image/webp,image/avif,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Referer': imageUrlObj.origin
-      },
-      cf: {
-        // Cloudflare image optimization for high quality
-        image: {
-          format: 'auto',
-          quality: parseInt(quality),
-          width: parseInt(width),
-          fit: 'scale-down',
-          sharpen: 1.0
-        }
-      }
-    })
-
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.status}`)
-    }
-
-    const imageBuffer = await imageResponse.arrayBuffer()
-    
-    // Cache the image for 24 hours
-    await env.NEWS_STORAGE.put(cacheKey, imageBuffer, {
-      expirationTtl: 86400 // 24 hours
-    })
-
-    return new Response(imageBuffer, {
-      headers: {
-        'Content-Type': imageResponse.headers.get('Content-Type') || 'image/jpeg',
-        'Cache-Control': 'public, max-age=86400',
-        'Access-Control-Allow-Origin': '*',
-        'X-Cache': 'MISS',
-        'X-Image-Quality': quality,
-        'X-Image-Width': width
-      }
-    })
-
-  } catch (error) {
-    console.error('Image proxy error:', error)
-    return new Response('Failed to process image', { status: 500 })
-  }
 }
 
 // SEO-friendly HTML template for server-side rendering
@@ -590,11 +501,6 @@ export default {
     console.log('Request:', url.pathname, 'User-Agent:', userAgent)
     
     try {
-      // Handle image proxy route
-      if (url.pathname.startsWith('/api/image-proxy')) {
-        return await handleImageProxy(request, env)
-      }
-
       // Handle API routes first (highest priority)
       if (url.pathname.startsWith('/api/')) {
         console.log('Handling API request:', url.pathname)
@@ -678,7 +584,7 @@ export default {
       } catch (assetError) {
         console.log('Asset serving failed, falling back to enhanced HTML:', assetError.message)
         
-        // Enhanced fallback HTML with documentation links
+        // Enhanced fallback HTML
         return new Response(getEnhancedFallbackHTML(), {
           headers: { 'Content-Type': 'text/html' }
         })
@@ -723,8 +629,8 @@ async function handleApiRequest(request, env, ctx) {
           sources: RSS_SOURCES.filter(s => s.enabled).length,
           totalSources: RSS_SOURCES.length,
           categories: Object.keys(CATEGORY_KEYWORDS).length,
-          message: 'Harare Metro API is healthy with high-quality image support!',
-          features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'global-categories', 'high-quality-images', 'image-proxy'],
+          message: 'Harare Metro API is healthy!',
+          features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'global-categories', 'original-images'],
           documentation: {
             schema: '/api/schema',
             swagger: 'https://petstore.swagger.io/?url=' + encodeURIComponent(request.url.replace('/api/health', '/api/schema'))
@@ -764,7 +670,7 @@ async function handleApiRequest(request, env, ctx) {
       default:
         return new Response(JSON.stringify({ 
           error: 'Endpoint not found',
-          available: ['/health', '/schema', '/feeds/sources', '/feeds', '/feeds/cached', '/categories', '/image-proxy'],
+          available: ['/health', '/schema', '/feeds/sources', '/feeds', '/feeds/cached', '/categories'],
           documentation: '/api/schema'
         }), {
           status: 404,
@@ -811,11 +717,11 @@ async function getAllFeeds(request, env, corsHeaders) {
   const feedPromises = enabledSources.map(async (source) => {
     try {
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 15000) // Increased timeout for better quality
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
       
       const response = await fetch(source.url, {
         headers: { 
-          'User-Agent': 'Harare Metro News Aggregator/2.0 (Zimbabwe; High-Quality)',
+          'User-Agent': 'Harare Metro News Aggregator/2.0 (Zimbabwe)',
           'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml'
         },
         signal: controller.signal
@@ -837,12 +743,32 @@ async function getAllFeeds(request, env, corsHeaders) {
         .slice(0, 20)
         .map(item => {
           const title = item.title?.text || item.title || 'No title'
-          const description = cleanHtml(item.description?.text || item.description || item.summary?.text || item.summary || '')
+          
+          // Enhanced description extraction - get more text content
+          let description = ''
+          const sources = [
+            item.description?.text || item.description,
+            item.summary?.text || item.summary,
+            item.content?.text || item.content,
+            item['content:encoded'],
+            item.excerpt?.text || item.excerpt
+          ].filter(Boolean)
+          
+          // Use the longest available description
+          if (sources.length > 0) {
+            description = sources.reduce((longest, current) => 
+              (current && current.length > longest.length) ? current : longest
+            , '')
+          }
+          
+          // Clean and limit description to reasonable length for mobile
+          description = cleanHtml(description, 800) // Increased from 300 to 800 characters
+          
           const content = `${title} ${description}`.toLowerCase()
           const link = item.link?.text || item.link || item.id || '#'
           
-          // Extract high-quality image from content
-          const rawContent = item.description || item.content || item.summary || ''
+          // Extract original image from content
+          const rawContent = item.description || item.content || item.summary || item['content:encoded'] || ''
           const extractedImage = extractImageFromContent(
             rawContent, 
             link, 
@@ -856,10 +782,6 @@ async function getAllFeeds(request, env, corsHeaders) {
           )
           const relevanceScore = calculateRelevanceScore(content)
           
-          // Generate high-quality optimized image URL
-          const optimizedImageUrl = extractedImage ? 
-            `/api/image-proxy?url=${encodeURIComponent(extractedImage)}&w=800&q=90` : null
-          
           return {
             title: title,
             description: description,
@@ -870,8 +792,7 @@ async function getAllFeeds(request, env, corsHeaders) {
             priority: isPriority,
             relevanceScore: relevanceScore,
             guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`,
-            imageUrl: extractedImage, // Original image URL
-            optimizedImageUrl: optimizedImageUrl // High-quality proxy URL
+            imageUrl: extractedImage // Original image URL only
           }
         })
         .filter(item => item.title !== 'No title')
@@ -925,8 +846,7 @@ async function getAllFeeds(request, env, corsHeaders) {
       'Content-Type': 'application/json',
       'Cache-Control': 'public, max-age=600',
       'X-Total-Count': filteredFeeds.length.toString(),
-      'X-Returned-Count': limitedFeeds.length.toString(),
-      'X-Image-Quality': 'high'
+      'X-Returned-Count': limitedFeeds.length.toString()
     }
   })
 }
@@ -1001,15 +921,15 @@ async function serveApiSchema(request, corsHeaders) {
 info:
   title: Harare Metro News API
   description: |
-    Zimbabwe News Aggregation API with high-quality image extraction and optimization.
+    Zimbabwe News Aggregation API with original image extraction.
     
     Features:
     - Real-time RSS feed aggregation
     - Enhanced categorization with Zimbabwe-specific keywords
     - Priority detection for Zimbabwe-relevant content
-    - High-quality image extraction and optimization
+    - Original image extraction (no optimization)
     - Multiple news sources from Herald, NewsDay, Chronicle, ZBC, and more
-  version: 2.1.0
+  version: 2.0.0
   contact:
     name: Nyuchi Web Services
     url: https://www.nyuchi.com
@@ -1032,7 +952,7 @@ paths:
 
   /feeds:
     get:
-      summary: Get all news feeds with high-quality images
+      summary: Get all news feeds with original images
       tags: [News]
       parameters:
         - name: category
@@ -1041,19 +961,6 @@ paths:
           schema:
             type: string
             enum: [politics, economy, business, sports, harare, agriculture, technology, health, education, entertainment, environment, crime, international, lifestyle, finance, general]
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 50
-        - name: priority
-          in: query
-          required: false
-          schema:
-            type: boolean
       responses:
         '200':
           description: Successfully retrieved news feeds
@@ -1072,10 +979,7 @@ paths:
                       type: string
                     imageUrl:
                       type: string
-                      description: Original image URL
-                    optimizedImageUrl:
-                      type: string
-                      description: High-quality proxy URL (800px, 90% quality)
+                      description: Original image URL from source
                     source:
                       type: string
                     category:
@@ -1083,53 +987,9 @@ paths:
                     priority:
                       type: boolean
 
-  /image-proxy:
-    get:
-      summary: High-quality image proxy and optimization
-      tags: [Images]
-      parameters:
-        - name: url
-          in: query
-          required: true
-          schema:
-            type: string
-            description: Source image URL
-        - name: w
-          in: query
-          schema:
-            type: integer
-            default: 800
-            description: Image width in pixels
-        - name: q
-          in: query
-          schema:
-            type: integer
-            default: 90
-            minimum: 1
-            maximum: 100
-            description: Image quality (1-100)
-      responses:
-        '200':
-          description: Optimized high-quality image
-          headers:
-            X-Cache:
-              description: Cache status (HIT/MISS)
-              schema:
-                type: string
-            X-Image-Quality:
-              description: Applied quality setting
-              schema:
-                type: string
-            X-Image-Width:
-              description: Applied width setting
-              schema:
-                type: string
-
 tags:
   - name: News
     description: News aggregation endpoints
-  - name: Images
-    description: High-quality image optimization endpoints
   - name: System
     description: System health endpoints`
 
@@ -1290,11 +1150,11 @@ async function updateFeeds(env) {
   }
 }
 
-function cleanHtml(html) {
+function cleanHtml(html, maxLength = 300) {
   if (typeof html !== 'string') return ''
   
-  return html
-    .replace(/<[^>]*>/g, '')
+  let cleaned = html
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -1302,9 +1162,24 @@ function cleanHtml(html) {
     .replace(/&quot;/g, '"')
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
-    .replace(/\s+/g, ' ')
+    .replace(/\s+/g, ' ') // Normalize whitespace
     .trim()
-    .substring(0, 300)
+  
+  // If content is longer than maxLength, cut at sentence or word boundary
+  if (cleaned.length > maxLength) {
+    const truncated = cleaned.substring(0, maxLength)
+    const lastPeriod = truncated.lastIndexOf('.')
+    const lastSpace = truncated.lastIndexOf(' ')
+    
+    if (lastPeriod > maxLength * 0.7) {
+      return truncated.substring(0, lastPeriod + 1)
+    } else if (lastSpace > maxLength * 0.7) {
+      return truncated.substring(0, lastSpace) + '...'
+    }
+    return truncated + '...'
+  }
+  
+  return cleaned
 }
 
 function getEnhancedFallbackHTML() {
@@ -1329,14 +1204,14 @@ function getEnhancedFallbackHTML() {
     </head>
     <body>
       <div class="container">
-        <div class="loading">📡 Loading Harare Metro with high-quality images...</div>
+        <div class="loading">📡 Loading Harare Metro with original images...</div>
       </div>
       <script>
         async function loadNews() {
           try {
             const response = await fetch('/api/feeds?limit=6');
             const feeds = await response.json();
-            console.log('Loaded feeds with high-quality images:', feeds.filter(f => f.optimizedImageUrl).length);
+            console.log('Loaded feeds with original images:', feeds.filter(f => f.imageUrl).length);
           } catch (error) {
             console.error('Error:', error);
           }

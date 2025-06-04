@@ -17,7 +17,9 @@ import {
   MagnifyingGlassIcon,
   XMarkIcon,
   PhotoIcon,
-  ArrowUpIcon
+  ArrowUpIcon,
+  ChevronDownIcon,
+  ChevronUpIcon
 } from '@heroicons/react/24/outline'
 
 // Logo Component (unchanged)
@@ -94,31 +96,45 @@ const CATEGORIES = [
   { id: 'finance', label: 'Finance', icon: '💳', primary: false }
 ]
 
-// Enhanced ArticleCard for infinite scroll
+// Enhanced ArticleCard for infinite scroll with expandable text
 function ArticleCard({ article, currentColors, isVisible = true }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
+  const [isExpanded, setIsExpanded] = useState(false)
   const cardRef = useRef(null)
   
   const categoryInfo = CATEGORIES.find(cat => cat.id === article.category)
   
-  const hasImage = article.optimizedImageUrl && !imageError
+  // Use original image URL directly from worker
+  const hasImage = article.imageUrl && !imageError
   const showImagePlaceholder = !hasImage && !imageError
 
-  const shouldLoadImages = useMemo(() => {
-    if (typeof navigator !== 'undefined' && 'connection' in navigator) {
-      const connection = navigator.connection
-      if (connection.saveData || connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
-        return false
-      }
-    }
+  // Check if description is long enough to need expansion
+  const hasLongDescription = article.description && article.description.length > 150
+  
+  // Get preview text (first ~150 characters)
+  const getPreviewText = (text) => {
+    if (!text) return ''
+    if (text.length <= 150) return text
     
-    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-data: reduce)').matches) {
-      return false
-    }
+    // Find the last complete sentence or word break within 150 characters
+    const preview = text.substring(0, 150)
+    const lastPeriod = preview.lastIndexOf('.')
+    const lastSpace = preview.lastIndexOf(' ')
     
-    return true
-  }, [])
+    if (lastPeriod > 100) {
+      return preview.substring(0, lastPeriod + 1)
+    } else if (lastSpace > 100) {
+      return preview.substring(0, lastSpace) + '...'
+    }
+    return preview + '...'
+  }
+
+  const toggleExpansion = (e) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsExpanded(!isExpanded)
+  }
 
   const handleImageLoad = () => setImageLoaded(true)
   const handleImageError = () => {
@@ -151,7 +167,7 @@ function ArticleCard({ article, currentColors, isVisible = true }) {
       className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:transform hover:-translate-y-1 opacity-0`}
     >
       {/* Image Section */}
-      {hasImage && shouldLoadImages && (
+      {hasImage && (
         <div className="relative w-full h-48 sm:h-52 bg-gray-100 dark:bg-gray-700 overflow-hidden">
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
@@ -163,7 +179,7 @@ function ArticleCard({ article, currentColors, isVisible = true }) {
           )}
           
           <img
-            src={article.optimizedImageUrl}
+            src={article.imageUrl}
             alt={article.title}
             className={`w-full h-full object-cover transition-opacity duration-300 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
@@ -172,7 +188,6 @@ function ArticleCard({ article, currentColors, isVisible = true }) {
             onError={handleImageError}
             loading="lazy"
             decoding="async"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
           
           {article.priority && (
@@ -185,16 +200,13 @@ function ArticleCard({ article, currentColors, isVisible = true }) {
         </div>
       )}
       
-      {(showImagePlaceholder || !shouldLoadImages) && (
+      {showImagePlaceholder && (
         <div className="w-full h-32 sm:h-36 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
           <div className="text-center">
             <div className="text-3xl mb-2">{categoryInfo?.icon || '📰'}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
               {article.category}
             </div>
-            {!shouldLoadImages && (
-              <div className="text-xs text-gray-400 mt-1">Data Saver Mode</div>
-            )}
           </div>
         </div>
       )}
@@ -219,17 +231,38 @@ function ArticleCard({ article, currentColors, isVisible = true }) {
         
         <h2 className={`text-base sm:text-lg font-bold ${currentColors.text} mb-3 leading-tight line-clamp-3`}>
           {article.title}
-          {article.priority && (!hasImage || !shouldLoadImages) && (
+          {article.priority && !hasImage && (
             <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
               🇿🇼
             </span>
           )}
         </h2>
         
+        {/* Description - Instagram-style expandable text */}
         {article.description && (
-          <p className={`${currentColors.textSecondary} text-sm sm:text-base mb-4 leading-relaxed line-clamp-2 sm:line-clamp-3`}>
-            {article.description}
-          </p>
+          <div className="mb-4">
+            <p className={`${currentColors.textSecondary} text-sm sm:text-base leading-relaxed transition-all duration-300`}>
+              {isExpanded ? article.description : getPreviewText(article.description)}
+              {hasLongDescription && (
+                <button
+                  onClick={toggleExpansion}
+                  className={`ml-2 text-sm font-medium ${currentColors.accentText} hover:underline focus:outline-none inline-flex items-center transition-colors`}
+                >
+                  {isExpanded ? (
+                    <>
+                      <span>Show less</span>
+                      <ChevronUpIcon className="w-3 h-3 ml-1" />
+                    </>
+                  ) : (
+                    <>
+                      <span>Show more</span>
+                      <ChevronDownIcon className="w-3 h-3 ml-1" />
+                    </>
+                  )}
+                </button>
+              )}
+            </p>
+          </div>
         )}
         
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-600">
