@@ -15,7 +15,8 @@ import {
   CalendarIcon,
   TagIcon,
   MagnifyingGlassIcon,
-  XMarkIcon
+  XMarkIcon,
+  PhotoIcon
 } from '@heroicons/react/24/outline'
 
 // Logo Component
@@ -112,6 +113,158 @@ const CATEGORIES = [
   { id: 'lifestyle', label: 'Lifestyle', icon: '✨', primary: false },
   { id: 'finance', label: 'Finance', icon: '💳', primary: false }
 ]
+
+// Enhanced ArticleCard component with optimized image loading
+function ArticleCard({ article, currentColors }) {
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [imageError, setImageError] = useState(false)
+  
+  const categoryInfo = CATEGORIES.find(cat => cat.id === article.category)
+  
+  // Determine if we should show image
+  const hasImage = article.optimizedImageUrl && !imageError
+  const showImagePlaceholder = !hasImage && !imageError
+
+  // Check if user prefers reduced data
+  const shouldLoadImages = useMemo(() => {
+    if (typeof navigator !== 'undefined' && 'connection' in navigator) {
+      const connection = navigator.connection
+      if (connection.saveData || connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
+        return false
+      }
+    }
+    
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-data: reduce)').matches) {
+      return false
+    }
+    
+    return true
+  }, [])
+
+  const handleImageLoad = () => {
+    setImageLoaded(true)
+  }
+
+  const handleImageError = () => {
+    setImageError(true)
+    setImageLoaded(false)
+  }
+
+  return (
+    <article className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-all duration-300 hover:transform hover:-translate-y-1`}>
+      {/* Image Section - Mobile First Design */}
+      {hasImage && shouldLoadImages && (
+        <div className="relative w-full h-48 sm:h-52 bg-gray-100 dark:bg-gray-700 overflow-hidden">
+          {/* Loading placeholder */}
+          {!imageLoaded && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
+              <div className="animate-pulse flex flex-col items-center">
+                <PhotoIcon className="h-12 w-12 text-gray-400 mb-2" />
+                <div className="text-xs text-gray-500 dark:text-gray-400">Loading image...</div>
+              </div>
+            </div>
+          )}
+          
+          {/* Actual Image */}
+          <img
+            src={article.optimizedImageUrl}
+            alt={article.title}
+            className={`w-full h-full object-cover transition-opacity duration-300 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+            loading="lazy"
+            decoding="async"
+            // Mobile-first optimization attributes
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          />
+          
+          {/* Image overlay with priority badge */}
+          {article.priority && (
+            <div className="absolute top-3 right-3">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white shadow-lg">
+                🇿🇼 Priority
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+      
+      {/* Image placeholder for articles without images */}
+      {(showImagePlaceholder || !shouldLoadImages) && (
+        <div className="w-full h-32 sm:h-36 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-3xl mb-2">{categoryInfo?.icon || '📰'}</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
+              {article.category}
+            </div>
+            {!shouldLoadImages && (
+              <div className="text-xs text-gray-400 mt-1">Data Saver Mode</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Content Section - Optimized for reading */}
+      <div className="p-4 sm:p-5">
+        {/* Article Header - Reduced spacing for mobile */}
+        <div className="flex items-center justify-between mb-3 gap-2">
+          <span className={`text-sm font-semibold ${currentColors.accentText} truncate`}>
+            {article.source}
+          </span>
+          <div className={`flex items-center text-xs ${currentColors.textMuted}`}>
+            <span className="whitespace-nowrap">
+              {new Date(article.pubDate).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              })}
+            </span>
+          </div>
+        </div>
+        
+        {/* Title - Optimized sizing for mobile readability */}
+        <h2 className={`text-base sm:text-lg font-bold ${currentColors.text} mb-3 leading-tight line-clamp-3`}>
+          {article.title}
+          {/* Priority badge for articles without images */}
+          {article.priority && (!hasImage || !shouldLoadImages) && (
+            <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
+              🇿🇼
+            </span>
+          )}
+        </h2>
+        
+        {/* Description - Responsive text sizing */}
+        {article.description && (
+          <p className={`${currentColors.textSecondary} text-sm sm:text-base mb-4 leading-relaxed line-clamp-2 sm:line-clamp-3`}>
+            {article.description}
+          </p>
+        )}
+        
+        {/* Footer - Improved mobile layout */}
+        <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+          <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium ${getCategoryColor(article.category)} truncate flex-shrink-0`}>
+            <span className="mr-1">{categoryInfo?.icon || '📰'}</span>
+            <span className="hidden sm:inline">{article.category}</span>
+          </span>
+          
+          <a
+            href={article.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${currentColors.accentText} text-xs sm:text-sm font-medium inline-flex items-center group transition-colors hover:underline`}
+          >
+            <span className="hidden sm:inline">Read Full Article</span>
+            <span className="sm:hidden">Read</span>
+            <GlobeAltIcon className="w-3 h-3 sm:w-4 sm:h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
+          </a>
+        </div>
+      </div>
+    </article>
+  )
+}
 
 function App() {
   const [feeds, setFeeds] = useState([])
@@ -262,6 +415,7 @@ function App() {
 
   const priorityCount = feeds.filter(feed => feed.priority).length
   const categoryCount = new Set(feeds.map(feed => feed.category)).size
+  const imageCount = feeds.filter(feed => feed.imageUrl).length
 
   // Generate dynamic SEO data based on current state
   const generateSEOData = () => {
@@ -534,7 +688,7 @@ function App() {
             </div>
           )}
 
-          {/* Stats - Reduced padding */}
+          {/* Stats - Enhanced with image count */}
           <div className={`${currentColors.statsBg} rounded-xl p-3 mb-4 ${currentColors.border} border`}>
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center space-x-4">
@@ -545,6 +699,10 @@ function App() {
                 <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
                   <StarIcon className="h-4 w-4" />
                   <span>{priorityCount} Priority</span>
+                </span>
+                <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
+                  <PhotoIcon className="h-4 w-4" />
+                  <span>{imageCount} Images</span>
                 </span>
               </div>
               {lastUpdated && (
@@ -653,64 +811,6 @@ function App() {
         </footer>
       </div>
     </HelmetProvider>
-  )
-}
-
-function ArticleCard({ article, currentColors }) {
-  const categoryInfo = CATEGORIES.find(cat => cat.id === article.category)
-  
-  return (
-    <article className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm p-6 hover:shadow-md transition-all duration-300 hover:transform hover:-translate-y-1`}>
-      {/* Article Header - Better spacing */}
-      <div className="flex items-center justify-between mb-4 gap-3">
-        <span className={`text-sm font-semibold ${currentColors.accentText} truncate`}>
-          {article.source}
-        </span>
-        <div className={`flex items-center text-sm ${currentColors.textMuted}`}>
-          <span className="whitespace-nowrap">
-            {new Date(article.pubDate).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric'
-            })}
-          </span>
-        </div>
-      </div>
-      
-      {/* Title - Much larger and better spacing */}
-      <h2 className={`text-lg sm:text-xl font-bold ${currentColors.text} mb-4 leading-tight`}>
-        {article.title}
-        {article.priority && (
-          <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
-            🇿🇼 Priority
-          </span>
-        )}
-      </h2>
-      
-      {/* Description - Larger text */}
-      {article.description && (
-        <p className={`${currentColors.textSecondary} text-base mb-4 leading-relaxed line-clamp-3`}>
-          {article.description}
-        </p>
-      )}
-      
-      {/* Footer - Better spacing */}
-      <div className="flex items-center justify-between gap-3 pt-4 border-t border-gray-200 dark:border-gray-600">
-        <span className={`text-sm px-3 py-1.5 rounded-full font-medium ${getCategoryColor(article.category)} truncate flex-shrink-0`}>
-          <span className="mr-1.5">{categoryInfo?.icon || '📰'}</span>
-          {article.category}
-        </span>
-        
-        <a
-          href={article.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`${currentColors.accentText} text-sm font-medium inline-flex items-center group transition-colors hover:underline`}
-        >
-          <span>Read Full Article</span>
-          <GlobeAltIcon className="w-4 h-4 ml-1.5 group-hover:translate-x-0.5 transition-transform" />
-        </a>
-      </div>
-    </article>
   )
 }
 
