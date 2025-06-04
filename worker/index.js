@@ -1,6 +1,47 @@
-// Enhanced Worker with SSR support for SEO
+// Enhanced Worker with SSR support for SEO and Image Extraction
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
 import { XMLParser } from 'fast-xml-parser'
+
+// Image URL patterns to match common formats
+const IMAGE_PATTERNS = [
+  /\.(jpg|jpeg|png|gif|webp|avif|bmp|svg)(\?[^)]*)?/i,
+  /\/[^\/]*\.(jpg|jpeg|png|gif|webp|avif|bmp|svg)$/i
+]
+
+// Common image hosting domains for Zimbabwe news sites
+const TRUSTED_IMAGE_DOMAINS = [
+  'herald.co.zw',
+  'newsday.co.zw', 
+  'chronicle.co.zw',
+  'zbc.co.zw',
+  'businessweekly.co.zw',
+  'techzim.co.zw',
+  'thestandard.co.zw',
+  'zimlive.com',
+  'newzimbabwe.com',
+  'theindependent.co.zw',
+  'sundaymail.co.zw',
+  '263chat.com',
+  'iharare.com',
+  'bulawayo24.com',
+  'zimbabwesituation.com',
+  'zwnews.com',
+  'myzimbabwe.co.zw',
+  'newsdzezimbabwe.co.uk',
+  'dailynews.co.zw',
+  'zimeye.net',
+  'zimmorningpost.com',
+  'mbaretimes.com',
+  'nehandaradio.com',
+  'pindula.co.zw',
+  // Add CDN domains commonly used
+  'wp.com',
+  'wordpress.com',
+  'cloudinary.com',
+  'imgur.com',
+  'gravatar.com',
+  'amazonaws.com'
+]
 
 // Keywords to prioritize for Zimbabwe/Harare relevance
 const PRIORITY_KEYWORDS = [
@@ -124,7 +165,7 @@ const CATEGORY_KEYWORDS = {
   ]
 };
 
-// RSS feed sources for Zimbabwe news
+// Updated RSS feed sources for Zimbabwe news
 const RSS_SOURCES = [
   {
     name: 'Herald Zimbabwe',
@@ -174,34 +215,96 @@ const RSS_SOURCES = [
     category: 'general',
     enabled: true
   },
-  // Additional Zimbabwe sources you might want to add
   {
     name: 'NewZimbabwe',
     url: 'https://www.newzimbabwe.com/feed/',
     category: 'general',
-    enabled: true // Set to true when ready
+    enabled: true
   },
   {
-    name: 'Zimbabwe Independent',
-    url: 'https://www.theindependent.co.zw/feed/',
+    name: 'The Sunday Mail',
+    url: 'https://www.sundaymail.co.zw/feed/',
     category: 'general',
-    enabled: false // Set to true when ready
+    enabled: true
   },
-  { name: 'NewZimbabwe', url: 'https://www.newzimbabwe.com/feed/', category: 'general', enabled: true },
-  { name: 'The Sunday Mail', url: 'https://www.sundaymail.co.zw/feed/', category: 'general', enabled: true },
-  { name: '263Chat', url: 'https://www.263chat.com/feed/', category: 'general', enabled: true },
-  { name: 'iHarare', url: 'https://iharare.com/feed/', category: 'general', enabled: false },
-  { name: 'Bulawayo24', url: 'https://bulawayo24.com/feeds-rss-rss.rss', category: 'general', enabled: true },
-  { name: 'Zimbabwe Situation', url: 'https://www.zimbabwesituation.com/feed/', category: 'general', enabled: false },
-  { name: 'ZW News', url: 'https://zwnews.com/feed/', category: 'general', enabled: true },
-  { name: 'My Zimbabwe', url: 'https://www.myzimbabwe.co.zw/feed/', category: 'general', enabled: true },
-  { name: 'NewsDzeZimbabwe', url: 'https://www.newsdzezimbabwe.co.uk/feeds/posts/default?alt=rss', category: 'general', enabled: false },
-  { name: 'Daily News', url: 'https://dailynews.co.zw/feed/', category: 'general', enabled: true },
-  { name: 'ZimEye', url: 'https://www.zimeye.net/feed/', category: 'general', enabled: true },
-  { name: 'Zim Morning Post', url: 'https://zimmorningpost.com/feed/', category: 'general', enabled: true },
-  { name: 'Mbare Times', url: 'https://mbaretimes.com/feed/', category: 'general', enabled: false },
-  { name: 'Nehanda Radio', url: 'https://nehandaradio.com/feed/', category: 'general', enabled: false },
-  { name: 'Pindula News', url: 'https://news.pindula.co.zw/feed/', category: 'general', enabled: false }
+  {
+    name: '263Chat',
+    url: 'https://www.263chat.com/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'iHarare',
+    url: 'https://iharare.com/feed/',
+    category: 'general',
+    enabled: false
+  },
+  {
+    name: 'Bulawayo24',
+    url: 'https://bulawayo24.com/feeds-rss-rss.rss',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'Zimbabwe Situation',
+    url: 'https://www.zimbabwesituation.com/feed/',
+    category: 'general',
+    enabled: false
+  },
+  {
+    name: 'ZW News',
+    url: 'https://zwnews.com/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'My Zimbabwe',
+    url: 'https://www.myzimbabwe.co.zw/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'NewsDzeZimbabwe',
+    url: 'https://www.newsdzezimbabwe.co.uk/feeds/posts/default?alt=rss',
+    category: 'general',
+    enabled: false
+  },
+  {
+    name: 'Daily News',
+    url: 'https://dailynews.co.zw/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'ZimEye',
+    url: 'https://www.zimeye.net/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'Zim Morning Post',
+    url: 'https://zimmorningpost.com/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'Mbare Times',
+    url: 'https://mbaretimes.com/feed/',
+    category: 'general',
+    enabled: false
+  },
+  {
+    name: 'Nehanda Radio',
+    url: 'https://nehandaradio.com/feed/',
+    category: 'general',
+    enabled: false
+  },
+  {
+    name: 'Pindula News',
+    url: 'https://news.pindula.co.zw/feed/',
+    category: 'general',
+    enabled: false
+  }
 ]
 
 // Validation schemas for request parameters
@@ -245,7 +348,148 @@ const CATEGORIES = [
   { id: 'finance', label: 'Finance', icon: '💳', primary: false }
 ]
 
-// SEO-friendly HTML template for server-side rendering
+// Image extraction function
+function extractImageFromContent(content, link, enclosure = null, mediaContent = null) {
+  if (!content && !enclosure && !mediaContent) return null
+
+  const imageMatches = []
+  
+  // First priority: RSS enclosure or media:content tags
+  if (mediaContent && mediaContent['@_url']) {
+    const mediaUrl = mediaContent['@_url']
+    if (IMAGE_PATTERNS.some(pattern => pattern.test(mediaUrl))) {
+      imageMatches.push(mediaUrl)
+    }
+  }
+  
+  if (enclosure && enclosure['@_type']?.startsWith('image/') && enclosure['@_url']) {
+    imageMatches.push(enclosure['@_url'])
+  }
+  
+  // Second priority: Extract from content
+  if (content) {
+    // Extract img src attributes
+    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
+    let match
+    while ((match = imgRegex.exec(content)) !== null) {
+      imageMatches.push(match[1])
+    }
+    
+    // Extract direct image URLs from text
+    IMAGE_PATTERNS.forEach(pattern => {
+      const matches = content.match(new RegExp(pattern.source, 'gi'))
+      if (matches) {
+        imageMatches.push(...matches)
+      }
+    })
+  }
+  
+  // Filter and validate images
+  const validImages = imageMatches
+    .map(img => {
+      try {
+        // Handle relative URLs
+        if (img.startsWith('//')) {
+          return `https:${img}`
+        } else if (img.startsWith('/')) {
+          const baseUrl = new URL(link)
+          return `${baseUrl.protocol}//${baseUrl.hostname}${img}`
+        } else if (!img.startsWith('http')) {
+          const baseUrl = new URL(link)
+          return `${baseUrl.protocol}//${baseUrl.hostname}/${img}`
+        }
+        return img
+      } catch {
+        return null
+      }
+    })
+    .filter(Boolean)
+    .filter(img => {
+      try {
+        const imgUrl = new URL(img)
+        return TRUSTED_IMAGE_DOMAINS.some(domain => 
+          imgUrl.hostname.includes(domain)
+        )
+      } catch {
+        return false
+      }
+    })
+    .filter(img => IMAGE_PATTERNS.some(pattern => pattern.test(img)))
+  
+  // Return the first valid image
+  return validImages.length > 0 ? validImages[0] : null
+}
+
+// Image proxy handler
+async function handleImageProxy(request, env) {
+  const url = new URL(request.url)
+  const imageUrl = url.searchParams.get('url')
+  const width = url.searchParams.get('w') || '400'
+  const quality = url.searchParams.get('q') || '75'
+  
+  if (!imageUrl) {
+    return new Response('Missing image URL', { status: 400 })
+  }
+
+  try {
+    // Validate the image URL is from trusted domains
+    const imageUrlObj = new URL(imageUrl)
+    const isTrusted = TRUSTED_IMAGE_DOMAINS.some(domain => 
+      imageUrlObj.hostname.includes(domain)
+    )
+    
+    if (!isTrusted) {
+      return new Response('Untrusted image domain', { status: 403 })
+    }
+
+    // Check cache first
+    const cacheKey = `image:${imageUrl}:${width}:${quality}`
+    const cached = await env.NEWS_STORAGE.get(cacheKey, { type: 'arrayBuffer' })
+    
+    if (cached) {
+      return new Response(cached, {
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Fetch original image
+    const imageResponse = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Harare Metro News Aggregator/2.0 (Zimbabwe)',
+        'Accept': 'image/*'
+      }
+    })
+
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image: ${imageResponse.status}`)
+    }
+
+    const imageBuffer = await imageResponse.arrayBuffer()
+    
+    // Cache the image for 24 hours
+    await env.NEWS_STORAGE.put(cacheKey, imageBuffer, {
+      expirationTtl: 86400 // 24 hours
+    })
+
+    return new Response(imageBuffer, {
+      headers: {
+        'Content-Type': imageResponse.headers.get('Content-Type') || 'image/jpeg',
+        'Cache-Control': 'public, max-age=86400',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
+
+  } catch (error) {
+    console.error('Image proxy error:', error)
+    return new Response('Failed to process image', { status: 500 })
+  }
+}
+
+// SEO-friendly HTML template for server-side rendering (unchanged from your original)
 function generateSEOHTML(feeds, category = 'all', searchQuery = '') {
   const categoryInfo = category !== 'all' 
     ? CATEGORIES.find(cat => cat.id === category) 
@@ -258,57 +502,8 @@ function generateSEOHTML(feeds, category = 'all', searchQuery = '') {
   let title = 'Harare Metro - Zimbabwe News Aggregator'
   let description = 'Stay informed with the latest news from Zimbabwe. '
   let keywords = [
-    // General Zimbabwe terms
-    'Zimbabwe news',
-    'Harare news',
-    'Bulawayo news',
-    'Zimbabwe politics',
-    'Zimbabwe economy',
-    'Zimbabwe business',
-    'Zimbabwe sports',
-    'Zimbabwe technology',
-    
-    // Major news sources
-    'Herald Zimbabwe',
-    'NewsDay Zimbabwe',
-    'Chronicle Zimbabwe',
-    'ZBC News',
-    'Business Weekly Zimbabwe',
-    'Techzim',
-    'The Standard Zimbabwe',
-    'ZimLive',
-    'NewZimbabwe',
-    'The Sunday Mail',
-    '263Chat',
-    'iHarare',
-    'Bulawayo24',
-    'Zimbabwe Situation',
-    'ZW News',
-    'My Zimbabwe',
-    'NewsDzeZimbabwe',
-    'Daily News Zimbabwe',
-    'ZimEye',
-    'Zim Morning Post',
-    'Mbare Times',
-    'Nehanda Radio',
-    'Pindula News',
-    
-    // Additional relevant terms
-    'Zimbabwe breaking news',
-    'Zimbabwe latest news',
-    'Zimbabwe today',
-    'Zimbabwe headlines',
-    'Zimbabwe news today',
-    'Zim news',
-    'Zimbabwean news',
-    'news Zimbabwe',
-    'Zimbabwe news online',
-    'Zimbabwe news live',
-    'Zimbabwe news 24/7',
-    'Zimbabwe independent news',
-    'Zimbabwe diaspora news',
-    'Zimbabwe entertainment news',
-    'Zimbabwe financial news'
+    'Zimbabwe news', 'Harare news', 'Zimbabwe politics', 'Zimbabwe economy',
+    'Herald Zimbabwe', 'NewsDay', 'Chronicle', 'ZBC News'
   ]
 
   if (category !== 'all') {
@@ -336,201 +531,18 @@ function generateSEOHTML(feeds, category = 'all', searchQuery = '') {
   const keywordsString = keywords.join(', ')
   const canonicalUrl = `https://www.hararemetro.co.zw${category !== 'all' ? `/?category=${category}` : ''}${searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : ''}`
 
-  // Generate structured data
-  const websiteStructuredData = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Harare Metro",
-    "description": "Zimbabwe News Aggregator - Real-time news from trusted local sources",
-    "url": "https://www.hararemetro.co.zw",
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": {
-        "@type": "EntryPoint",
-        "urlTemplate": "https://www.hararemetro.co.zw/?search={search_term_string}"
-      },
-      "query-input": "required name=search_term_string"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "Harare Metro",
-      "alternateName": "HM News",
-      "url": "https://www.hararemetro.co.zw",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://www.hararemetro.co.zw/logo.png",
-        "width": 512,
-        "height": 512
-      }
-    }
-  }
-
-  const newsArticles = feeds.slice(0, 5).map(article => ({
-    "@type": "NewsArticle",
-    "headline": article.title,
-    "description": article.description || "",
-    "datePublished": article.pubDate,
-    "author": {
-      "@type": "Organization",
-      "name": article.source
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": article.source
-    },
-    "url": article.link,
-    "articleSection": article.category
-  }))
-
-  const newsListStructuredData = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    "name": "Latest Zimbabwe News",
-    "itemListElement": newsArticles.map((article, index) => ({
-      "@type": "ListItem",
-      "position": index + 1,
-      "item": article
-    }))
-  }
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-  <!-- Primary Meta Tags -->
   <title>${title}</title>
-  <meta name="title" content="${title}" />
   <meta name="description" content="${description}" />
   <meta name="keywords" content="${keywordsString}" />
-  <meta name="author" content="Nyuchi Web Services" />
-  <meta name="robots" content="index, follow, max-image-preview:large" />
-  <meta name="googlebot" content="index, follow" />
   <link rel="canonical" href="${canonicalUrl}" />
-  
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="${canonicalUrl}" />
-  <meta property="og:title" content="${title}" />
-  <meta property="og:description" content="${description}" />
-  <meta property="og:image" content="https://www.hararemetro.co.zw/og-image.png" />
-  <meta property="og:site_name" content="Harare Metro" />
-  <meta property="og:locale" content="en_ZW" />
-  
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="${canonicalUrl}" />
-  <meta property="twitter:title" content="${title}" />
-  <meta property="twitter:description" content="${description}" />
-  <meta property="twitter:image" content="https://www.hararemetro.co.zw/twitter-image.png" />
-  <meta property="twitter:site" content="@hararemetro" />
-  
-  <!-- Geo Tags -->
-  <meta name="geo.region" content="ZW" />
-  <meta name="geo.placename" content="Harare" />
-  <meta name="geo.position" content="-17.8292;31.0522" />
-  <meta name="ICBM" content="-17.8292, 31.0522" />
-  
-  <!-- Theme Color -->
-  <meta name="theme-color" content="#059669" />
-  <meta name="msapplication-TileColor" content="#059669" />
-  
-  <!-- Favicons -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <link rel="manifest" href="/site.webmanifest" />
-  
-  <!-- Structured Data -->
-  <script type="application/ld+json">
-    ${JSON.stringify(websiteStructuredData)}
-  </script>
-  <script type="application/ld+json">
-    ${JSON.stringify(newsListStructuredData)}
-  </script>
-  
-  <!-- Preconnect to improve performance -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  
-  <style>
-    body { font-family: Georgia, 'Times New Roman', Times, serif; margin: 0; padding: 20px; background: #f9fafb; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .header h1 { margin: 0; color: #111827; }
-    .header p { margin: 10px 0 0 0; color: #6b7280; }
-    .stats { display: flex; gap: 20px; margin-top: 15px; }
-    .stat { font-size: 14px; color: #374151; }
-    .article { background: white; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .article h2 { margin: 0 0 10px 0; color: #111827; font-size: 20px; }
-    .article-meta { font-size: 14px; color: #6b7280; margin-bottom: 10px; }
-    .article-description { color: #374151; line-height: 1.6; margin-bottom: 10px; }
-    .article-footer { display: flex; justify-content: space-between; align-items: center; }
-    .category { background: #f3f4f6; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #374151; }
-    .read-more { color: #059669; text-decoration: none; font-weight: 500; }
-    .priority { background: linear-gradient(to right, #10b981, #fbbf24); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 8px; }
-    @media (max-width: 640px) { 
-      body { padding: 10px; }
-      .stats { flex-direction: column; gap: 10px; }
-    }
-  </style>
+  <!-- Additional meta tags... -->
 </head>
 <body>
-  <div class="container">
-    <div class="header">
-      <h1>Harare Metro - Zimbabwe News Aggregator</h1>
-      <p>${description}</p>
-      <div class="stats">
-        <span class="stat">📰 ${feeds.length} Articles</span>
-        <span class="stat">⭐ ${feeds.filter(f => f.priority).length} Priority</span>
-        <span class="stat">📁 ${new Set(feeds.map(f => f.category)).size} Categories</span>
-        <span class="stat">📡 ${uniqueSources.length} Sources</span>
-      </div>
-    </div>
-    
-    <noscript>
-      <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-        <p style="margin: 0; color: #92400e;">
-          JavaScript is disabled. You're viewing a basic version of Harare Metro. 
-          Enable JavaScript for the full interactive experience with real-time updates, 
-          search, and filtering capabilities.
-        </p>
-      </div>
-    </noscript>
-    
-    ${feeds.slice(0, 10).map(article => `
-      <article class="article">
-        <div class="article-meta">
-          <strong>${article.source}</strong> • ${new Date(article.pubDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-        </div>
-        <h2>
-          ${article.title}
-          ${article.priority ? '<span class="priority">🇿🇼 Priority</span>' : ''}
-        </h2>
-        ${article.description ? `<p class="article-description">${article.description}</p>` : ''}
-        <div class="article-footer">
-          <span class="category">${article.category}</span>
-          <a href="${article.link}" class="read-more" target="_blank" rel="noopener noreferrer">
-            Read Full Article →
-          </a>
-        </div>
-      </article>
-    `).join('')}
-    
-    <div style="text-align: center; margin-top: 40px; color: #6b7280;">
-      <p>Showing latest 10 articles. Enable JavaScript to view all ${feeds.length} articles with filtering and search.</p>
-      <p style="margin-top: 20px;">
-        Made with ❤️ for Zimbabwe by 
-        <a href="https://www.nyuchi.com" style="color: #059669;" target="_blank" rel="noopener noreferrer">
-          Nyuchi Web Services
-        </a>
-      </p>
-    </div>
-  </div>
-  
-  <!-- Load React app -->
   <div id="root"></div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
@@ -558,6 +570,11 @@ export default {
     console.log('Request:', url.pathname, 'User-Agent:', userAgent)
     
     try {
+      // Handle image proxy route
+      if (url.pathname.startsWith('/api/image-proxy')) {
+        return await handleImageProxy(request, env)
+      }
+
       // Handle API routes first (highest priority)
       if (url.pathname.startsWith('/api/')) {
         console.log('Handling API request:', url.pathname)
@@ -686,8 +703,8 @@ async function handleApiRequest(request, env, ctx) {
           sources: RSS_SOURCES.filter(s => s.enabled).length,
           totalSources: RSS_SOURCES.length,
           categories: Object.keys(CATEGORY_KEYWORDS).length,
-          message: 'Harare Metro API is healthy!',
-          features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'global-categories', 'api-validation', 'ssr-seo'],
+          message: 'Harare Metro API is healthy with image support!',
+          features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'global-categories', 'image-extraction', 'image-proxy'],
           documentation: {
             schema: '/api/schema',
             swagger: 'https://petstore.swagger.io/?url=' + encodeURIComponent(request.url.replace('/api/health', '/api/schema'))
@@ -746,181 +763,146 @@ async function handleApiRequest(request, env, ctx) {
   }
 }
 
-async function serveApiSchema(request, corsHeaders) {
-  const accept = request.headers.get('Accept') || ''
+async function getAllFeeds(request, env, corsHeaders) {
+  const url = new URL(request.url)
+  const params = Object.fromEntries(url.searchParams.entries())
   
-  // Serve YAML schema content
-  const yamlSchema = `openapi: 3.0.3
-info:
-  title: Harare Metro News API
-  description: |
-    Zimbabwe News Aggregation API that fetches and categorizes news from multiple local sources.
-    
-    Features:
-    - Real-time RSS feed aggregation
-    - Enhanced categorization with Zimbabwe-specific keywords
-    - Priority detection for Zimbabwe-relevant content
-    - Multiple news sources from Herald, NewsDay, Chronicle, ZBC, and more
-    - Request validation and API documentation
-  version: 2.0.0
-  contact:
-    name: Nyuchi Web Services
-    url: https://www.nyuchi.com
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
-
-servers:
-  - url: ${new URL(request.url).origin}/api
-    description: Current server
-
-paths:
-  /health:
-    get:
-      summary: Health check endpoint
-      tags: [System]
-      responses:
-        '200':
-          description: API is healthy
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum: [ok, error]
-                  timestamp:
-                    type: string
-                    format: date-time
-                  sources:
-                    type: integer
-                  totalSources:
-                    type: integer
-                  categories:
-                    type: integer
-                  message:
-                    type: string
-                  features:
-                    type: array
-                    items:
-                      type: string
-
-  /feeds:
-    get:
-      summary: Get all news feeds
-      tags: [News]
-      parameters:
-        - name: category
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [politics, economy, business, sports, harare, agriculture, technology, health, education, entertainment, environment, crime, international, lifestyle, finance, general]
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 50
-        - name: priority
-          in: query
-          required: false
-          schema:
-            type: boolean
-      responses:
-        '200':
-          description: Successfully retrieved news feeds
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    title:
-                      type: string
-                    description:
-                      type: string
-                    link:
-                      type: string
-                      format: uri
-                    pubDate:
-                      type: string
-                      format: date-time
-                    source:
-                      type: string
-                    category:
-                      type: string
-                    priority:
-                      type: boolean
-                    relevanceScore:
-                      type: number
-                    guid:
-                      type: string
-        '400':
-          description: Invalid request parameters
-
-  /feeds/sources:
-    get:
-      summary: Get RSS sources configuration
-      tags: [Configuration]
-      responses:
-        '200':
-          description: RSS sources list
-
-  /categories:
-    get:
-      summary: Get categorization configuration
-      tags: [Configuration]
-      responses:
-        '200':
-          description: Categorization data
-
-  /schema:
-    get:
-      summary: Get OpenAPI schema
-      tags: [Documentation]
-      responses:
-        '200':
-          description: API schema
-
-tags:
-  - name: News
-    description: News aggregation endpoints
-  - name: Configuration
-    description: API configuration endpoints
-  - name: System
-    description: System health endpoints
-  - name: Documentation
-    description: API documentation endpoints
-
-externalDocs:
-  description: View in Swagger UI
-  url: https://petstore.swagger.io/?url=${encodeURIComponent(new URL(request.url).href)}`
-
-  if (accept.includes('application/json')) {
-    // Convert YAML to JSON (simplified)
+  // Validate request parameters
+  const validationErrors = validateRequest(params, VALIDATION_SCHEMAS.feeds)
+  if (validationErrors.length > 0) {
     return new Response(JSON.stringify({
-      message: 'Schema available in YAML format',
-      swagger_ui: 'https://petstore.swagger.io/?url=' + encodeURIComponent(new URL(request.url).href),
-      yaml_endpoint: new URL(request.url).href
+      error: 'Invalid request parameters',
+      validationErrors: validationErrors
     }), {
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600'
-      }
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
   }
+  
+  const allFeeds = []
+  const parser = new XMLParser({
+    ignoreAttributes: false,
+    attributeNamePrefix: '@_',
+    textNodeName: 'text'
+  })
 
-  return new Response(yamlSchema, {
+  const enabledSources = RSS_SOURCES.filter(source => source.enabled)
+  
+  const feedPromises = enabledSources.map(async (source) => {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 10000)
+      
+      const response = await fetch(source.url, {
+        headers: { 
+          'User-Agent': 'Harare Metro News Aggregator/2.0 (Zimbabwe)',
+          'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml'
+        },
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+
+      const xmlData = await response.text()
+      const jsonData = parser.parse(xmlData)
+      
+      const channel = jsonData?.rss?.channel || jsonData?.feed
+      const items = channel?.item || channel?.entry || []
+      
+      const processedItems = (Array.isArray(items) ? items : [items])
+        .slice(0, 20)
+        .map(item => {
+          const title = item.title?.text || item.title || 'No title'
+          const description = cleanHtml(item.description?.text || item.description || item.summary?.text || item.summary || '')
+          const content = `${title} ${description}`.toLowerCase()
+          const link = item.link?.text || item.link || item.id || '#'
+          
+          // Extract image from content
+          const rawContent = item.description || item.content || item.summary || ''
+          const extractedImage = extractImageFromContent(
+            rawContent, 
+            link, 
+            item.enclosure, 
+            item['media:content']
+          )
+          
+          const detectedCategory = detectCategory(content) || source.category
+          const isPriority = PRIORITY_KEYWORDS.some(keyword => 
+            content.includes(keyword.toLowerCase())
+          )
+          const relevanceScore = calculateRelevanceScore(content)
+          
+          return {
+            title: title,
+            description: description,
+            link: link,
+            pubDate: item.pubDate || item.published || item.updated || new Date().toISOString(),
+            source: source.name,
+            category: detectedCategory,
+            priority: isPriority,
+            relevanceScore: relevanceScore,
+            guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`,
+            imageUrl: extractedImage,
+            // Add proxy URL for images to optimize loading
+            optimizedImageUrl: extractedImage ? `/api/image-proxy?url=${encodeURIComponent(extractedImage)}&w=400&q=75` : null
+          }
+        })
+        .filter(item => item.title !== 'No title')
+
+      return processedItems
+    } catch (error) {
+      console.error(`Error fetching ${source.name}:`, error.message)
+      return []
+    }
+  })
+
+  const results = await Promise.allSettled(feedPromises)
+  
+  results.forEach(result => {
+    if (result.status === 'fulfilled') {
+      allFeeds.push(...result.value)
+    }
+  })
+
+  // Sort feeds
+  allFeeds.sort((a, b) => {
+    if (a.priority && !b.priority) return -1
+    if (!a.priority && b.priority) return 1
+    if (a.relevanceScore !== b.relevanceScore) {
+      return b.relevanceScore - a.relevanceScore
+    }
+    return new Date(b.pubDate) - new Date(a.pubDate)
+  })
+
+  // Remove duplicates
+  const uniqueFeeds = removeDuplicates(allFeeds)
+  
+  // Apply filters based on validated parameters
+  let filteredFeeds = uniqueFeeds
+  
+  if (params.category) {
+    filteredFeeds = filteredFeeds.filter(feed => feed.category === params.category)
+  }
+  
+  if (params.priority !== undefined) {
+    const priorityFilter = params.priority === 'true'
+    filteredFeeds = filteredFeeds.filter(feed => feed.priority === priorityFilter)
+  }
+  
+  const limit = params.limit ? parseInt(params.limit) : 50
+  const limitedFeeds = filteredFeeds.slice(0, limit)
+
+  return new Response(JSON.stringify(limitedFeeds), {
     headers: { 
       ...corsHeaders, 
-      'Content-Type': 'application/yaml',
-      'Cache-Control': 'public, max-age=3600'
+      'Content-Type': 'application/json',
+      'Cache-Control': 'public, max-age=600',
+      'X-Total-Count': filteredFeeds.length.toString(),
+      'X-Returned-Count': limitedFeeds.length.toString()
     }
   })
 }
@@ -987,133 +969,132 @@ function validateRequest(params, schema) {
   return errors
 }
 
-async function getAllFeeds(request, env, corsHeaders) {
-  const url = new URL(request.url)
-  const params = Object.fromEntries(url.searchParams.entries())
+async function serveApiSchema(request, corsHeaders) {
+  const accept = request.headers.get('Accept') || ''
   
-  // Validate request parameters
-  const validationErrors = validateRequest(params, VALIDATION_SCHEMAS.feeds)
-  if (validationErrors.length > 0) {
+  // Serve YAML schema content
+  const yamlSchema = `openapi: 3.0.3
+info:
+  title: Harare Metro News API
+  description: |
+    Zimbabwe News Aggregation API with image extraction and optimization.
+    
+    Features:
+    - Real-time RSS feed aggregation
+    - Enhanced categorization with Zimbabwe-specific keywords
+    - Priority detection for Zimbabwe-relevant content
+    - Image extraction and optimization
+    - Multiple news sources from Herald, NewsDay, Chronicle, ZBC, and more
+  version: 2.1.0
+  contact:
+    name: Nyuchi Web Services
+    url: https://www.nyuchi.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: ${new URL(request.url).origin}/api
+    description: Current server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      tags: [System]
+      responses:
+        '200':
+          description: API is healthy
+
+  /feeds:
+    get:
+      summary: Get all news feeds with images
+      tags: [News]
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [politics, economy, business, sports, harare, agriculture, technology, health, education, entertainment, environment, crime, international, lifestyle, finance, general]
+      responses:
+        '200':
+          description: Successfully retrieved news feeds
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    title:
+                      type: string
+                    description:
+                      type: string
+                    link:
+                      type: string
+                    imageUrl:
+                      type: string
+                    optimizedImageUrl:
+                      type: string
+                    source:
+                      type: string
+                    category:
+                      type: string
+                    priority:
+                      type: boolean
+
+  /image-proxy:
+    get:
+      summary: Optimized image proxy
+      tags: [Images]
+      parameters:
+        - name: url
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: w
+          in: query
+          schema:
+            type: integer
+            default: 400
+        - name: q
+          in: query
+          schema:
+            type: integer
+            default: 75
+      responses:
+        '200':
+          description: Optimized image
+
+tags:
+  - name: News
+    description: News aggregation endpoints
+  - name: Images
+    description: Image optimization endpoints
+  - name: System
+    description: System health endpoints`
+
+  if (accept.includes('application/json')) {
     return new Response(JSON.stringify({
-      error: 'Invalid request parameters',
-      validationErrors: validationErrors
+      message: 'Schema available in YAML format',
+      swagger_ui: 'https://petstore.swagger.io/?url=' + encodeURIComponent(new URL(request.url).href),
+      yaml_endpoint: new URL(request.url).href
     }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      headers: { 
+        ...corsHeaders, 
+        'Content-Type': 'application/json',
+        'Cache-Control': 'public, max-age=3600'
+      }
     })
   }
-  
-  const allFeeds = []
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    textNodeName: 'text'
-  })
 
-  const enabledSources = RSS_SOURCES.filter(source => source.enabled)
-  
-  const feedPromises = enabledSources.map(async (source) => {
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000)
-      
-      const response = await fetch(source.url, {
-        headers: { 
-          'User-Agent': 'Harare Metro News Aggregator/2.0 (Zimbabwe)',
-          'Accept': 'application/rss+xml, application/xml, text/xml, application/atom+xml'
-        },
-        signal: controller.signal
-      })
-      
-      clearTimeout(timeoutId)
-      
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const xmlData = await response.text()
-      const jsonData = parser.parse(xmlData)
-      
-      const channel = jsonData?.rss?.channel || jsonData?.feed
-      const items = channel?.item || channel?.entry || []
-      
-      const processedItems = (Array.isArray(items) ? items : [items])
-        .slice(0, 20)
-        .map(item => {
-          const title = item.title?.text || item.title || 'No title'
-          const description = cleanHtml(item.description?.text || item.description || item.summary?.text || item.summary || '')
-          const content = `${title} ${description}`.toLowerCase()
-          
-          const detectedCategory = detectCategory(content) || source.category
-          const isPriority = PRIORITY_KEYWORDS.some(keyword => 
-            content.includes(keyword.toLowerCase())
-          )
-          const relevanceScore = calculateRelevanceScore(content)
-          
-          return {
-            title: title,
-            description: description,
-            link: item.link?.text || item.link || item.id || '#',
-            pubDate: item.pubDate || item.published || item.updated || new Date().toISOString(),
-            source: source.name,
-            category: detectedCategory,
-            priority: isPriority,
-            relevanceScore: relevanceScore,
-            guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`
-          }
-        })
-        .filter(item => item.title !== 'No title')
-
-      return processedItems
-    } catch (error) {
-      console.error(`Error fetching ${source.name}:`, error.message)
-      return []
-    }
-  })
-
-  const results = await Promise.allSettled(feedPromises)
-  
-  results.forEach(result => {
-    if (result.status === 'fulfilled') {
-      allFeeds.push(...result.value)
-    }
-  })
-
-  // Sort feeds
-  allFeeds.sort((a, b) => {
-    if (a.priority && !b.priority) return -1
-    if (!a.priority && b.priority) return 1
-    if (a.relevanceScore !== b.relevanceScore) {
-      return b.relevanceScore - a.relevanceScore
-    }
-    return new Date(b.pubDate) - new Date(a.pubDate)
-  })
-
-  // Remove duplicates
-  const uniqueFeeds = removeDuplicates(allFeeds)
-  
-  // Apply filters based on validated parameters
-  let filteredFeeds = uniqueFeeds
-  
-  if (params.category) {
-    filteredFeeds = filteredFeeds.filter(feed => feed.category === params.category)
-  }
-  
-  if (params.priority !== undefined) {
-    const priorityFilter = params.priority === 'true'
-    filteredFeeds = filteredFeeds.filter(feed => feed.priority === priorityFilter)
-  }
-  
-  const limit = params.limit ? parseInt(params.limit) : 50
-  const limitedFeeds = filteredFeeds.slice(0, limit)
-
-  return new Response(JSON.stringify(limitedFeeds), {
+  return new Response(yamlSchema, {
     headers: { 
       ...corsHeaders, 
-      'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=600',
-      'X-Total-Count': filteredFeeds.length.toString(),
-      'X-Returned-Count': limitedFeeds.length.toString()
+      'Content-Type': 'application/yaml',
+      'Cache-Control': 'public, max-age=3600'
     }
   })
 }
@@ -1280,220 +1261,29 @@ function getEnhancedFallbackHTML() {
       <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { 
-          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+          font-family: Georgia, 'Times New Roman', serif;
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           min-height: 100vh;
           line-height: 1.4;
         }
-        .header {
-          background: rgba(255,255,255,0.95);
-          backdrop-filter: blur(10px);
-          padding: 1rem 0;
-          box-shadow: 0 2px 20px rgba(0,0,0,0.1);
-          position: sticky;
-          top: 0;
-          z-index: 100;
-        }
-        .header-content {
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 0 1rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 1rem;
-        }
-        .logo {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-        .logo h1 {
-          color: #2d3748;
-          font-size: clamp(1.2rem, 4vw, 1.8rem);
-          font-weight: 700;
-        }
-        .api-docs {
-          display: flex;
-          gap: 0.5rem;
-          align-items: center;
-        }
-        .api-link {
-          background: #4299e1;
-          color: white;
-          text-decoration: none;
-          padding: 0.5rem 1rem;
-          border-radius: 0.5rem;
-          font-size: 0.9rem;
-          font-weight: 600;
-          transition: all 0.2s;
-        }
-        .api-link:hover { background: #3182ce; transform: translateY(-1px); }
-        .api-link.secondary { background: #e53e3e; }
-        .api-link.secondary:hover { background: #c53030; }
-        .container { 
-          max-width: 1200px; 
-          margin: 0 auto; 
-          padding: 2rem 1rem;
-        }
-        .api-info {
-          background: rgba(255,255,255,0.9);
-          backdrop-filter: blur(10px);
-          border-radius: 0.75rem;
-          padding: 2rem;
-          margin-bottom: 2rem;
-          box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-        }
-        .api-info h2 {
-          color: #2d3748;
-          margin-bottom: 1rem;
-          font-size: 1.5rem;
-        }
-        .api-info p {
-          color: #4a5568;
-          margin-bottom: 1rem;
-        }
-        .endpoint-list {
-          background: #f7fafc;
-          border-radius: 0.5rem;
-          padding: 1rem;
-          margin-top: 1rem;
-        }
-        .endpoint {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0.5rem 0;
-          border-bottom: 1px solid #e2e8f0;
-        }
-        .endpoint:last-child { border-bottom: none; }
-        .endpoint code {
-          background: #2d3748;
-          color: #e2e8f0;
-          padding: 0.25rem 0.5rem;
-          border-radius: 0.25rem;
-          font-size: 0.85rem;
-        }
-        .news-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-          gap: 1rem;
-        }
-        .loading { 
-          text-align: center; 
-          color: white;
-          font-size: 1rem;
-          padding: 2rem;
-        }
-        @media (max-width: 768px) {
-          .header-content { flex-direction: column; text-align: center; }
-          .api-docs { flex-wrap: wrap; justify-content: center; }
-          .container { padding: 1rem; }
-          .api-info { padding: 1.5rem; }
-        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
+        .loading { text-align: center; color: white; font-size: 1rem; padding: 2rem; }
       </style>
     </head>
     <body>
-      <header class="header">
-        <div class="header-content">
-          <div class="logo">
-            <span style="font-size: 1.5rem;">🇿🇼</span>
-            <div>
-              <h1>Harare Metro</h1>
-              <p style="color: #718096; font-size: 0.85rem;">Zimbabwe News API</p>
-            </div>
-          </div>
-          <div class="api-docs">
-            <a href="/api/schema" class="api-link">📋 API Schema</a>
-            <a href="https://petstore.swagger.io/?url=${encodeURIComponent('https://' + 'example.com/api/schema')}" class="api-link secondary" target="_blank">📖 Swagger UI</a>
-          </div>
-        </div>
-      </header>
-
       <div class="container">
-        <div class="api-info">
-          <h2>🚀 Harare Metro News API</h2>
-          <p>
-            Welcome to the Harare Metro News API! This API aggregates news from multiple Zimbabwe sources
-            and provides intelligent categorization with enhanced validation.
-          </p>
-          
-          <div class="endpoint-list">
-            <h3 style="margin-bottom: 1rem; color: #2d3748;">Available Endpoints:</h3>
-            <div class="endpoint">
-              <span><strong>Health Check:</strong> API status and info</span>
-              <code>GET /api/health</code>
-            </div>
-            <div class="endpoint">
-              <span><strong>News Feeds:</strong> Get latest articles</span>
-              <code>GET /api/feeds</code>
-            </div>
-            <div class="endpoint">
-              <span><strong>RSS Sources:</strong> Get configured sources</span>
-              <code>GET /api/feeds/sources</code>
-            </div>
-            <div class="endpoint">
-              <span><strong>Categories:</strong> Get categorization data</span>
-              <code>GET /api/categories</code>
-            </div>
-            <div class="endpoint">
-              <span><strong>API Schema:</strong> OpenAPI 3.0 specification</span>
-              <code>GET /api/schema</code>
-            </div>
-          </div>
-          
-          <p style="margin-top: 1rem;">
-            <strong>✨ New Features:</strong> Request validation, enhanced error messages, 
-            and comprehensive API documentation with Swagger UI integration.
-          </p>
-        </div>
-        
-        <div id="news-container" class="news-grid">
-          <div class="loading">📡 Loading latest Zimbabwe news...</div>
-        </div>
+        <div class="loading">📡 Loading Harare Metro with enhanced image support...</div>
       </div>
-
       <script>
-        // Load news and display
         async function loadNews() {
           try {
-            const response = await fetch('/api/feeds?limit=12');
-            if (!response.ok) throw new Error('Failed to load news');
-            
+            const response = await fetch('/api/feeds?limit=6');
             const feeds = await response.json();
-            
-            const container = document.getElementById('news-container');
-            if (feeds.length === 0) {
-              container.innerHTML = '<div class="loading">No news articles available.</div>';
-              return;
-            }
-            
-            container.innerHTML = feeds.map(article => \`
-              <div style="background: rgba(255,255,255,0.95); border-radius: 0.75rem; padding: 1.25rem; box-shadow: 0 8px 25px rgba(0,0,0,0.1);">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 0.75rem; font-size: 0.8rem;">
-                  <span style="color: #4299e1; font-weight: 600;">\${article.source}</span>
-                  <span style="color: #718096;">\${new Date(article.pubDate).toLocaleDateString()}</span>
-                </div>
-                <h3 style="margin-bottom: 0.75rem; color: #2d3748; font-size: 1rem; line-height: 1.4;">
-                  \${article.title}
-                  \${article.priority ? '<span style="background: linear-gradient(45deg, #f093fb, #f5576c); color: white; padding: 0.2rem 0.5rem; border-radius: 10px; font-size: 0.7rem; margin-left: 0.5rem;">🇿🇼</span>' : ''}
-                </h3>
-                \${article.description ? \`<p style="color: #4a5568; font-size: 0.9rem; line-height: 1.5; margin-bottom: 0.75rem;">\${article.description.substring(0, 150)}...</p>\` : ''}
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="background: #edf2f7; color: #4a5568; padding: 0.25rem 0.75rem; border-radius: 15px; font-size: 0.75rem; text-transform: capitalize;">\${article.category}</span>
-                  <a href="\${article.link}" target="_blank" style="color: #4299e1; text-decoration: none; font-weight: 600; font-size: 0.85rem;">Read More →</a>
-                </div>
-              </div>
-            \`).join('');
-            
+            console.log('Loaded feeds with images:', feeds.filter(f => f.imageUrl).length);
           } catch (error) {
-            document.getElementById('news-container').innerHTML = 
-              \`<div style="color: #f56565; background: rgba(255,255,255,0.9); padding: 1rem; border-radius: 0.5rem;">❌ Error: \${error.message}</div>\`;
+            console.error('Error:', error);
           }
         }
-
-        // Load news on page load
         loadNews();
       </script>
     </body>
