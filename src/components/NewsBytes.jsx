@@ -1,273 +1,370 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { ShareIcon } from '@heroicons/react/24/outline'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
+import { 
+  PlayIcon, 
+  PauseIcon, 
+  SpeakerWaveIcon, 
+  SpeakerXMarkIcon,
+  HeartIcon,
+  ShareIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  GlobeAltIcon
+} from '@heroicons/react/24/outline'
+import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
+import ShareModal from './ShareModal'
 
-function NewsBytes({ articles, currentColors }) {
-  // Sort articles by date, newest first
-  const sortedArticles = [...articles].sort((a, b) => 
-    new Date(b.pubDate) - new Date(a.pubDate)
-  )
-  
+const NewsBytes = ({ articles = [], currentColors }) => {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isPlaying, setIsPlaying] = useState(false)
+  const [isMuted, setIsMuted] = useState(true)
+  const [likedArticles, setLikedArticles] = useState(new Set())
   const [isExpanded, setIsExpanded] = useState(false)
-  const [preloadedImages, setPreloadedImages] = useState([])
-  const [isDragging, setIsDragging] = useState(false)
-  const [touchStartY, setTouchStartY] = useState(0)
-  const [touchCurrentY, setTouchCurrentY] = useState(0)
-  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [shareArticle, setShareArticle] = useState(null)
+  
+  const videoRef = useRef(null)
   const containerRef = useRef(null)
+  const touchStartY = useRef(0)
+  const touchStartTime = useRef(0)
 
-  // Preload images
+  const currentArticle = articles[currentIndex]
+
+  // Auto-advance logic
   useEffect(() => {
-    const preloadNextImages = () => {
-      const nextIndexes = [
-        currentIndex + 1, 
-        currentIndex + 2,
-        currentIndex - 1
-      ].filter(idx => idx >= 0 && idx < sortedArticles.length)
+    if (!isPlaying) return
 
-      nextIndexes.forEach(idx => {
-        if (!preloadedImages.includes(idx)) {
-          const img = new Image()
-          img.src = sortedArticles[idx].optimizedImageUrl
-          setPreloadedImages(prev => [...prev, idx])
-        }
-      })
-    }
+    const timer = setTimeout(() => {
+      handleNext()
+    }, 8000) // 8 seconds per article
 
-    preloadNextImages()
-  }, [currentIndex, sortedArticles])
+    return () => clearTimeout(timer)
+  }, [currentIndex, isPlaying])
 
-  const handleTouchStart = (e) => {
-    if (isTransitioning) return
-    setIsDragging(true)
-    setTouchStartY(e.touches[0].clientY)
-    setTouchCurrentY(e.touches[0].clientY)
-  }
-
-  const handleTouchMove = (e) => {
-    if (!isDragging || isTransitioning) return
-    setTouchCurrentY(e.touches[0].clientY)
-  }
-
-  const handleTouchEnd = () => {
-    if (!isDragging || isTransitioning) return
-    
-    const deltaY = touchStartY - touchCurrentY
-    const threshold = 50 // Minimum swipe distance
-
-    if (Math.abs(deltaY) > threshold) {
-      setIsTransitioning(true)
-      
-      if (deltaY > 0 && currentIndex < sortedArticles.length - 1) {
-        // Swiped up - go to next (older) article
-        setCurrentIndex(prev => prev + 1)
-      } else if (deltaY < 0 && currentIndex > 0) {
-        // Swiped down - go to previous (newer) article
-        setCurrentIndex(prev => prev - 1)
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault()
+        togglePlayPause()
+      } else if (e.code === 'ArrowUp') {
+        e.preventDefault()
+        handlePrevious()
+      } else if (e.code === 'ArrowDown') {
+        e.preventDefault()
+        handleNext()
       }
-
-      // Reset transition state after animation
-      setTimeout(() => {
-        setIsTransitioning(false)
-      }, 300)
     }
 
-    setIsDragging(false)
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [])
+
+  // Touch gestures
+  const handleTouchStart = useCallback((e) => {
+    touchStartY.current = e.touches[0].clientY
+    touchStartTime.current = Date.now()
+  }, [])
+
+  const handleTouchEnd = useCallback((e) => {
+    const touchEndY = e.changedTouches[0].clientY
+    const touchEndTime = Date.now()
+    const deltaY = touchStartY.current - touchEndY
+    const deltaTime = touchEndTime - touchStartTime.current
+
+    // Swipe detection
+    if (Math.abs(deltaY) > 50 && deltaTime < 300) {
+      if (deltaY > 0) {
+        handleNext() // Swipe up - next article
+      } else {
+        handlePrevious() // Swipe down - previous article
+      }
+    }
+  }, [])
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev + 1) % articles.length)
     setIsExpanded(false)
   }
 
-  const handleShare = async () => {
-    const currentArticle = sortedArticles[currentIndex]
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: currentArticle.title,
-          text: currentArticle.description,
-          url: currentArticle.link,
-        })
-      } catch (err) {
-        console.log('Error sharing:', err)
-      }
-    } else {
-      // Fallback - copy to clipboard
-      navigator.clipboard.writeText(currentArticle.link)
-    }
+  const handlePrevious = () => {
+    setCurrentIndex((prev) => (prev - 1 + articles.length) % articles.length)
+    setIsExpanded(false)
   }
 
-  if (!sortedArticles.length) {
+  const togglePlayPause = () => {
+    setIsPlaying(!isPlaying)
+  }
+
+  const toggleMute = () => {
+    setIsMuted(!isMuted)
+  }
+
+  const toggleLike = () => {
+    const newLiked = new Set(likedArticles)
+    if (newLiked.has(currentArticle.guid)) {
+      newLiked.delete(currentArticle.guid)
+    } else {
+      newLiked.add(currentArticle.guid)
+    }
+    setLikedArticles(newLiked)
+  }
+
+  const handleShare = () => {
+    setShareArticle(currentArticle)
+    setShowShareModal(true)
+  }
+
+  const getSmartPreview = (text, maxLength = 120) => {
+    if (!text || text.length <= maxLength) return text
+    
+    const preview = text.substring(0, maxLength)
+    const lastSpace = preview.lastIndexOf(' ')
+    
+    if (lastSpace > 80) {
+      return preview.substring(0, lastSpace) + '...'
+    }
+    return preview + '...'
+  }
+
+  if (!articles.length) {
     return (
-      <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <p className="text-white">No articles available</p>
+      <div className="fixed inset-0 flex items-center justify-center bg-black">
+        <div className="text-center">
+          <div className="text-white text-lg mb-4">📰</div>
+          <div className="text-white text-sm">No articles with images available</div>
+        </div>
       </div>
     )
   }
 
-  const currentArticle = sortedArticles[currentIndex]
-  const dragOffset = isDragging ? touchCurrentY - touchStartY : 0
-
   return (
-    <div 
-      className="fixed inset-0 bg-black lg:hidden overflow-hidden select-none"
-      ref={containerRef}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      style={{ touchAction: 'none' }}
-    >
-      {/* Articles Container */}
-      <div className="relative h-full w-full">
-        {/* Previous Article (when swiping down) */}
-        {currentIndex > 0 && (
-          <div 
-            className="absolute inset-0 transition-transform duration-300 ease-out"
-            style={{
-              transform: `translateY(${isDragging && dragOffset > 0 ? dragOffset - window.innerHeight : '-100vh'})`
-            }}
-          >
+    <>
+      <div 
+        ref={containerRef}
+        className="fixed inset-0 bg-black overflow-hidden"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      >
+        {/* Background Image */}
+        {currentArticle?.optimizedImageUrl && (
+          <div className="absolute inset-0">
             <img
-              src={sortedArticles[currentIndex - 1].optimizedImageUrl}
+              src={currentArticle.optimizedImageUrl}
               alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
+              className="w-full h-full object-cover opacity-40"
             />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
           </div>
         )}
 
-        {/* Current Article */}
-        <div 
-          className="absolute inset-0 transition-transform duration-300 ease-out"
-          style={{
-            transform: `translateY(${isDragging ? dragOffset : 0}px)`
-          }}
-        >
-          <img
-            src={currentArticle.optimizedImageUrl}
-            alt={currentArticle.title}
-            className="h-full w-full object-cover"
-            loading="eager"
-          />
-
-          {/* Gradient Overlay */}
-          <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black via-black/50 to-transparent" />
-
-          {/* Article Content */}
-          <div className="absolute inset-x-0 bottom-0 p-4 pb-8 text-white">
-            <div className="space-y-3">
+        {/* Content Overlay */}
+        <div className="relative h-full flex flex-col">
+          {/* Top Controls */}
+          <div className="flex-shrink-0 p-4 pt-safe">
+            <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium bg-white/20 backdrop-blur-sm px-2 py-1 rounded-full">
-                  {currentArticle.source}
+                <span className="text-white text-sm font-medium">
+                  {currentIndex + 1} / {articles.length}
                 </span>
-                <span className="text-xs text-white/80">
-                  {new Date(currentArticle.pubDate).toLocaleDateString()}
-                </span>
+                <div className="w-16 h-1 bg-white/30 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-white transition-all duration-200"
+                    style={{ width: `${((currentIndex + 1) / articles.length) * 100}%` }}
+                  />
+                </div>
               </div>
               
-              <h1 className="text-lg font-bold leading-tight line-clamp-3">
-                {currentArticle.title}
-              </h1>
-              
-              {currentArticle.description && (
-                <p className={`text-sm text-white/90 leading-relaxed ${
-                  isExpanded ? '' : 'line-clamp-2'
-                }`}>
-                  {currentArticle.description}
-                </p>
-              )}
-              
-              {currentArticle.description && (
+              <div className="flex items-center space-x-2">
                 <button
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="text-sm text-white/80 underline"
+                  onClick={toggleMute}
+                  className="p-2 rounded-full bg-black/50 backdrop-blur-sm text-white"
                 >
-                  {isExpanded ? 'Show less' : 'Show more'}
+                  {isMuted ? (
+                    <SpeakerXMarkIcon className="h-5 w-5" />
+                  ) : (
+                    <SpeakerWaveIcon className="h-5 w-5" />
+                  )}
                 </button>
-              )}
+                
+                <button
+                  onClick={togglePlayPause}
+                  className="p-2 rounded-full bg-black/50 backdrop-blur-sm text-white"
+                >
+                  {isPlaying ? (
+                    <PauseIcon className="h-5 w-5" />
+                  ) : (
+                    <PlayIcon className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Side Actions */}
-          <div className="absolute right-4 bottom-1/3 flex flex-col items-center space-y-6">
-            {/* Source Icon */}
-            <div className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center border border-white/20">
-              <span className="text-white text-xs font-bold">
-                {currentArticle.source.charAt(0)}
-              </span>
+          {/* Main Content Area - Clickable to pause/play */}
+          <div 
+            className="flex-1 flex items-end p-4 cursor-pointer"
+            onClick={togglePlayPause}
+          >
+            <div className="w-full">
+              {/* Priority Badge */}
+              {currentArticle?.priority && (
+                <div className="mb-4">
+                  <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
+                    🇿🇼 Priority News
+                  </span>
+                </div>
+              )}
+
+              {/* Source and Date */}
+              <div className="flex items-center space-x-2 mb-3">
+                <span className="text-white/90 text-sm font-semibold">
+                  {currentArticle?.source}
+                </span>
+                <span className="text-white/60 text-xs">
+                  {currentArticle?.pubDate && new Date(currentArticle.pubDate).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+
+              {/* Title */}
+              <h2 className="text-white text-xl font-bold leading-tight mb-3 line-clamp-3">
+                {currentArticle?.title}
+              </h2>
+
+              {/* Description */}
+              {currentArticle?.description && (
+                <div className="mb-4">
+                  <p className={`text-white/90 text-sm leading-relaxed ${
+                    isExpanded ? '' : 'line-clamp-3'
+                  }`}>
+                    {isExpanded ? currentArticle.description : getSmartPreview(currentArticle.description)}
+                  </p>
+                  
+                  {currentArticle.description.length > 120 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setIsExpanded(!isExpanded)
+                      }}
+                      className="mt-2 text-white/80 text-xs hover:text-white flex items-center gap-1"
+                    >
+                      {isExpanded ? (
+                        <>
+                          <ChevronUpIcon className="w-3 h-3" />
+                          Show Less
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDownIcon className="w-3 h-3" />
+                          Read More
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Read Full Article Link */}
+              <a
+                href={currentArticle?.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="inline-flex items-center text-white/80 text-sm hover:text-white transition-colors"
+              >
+                <span>Read Full Article</span>
+                <GlobeAltIcon className="w-4 h-4 ml-1" />
+              </a>
             </div>
+          </div>
+
+          {/* Right Side Actions */}
+          <div className="absolute right-4 bottom-32 flex flex-col space-y-4">
+            {/* Like Button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                toggleLike()
+              }}
+              className="flex flex-col items-center space-y-1"
+            >
+              {likedArticles.has(currentArticle?.guid) ? (
+                <HeartSolidIcon className="h-8 w-8 text-red-500" />
+              ) : (
+                <HeartIcon className="h-8 w-8 text-white" />
+              )}
+              <span className="text-white text-xs">
+                {likedArticles.has(currentArticle?.guid) ? 'Liked' : 'Like'}
+              </span>
+            </button>
 
             {/* Share Button */}
             <button
-              onClick={handleShare}
-              className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-lg flex items-center justify-center border border-white/20 active:scale-95 transition-transform"
-              aria-label="Share article"
+              onClick={(e) => {
+                e.stopPropagation()
+                handleShare()
+              }}
+              className="flex flex-col items-center justify-center space-y-1"
             >
-              <ShareIcon className="w-6 h-6 text-white" />
+              <div className="p-2 rounded-full bg-white/20 backdrop-blur-sm">
+                <ShareIcon className="h-6 w-6 text-white" />
+              </div>
+              <span className="text-white text-xs">Share</span>
             </button>
           </div>
 
-          {/* Progress Indicator */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-white/20">
-            <div 
-              className="h-full bg-white transition-all duration-300 ease-out"
-              style={{ 
-                width: `${((currentIndex + 1) / sortedArticles.length) * 100}%`
-              }}
-            />
-          </div>
-
-          {/* Article Counter */}
-          <div className="absolute top-4 right-4">
-            <span className="text-white/80 text-sm bg-black/30 backdrop-blur-sm px-2 py-1 rounded-full">
-              {currentIndex + 1} / {sortedArticles.length}
-            </span>
+          {/* Bottom Navigation Hints */}
+          <div className="flex-shrink-0 p-4 pb-safe">
+            <div className="flex justify-center space-x-8 text-white/60 text-xs">
+              <div className="flex items-center space-x-1">
+                <ChevronUpIcon className="h-4 w-4" />
+                <span>Swipe up for next</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span>Tap to pause/play</span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Next Article (when swiping up) */}
-        {currentIndex < sortedArticles.length - 1 && (
-          <div 
-            className="absolute inset-0 transition-transform duration-300 ease-out"
-            style={{
-              transform: `translateY(${isDragging && dragOffset < 0 ? dragOffset + window.innerHeight : '100vh'})`
-            }}
-          >
-            <img
-              src={sortedArticles[currentIndex + 1].optimizedImageUrl}
-              alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
-            />
-          </div>
-        )}
+        {/* Navigation Arrows (for desktop) */}
+        <button
+          onClick={handlePrevious}
+          className="hidden md:block absolute left-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors"
+          disabled={currentIndex === 0}
+        >
+          <ChevronUpIcon className="h-6 w-6" />
+        </button>
+
+        <button
+          onClick={handleNext}
+          className="hidden md:block absolute right-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors"
+          disabled={currentIndex === articles.length - 1}
+        >
+          <ChevronDownIcon className="h-6 w-6" />
+        </button>
       </div>
 
-      {/* Swipe Indicator */}
-      {isDragging && Math.abs(dragOffset) > 20 && (
-        <div className="absolute inset-x-0 top-1/2 transform -translate-y-1/2 flex justify-center pointer-events-none z-10">
-          <div className="bg-black/50 backdrop-blur-lg rounded-full px-4 py-2 border border-white/20">
-            <span className="text-white text-sm">
-              {dragOffset < 0 ? '↑ Next Article' : '↓ Previous Article'}
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Preload hidden images */}
-      <div className="hidden">
-        {[currentIndex + 1, currentIndex + 2].map((idx) => {
-          if (idx < sortedArticles.length) {
-            return (
-              <img
-                key={idx}
-                src={sortedArticles[idx].optimizedImageUrl}
-                alt=""
-                loading="lazy"
-              />
-            )
-          }
-          return null
-        })}
-      </div>
-    </div>
+      {/* Share Modal */}
+      <ShareModal
+        article={shareArticle}
+        isOpen={showShareModal}
+        onClose={() => {
+          setShowShareModal(false)
+          setShareArticle(null)
+        }}
+        currentColors={{
+          cardBg: 'bg-white dark:bg-gray-800',
+          text: 'text-gray-900 dark:text-white',
+          textMuted: 'text-gray-500 dark:text-gray-400',
+          categoryButton: 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
+        }}
+      />
+    </>
   )
 }
 

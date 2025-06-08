@@ -25,12 +25,13 @@ import {
   ChevronDownIcon,
   ChevronUpIcon,
   Squares2X2Icon,
-  VideoCameraIcon
+  VideoCameraIcon,
+  ShareIcon // Add this import
 } from '@heroicons/react/24/outline'
-import NewsReels from './components/NewsBytes'
+import NewsBytes from './components/NewsBytes'
 import ErrorBoundary from './components/ErrorBoundary'
 import SearchPage from './components/SearchPage'
-import NewsBytes from './components/NewsBytes' // Update the import path too
+import ShareModal from './components/ShareModal'
 
 // Logo Component
 const Logo = ({ 
@@ -166,11 +167,41 @@ function useScrollTracker() {
   return { scrollProgress, hasReached25Percent }
 }
 
+// Scroll direction hook
+const useScrollDirection = () => {
+  const [scrollDirection, setScrollDirection] = useState('up')
+  const [lastScroll, setLastScroll] = useState(0)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScroll = window.pageYOffset
+      if (currentScroll <= 0) {
+        setScrollDirection('up')
+        return
+      }
+      
+      if (currentScroll > lastScroll && scrollDirection !== 'down') {
+        setScrollDirection('down')
+      } else if (currentScroll < lastScroll && scrollDirection !== 'up') {
+        setScrollDirection('up')
+      }
+      
+      setLastScroll(currentScroll)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [scrollDirection, lastScroll])
+
+  return scrollDirection
+}
+
 // Enhanced ArticleCard component
 function ArticleCard({ article, currentColors }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const cardRef = useRef(null)
   
   const categoryInfo = CATEGORIES.find(cat => cat.id === article.category)
@@ -220,130 +251,169 @@ function ArticleCard({ article, currentColors }) {
   }
 
   return (
-    <article 
-      ref={cardRef}
-      className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:transform hover:-translate-y-1`}
-      aria-labelledby={`article-title-${article.guid}`}
-    >
-      {/* Image Section */}
-      {hasImage && shouldLoadImages && (
-        <div className="relative w-full overflow-hidden">
-          {!imageLoaded && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
-              <div className="animate-pulse flex flex-col items-center">
-                <PhotoIcon className="h-12 w-12 text-gray-400 mb-2" />
-                <div className="text-xs text-gray-500 dark:text-gray-400">Loading image...</div>
+    <>
+      <article 
+        ref={cardRef}
+        className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:transform hover:-translate-y-1`}
+        aria-labelledby={`article-title-${article.guid}`}
+      >
+        {/* Image Section */}
+        {hasImage && shouldLoadImages && (
+          <div className="relative w-full overflow-hidden">
+            {!imageLoaded && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
+                <div className="animate-pulse flex flex-col items-center">
+                  <PhotoIcon className="h-12 w-12 text-gray-400 mb-2" />
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Loading image...</div>
+                </div>
               </div>
-            </div>
-          )}
-          
-          <img
-            src={article.optimizedImageUrl}
-            alt={article.imageAlt || article.title}
-            className={`w-full transition-opacity duration-300 ${
-              imageLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-            loading="lazy"
-            decoding="async"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-          
-          {article.priority && (
-            <div className="absolute top-3 right-3">
-              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white shadow-lg">
-                🇿🇼 Priority
-              </span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Content Section */}
-      <div className="p-4 sm:p-5">
-        {/* Article Header */}
-        <div className="flex items-center justify-between mb-3 gap-2">
-          <span className={`text-sm font-semibold ${currentColors.accentText} truncate`}>
-            {article.source}
-          </span>
-          <div className={`flex items-center text-xs ${currentColors.textMuted}`}>
-            <span className="whitespace-nowrap">
-              {new Date(article.pubDate).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-              })}
-            </span>
-          </div>
-        </div>
-        
-        {/* Title */}
-        <h2 
-          id={`article-title-${article.guid}`}
-          className={`text-base sm:text-lg font-bold ${currentColors.text} mb-3 leading-tight line-clamp-3`}
-        >
-          {article.title}
-          {article.priority && (!hasImage || !shouldLoadImages) && (
-            <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
-              🇿🇼
-            </span>
-          )}
-        </h2>
-        
-        {/* Description */}
-        {article.description && (
-          <div className="mb-4">
-            <p className={`${currentColors.textSecondary} text-sm sm:text-base leading-relaxed ${
-              isExpanded ? '' : 'line-clamp-2 sm:line-clamp-3'
-            }`}>
-              {isExpanded ? article.description : getSmartPreview(article.description)}
-            </p>
-            
-            {article.description.length > 250 && (
-              <button
-                onClick={toggleExpansion}
-                className={`mt-2 text-xs ${currentColors.accentText} hover:underline flex items-center gap-1`}
-                aria-expanded={isExpanded}
-                aria-label={`${isExpanded ? 'Show less' : 'Read more'} of article: ${article.title}`}
-              >
-                {isExpanded ? (
-                  <>
-                    <ChevronUpIcon className="w-3 h-3" />
-                    Show Less
-                  </>
-                ) : (
-                  <>
-                    <ChevronDownIcon className="w-3 h-3" />
-                    Read More
-                  </>
-                )}
-              </button>
             )}
+            
+            <img
+              src={article.optimizedImageUrl}
+              alt={article.imageAlt || article.title}
+              className={`w-full transition-opacity duration-300 ${
+                imageLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              loading="lazy"
+              decoding="async"
+              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            />
+            
+            {article.priority && (
+              <div className="absolute top-3 right-3">
+                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white shadow-lg">
+                  🇿🇼 Priority
+                </span>
+              </div>
+            )}
+
+            {/* Share Button Overlay */}
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowShareModal(true)
+              }}
+              className="absolute top-3 left-3 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors flex items-center justify-center"
+              aria-label={`Share article: ${article.title}`}
+            >
+              <ShareIcon className="h-4 w-4" />
+            </button>
           </div>
         )}
-        
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-          <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium ${getCategoryColor(article.category)} truncate flex-shrink-0`}>
-            <span className="mr-1">{categoryInfo?.icon || '📰'}</span>
-            <span className="hidden sm:inline">{article.category}</span>
-          </span>
+
+        {/* Content Section */}
+        <div className="p-4 sm:p-5">
+          {/* Article Header */}
+          <div className="flex items-center justify-between mb-3 gap-2">
+            <span className={`text-sm font-semibold ${currentColors.accentText} truncate`}>
+              {article.source}
+            </span>
+            <div className="flex items-center space-x-2">
+              {/* Share Button for articles without images */}
+              {(!hasImage || !shouldLoadImages) && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setShowShareModal(true)
+                  }}
+                  className={`p-1.5 rounded-full transition-colors ${currentColors.categoryButton}`}
+                  aria-label={`Share article: ${article.title}`}
+                >
+                  <ShareIcon className="h-4 w-4" />
+                </button>
+              )}
+              <div className={`flex items-center text-xs ${currentColors.textMuted}`}>
+                <span className="whitespace-nowrap">
+                  {new Date(article.pubDate).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </span>
+              </div>
+            </div>
+          </div>
           
-          <a
-            href={article.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${currentColors.accentText} text-xs sm:text-sm font-medium inline-flex items-center group transition-colors hover:underline`}
+          {/* Title */}
+          <h2 
+            id={`article-title-${article.guid}`}
+            className={`text-base sm:text-lg font-bold ${currentColors.text} mb-3 leading-tight line-clamp-3`}
           >
-            <span className="hidden sm:inline">Read Full Article</span>
-            <span className="sm:hidden">Read</span>
-            <GlobeAltIcon className="w-3 h-3 sm:w-4 sm:h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
-          </a>
+            {article.title}
+            {article.priority && (!hasImage || !shouldLoadImages) && (
+              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
+                🇿🇼
+              </span>
+            )}
+          </h2>
+          
+          {/* Description */}
+          {article.description && (
+            <div className="mb-4">
+              <p className={`${currentColors.textSecondary} text-sm sm:text-base leading-relaxed ${
+                isExpanded ? '' : 'line-clamp-2 sm:line-clamp-3'
+              }`}>
+                {isExpanded ? article.description : getSmartPreview(article.description)}
+              </p>
+              
+              {article.description.length > 250 && (
+                <button
+                  onClick={toggleExpansion}
+                  className={`mt-2 text-xs ${currentColors.accentText} hover:underline flex items-center gap-1`}
+                  aria-expanded={isExpanded}
+                  aria-label={`${isExpanded ? 'Show less' : 'Read more'} of article: ${article.title}`}
+                >
+                  {isExpanded ? (
+                    <>
+                      <ChevronUpIcon className="w-3 h-3" />
+                      Show Less
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDownIcon className="w-3 h-3" />
+                      Read More
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
+          )}
+          
+          {/* Footer */}
+          <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-600">
+            <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium ${getCategoryColor(article.category)} truncate flex-shrink-0`}>
+              <span className="mr-1">{categoryInfo?.icon || '📰'}</span>
+              <span className="hidden sm:inline">{article.category}</span>
+            </span>
+            
+            <a
+              href={article.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${currentColors.accentText} text-xs sm:text-sm font-medium inline-flex items-center group transition-colors hover:underline`}
+            >
+              <span className="hidden sm:inline">Read Full Article</span>
+              <span className="sm:hidden">Read</span>
+              <GlobeAltIcon className="w-3 h-3 sm:w-4 sm:h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
+            </a>
+          </div>
         </div>
-      </div>
-    </article>
+      </article>
+
+      {/* Share Modal */}
+      <ShareModal
+        article={article}
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        currentColors={currentColors}
+      />
+    </>
   )
 }
 
@@ -373,9 +443,7 @@ function useInfiniteScroll(hasMore, loading, loadMore) {
 
 // Helper function to determine the next theme
 const getNextTheme = (currentTheme) => {
-  // No cycling - only direct light/dark selection
-  if (currentTheme === 'light') return 'dark';
-  return 'light';
+  return currentTheme === 'light' ? 'dark' : 'light'
 };
 
 // Main App Component
@@ -389,9 +457,9 @@ function App() {
   const [error, setError] = useState(null)
   const [lastUpdated, setLastUpdated] = useState(null)
   
-  // UI state
+  // UI state - Changed default theme to 'dark'
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [theme, setTheme] = useState('system')
+  const [theme, setTheme] = useState('dark') // Changed from 'light' to 'dark'
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchActive, setIsSearchActive] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
@@ -405,15 +473,16 @@ function App() {
 
   // Scroll tracking
   const { hasReached25Percent } = useScrollTracker()
+  const scrollDirection = useScrollDirection()
 
-  // Theme configurations
+  // Enhanced theme configurations with better contrast
   const themes = {
     light: {
       bg: 'bg-gray-50',
       headerBg: 'bg-white/95',
       cardBg: 'bg-white',
       statsBg: 'bg-gray-100',
-      footerBg: 'bg-gray-800',
+      footerBg: 'bg-gray-900',
       text: 'text-gray-900',
       textSecondary: 'text-gray-700',
       textLight: 'text-white',
@@ -425,45 +494,43 @@ function App() {
       categoryButtonActive: 'bg-gray-900 text-white border border-gray-900'
     },
     dark: {
-      bg: 'bg-gray-900',
-      headerBg: 'bg-gray-800/95',
-      cardBg: 'bg-gray-800',
-      statsBg: 'bg-gray-700',
-      footerBg: 'bg-gray-800',
-      text: 'text-white',
-      textSecondary: 'text-gray-200',
+      bg: 'bg-black', // Changed from bg-gray-900 to pure black
+      headerBg: 'bg-black/95', // Changed from bg-gray-800/95 to black
+      cardBg: 'bg-gray-900', // Kept as gray-900 for cards to stand out from black background
+      statsBg: 'bg-gray-800', // Slightly lighter than cards
+      footerBg: 'bg-gray-900',
+      text: 'text-white', // Pure white for maximum contrast
+      textSecondary: 'text-gray-100', // Very light gray instead of gray-200
       textLight: 'text-white',
-      textMuted: 'text-gray-400',
-      border: 'border-gray-600',
+      textMuted: 'text-gray-300', // Lighter than before for better readability
+      border: 'border-gray-700', // Lighter border for better visibility
       accent: 'bg-white hover:bg-gray-100',
-      accentText: 'text-white hover:text-gray-200',
-      categoryButton: 'bg-gray-800 border border-gray-700 text-gray-200 hover:bg-gray-700',
-      categoryButtonActive: 'bg-white text-gray-900 border border-white'
+      accentText: 'text-white hover:text-gray-100', // Better contrast
+      categoryButton: 'bg-gray-800 border border-gray-600 text-gray-100 hover:bg-gray-700', // Improved contrast
+      categoryButtonActive: 'bg-white text-black border border-white' // Pure white active state
     }
   }
 
-  // Theme management
+  // Enhanced theme management - Default to dark theme
   useEffect(() => {
-    // First check if there's a saved preference
     const savedTheme = localStorage.getItem('theme')
     
-    if (savedTheme) {
-      // Only respect saved theme if it's 'light' or 'dark'
-      if (['light', 'dark'].includes(savedTheme)) {
-        setTheme(savedTheme)
-      }
+    if (savedTheme && ['light', 'dark'].includes(savedTheme)) {
+      setTheme(savedTheme)
     } else {
-      // No saved preference - match system theme
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      setTheme(prefersDark ? 'dark' : 'light')
+      // Default to dark theme instead of system preference
+      const defaultTheme = 'dark'
+      setTheme(defaultTheme)
+      localStorage.setItem('theme', defaultTheme)
     }
 
-    // Still listen for system changes while matching system
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handleChange = () => {
-      // Only update theme if no explicit user preference is saved
+      // Only change if no theme is saved (first visit)
       if (!localStorage.getItem('theme')) {
-        setTheme(mediaQuery.matches ? 'dark' : 'light')
+        const newTheme = 'dark' // Always default to dark
+        setTheme(newTheme)
+        localStorage.setItem('theme', newTheme)
       }
     }
 
@@ -472,20 +539,14 @@ function App() {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('theme', theme)
-    
-    if (theme === 'system') {
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
-      document.documentElement.classList.toggle('dark', isDark)
-    } else {
+    if (['light', 'dark'].includes(theme)) {
+      localStorage.setItem('theme', theme)
       document.documentElement.classList.toggle('dark', theme === 'dark')
     }
   }, [theme])
 
-  const currentColors = themes[theme === 'system' ? 
-    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : 
-    theme
-  ]
+  // FIX: Ensure currentColors is always defined with fallback (now dark)
+  const currentColors = themes[theme] || themes.dark
 
   // Scroll progress tracking
   useEffect(() => {
@@ -498,15 +559,14 @@ function App() {
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  // Load feeds function with caching
-  // Update the loadFeeds function in App.jsx for high volume
+  // Load feeds function - Updated for high volume with background refresh
   const loadFeeds = useCallback(async (forceRefresh = false) => {
     const cacheKey = `feeds_${selectedCategory}`
     
     if (!forceRefresh && cache.isValid(cacheKey)) {
       const cachedData = cache.get(cacheKey)
       if (cachedData) {
-        setAllFeeds(cachedData)
+        setAllFeeds(cachedData.articles || cachedData)
         setLoading(false)
         return
       }
@@ -517,21 +577,20 @@ function App() {
       else setLoading(true)
       setError(null)
 
-      // High volume request - 500 articles
+      // High volume request - 500 articles, fast response from worker cache
       const params = new URLSearchParams({
-        limit: '500', // Request 500 articles
+        limit: '500',
         ...(selectedCategory !== 'all' && { category: selectedCategory })
       })
 
       const apiUrl = `/api/feeds?${params}`
       console.log('🚀 Fetching high volume from:', apiUrl)
       
-      // Longer timeout for high volume requests
       const controller = new AbortController()
       const timeoutId = setTimeout(() => {
         controller.abort()
-        console.error('❌ Request timeout after 45 seconds')
-      }, 45000) // 45 second timeout for 500 articles
+        console.error('❌ Request timeout after 15 seconds')
+      }, 15000) // Shorter timeout since we're reading from cache
 
       const startTime = Date.now()
       
@@ -551,81 +610,82 @@ function App() {
       if (!response.ok) {
         const errorText = await response.text()
         console.error('❌ Response error:', errorText)
-        
-        if (response.status === 504 || response.status === 524) {
-          throw new Error('Request timed out. The news aggregation is processing many sources.')
-        } else if (response.status >= 500) {
-          throw new Error('Server overloaded. Please try again in a moment.')
-        } else {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
 
-      const data = await response.json()
+      const responseData = await response.json()
+      
+      // Enhanced data validation and extraction
+      let articles = []
+      let meta = {}
+      
+      if (responseData) {
+        // Handle different response structures
+        if (Array.isArray(responseData)) {
+          articles = responseData
+        } else if (responseData.articles && Array.isArray(responseData.articles)) {
+          articles = responseData.articles
+          meta = responseData.meta || {}
+        } else if (responseData.success !== false && responseData.articles) {
+          articles = Array.isArray(responseData.articles) ? responseData.articles : []
+          meta = responseData.meta || {}
+        } else {
+          console.error('❌ Invalid response structure:', responseData)
+          throw new Error('Invalid response format from server')
+        }
+      }
+      
       const processingTime = Date.now() - startTime
       
-      console.log(`✅ High volume data received: ${data.length} articles (${processingTime}ms total)`)
-      
-      // Enhanced debugging for high volume
-      const withImages = data.filter(article => article.imageUrl)
-      const withOptimized = data.filter(article => article.optimizedImageUrl)
-      const priorityCount = data.filter(article => article.priority).length
-      const categoryBreakdown = data.reduce((acc, article) => {
-        acc[article.category] = (acc[article.category] || 0) + 1
-        return acc
-      }, {})
-      
-      console.log('📊 High volume stats:', {
-        totalArticles: data.length,
-        withImages: withImages.length,
-        withOptimized: withOptimized.length,
-        priority: priorityCount,
-        categories: Object.keys(categoryBreakdown).length,
-        topCategories: Object.entries(categoryBreakdown)
-          .sort(([,a], [,b]) => b - a)
-          .slice(0, 5)
-          .map(([cat, count]) => `${cat}:${count}`)
+      console.log(`✅ High volume data received: ${articles.length} articles (${processingTime}ms total)`)
+      console.log('📊 Cache info:', {
+        lastRefresh: meta.lastRefresh,
+        nextScheduledRefresh: meta.nextScheduledRefresh,
+        cached: meta.cached,
+        success: responseData.success !== false
       })
       
-      cache.set(cacheKey, data)
-      setAllFeeds(data)
-      setLastUpdated(new Date().toISOString())
-      console.log('✅ High volume feed loading completed successfully')
+      // Additional validation
+      if (!Array.isArray(articles)) {
+        console.error('❌ Articles is not an array:', typeof articles, articles)
+        throw new Error('Received invalid data format')
+      }
+      
+      // Enhanced debugging
+      const withImages = articles.filter(article => article && article.imageUrl)
+      const priorityCount = articles.filter(article => article && article.priority).length
+      
+      console.log('📊 Article stats:', {
+        totalArticles: articles.length,
+        withImages: withImages.length,
+        priority: priorityCount,
+        categories: meta.categories?.length || 0,
+        sources: meta.sources?.length || 0
+      })
+      
+      cache.set(cacheKey, { articles, meta })
+      setAllFeeds(articles)
+      setLastUpdated(meta.lastRefresh || new Date().toISOString())
+      console.log('✅ Feed loading completed successfully')
       
     } catch (err) {
       console.error('❌ High volume feed loading error:', err)
       
-      // Specific error handling for high volume
       if (err.name === 'AbortError') {
-        setError('High volume request timed out. The system is processing many news sources - this can take up to 45 seconds.')
+        setError('Request timed out. Please try again.')
       } else if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
-        setError('Network connection failed during high volume request. Please check your connection.')
-      } else if (err.message.includes('timeout') || err.message.includes('overloaded')) {
-        setError('Server is processing many articles. Please wait a moment and try again.')
+        setError('Network connection failed. Please check your connection.')
       } else {
-        setError(`Failed to load high volume news: ${err.message}`)
+        setError(`Failed to load news: ${err.message}`)
       }
+      
+      // Set empty array on error to prevent filter errors
+      setAllFeeds([])
     } finally {
       setRefreshing(false)
       setLoading(false)
     }
   }, [selectedCategory])
-
-  // Enhanced loading indicator for high volume
-  {loading && allFeeds.length === 0 && (
-    <div className="text-center py-12">
-      <ArrowPathIcon className={`h-8 w-8 animate-spin mx-auto mb-4 ${currentColors.textMuted}`} />
-      <p className={`${currentColors.textMuted} mb-2`}>
-        Loading latest news from 15+ Zimbabwe sources...
-      </p>
-      <p className={`text-sm ${currentColors.textMuted}`}>
-        Processing up to 500 articles - this may take 30-45 seconds
-      </p>
-      <div className="mt-4 max-w-md mx-auto bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-        <div className="bg-green-500 h-2 rounded-full animate-pulse" style={{width: '45%'}}></div>
-      </div>
-    </div>
-  )}
 
   // Load more feeds for infinite scroll
   const loadMoreFeeds = useCallback(() => {
@@ -687,20 +747,14 @@ function App() {
   // Initialize infinite scroll
   useInfiniteScroll(hasMore, loadingMore, loadMoreFeeds)
 
-  // Load feeds when component mounts
+  // Load feeds when component mounts - rely on hourly worker refresh
   useEffect(() => {
-    loadFeeds(true)
+    loadFeeds(false) // Don't force refresh, use cached data
     
-    const interval = setInterval(() => loadFeeds(true), 10 * 60 * 1000)
+    // Check for updates every 5 minutes (worker updates hourly)
+    const interval = setInterval(() => loadFeeds(false), 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [loadFeeds])
-
-  // Backup loading trigger for 25% scroll
-  useEffect(() => {
-    if (hasReached25Percent && allFeeds.length === 0 && !loading) {
-      loadFeeds(true)
-    }
-  }, [hasReached25Percent, allFeeds.length, loading, loadFeeds])
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -711,13 +765,6 @@ function App() {
   const filteredTotal = getFilteredFeeds(allFeeds).length
 
   // Search handlers
-  const handleSearchToggle = () => {
-    setIsSearchActive(!isSearchActive)
-    if (isSearchActive) {
-      setSearchQuery('')
-    }
-  }
-
   const clearSearch = () => {
     setSearchQuery('')
     setIsSearchActive(false)
@@ -775,47 +822,17 @@ function App() {
 
   const seoData = generateSEOData()
 
-  // Filter articles with images for reels
+  // Filter articles with images for bytes view
   const articlesWithImages = useMemo(() => {
     return allFeeds.filter(article => article.optimizedImageUrl)
   }, [allFeeds])
 
-  // Add this new hook near your other hooks
-  const useScrollDirection = () => {
-    const [scrollDirection, setScrollDirection] = useState('up')
-    const [lastScroll, setLastScroll] = useState(0)
-
-    useEffect(() => {
-      const handleScroll = () => {
-        const currentScroll = window.pageYOffset
-        if (currentScroll <= 0) {
-          setScrollDirection('up')
-          return
-        }
-        
-        if (currentScroll > lastScroll && scrollDirection !== 'down') {
-          setScrollDirection('down')
-        } else if (currentScroll < lastScroll && scrollDirection !== 'up') {
-          setScrollDirection('up')
-        }
-        
-        setLastScroll(currentScroll)
-      }
-
-      window.addEventListener('scroll', handleScroll, { passive: true })
-      return () => window.removeEventListener('scroll', handleScroll)
-    }, [scrollDirection, lastScroll])
-
-    return scrollDirection
-  }
-
-  // Update the header section in your return statement
-  const scrollDirection = useScrollDirection()
-
   return (
     <HelmetProvider>
       <div className={`min-h-screen ${currentColors.bg} transition-colors duration-300`}>
-        {/* Updated Header */}
+        <SEO {...seoData} />
+        
+        {/* Updated Header with auto-hide */}
         <header 
           className={`fixed top-0 left-0 right-0 z-50 ${currentColors.headerBg} backdrop-blur-lg ${
             currentColors.border
@@ -825,7 +842,7 @@ function App() {
           role="banner"
         >
           <div className="h-16 flex items-center justify-center">
-            <Logo variant="compact" theme={theme === 'system' ? 'light' : theme} size="md" />
+            <Logo variant="compact" theme={theme} size="md" />
           </div>
         </header>
 
@@ -835,26 +852,26 @@ function App() {
           <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6" role="main">
             {currentView === 'grid' ? (
               <>
-                {/* Error State */}
+                {/* Error State with improved contrast */}
                 {error && (
                   <div className="mb-6">
-                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                    <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl p-4">
                       <div className="flex items-center">
                         <div className="flex-shrink-0">
                           <XMarkIcon className="h-5 w-5 text-red-400" />
                         </div>
                         <div className="ml-3">
-                          <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                          <h3 className="text-sm font-medium text-red-800 dark:text-red-100">
                             Error Loading News
                           </h3>
-                          <p className="mt-1 text-sm text-red-600 dark:text-red-300">
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-200">
                             {error}
                           </p>
                         </div>
                         <div className="ml-auto">
                           <button
                             onClick={() => loadFeeds(true)}
-                            className="text-red-600 dark:text-red-400 hover:text-red-500"
+                            className="text-red-600 dark:text-red-300 hover:text-red-500"
                           >
                             <ArrowPathIcon className="h-4 w-4" />
                           </button>
@@ -864,7 +881,7 @@ function App() {
                   </div>
                 )}
 
-                {/* Category Filters - Horizontal Slider */}
+                {/* Category Filters with improved contrast */}
                 <div className="mb-6">
                   <div className="flex items-center space-x-2 mb-4">
                     <div className="flex-1 overflow-x-auto" role="navigation" aria-label="News categories">
@@ -874,7 +891,7 @@ function App() {
                             key={category.id}
                             onClick={() => setSelectedCategory(category.id)}
                             className={`
-                              flex-shrink-0 px-3 sm:px-4 py-2 rounded-full transition-colors
+                              flex-shrink-0 px-3 sm:px-4 py-2 rounded-full transition-colors font-medium
                               ${selectedCategory === category.id 
                                 ? `${currentColors.categoryButtonActive}` 
                                 : `${currentColors.categoryButton}`
@@ -884,10 +901,7 @@ function App() {
                             aria-label={`Show ${category.label} news`}
                           >
                             <span aria-hidden="true" className="mr-1.5">{category.icon}</span>
-                            <span className={selectedCategory === category.id 
-                              ? currentColors.categoryButtonActive.includes('text-white') ? 'text-white' : 'text-gray-900'
-                              : currentColors.text
-                            }>{category.label}</span>
+                            <span>{category.label}</span>
                           </button>
                         ))}
                       </div>
@@ -895,7 +909,7 @@ function App() {
                   </div>
                 </div>
 
-                {/* Search Bar - New Position */}
+                {/* Search Bar with improved contrast */}
                 <div className="mb-6">
                   {isSearchActive && (
                     <div className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl p-4`}>
@@ -906,7 +920,7 @@ function App() {
                               Search news articles
                             </label>
                             <MagnifyingGlassIcon 
-                              className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" 
+                              className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${currentColors.textMuted}`}
                               aria-hidden="true" 
                             />
                             <input
@@ -915,7 +929,7 @@ function App() {
                               placeholder="Search news..."
                               value={searchQuery}
                               onChange={(e) => setSearchQuery(e.target.value)}
-                              className={`w-full pl-9 pr-3 py-2 text-sm`}
+                              className={`w-full pl-9 pr-3 py-2 text-sm ${currentColors.cardBg} ${currentColors.text} border-0 focus:ring-2 focus:ring-blue-500 rounded-lg placeholder-gray-400 dark:placeholder-gray-500`}
                               aria-label="Search news articles"
                               aria-expanded={isSearchActive}
                             />
@@ -934,7 +948,7 @@ function App() {
                   )}
                 </div>
 
-                {/* Enahnced Stats Display for High Volume */}
+                {/* Enhanced Stats Display with better contrast */}
                 <div className={`${currentColors.statsBg} rounded-xl p-3 mb-6 ${currentColors.border} border`}>
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center space-x-4 flex-wrap">
@@ -942,7 +956,7 @@ function App() {
                         <NewspaperIcon className="h-4 w-4" />
                         <span>{filteredTotal} Articles</span>
                         {filteredTotal >= 400 && (
-                          <span className="text-xs bg-green-500 text-white px-1 rounded">HIGH VOLUME</span>
+                          <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded font-medium">HIGH VOLUME</span>
                         )}
                       </span>
                       <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
@@ -955,11 +969,11 @@ function App() {
                       </span>
                       <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
                         <GlobeAltIcon className="h-4 w-4" />
-                        <span>15 Sources</span>
+                        <span>21 Sources</span>
                       </span>
                     </div>
                     {lastUpdated && (
-                      <span className={`flex items-center space-x-1.5 ${currentColors.textMuted} text-xs`}>
+                      <span className={`flex items-center space-x-1.5 ${currentColors.textMuted} text-xs font-medium`}>
                         <ClockIcon className="h-4 w-4" />
                         <span className="hidden sm:inline">
                           Updated {formatDate(lastUpdated)}
@@ -976,12 +990,17 @@ function App() {
                 {loading && allFeeds.length === 0 && (
                   <div className="text-center py-12">
                     <ArrowPathIcon className={`h-8 w-8 animate-spin mx-auto mb-4 ${currentColors.textMuted}`} />
-                    <p className={`${currentColors.textMuted}`}>Loading latest news...</p>
+                    <p className={`${currentColors.textMuted} mb-2`}>
+                      Loading latest news from 21+ Zimbabwe sources...
+                    </p>
+                    <p className={`text-sm ${currentColors.textMuted}`}>
+                      Reading from hourly cache - this should be quick!
+                    </p>
                   </div>
                 )}
 
                 {/* Articles Grid */}
-                {!loading && displayedFeeds.length > 0 && currentView === 'grid' && (
+                {!loading && displayedFeeds.length > 0 && (
                   <div className="columns-1 sm:columns-2 lg:columns-3 gap-6">
                     {displayedFeeds.map((article, index) => (
                       <div key={`${article.guid}-${index}`} className="break-inside-avoid mb-6">
@@ -1037,7 +1056,7 @@ function App() {
                 )}
               </>
             ) : (
-              // Reels view - only show on mobile/tablet
+              // Bytes view - only show on mobile/tablet
               <div className="lg:hidden">
                 <ErrorBoundary>
                   {loading ? (
@@ -1056,7 +1075,7 @@ function App() {
           </main>
         </div>
 
-        {/* New Mobile Bottom Navigation */}
+        {/* Mobile Bottom Navigation with improved contrast */}
         <nav className={`
           fixed bottom-0 left-0 right-0 lg:hidden z-50 
           ${currentColors.headerBg} backdrop-blur-lg ${currentColors.border} border-t
@@ -1071,7 +1090,7 @@ function App() {
               <Squares2X2Icon className={`h-6 w-6 ${
                 currentView === 'grid' ? currentColors.text : currentColors.textMuted
               }`} />
-              <span className={`text-xs mt-1 ${
+              <span className={`text-xs mt-1 font-medium ${
                 currentView === 'grid' ? currentColors.text : currentColors.textMuted
               }`}>Feed</span>
             </button>
@@ -1085,7 +1104,7 @@ function App() {
               <VideoCameraIcon className={`h-6 w-6 ${
                 currentView === 'bytes' ? currentColors.text : currentColors.textMuted
               }`} />
-              <span className={`text-xs mt-1 ${
+              <span className={`text-xs mt-1 font-medium ${
                 currentView === 'bytes' ? currentColors.text : currentColors.textMuted
               }`}>Bytes</span>
             </button>
@@ -1096,7 +1115,7 @@ function App() {
               aria-label="Search"
             >
               <MagnifyingGlassIcon className={`h-6 w-6 ${currentColors.textMuted}`} />
-              <span className={`text-xs mt-1 ${currentColors.textMuted}`}>Search</span>
+              <span className={`text-xs mt-1 font-medium ${currentColors.textMuted}`}>Search</span>
             </button>
 
             <button
@@ -1107,17 +1126,28 @@ function App() {
               {theme === 'light' ? (
                 <>
                   <SunIcon className={`h-6 w-6 ${currentColors.textMuted}`} />
-                  <span className={`text-xs mt-1 ${currentColors.textMuted}`}>Light</span>
+                  <span className={`text-xs mt-1 font-medium ${currentColors.textMuted}`}>Light</span>
                 </>
               ) : (
                 <>
                   <MoonIcon className={`h-6 w-6 ${currentColors.textMuted}`} />
-                  <span className={`text-xs mt-1 ${currentColors.textMuted}`}>Dark</span>
+                  <span className={`text-xs mt-1 font-medium ${currentColors.textMuted}`}>Dark</span>
                 </>
               )}
             </button>
           </div>
         </nav>
+
+        {/* Scroll to Top Button */}
+        {showScrollTop && (
+          <button
+            onClick={scrollToTop}
+            className={`fixed bottom-20 right-4 lg:bottom-6 z-40 p-3 rounded-full ${currentColors.accent} ${currentColors.textLight} shadow-lg transition-all duration-300 hover:scale-110`}
+            aria-label="Scroll to top"
+          >
+            <ArrowUpIcon className="h-5 w-5" />
+          </button>
+        )}
 
         {/* Footer */}
         <footer className={`${currentColors.footerBg} text-center py-8 mt-12`} role="contentinfo">
@@ -1137,7 +1167,7 @@ function App() {
               </span>
             </div>
             <p className={`text-xs ${currentColors.textMuted}`}>
-              Aggregating news from Herald, NewsDay, Chronicle, ZBC, and other trusted Zimbabwean sources
+              Hourly news updates from Herald, NewsDay, Chronicle, ZBC, and 17+ trusted Zimbabwean sources
             </p>
           </div>
         </footer>
@@ -1150,6 +1180,7 @@ function App() {
           Skip to main content
         </a>
 
+        {/* Search Page */}
         {showSearch && (
           <SearchPage
             currentColors={currentColors}
@@ -1157,7 +1188,7 @@ function App() {
             onClose={() => setShowSearch(false)}
             onSelectArticle={(article) => {
               setShowSearch(false)
-              // Handle article selection (e.g., scroll to article or open in reels view)
+              // Handle article selection (e.g., scroll to article or open in bytes view)
             }}
           />
         )}

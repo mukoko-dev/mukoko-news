@@ -17,3 +17,9 @@ if (rootElement) {
 } else {
   console.error('Root element not found. Make sure you have a div with id="root" in your HTML.')
 }
+const root = ReactDOM.createRoot(rootElement)
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>,
+)

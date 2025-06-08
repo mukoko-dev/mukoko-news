@@ -12,7 +12,7 @@ id = "472195d9dcb948b7a73c10b2716375ca"
 preview_id = "8c7b7c28e9fa4abc971935876cf9ca26"
 
 [triggers]
-crons = ["0 */6 * * *"]
+crons = ["0 * * * *"]  # Changed from every 6 hours to every hour
 
 [placement]
 mode = "smart"
