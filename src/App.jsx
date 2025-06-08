@@ -478,6 +478,7 @@ function App() {
   }, [])
 
   // Load feeds function with caching
+  // Update the loadFeeds function in App.jsx for high volume
   const loadFeeds = useCallback(async (forceRefresh = false) => {
     const cacheKey = `feeds_${selectedCategory}`
     
@@ -495,39 +496,115 @@ function App() {
       else setLoading(true)
       setError(null)
 
+      // High volume request - 500 articles
       const params = new URLSearchParams({
-        limit: '100',
+        limit: '500', // Request 500 articles
         ...(selectedCategory !== 'all' && { category: selectedCategory })
       })
 
-      const response = await fetch(`/api/feeds?${params}`)
+      const apiUrl = `/api/feeds?${params}`
+      console.log('🚀 Fetching high volume from:', apiUrl)
+      
+      // Longer timeout for high volume requests
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => {
+        controller.abort()
+        console.error('❌ Request timeout after 45 seconds')
+      }, 45000) // 45 second timeout for 500 articles
+
+      const startTime = Date.now()
+      
+      const response = await fetch(apiUrl, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      clearTimeout(timeoutId)
+      const fetchTime = Date.now() - startTime
+      
+      console.log('📨 High volume response:', response.status, `(${fetchTime}ms)`)
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        const errorText = await response.text()
+        console.error('❌ Response error:', errorText)
+        
+        if (response.status === 504 || response.status === 524) {
+          throw new Error('Request timed out. The news aggregation is processing many sources.')
+        } else if (response.status >= 500) {
+          throw new Error('Server overloaded. Please try again in a moment.')
+        } else {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
       }
 
       const data = await response.json()
+      const processingTime = Date.now() - startTime
       
-      // Simple debug: Just log image count
+      console.log(`✅ High volume data received: ${data.length} articles (${processingTime}ms total)`)
+      
+      // Enhanced debugging for high volume
       const withImages = data.filter(article => article.imageUrl)
-      console.log(`Loaded ${data.length} articles, ${withImages.length} have images`)
-      if (withImages.length > 0) {
-        console.log('First image URL:', withImages[0].imageUrl)
-      }
+      const withOptimized = data.filter(article => article.optimizedImageUrl)
+      const priorityCount = data.filter(article => article.priority).length
+      const categoryBreakdown = data.reduce((acc, article) => {
+        acc[article.category] = (acc[article.category] || 0) + 1
+        return acc
+      }, {})
+      
+      console.log('📊 High volume stats:', {
+        totalArticles: data.length,
+        withImages: withImages.length,
+        withOptimized: withOptimized.length,
+        priority: priorityCount,
+        categories: Object.keys(categoryBreakdown).length,
+        topCategories: Object.entries(categoryBreakdown)
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 5)
+          .map(([cat, count]) => `${cat}:${count}`)
+      })
       
       cache.set(cacheKey, data)
-      
       setAllFeeds(data)
       setLastUpdated(new Date().toISOString())
+      console.log('✅ High volume feed loading completed successfully')
       
     } catch (err) {
-      console.error('Feed loading error:', err)
-      setError(`Failed to load news: ${err.message}`)
+      console.error('❌ High volume feed loading error:', err)
+      
+      // Specific error handling for high volume
+      if (err.name === 'AbortError') {
+        setError('High volume request timed out. The system is processing many news sources - this can take up to 45 seconds.')
+      } else if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
+        setError('Network connection failed during high volume request. Please check your connection.')
+      } else if (err.message.includes('timeout') || err.message.includes('overloaded')) {
+        setError('Server is processing many articles. Please wait a moment and try again.')
+      } else {
+        setError(`Failed to load high volume news: ${err.message}`)
+      }
     } finally {
       setRefreshing(false)
       setLoading(false)
     }
   }, [selectedCategory])
+
+  // Enhanced loading indicator for high volume
+  {loading && allFeeds.length === 0 && (
+    <div className="text-center py-12">
+      <ArrowPathIcon className={`h-8 w-8 animate-spin mx-auto mb-4 ${currentColors.textMuted}`} />
+      <p className={`${currentColors.textMuted} mb-2`}>
+        Loading latest news from 15+ Zimbabwe sources...
+      </p>
+      <p className={`text-sm ${currentColors.textMuted}`}>
+        Processing up to 500 articles - this may take 30-45 seconds
+      </p>
+      <div className="mt-4 max-w-md mx-auto bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+        <div className="bg-green-500 h-2 rounded-full animate-pulse" style={{width: '45%'}}></div>
+      </div>
+    </div>
+  )}
 
   // Load more feeds for infinite scroll
   const loadMoreFeeds = useCallback(() => {
@@ -735,16 +812,19 @@ function App() {
                     </button>
                   )}
                 </div>
-
+               
+                {/* Add a "Refresh High Volume" button*/}
                 <button
                   onClick={() => loadFeeds(true)}
                   disabled={refreshing}
-                  className={`p-2 rounded-lg transition-all ${currentColors.categoryButton}`}
+                  className={`p-2 rounded-lg transition-all ${currentColors.categoryButton} ${refreshing ? 'animate-pulse' : ''}`}
+                  title="Refresh all 500 articles"
                 >
                   <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                  {refreshing && <span className="ml-1 text-xs">Loading 500...</span>}
                 </button>
 
-                {/* Temporary API test button */}
+                {/* Temporary API test button 
                 <button
                   onClick={async () => {
                     console.log('=== Testing API directly ===')
@@ -755,6 +835,7 @@ function App() {
                       console.log('Total articles:', data.length)
                       console.log('Articles with imageUrl:', data.filter(a => a.imageUrl).length)
                       console.log('Articles with optimizedImageUrl:', data.filter(a => a.optimizedImageUrl).length)
+                
                       
                       // Show sample article
                       if (data.length > 0) {
@@ -773,6 +854,7 @@ function App() {
                 >
                   Test API
                 </button>
+                */}
 
                 <button
                   onClick={() => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')}
@@ -846,13 +928,16 @@ function App() {
             </div>
           </div>
 
-          {/* Stats */}
+          {/* Enahnced Stats Display for High Volume */}
           <div className={`${currentColors.statsBg} rounded-xl p-3 mb-6 ${currentColors.border} border`}>
             <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 flex-wrap">
                 <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
                   <NewspaperIcon className="h-4 w-4" />
                   <span>{filteredTotal} Articles</span>
+                  {filteredTotal >= 400 && (
+                    <span className="text-xs bg-green-500 text-white px-1 rounded">HIGH VOLUME</span>
+                  )}
                 </span>
                 <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
                   <StarIcon className="h-4 w-4" />
@@ -862,9 +947,13 @@ function App() {
                   <PhotoIcon className="h-4 w-4" />
                   <span>{imageCount} Images</span>
                 </span>
+                <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
+                  <GlobeAltIcon className="h-4 w-4" />
+                  <span>15 Sources</span>
+                </span>
               </div>
               {lastUpdated && (
-                <span className={`flex items-center space-x-1.5 ${currentColors.textMuted}`}>
+                <span className={`flex items-center space-x-1.5 ${currentColors.textMuted} text-xs`}>
                   <ClockIcon className="h-4 w-4" />
                   <span className="hidden sm:inline">
                     Updated {formatDate(lastUpdated)}

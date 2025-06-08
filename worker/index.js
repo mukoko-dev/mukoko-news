@@ -1,85 +1,10 @@
-// Simple image proxy handler (no optimization, just bypass hotlink protection)
-async function handleImageProxy(request, env) {
-  const url = new URL(request.url)
-  const imageUrl = url.searchParams.get('url')
-  
-  if (!imageUrl) {
-    return new Response('Missing image URL', { status: 400 })
-  }
-
-  try {
-    // Validate the image URL is from trusted domains
-    const imageUrlObj = new URL(imageUrl)
-    const isTrusted = TRUSTED_IMAGE_DOMAINS.some(domain => 
-      imageUrlObj.hostname.includes(domain)
-    )
-    
-    if (!isTrusted) {
-      return new Response('Untrusted image domain', { status: 403 })
-    }
-
-    // Check cache first
-    const cacheKey = `image:${imageUrl}`
-    const cached = await env.NEWS_STORAGE.get(cacheKey, { type: 'arrayBuffer' })
-    
-    if (cached) {
-      return new Response(cached, {
-        headers: {
-          'Content-Type': 'image/jpeg',
-          'Cache-Control': 'public, max-age=86400',
-          'Access-Control-Allow-Origin': '*'
-        }
-      })
-    }
-
-    // Fetch original image with proper headers to bypass hotlink protection
-    const imageResponse = await fetch(imageUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.9',
-        'Referer': imageUrlObj.origin,
-        'Sec-Fetch-Dest': 'image',
-        'Sec-Fetch-Mode': 'no-cors',
-        'Sec-Fetch-Site': 'cross-site'
-      }
-    })
-
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.status}`)
-    }
-
-    const imageBuffer = await imageResponse.arrayBuffer()
-    
-    // Cache the image for 24 hours
-    await env.NEWS_STORAGE.put(cacheKey, imageBuffer, {
-      expirationTtl: 86400 // 24 hours
-    })
-
-    return new Response(imageBuffer, {
-      headers: {
-        'Content-Type': imageResponse.headers.get('Content-Type') || 'image/jpeg',
-        'Cache-Control': 'public, max-age=86400',
-        'Access-Control-Allow-Origin': '*'
-      }
-    })
-
-  } catch (error) {
-    console.error('Image proxy error:', error)
-    return new Response('Failed to process image', { status: 500 })
-  }
-}// Enhanced Worker with SSR support for SEO and Simple Image Extraction
+// Enhanced Worker with fixed image extraction
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
 import { XMLParser } from 'fast-xml-parser'
 
-// Image URL patterns to match common formats
-const IMAGE_PATTERNS = [
-  /\.(jpg|jpeg|png|gif|webp|avif|bmp|svg)(\?[^)]*)?/i,
-  /\/[^\/]*\.(jpg|jpeg|png|gif|webp|avif|bmp|svg)$/i
-]
-
-// Common image hosting domains for Zimbabwe news sites
+// Comprehensive list of trusted image domains for Zimbabwe news sites
 const TRUSTED_IMAGE_DOMAINS = [
+  // Primary Zimbabwe news sites
   'herald.co.zw',
   'newsday.co.zw', 
   'chronicle.co.zw',
@@ -94,13 +19,76 @@ const TRUSTED_IMAGE_DOMAINS = [
   '263chat.com',
   'dailynews.co.zw',
   'zimeye.net',
-  // Add CDN domains commonly used
+  'pindula.co.zw',
+  'zimbabwesituation.com',
+  'nehandaradio.com',
+  'opennews.co.zw',
+  'fingaz.co.zw',
+  'manicapost.co.zw',
+  'southerneye.co.zw',
+  
+  // WordPress and common CMS domains
   'wp.com',
   'wordpress.com',
+  'files.wordpress.com',
+  'i0.wp.com',
+  'i1.wp.com',
+  'i2.wp.com',
+  'i3.wp.com',
+  
+  // CDN and image hosting services
   'cloudinary.com',
+  'res.cloudinary.com',
   'imgur.com',
+  'i.imgur.com',
   'gravatar.com',
-  'amazonaws.com'
+  'secure.gravatar.com',
+  'amazonaws.com',
+  's3.amazonaws.com',
+  'cloudfront.net',
+  'unsplash.com',
+  'images.unsplash.com',
+  'pexels.com',
+  'images.pexels.com',
+  
+  // Google services
+  'googleusercontent.com',
+  'lh3.googleusercontent.com',
+  'lh4.googleusercontent.com',
+  'lh5.googleusercontent.com',
+  'blogger.googleusercontent.com',
+  'drive.google.com',
+  
+  // Social media image domains
+  'fbcdn.net',
+  'scontent.fhre1-1.fna.fbcdn.net',
+  'pbs.twimg.com',
+  'abs.twimg.com',
+  'instagram.com',
+  
+  // News agency images
+  'ap.org',
+  'apnews.com',
+  'reuters.com',
+  'bbci.co.uk',
+  'bbc.co.uk',
+  'cnn.com',
+  'media.cnn.com',
+  
+  // African news networks
+  'africanews.com',
+  'mg.co.za',
+  'news24.com',
+  'timeslive.co.za',
+  'iol.co.za',
+  'citizen.co.za',
+  
+  // Generic domains that might host images
+  'photobucket.com',
+  'flickr.com',
+  'staticflickr.com',
+  'wikimedia.org',
+  'upload.wikimedia.org'
 ]
 
 // Keywords to prioritize for Zimbabwe/Harare relevance
@@ -114,7 +102,6 @@ const PRIORITY_KEYWORDS = [
 
 // Enhanced category mapping with global trending categories
 const CATEGORY_KEYWORDS = {
-  // Zimbabwe-specific categories (highest priority)
   politics: [
     'parliament', 'government', 'election', 'party', 'minister', 'president', 'policy', 
     'zanu', 'mdc', 'opposition', 'mnangagwa', 'chamisa', 'cabinet', 'senate', 'mp', 
@@ -133,85 +120,61 @@ const CATEGORY_KEYWORDS = {
     'sme', 'tender', 'procurement', 'partnership', 'merger', 'acquisition',
     'ceo', 'director', 'shareholder', 'profit', 'revenue', 'growth'
   ],
-  
-  // Sports (enhanced)
   sports: [
     'sport', 'football', 'soccer', 'cricket', 'rugby', 'warriors', 'dynamos', 
     'caps united', 'highlanders', 'afcon', 'fifa', 'world cup', 'olympics',
     'athletics', 'boxing', 'tennis', 'golf', 'swimming', 'basketball',
     'volleyball', 'netball', 'hockey', 'cycling', 'marathon'
   ],
-  
-  // Local/Regional
   harare: [
     'harare', 'capital', 'city council', 'mayor', 'cbd', 'avondale', 'borrowdale', 
     'chitungwiza', 'municipality', 'ward', 'councillor', 'rates', 'water', 'sewer',
     'traffic', 'kombi', 'transport', 'housing', 'residential', 'suburbs'
   ],
-  
-  // Agriculture (important for Zimbabwe)
   agriculture: [
     'agriculture', 'farming', 'tobacco', 'maize', 'cotton', 'wheat', 'soya',
     'irrigation', 'crop', 'harvest', 'season', 'drought', 'rainfall',
     'fertilizer', 'seed', 'land reform', 'farmer', 'commercial', 'communal'
   ],
-  
-  // Technology (growing sector)
   technology: [
     'technology', 'tech', 'digital', 'internet', 'mobile', 'app', 'software',
     'innovation', 'startup', 'fintech', 'blockchain', 'ai', 'data',
     'cybersecurity', 'telecoms', 'econet', 'netone', 'telecel'
   ],
-  
-  // Health (always relevant)
   health: [
     'health', 'hospital', 'medical', 'doctor', 'patient', 'medicine', 'treatment',
     'disease', 'covid', 'vaccination', 'clinic', 'healthcare', 'pharmacy',
     'outbreak', 'epidemic', 'maternal', 'child health', 'malaria', 'hiv', 'aids'
   ],
-  
-  // Education
   education: [
     'education', 'school', 'student', 'teacher', 'university', 'college',
     'examination', 'zimsec', 'results', 'fees', 'scholarship', 'learning',
     'curriculum', 'graduation', 'degree', 'diploma', 'research'
   ],
-  
-  // Entertainment & Culture
   entertainment: [
     'entertainment', 'music', 'artist', 'movie', 'film', 'celebrity', 'culture',
     'festival', 'concert', 'award', 'album', 'song', 'dance', 'theatre',
     'comedy', 'fashion', 'beauty', 'lifestyle'
   ],
-  
-  // Environment
   environment: [
     'environment', 'climate', 'weather', 'conservation', 'wildlife', 'forest',
     'pollution', 'green', 'renewable', 'solar', 'clean', 'nature',
     'endangered', 'national park', 'tourism', 'safari'
   ],
-  
-  // Crime & Security
   crime: [
     'crime', 'police', 'arrest', 'court', 'trial', 'judge', 'sentence', 'prison',
     'theft', 'robbery', 'murder', 'investigation', 'security', 'violence',
     'corruption', 'fraud', 'smuggling', 'drugs'
   ],
-  
-  // International
   international: [
     'international', 'world', 'global', 'foreign', 'embassy', 'visa', 'travel',
     'tourism', 'export', 'import', 'trade', 'relations', 'diplomatic',
     'african union', 'sadc', 'united nations', 'brexit', 'china', 'uk', 'usa'
   ],
-  
-  // Lifestyle
   lifestyle: [
     'lifestyle', 'fashion', 'food', 'recipe', 'home', 'family', 'relationship',
     'wedding', 'travel', 'vacation', 'hobby', 'fitness', 'diet', 'beauty'
   ],
-  
-  // Finance (separate from economy for more specific financial news)
   finance: [
     'finance', 'financial', 'money', 'cash', 'loan', 'credit', 'savings',
     'insurance', 'pension', 'investment', 'portfolio', 'shares', 'dividend',
@@ -219,7 +182,7 @@ const CATEGORY_KEYWORDS = {
   ]
 };
 
-// Reduced RSS feed sources for Zimbabwe news (optimized list)
+// RSS feed sources
 const RSS_SOURCES = [
   {
     name: 'Herald Zimbabwe',
@@ -270,124 +233,204 @@ const RSS_SOURCES = [
     enabled: true
   },
   {
-    name: 'NewZimbabwe',
+    name: 'New Zimbabwe',
     url: 'https://www.newzimbabwe.com/feed/',
     category: 'general',
     enabled: true
   },
   {
-    name: 'The Sunday Mail',
+    name: 'The Independent',
+    url: 'https://www.theindependent.co.zw/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'Sunday Mail',
     url: 'https://www.sundaymail.co.zw/feed/',
     category: 'general',
     enabled: true
   },
   {
     name: '263Chat',
-    url: 'https://www.263chat.com/feed/',
+    url: 'https://263chat.com/feed/',
     category: 'general',
     enabled: true
   },
   {
     name: 'Daily News',
-    url: 'https://dailynews.co.zw/feed/',
+    url: 'https://www.dailynews.co.zw/feed/',
     category: 'general',
     enabled: true
   },
   {
     name: 'ZimEye',
-    url: 'https://www.zimeye.net/feed/',
+    url: 'https://zimeye.net/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'Pindula News',
+    url: 'https://news.pindula.co.zw/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'Zimbabwe Situation',
+    url: 'https://zimbabwesituation.com/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'Nehanda Radio',
+    url: 'https://nehandaradio.com/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'Open News Zimbabwe',
+    url: 'https://opennews.co.zw/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'Financial Gazette',
+    url: 'https://fingaz.co.zw/feed/',
+    category: 'business',
+    enabled: true
+  },
+  {
+    name: 'Manica Post',
+    url: 'https://manicapost.co.zw/feed/',
+    category: 'general',
+    enabled: true
+  },
+  {
+    name: 'Southern Eye',
+    url: 'https://southerneye.co.zw/feed/',
     category: 'general',
     enabled: true
   }
 ]
 
-// Validation schemas for request parameters
-const VALIDATION_SCHEMAS = {
-  feeds: {
-    category: {
-      type: 'string',
-      enum: ['politics', 'economy', 'business', 'sports', 'harare', 'agriculture', 'technology', 'health', 'education', 'entertainment', 'environment', 'crime', 'international', 'lifestyle', 'finance', 'general']
-    },
-    limit: {
-      type: 'integer',
-      minimum: 1,
-      maximum: 100,
-      default: 50
-    },
-    priority: {
-      type: 'boolean'
-    }
-  }
+// Helper function to check if URL is an image
+function isImageUrl(url) {
+  if (!url || typeof url !== 'string') return false
+  
+  const imageExtensions = /\.(jpe?g|png|gif|webp|svg|bmp|avif|ico|tiff?)(\?.*)?$/i
+  const imageParams = /[?&](format|f)=(jpe?g|png|gif|webp|svg|bmp|avif)/i
+  
+  return imageExtensions.test(url) || imageParams.test(url)
 }
 
-// Category configuration for frontend
-const CATEGORIES = [
-  { id: 'all', label: 'All News', icon: '📰', primary: true },
-  { id: 'politics', label: 'Politics', icon: '🏛️', primary: true },
-  { id: 'economy', label: 'Economy', icon: '💰', primary: true },
-  { id: 'business', label: 'Business', icon: '💼', primary: true },
-  { id: 'sports', label: 'Sports', icon: '⚽', primary: true },
-  { id: 'harare', label: 'Harare', icon: '🏙️', primary: true },
-  { id: 'technology', label: 'Technology', icon: '💻', primary: false },
-  { id: 'agriculture', label: 'Agriculture', icon: '🌾', primary: false },
-  { id: 'health', label: 'Health', icon: '🏥', primary: false },
-  { id: 'education', label: 'Education', icon: '🎓', primary: false },
-  { id: 'entertainment', label: 'Entertainment', icon: '🎭', primary: false },
-  { id: 'environment', label: 'Environment', icon: '🌍', primary: false },
-  { id: 'crime', label: 'Crime & Security', icon: '🚔', primary: false },
-  { id: 'international', label: 'International', icon: '🌐', primary: false },
-  { id: 'lifestyle', label: 'Lifestyle', icon: '✨', primary: false },
-  { id: 'finance', label: 'Finance', icon: '💳', primary: false }
-]
-
-// Image extraction function - returns original URL (with debugging)
-function extractImageFromContent(content, link, enclosure = null, mediaContent = null) {
-  // Add some debugging for first few calls
-  if (Math.random() < 0.1) { // Only log 10% of calls to avoid spam
-    console.log(`[DEBUG] Extracting image for: ${link}`)
-    console.log(`[DEBUG] Content preview: ${content ? content.substring(0, 100) + '...' : 'No content'}`)
-    console.log(`[DEBUG] Has enclosure: ${!!enclosure}`)
-    console.log(`[DEBUG] Has mediaContent: ${!!mediaContent}`)
+// Enhanced but simplified image extraction function
+function extractImageFromContent(item, link) {
+  // Debug logging (reduced frequency)
+  if (Math.random() < 0.1) { // Only log 10% of calls
+    console.log(`[DEBUG] Extracting image for: ${item.title || 'Unknown title'}`)
   }
-
-  if (!content && !enclosure && !mediaContent) return null
 
   const imageMatches = []
   
-  // First priority: RSS enclosure or media:content tags
-  if (mediaContent && mediaContent['@_url']) {
-    const mediaUrl = mediaContent['@_url']
-    if (IMAGE_PATTERNS.some(pattern => pattern.test(mediaUrl))) {
-      imageMatches.push(mediaUrl)
+  // 1. RSS Media tags (highest priority)
+  try {
+    if (item['media:content'] && item['media:content']['@_url']) {
+      const mediaUrl = item['media:content']['@_url']
+      if (isImageUrl(mediaUrl)) {
+        imageMatches.push(mediaUrl)
+      }
     }
+  } catch (e) {
+    console.log('[DEBUG] Error extracting media:content:', e.message)
   }
   
-  if (enclosure && enclosure['@_type']?.startsWith('image/') && enclosure['@_url']) {
-    imageMatches.push(enclosure['@_url'])
+  // 2. RSS Enclosure tags
+  try {
+    if (item.enclosure && item.enclosure['@_type']?.startsWith('image/') && item.enclosure['@_url']) {
+      imageMatches.push(item.enclosure['@_url'])
+    }
+  } catch (e) {
+    console.log('[DEBUG] Error extracting enclosure:', e.message)
   }
   
-  // Second priority: Extract from content
-  if (content) {
-    // Extract img src attributes
-    const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
-    let match
-    while ((match = imgRegex.exec(content)) !== null) {
-      imageMatches.push(match[1])
+  // 3. RSS Image tag
+  try {
+    if (item.image) {
+      const imgUrl = typeof item.image === 'string' ? item.image : item.image.url || item.image['@_url']
+      if (imgUrl && isImageUrl(imgUrl)) {
+        imageMatches.push(imgUrl)
+      }
+    }
+  } catch (e) {
+    console.log('[DEBUG] Error extracting RSS image:', e.message)
+  }
+  
+  // 4. WordPress specific fields
+  try {
+    if (item['wp:featured_image']) {
+      imageMatches.push(item['wp:featured_image'])
     }
     
-    // Extract direct image URLs from text
-    IMAGE_PATTERNS.forEach(pattern => {
-      const matches = content.match(new RegExp(pattern.source, 'gi'))
-      if (matches) {
-        imageMatches.push(...matches)
-      }
-    })
+    if (item['wp:attachment_url'] && isImageUrl(item['wp:attachment_url'])) {
+      imageMatches.push(item['wp:attachment_url'])
+    }
+  } catch (e) {
+    console.log('[DEBUG] Error extracting WordPress fields:', e.message)
   }
   
-  // Filter and validate images
+  // 5. Content fields to search
+  const contentFields = [
+    item.description,
+    item['content:encoded'],
+    item.content,
+    item.summary
+  ].filter(Boolean)
+  
+  // 6. Extract from content fields
+  contentFields.forEach((content) => {
+    try {
+      if (typeof content === 'object') {
+        content = content.text || content['#text'] || content._ || ''
+      }
+      
+      if (typeof content === 'string' && content.length > 0) {
+        // Extract img src attributes
+        const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
+        let match
+        while ((match = imgRegex.exec(content)) !== null) {
+          imageMatches.push(match[1])
+        }
+        
+        // Extract meta og:image
+        const metaRegex = /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/gi
+        let metaMatch
+        while ((metaMatch = metaRegex.exec(content)) !== null) {
+          imageMatches.push(metaMatch[1])
+        }
+        
+        // Extract direct image URLs
+        const imageUrlRegex = /https?:\/\/[^\s<>"']+\.(?:jpe?g|png|gif|webp|svg|bmp|avif)(?:\?[^\s<>"']*)?/gi
+        let urlMatch
+        while ((urlMatch = imageUrlRegex.exec(content)) !== null) {
+          imageMatches.push(urlMatch[0])
+        }
+      }
+    } catch (e) {
+      console.log('[DEBUG] Error processing content field:', e.message)
+    }
+  })
+  
+  // 7. Process and validate all found images
   const validImages = imageMatches
     .map(img => {
       try {
+        if (!img || typeof img !== 'string') return null
+        
+        // Clean up the URL
+        img = img.trim()
+        
+        // Remove HTML entities
+        img = img.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        
         // Handle relative URLs
         if (img.startsWith('//')) {
           return `https:${img}`
@@ -396,29 +439,34 @@ function extractImageFromContent(content, link, enclosure = null, mediaContent =
           return `${baseUrl.protocol}//${baseUrl.hostname}${img}`
         } else if (!img.startsWith('http')) {
           const baseUrl = new URL(link)
-          return `${baseUrl.protocol}//${baseUrl.hostname}/${img}`
+          return `${baseUrl.protocol}//${baseUrl.hostname}/${img.replace(/^\.\//, '')}`
         }
         return img
-      } catch {
+      } catch (e) {
         return null
       }
     })
     .filter(Boolean)
     .filter(img => {
       try {
+        // Validate it's actually an image URL
+        if (!isImageUrl(img)) return false
+        
         const imgUrl = new URL(img)
-        return TRUSTED_IMAGE_DOMAINS.some(domain => 
-          imgUrl.hostname.includes(domain)
+        // Check if it's from a trusted domain
+        const isTrusted = TRUSTED_IMAGE_DOMAINS.some(domain => 
+          imgUrl.hostname.includes(domain) || imgUrl.hostname.endsWith(domain)
         )
-      } catch {
+        
+        return isTrusted
+      } catch (e) {
         return false
       }
     })
-    .filter(img => IMAGE_PATTERNS.some(pattern => pattern.test(img)))
+    .filter((img, index, arr) => arr.indexOf(img) === index) // Remove duplicates
   
   const result = validImages.length > 0 ? validImages[0] : null
   
-  // Debug successful extractions
   if (result && Math.random() < 0.1) {
     console.log(`[DEBUG] Successfully extracted image: ${result}`)
   }
@@ -426,300 +474,72 @@ function extractImageFromContent(content, link, enclosure = null, mediaContent =
   return result
 }
 
-// SEO-friendly HTML template for server-side rendering
-function generateSEOHTML(feeds, category = 'all', searchQuery = '') {
-  const categoryInfo = category !== 'all' 
-    ? CATEGORIES.find(cat => cat.id === category) 
-    : { label: 'All News', id: 'all' }
+// Simple image proxy handler
+async function handleImageProxy(request, env) {
+  const url = new URL(request.url)
+  const imageUrl = url.searchParams.get('url')
   
-  // Generate dynamic metadata based on feeds
-  const uniqueSources = [...new Set(feeds.map(feed => feed.source))]
-  const popularCategories = [...new Set(feeds.slice(0, 10).map(feed => feed.category))]
-  
-  let title = 'Harare Metro - Zimbabwe News Aggregator'
-  let description = 'Stay informed with the latest news from Zimbabwe. '
-  let keywords = [
-    'Zimbabwe news', 'Harare news', 'Zimbabwe politics', 'Zimbabwe economy',
-    'Herald Zimbabwe', 'NewsDay', 'Chronicle', 'ZBC News', 'Techzim',
-    'Zimbabwe breaking news', 'Zimbabwe latest news', 'Zimbabwe today',
-    'Zimbabwe headlines', 'Zim news', 'Zimbabwean news'
-  ]
-
-  if (category !== 'all') {
-    title = `${categoryInfo.label} News - Harare Metro`
-    description += `Latest ${categoryInfo.label.toLowerCase()} news from Zimbabwe. `
-    keywords.unshift(`Zimbabwe ${categoryInfo.label.toLowerCase()}`)
+  if (!imageUrl) {
+    return new Response('Missing image URL', { status: 400 })
   }
 
-  if (searchQuery) {
-    title = `"${searchQuery}" - Search Results | Harare Metro`
-    description += `Search results for "${searchQuery}". `
-    keywords.unshift(searchQuery)
-  }
-
-  // Add dynamic keywords based on actual content
-  const contentKeywords = feeds.slice(0, 5)
-    .map(feed => feed.title.split(' '))
-    .flat()
-    .filter(word => word.length > 4)
-    .slice(0, 10)
-  
-  keywords.push(...contentKeywords)
-  const keywordsString = keywords.join(', ')
-  const canonicalUrl = `https://www.hararemetro.co.zw${category !== 'all' ? `/?category=${category}` : ''}${searchQuery ? `&search=${encodeURIComponent(searchQuery)}` : ''}`
-
-  // Generate structured data for SEO
-  const websiteStructuredData = {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Harare Metro",
-    "description": "Zimbabwe News Aggregator - Real-time news from trusted local sources",
-    "url": "https://www.hararemetro.co.zw",
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": {
-        "@type": "EntryPoint",
-        "urlTemplate": "https://www.hararemetro.co.zw/?search={search_term_string}"
-      },
-      "query-input": "required name=search_term_string"
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": "Harare Metro",
-      "url": "https://www.hararemetro.co.zw",
-      "logo": {
-        "@type": "ImageObject",
-        "url": "https://www.hararemetro.co.zw/logo.png",
-        "width": 512,
-        "height": 512
-      }
+  try {
+    // Validate the image URL is from trusted domains
+    const imageUrlObj = new URL(imageUrl)
+    const isTrusted = TRUSTED_IMAGE_DOMAINS.some(domain => 
+      imageUrlObj.hostname.includes(domain)
+    )
+    
+    if (!isTrusted) {
+      return new Response('Untrusted image domain', { status: 403 })
     }
-  }
 
-  const newsArticles = feeds.slice(0, 5).map(article => ({
-    "@type": "NewsArticle",
-    "headline": article.title,
-    "description": article.description || "",
-    "datePublished": article.pubDate,
-    "author": {
-      "@type": "Organization",
-      "name": article.source
-    },
-    "publisher": {
-      "@type": "Organization",
-      "name": article.source
-    },
-    "url": article.link,
-    "articleSection": article.category,
-    ...(article.imageUrl && {
-      "image": {
-        "@type": "ImageObject",
-        "url": article.imageUrl
+    // Check cache first
+    const cacheKey = `image:${imageUrl}`
+    const cached = await env.NEWS_STORAGE.get(cacheKey, { type: 'arrayBuffer' })
+    
+    if (cached) {
+      return new Response(cached, {
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Fetch original image
+    const imageResponse = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Referer': imageUrlObj.origin
       }
     })
-  }))
 
-  const newsListStructuredData = {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    "name": "Latest Zimbabwe News",
-    "itemListElement": newsArticles.map((article, index) => ({
-      "@type": "ListItem",
-      "position": index + 1,
-      "item": article
-    }))
-  }
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  
-  <!-- Primary Meta Tags -->
-  <title>${title}</title>
-  <meta name="title" content="${title}" />
-  <meta name="description" content="${description}" />
-  <meta name="keywords" content="${keywordsString}" />
-  <meta name="author" content="Nyuchi Web Services" />
-  <meta name="robots" content="index, follow, max-image-preview:large" />
-  <meta name="googlebot" content="index, follow" />
-  <link rel="canonical" href="${canonicalUrl}" />
-  
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="${canonicalUrl}" />
-  <meta property="og:title" content="${title}" />
-  <meta property="og:description" content="${description}" />
-  <meta property="og:image" content="https://www.hararemetro.co.zw/og-image.png" />
-  <meta property="og:site_name" content="Harare Metro" />
-  <meta property="og:locale" content="en_ZW" />
-  
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image" />
-  <meta property="twitter:url" content="${canonicalUrl}" />
-  <meta property="twitter:title" content="${title}" />
-  <meta property="twitter:description" content="${description}" />
-  <meta property="twitter:image" content="https://www.hararemetro.co.zw/twitter-image.png" />
-  <meta property="twitter:site" content="@hararemetro" />
-  
-  <!-- Geo Tags -->
-  <meta name="geo.region" content="ZW" />
-  <meta name="geo.placename" content="Harare" />
-  <meta name="geo.position" content="-17.8292;31.0522" />
-  <meta name="ICBM" content="-17.8292, 31.0522" />
-  
-  <!-- Theme Color -->
-  <meta name="theme-color" content="#059669" />
-  <meta name="msapplication-TileColor" content="#059669" />
-  
-  <!-- Favicons -->
-  <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-  <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-  <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-  <link rel="manifest" href="/site.webmanifest" />
-  
-  <!-- Structured Data -->
-  <script type="application/ld+json">
-    ${JSON.stringify(websiteStructuredData)}
-  </script>
-  <script type="application/ld+json">
-    ${JSON.stringify(newsListStructuredData)}
-  </script>
-  
-  <!-- Preconnect to improve performance -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  
-  <style>
-    body { font-family: Georgia, 'Times New Roman', Times, serif; margin: 0; padding: 20px; background: #f9fafb; }
-    .container { max-width: 1200px; margin: 0 auto; }
-    .header { background: white; padding: 20px; border-radius: 8px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .header h1 { margin: 0; color: #111827; }
-    .header p { margin: 10px 0 0 0; color: #6b7280; }
-    .stats { display: flex; gap: 20px; margin-top: 15px; }
-    .stat { font-size: 14px; color: #374151; }
-    .article { background: white; padding: 20px; margin-bottom: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .article h2 { margin: 0 0 10px 0; color: #111827; font-size: 20px; }
-    .article-meta { font-size: 14px; color: #6b7280; margin-bottom: 10px; }
-    .article-description { color: #374151; line-height: 1.6; margin-bottom: 10px; }
-    .article-footer { display: flex; justify-content: space-between; align-items: center; }
-    .category { background: #f3f4f6; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #374151; }
-    .read-more { color: #059669; text-decoration: none; font-weight: 500; }
-    .priority { background: linear-gradient(to right, #10b981, #fbbf24); color: white; padding: 2px 8px; border-radius: 12px; font-size: 11px; margin-left: 8px; }
-    .article-image { width: 100%; max-width: 300px; height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 10px; }
-    @media (max-width: 640px) { 
-      body { padding: 10px; }
-      .stats { flex-direction: column; gap: 10px; }
-      .article-image { max-width: 100%; height: 150px; }
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image: ${imageResponse.status}`)
     }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>Harare Metro - Zimbabwe News Aggregator</h1>
-      <p>${description}</p>
-      <div class="stats">
-        <span class="stat">📰 ${feeds.length} Articles</span>
-        <span class="stat">⭐ ${feeds.filter(f => f.priority).length} Priority</span>
-        <span class="stat">📁 ${new Set(feeds.map(f => f.category)).size} Categories</span>
-        <span class="stat">📡 ${uniqueSources.length} Sources</span>
-      </div>
-    </div>
-    
-    <noscript>
-      <div style="background: #fef3c7; padding: 16px; border-radius: 8px; margin-bottom: 20px;">
-        <p style="margin: 0; color: #92400e;">
-          JavaScript is disabled. You're viewing a basic version of Harare Metro. 
-          Enable JavaScript for the full interactive experience with real-time updates, 
-          search, and filtering capabilities.
-        </p>
-      </div>
-    </noscript>
-    
-    ${feeds.slice(0, 10).map(article => `
-      <article class="article">
-        <div class="article-meta">
-          <strong>${article.source}</strong> • ${new Date(article.pubDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-        </div>
-        <h2>
-          ${article.title}
-          ${article.priority ? '<span class="priority">🇿🇼 Priority</span>' : ''}
-        </h2>
-        ${article.imageUrl ? `<img src="${article.imageUrl}" alt="${article.title}" class="article-image" loading="lazy" />` : ''}
-        ${article.description ? `<p class="article-description">${article.description}</p>` : ''}
-        <div class="article-footer">
-          <span class="category">${article.category}</span>
-          <a href="${article.link}" class="read-more" target="_blank" rel="noopener noreferrer">
-            Read Full Article →
-          </a>
-        </div>
-      </article>
-    `).join('')}
-    
-    <div style="text-align: center; margin-top: 40px; color: #6b7280;">
-      <p>Showing latest 10 articles. Enable JavaScript to view all ${feeds.length} articles with filtering and search.</p>
-      <p style="margin-top: 20px;">
-        Made with ❤️ for Zimbabwe by 
-        <a href="https://www.nyuchi.com" style="color: #059669;" target="_blank" rel="noopener noreferrer">
-          Nyuchi Web Services
-        </a>
-      </p>
-    </div>
-  </div>
-  
-  <!-- Load React app -->
-  <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
-</body>
-</html>`
-}
 
-// Enhanced fallback HTML for when the app fails to load
-function getEnhancedFallbackHTML() {
-  return `<!DOCTYPE html>
-<html lang="en">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Harare Metro - Zimbabwe News Aggregator</title>
-      <meta name="description" content="Stay informed with the latest news from Zimbabwe. Real-time aggregation from trusted local sources." />
-      <style>
-        body { 
-          font-family: Georgia, 'Times New Roman', serif;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          min-height: 100vh;
-          line-height: 1.4;
-        }
-        .container { max-width: 1200px; margin: 0 auto; padding: 2rem 1rem; }
-        .loading { text-align: center; color: white; font-size: 1rem; padding: 2rem; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="loading">📡 Loading Harare Metro with enhanced image support...</div>
-      </div>
+    const imageBuffer = await imageResponse.arrayBuffer()
+    
+    // Cache the image for 24 hours
+    await env.NEWS_STORAGE.put(cacheKey, imageBuffer, {
+      expirationTtl: 86400
+    })
 
-      <script>
-        // Load news and display
-        async function loadNews() {
-          try {
-            const response = await fetch('/api/feeds?limit=6');
-            const feeds = await response.json();
-            
-            console.log('Loaded feeds with images:', feeds.filter(f => f.imageUrl).length);
-          } catch (error) {
-            console.error('Error:', error);
-          }
-        }
+    return new Response(imageBuffer, {
+      headers: {
+        'Content-Type': imageResponse.headers.get('Content-Type') || 'image/jpeg',
+        'Cache-Control': 'public, max-age=86400',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
 
-        // Load news on page load
-        loadNews();
-      </script>
-    </body>
-</html>`
+  } catch (error) {
+    console.error('Image proxy error:', error)
+    return new Response('Failed to process image', { status: 500 })
+  }
 }
 
 // Bot detection function
@@ -730,11 +550,8 @@ function isBot(userAgent) {
     'googlebot', 'bingbot', 'slurp', 'duckduckbot', 'baiduspider',
     'yandexbot', 'facebookexternalhit', 'twitterbot', 'rogerbot',
     'linkedinbot', 'embedly', 'quora', 'showyoubot', 'outbrain',
-    'pinterest', 'developers.google.com/+/web/snippet',
-    'slackbot', 'vkshare', 'w3c_validator', 'redditbot',
-    'applebot', 'whatsapp', 'flipboard', 'tumblr', 'bitlybot',
-    'skypeuripreview', 'nuzzel', 'discordbot', 'google-structured-data',
-    'lighthouse', 'chrome-lighthouse'
+    'pinterest', 'slackbot', 'vkshare', 'w3c_validator', 'redditbot',
+    'applebot', 'whatsapp', 'flipboard', 'tumblr', 'bitlybot'
   ]
   
   return botPatterns.some(pattern => 
@@ -748,21 +565,18 @@ export default {
     const url = new URL(request.url)
     const userAgent = request.headers.get('User-Agent') || ''
     
-    console.log('Request:', url.pathname, 'User-Agent:', userAgent)
-    
     try {
       // Handle image proxy route
       if (url.pathname.startsWith('/api/image-proxy')) {
         return await handleImageProxy(request, env)
       }
 
-      // Handle API routes first (highest priority)
+      // Handle API routes
       if (url.pathname.startsWith('/api/')) {
-        console.log('Handling API request:', url.pathname)
         return await handleApiRequest(request, env, ctx)
       }
 
-      // Handle static assets with caching
+      // Handle static assets
       if (url.pathname.startsWith('/assets/') || url.pathname.includes('.')) {
         try {
           const response = await getAssetFromKV({
@@ -773,39 +587,11 @@ export default {
             ASSET_MANIFEST: __STATIC_CONTENT_MANIFEST,
           })
           
-          // Add cache headers for assets
           const newResponse = new Response(response.body, response)
           newResponse.headers.set('Cache-Control', 'public, max-age=31536000')
           return newResponse
         } catch (e) {
           console.log('Asset not found:', url.pathname)
-        }
-      }
-
-      // SEO: Check if request is from a bot or social media crawler
-      const isFromBot = isBot(userAgent)
-      
-      if (isFromBot) {
-        console.log('Bot detected, serving SSR HTML')
-        
-        // Get feeds for SEO content
-        const feedsResponse = await handleApiRequest(
-          new Request(new URL('/api/feeds?limit=20', request.url)),
-          env,
-          ctx
-        )
-        
-        if (feedsResponse.ok) {
-          const feeds = await feedsResponse.json()
-          const category = url.searchParams.get('category') || 'all'
-          const search = url.searchParams.get('search') || ''
-          
-          return new Response(generateSEOHTML(feeds, category, search), {
-            headers: {
-              'Content-Type': 'text/html;charset=UTF-8',
-              'Cache-Control': 'public, max-age=300' // 5 minutes for bots
-            }
-          })
         }
       }
 
@@ -820,14 +606,14 @@ export default {
         })
       } catch (e) {
         console.log('React app not available, serving fallback')
-        return new Response(getEnhancedFallbackHTML(), {
+        return new Response(getBasicHTML(), {
           headers: { 'Content-Type': 'text/html;charset=UTF-8' }
         })
       }
 
     } catch (error) {
       console.error('Worker error:', error)
-      return new Response('Internal Server Error', { status: 500 })
+      return new Response(`Internal Server Error: ${error.message}`, { status: 500 })
     }
   }
 }
@@ -846,86 +632,41 @@ async function handleApiRequest(request, env, ctx) {
     return new Response(null, { headers: corsHeaders })
   }
 
-  // Route API requests
-  if (url.pathname === '/api/health') {
-    return new Response(JSON.stringify({
-      status: 'ok',
-      timestamp: new Date().toISOString(),
-      sources: RSS_SOURCES.filter(s => s.enabled).length,
-      totalSources: RSS_SOURCES.length,
-      categories: Object.keys(CATEGORY_KEYWORDS).length,
-      message: 'Harare Metro API is healthy with image proxy!',
-      features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'image-extraction', 'image-proxy', 'seo-optimized'],
-      documentation: {
-        schema: '/api/schema',
-        swagger: 'https://petstore.swagger.io/?url=' + encodeURIComponent(request.url.replace('/api/health', '/api/schema'))
-      }
-    }), {
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=300'
-      }
+  try {
+    // Route API requests
+    if (url.pathname === '/api/health') {
+      return new Response(JSON.stringify({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        sources: RSS_SOURCES.filter(s => s.enabled).length,
+        message: 'Harare Metro API is healthy!'
+      }), {
+        headers: { 
+          ...corsHeaders, 
+          'Content-Type': 'application/json'
+        }
+      })
+    }
+
+    if (url.pathname === '/api/feeds') {
+      return await getAllFeeds(request, env, corsHeaders)
+    }
+
+    return new Response('API endpoint not found', { 
+      status: 404,
+      headers: corsHeaders
+    })
+  } catch (error) {
+    console.error('API request error:', error)
+    return new Response(`API Error: ${error.message}`, { 
+      status: 500,
+      headers: corsHeaders
     })
   }
-
-  if (url.pathname === '/api/feeds') {
-    return await getAllFeeds(request, env, corsHeaders)
-  }
-
-  if (url.pathname === '/api/feeds/sources') {
-    return new Response(JSON.stringify({
-      sources: RSS_SOURCES,
-      enabled: RSS_SOURCES.filter(s => s.enabled),
-      disabled: RSS_SOURCES.filter(s => !s.enabled)
-    }), {
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600'
-      }
-    })
-  }
-
-  if (url.pathname === '/api/categories') {
-    return new Response(JSON.stringify({
-      categories: CATEGORIES,
-      keywords: CATEGORY_KEYWORDS
-    }), {
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600'
-      }
-    })
-  }
-
-  if (url.pathname === '/api/schema') {
-    return await serveApiSchema(request, corsHeaders)
-  }
-
-  return new Response('API endpoint not found', { 
-    status: 404,
-    headers: corsHeaders
-  })
 }
 
 async function getAllFeeds(request, env, corsHeaders) {
   const url = new URL(request.url)
-  const params = Object.fromEntries(url.searchParams.entries())
-  
-  // Validate request parameters
-  const validationErrors = validateRequest(params, VALIDATION_SCHEMAS.feeds)
-  if (validationErrors.length > 0) {
-    return new Response(JSON.stringify({
-      error: 'Invalid request parameters',
-      validationErrors: validationErrors
-    }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
-  
   const allFeeds = []
   const parser = new XMLParser({
     ignoreAttributes: false,
@@ -934,6 +675,8 @@ async function getAllFeeds(request, env, corsHeaders) {
   })
 
   const enabledSources = RSS_SOURCES.filter(source => source.enabled)
+  
+  console.log(`Processing ${enabledSources.length} RSS sources`)
   
   await Promise.allSettled(
     enabledSources.map(async (source) => {
@@ -946,7 +689,7 @@ async function getAllFeeds(request, env, corsHeaders) {
             'Accept': 'application/rss+xml, application/xml, text/xml'
           },
           cf: {
-            cacheTtl: 300, // 5 minutes
+            cacheTtl: 300,
             cacheEverything: true
           }
         })
@@ -958,75 +701,66 @@ async function getAllFeeds(request, env, corsHeaders) {
         const xmlText = await response.text()
         const feedData = parser.parse(xmlText)
         
-        const items = feedData?.rss?.channel?.item || 
-                     feedData?.feed?.entry || 
-                     feedData?.channel?.item || 
-                     []
+        let items = feedData?.rss?.channel?.item || 
+                    feedData?.feed?.entry || 
+                    feedData?.channel?.item || 
+                    []
 
-        if (!Array.isArray(items)) {
+        // Ensure items is always an array
+        if (!items) {
+          items = []
+        } else if (!Array.isArray(items)) {
+          items = [items] // Single item, make it an array
+        }
+
+        if (items.length === 0) {
           console.log(`No items found for ${source.name}`)
           return
         }
 
         const processedItems = items
-          .slice(0, 20) // Limit items per source
+          .slice(0, 20)
           .map(item => {
-            const title = item.title?.text || item.title || 'No title'
-            const description = cleanHtml(item.description?.text || item.description || item.summary?.text || item.summary || '')
-            const content = `${title} ${description}`.toLowerCase()
-            const link = item.link?.text || item.link || item.id || '#'
-            
-            // Extract image from content
-            const rawContent = item.description || item.content || item.summary || ''
-            const extractedImage = extractImageFromContent(
-              rawContent, 
-              link, 
-              item.enclosure, 
-              item['media:content']
-            )
-            
-            const detectedCategory = detectCategory(content) || source.category
-            const isPriority = PRIORITY_KEYWORDS.some(keyword => 
-              content.includes(keyword.toLowerCase())
-            )
-            const relevanceScore = calculateRelevanceScore(content, title)
+            try {
+              const title = item.title?.text || item.title || 'No title'
+              const description = cleanHtml(item.description?.text || item.description || item.summary?.text || item.summary || '')
+              const content = `${title} ${description}`.toLowerCase()
+              const link = item.link?.text || item.link || item.id || '#'
+              
+              // Extract image
+              const extractedImage = extractImageFromContent(item, link)
+              
+              const detectedCategory = detectCategory(content) || source.category
+              const isPriority = PRIORITY_KEYWORDS.some(keyword => 
+                content.includes(keyword.toLowerCase())
+              )
+              const relevanceScore = calculateRelevanceScore(content, title)
 
-            return {
-              title: title,
-              description: description,
-              link: link,
-              pubDate: item.pubDate || item.published || item.updated || new Date().toISOString(),
-              source: source.name,
-              category: detectedCategory,
-              priority: isPriority,
-              relevanceScore: relevanceScore,
-              guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`,
-              imageUrl: extractedImage,
-              // Add proxy URL for images to bypass hotlink protection
-              optimizedImageUrl: extractedImage ? `/api/image-proxy?url=${encodeURIComponent(extractedImage)}` : null
+              return {
+                title: title,
+                description: description,
+                link: link,
+                pubDate: item.pubDate || item.published || item.updated || new Date().toISOString(),
+                source: source.name,
+                category: detectedCategory,
+                priority: isPriority,
+                relevanceScore: relevanceScore,
+                guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`,
+                imageUrl: extractedImage,
+                optimizedImageUrl: extractedImage ? `/api/image-proxy?url=${encodeURIComponent(extractedImage)}` : null
+              }
+            } catch (itemError) {
+              console.error(`Error processing item from ${source.name}:`, itemError)
+              return null
             }
           })
-          .filter(item => item.title !== 'No title')
+          .filter(item => item && item.title !== 'No title')
 
         allFeeds.push(...processedItems)
         console.log(`Successfully processed ${processedItems.length} items from ${source.name}`)
-        if (processedItems.length > 0) {
-          const withImages = processedItems.filter(item => item.imageUrl)
-          const withProxy = processedItems.filter(item => item.optimizedImageUrl)
-          console.log(`  - ${withImages.length} items have imageUrl`)
-          console.log(`  - ${withProxy.length} items have optimizedImageUrl`)
-          if (withImages.length > 0) {
-            console.log(`  - Sample imageUrl: ${withImages[0].imageUrl}`)
-            console.log(`  - Sample optimizedImageUrl: ${withImages[0].optimizedImageUrl}`)
-          }
-        }
-        if (processedItems.length > 0) {
-          const withImages = processedItems.filter(item => item.imageUrl)
-          console.log(`  - ${withImages.length} items have images`)
-          if (withImages.length > 0) {
-            console.log(`  - Sample image: ${withImages[0].imageUrl}`)
-          }
-        }
+        
+        const withImages = processedItems.filter(item => item.imageUrl)
+        console.log(`  - ${withImages.length} items have images`)
 
       } catch (error) {
         console.error(`Error processing ${source.name}:`, error.message)
@@ -1034,206 +768,27 @@ async function getAllFeeds(request, env, corsHeaders) {
     })
   )
 
-  // Sort and filter feeds
-  let sortedFeeds = allFeeds
+  // Sort feeds
+  const sortedFeeds = allFeeds
     .sort((a, b) => {
-      // Prioritize Zimbabwe-relevant content
       if (a.priority !== b.priority) {
         return b.priority - a.priority
       }
-      // Then by relevance score
       if (a.relevanceScore !== b.relevanceScore) {
         return b.relevanceScore - a.relevanceScore
       }
-      // Finally by date
       return new Date(b.pubDate) - new Date(a.pubDate)
     })
 
-  // Apply filters
-  const category = params.category
-  if (category && category !== 'all') {
-    sortedFeeds = sortedFeeds.filter(feed => feed.category === category)
-  }
-
-  const priority = params.priority
-  if (priority === 'true') {
-    sortedFeeds = sortedFeeds.filter(feed => feed.priority)
-  }
-
   // Apply limit
-  const limit = parseInt(params.limit) || 50
-  sortedFeeds = sortedFeeds.slice(0, limit)
+  const limit = parseInt(url.searchParams.get('limit')) || 50
+  const limitedFeeds = sortedFeeds.slice(0, limit)
 
-  return new Response(JSON.stringify(sortedFeeds), {
+  return new Response(JSON.stringify(limitedFeeds), {
     headers: { 
       ...corsHeaders, 
       'Content-Type': 'application/json',
-      'Cache-Control': 'public, max-age=300' // 5 minutes
-    }
-  })
-}
-
-// Enhanced validation function
-function validateRequest(params, schema) {
-  const errors = []
-  
-  for (const [key, value] of Object.entries(params)) {
-    if (schema[key]) {
-      const fieldSchema = schema[key]
-      
-      // Type validation
-      if (fieldSchema.type === 'integer') {
-        const intValue = parseInt(value)
-        if (isNaN(intValue)) {
-          errors.push({
-            field: key,
-            message: `Expected integer, got: ${value}`,
-            value: value
-          })
-          continue
-        }
-        
-        // Range validation
-        if (fieldSchema.minimum !== undefined && intValue < fieldSchema.minimum) {
-          errors.push({
-            field: key,
-            message: `Value must be >= ${fieldSchema.minimum}`,
-            value: intValue
-          })
-        }
-        if (fieldSchema.maximum !== undefined && intValue > fieldSchema.maximum) {
-          errors.push({
-            field: key,
-            message: `Value must be <= ${fieldSchema.maximum}`,
-            value: intValue
-          })
-        }
-      }
-      
-      // Enum validation
-      if (fieldSchema.enum && !fieldSchema.enum.includes(value)) {
-        errors.push({
-          field: key,
-          message: `Invalid value. Allowed values: ${fieldSchema.enum.join(', ')}`,
-          value: value
-        })
-      }
-      
-      // Boolean validation
-      if (fieldSchema.type === 'boolean') {
-        if (value !== 'true' && value !== 'false') {
-          errors.push({
-            field: key,
-            message: `Expected boolean (true/false), got: ${value}`,
-            value: value
-          })
-        }
-      }
-    }
-  }
-  
-  return errors
-}
-
-async function serveApiSchema(request, corsHeaders) {
-  const accept = request.headers.get('Accept') || ''
-  
-  // Serve YAML schema content
-  const yamlSchema = `openapi: 3.0.3
-info:
-  title: Harare Metro News API
-  description: |
-    Zimbabwe News Aggregation API with original image extraction.
-    
-    Features:
-    - Real-time RSS feed aggregation
-    - Enhanced categorization with Zimbabwe-specific keywords
-    - Priority detection for Zimbabwe-relevant content
-    - Original image extraction (no optimization)
-    - Multiple news sources from Herald, NewsDay, Chronicle, ZBC, and more
-  version: 2.0.0
-  contact:
-    name: Nyuchi Web Services
-    url: https://www.nyuchi.com
-  license:
-    name: MIT
-    url: https://opensource.org/licenses/MIT
-
-servers:
-  - url: ${new URL(request.url).origin}/api
-    description: Current server
-
-paths:
-  /health:
-    get:
-      summary: Health check endpoint
-      tags: [System]
-      responses:
-        '200':
-          description: API is healthy
-
-  /feeds:
-    get:
-      summary: Get all news feeds with original images
-      tags: [News]
-      parameters:
-        - name: category
-          in: query
-          required: false
-          schema:
-            type: string
-            enum: [politics, economy, business, sports, harare, agriculture, technology, health, education, entertainment, environment, crime, international, lifestyle, finance, general]
-      responses:
-        '200':
-          description: Successfully retrieved news feeds
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  type: object
-                  properties:
-                    title:
-                      type: string
-                    description:
-                      type: string
-                    link:
-                      type: string
-                    imageUrl:
-                      type: string
-                      description: Original image URL from source
-                    source:
-                      type: string
-                    category:
-                      type: string
-                    priority:
-                      type: boolean
-
-tags:
-  - name: News
-    description: News aggregation endpoints
-  - name: System
-    description: System health endpoints`
-
-  if (accept.includes('application/json')) {
-    return new Response(JSON.stringify({
-      message: 'Schema available in YAML format',
-      swagger_ui: 'https://petstore.swagger.io/?url=' + encodeURIComponent(new URL(request.url).href),
-      yaml_endpoint: new URL(request.url).href
-    }), {
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json',
-        'Cache-Control': 'public, max-age=3600'
-      }
-    })
-  }
-
-  return new Response(yamlSchema, {
-    headers: { 
-      ...corsHeaders, 
-      'Content-Type': 'application/yaml',
-      'Cache-Control': 'public, max-age=3600'
+      'Cache-Control': 'public, max-age=300'
     }
   })
 }
@@ -1259,21 +814,20 @@ function detectCategory(content) {
 function calculateRelevanceScore(content, title) {
   let score = 0
   
-  // Higher score for Zimbabwe-specific content
   PRIORITY_KEYWORDS.forEach(keyword => {
     if (content.includes(keyword.toLowerCase())) {
       score += title.toLowerCase().includes(keyword.toLowerCase()) ? 3 : 1
     }
   })
 
-  return Math.min(score, 10) // Cap at 10
+  return Math.min(score, 10)
 }
 
 function cleanHtml(html) {
   if (!html) return ''
   
   return html
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/<[^>]*>/g, '')
     .replace(/&nbsp;/g, ' ')
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
@@ -1282,5 +836,22 @@ function cleanHtml(html) {
     .replace(/&#39;/g, "'")
     .replace(/\s+/g, ' ')
     .trim()
-    .substring(0, 300) // Limit description length
+    .substring(0, 300)
+}
+
+function getBasicHTML() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Harare Metro - Zimbabwe News Aggregator</title>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    console.log('Loading Harare Metro...');
+  </script>
+</body>
+</html>`
 }
