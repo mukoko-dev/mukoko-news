@@ -368,6 +368,13 @@ function useInfiniteScroll(hasMore, loading, loadMore) {
   return [isFetching, setIsFetching]
 }
 
+// Helper function to determine the next theme
+const getNextTheme = (currentTheme) => {
+  if (currentTheme === 'light') return 'dark';
+  if (currentTheme === 'dark') return 'system';
+  return 'light';
+};
+
 // Main App Component
 function App() {
   // Core state
@@ -821,7 +828,7 @@ function App() {
                   title="Refresh all 500 articles"
                 >
                   <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                  {refreshing && <span className="ml-1 text-xs">Loading 500...</span>}
+                  {/*refreshing && <span className="ml-1 text-xs">Loading 500...</span>*/}
                 </button>
 
                 {/* Temporary API test button 
@@ -857,7 +864,7 @@ function App() {
                 */}
 
                 <button
-                  onClick={() => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')}
+                  onClick={() => setTheme(getNextTheme(theme))}
                   className={`p-2 rounded-lg transition-colors ${currentColors.categoryButton}`}
                 >
                   {theme === 'light' ? (
