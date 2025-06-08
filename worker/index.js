@@ -270,7 +270,7 @@ const CATEGORIES = [
   { id: 'finance', label: 'Finance', icon: '💳', primary: false }
 ]
 
-// Simple image extraction function - returns original URL only
+// Image extraction function - returns original URL (restored from working version)
 function extractImageFromContent(content, link, enclosure = null, mediaContent = null) {
   if (!content && !enclosure && !mediaContent) return null
 
@@ -887,7 +887,7 @@ async function getAllFeeds(request, env, corsHeaders) {
             const content = `${title} ${description}`.toLowerCase()
             const link = item.link?.text || item.link || item.id || '#'
             
-            // Extract image from content (returns original URL only)
+            // Extract image from content
             const rawContent = item.description || item.content || item.summary || ''
             const extractedImage = extractImageFromContent(
               rawContent, 
@@ -912,13 +912,30 @@ async function getAllFeeds(request, env, corsHeaders) {
               priority: isPriority,
               relevanceScore: relevanceScore,
               guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`,
-              imageUrl: extractedImage // Original image URL only
+              imageUrl: extractedImage,
+              // Add optimizedImageUrl that just points to the original image (no actual optimization)
+              optimizedImageUrl: extractedImage
             }
           })
           .filter(item => item.title !== 'No title')
 
         allFeeds.push(...processedItems)
         console.log(`Successfully processed ${processedItems.length} items from ${source.name}`)
+        if (processedItems.length > 0) {
+          const withImages = processedItems.filter(item => item.imageUrl)
+          console.log(`  - ${withImages.length} items have images`)
+          if (withImages.length > 0) {
+            console.log(`  - Sample image: ${withImages[0].imageUrl}`)
+            console.log(`  - Sample item:`, JSON.stringify(withImages[0], null, 2))
+          }
+        }
+        if (processedItems.length > 0) {
+          const withImages = processedItems.filter(item => item.imageUrl)
+          console.log(`  - ${withImages.length} items have images`)
+          if (withImages.length > 0) {
+            console.log(`  - Sample image: ${withImages[0].imageUrl}`)
+          }
+        }
 
       } catch (error) {
         console.error(`Error processing ${source.name}:`, error.message)

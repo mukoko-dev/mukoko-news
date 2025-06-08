@@ -162,7 +162,7 @@ function ArticleCard({ article, currentColors }) {
   const cardRef = useRef(null)
   
   const categoryInfo = CATEGORIES.find(cat => cat.id === article.category)
-  const hasImage = article.imageUrl && !imageError
+  const hasImage = article.optimizedImageUrl && !imageError
 
   // Check if user prefers reduced data
   const shouldLoadImages = useMemo(() => {
@@ -225,7 +225,7 @@ function ArticleCard({ article, currentColors }) {
           )}
           
           <img
-            src={article.imageUrl}
+            src={article.optimizedImageUrl}
             alt={article.title}
             className={`w-full h-full object-cover transition-opacity duration-300 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
@@ -508,6 +508,13 @@ function App() {
 
       const data = await response.json()
       
+      // Simple debug: Just log image count
+      const withImages = data.filter(article => article.imageUrl)
+      console.log(`Loaded ${data.length} articles, ${withImages.length} have images`)
+      if (withImages.length > 0) {
+        console.log('First image URL:', withImages[0].imageUrl)
+      }
+      
       cache.set(cacheKey, data)
       
       setAllFeeds(data)
@@ -735,6 +742,24 @@ function App() {
                   className={`p-2 rounded-lg transition-all ${currentColors.categoryButton}`}
                 >
                   <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </button>
+
+                {/* Temporary API test button */}
+                <button
+                  onClick={async () => {
+                    console.log('Testing API directly...')
+                    try {
+                      const response = await fetch('/api/feeds?limit=5')
+                      const data = await response.json()
+                      console.log('API Test Result:', data)
+                      console.log('Images in test:', data.filter(a => a.imageUrl).length)
+                    } catch (err) {
+                      console.error('API Test Error:', err)
+                    }
+                  }}
+                  className={`p-2 rounded-lg transition-all bg-blue-500 text-white text-xs`}
+                >
+                  Test API
                 </button>
 
                 <button
