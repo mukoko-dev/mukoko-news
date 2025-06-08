@@ -27,9 +27,10 @@ import {
   Squares2X2Icon,
   VideoCameraIcon
 } from '@heroicons/react/24/outline'
-import NewsReels from './components/NewsReels'
+import NewsReels from './components/NewsBytes'
 import ErrorBoundary from './components/ErrorBoundary'
 import SearchPage from './components/SearchPage'
+import NewsBytes from './components/NewsBytes' // Update the import path too
 
 // Logo Component
 const Logo = ({ 
@@ -394,7 +395,7 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchActive, setIsSearchActive] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
-  const [currentView, setCurrentView] = useState('grid') // 'grid' or 'reels'
+  const [currentView, setCurrentView] = useState('grid') // 'grid' or 'bytes'
   const [showSearch, setShowSearch] = useState(false)
   
   // Infinite scroll state
@@ -1044,7 +1045,7 @@ function App() {
                       <ArrowPathIcon className="h-8 w-8 animate-spin text-white" />
                     </div>
                   ) : (
-                    <NewsReels 
+                    <NewsBytes 
                       articles={articlesWithImages}
                       currentColors={currentColors}
                     />
@@ -1076,17 +1077,17 @@ function App() {
             </button>
 
             <button
-              onClick={() => setCurrentView('reels')}
+              onClick={() => setCurrentView('bytes')}
               className={`p-2 rounded-lg flex flex-col items-center`}
-              aria-label="Reels view"
-              aria-pressed={currentView === 'reels'}
+              aria-label="Bytes view"
+              aria-pressed={currentView === 'bytes'}
             >
               <VideoCameraIcon className={`h-6 w-6 ${
-                currentView === 'reels' ? currentColors.text : currentColors.textMuted
+                currentView === 'bytes' ? currentColors.text : currentColors.textMuted
               }`} />
               <span className={`text-xs mt-1 ${
-                currentView === 'reels' ? currentColors.text : currentColors.textMuted
-              }`}>Reels</span>
+                currentView === 'bytes' ? currentColors.text : currentColors.textMuted
+              }`}>Bytes</span>
             </button>
 
             <button

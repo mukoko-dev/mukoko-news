@@ -5,7 +5,7 @@ import {
   ShareIcon 
 } from '@heroicons/react/24/outline'
 
-function NewsReels({ articles, currentColors }) {
+function NewsBytes({ articles, currentColors }) {
   // Sort articles by date, newest first
   const sortedArticles = [...articles].sort((a, b) => 
     new Date(b.pubDate) - new Date(a.pubDate)
@@ -221,4 +221,4 @@ function NewsReels({ articles, currentColors }) {
   )
 }
 
-export default NewsReels
+export default NewsBytes
