@@ -747,12 +747,24 @@ function App() {
                 {/* Temporary API test button */}
                 <button
                   onClick={async () => {
-                    console.log('Testing API directly...')
+                    console.log('=== Testing API directly ===')
                     try {
                       const response = await fetch('/api/feeds?limit=5')
                       const data = await response.json()
                       console.log('API Test Result:', data)
-                      console.log('Images in test:', data.filter(a => a.imageUrl).length)
+                      console.log('Total articles:', data.length)
+                      console.log('Articles with imageUrl:', data.filter(a => a.imageUrl).length)
+                      console.log('Articles with optimizedImageUrl:', data.filter(a => a.optimizedImageUrl).length)
+                      
+                      // Show sample article
+                      if (data.length > 0) {
+                        console.log('First article sample:', {
+                          title: data[0].title,
+                          source: data[0].source,
+                          imageUrl: data[0].imageUrl,
+                          optimizedImageUrl: data[0].optimizedImageUrl
+                        })
+                      }
                     } catch (err) {
                       console.error('API Test Error:', err)
                     }
