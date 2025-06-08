@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import React, { 
+  useState, 
+  useEffect, 
+  useMemo, 
+  useCallback, 
+  useRef 
+} from 'react'
 import { HelmetProvider } from 'react-helmet-async'
 import SEO from './components/SEO'
 import { 
@@ -17,8 +23,13 @@ import {
   PhotoIcon,
   ArrowUpIcon,
   ChevronDownIcon,
-  ChevronUpIcon
+  ChevronUpIcon,
+  Squares2X2Icon,
+  VideoCameraIcon
 } from '@heroicons/react/24/outline'
+import NewsReels from './components/NewsReels'
+import ErrorBoundary from './components/ErrorBoundary'
+import SearchPage from './components/SearchPage'
 
 // Logo Component
 const Logo = ({ 
@@ -211,10 +222,11 @@ function ArticleCard({ article, currentColors }) {
     <article 
       ref={cardRef}
       className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:transform hover:-translate-y-1`}
+      aria-labelledby={`article-title-${article.guid}`}
     >
       {/* Image Section */}
       {hasImage && shouldLoadImages && (
-        <div className="relative w-full h-48 sm:h-52 bg-gray-100 dark:bg-gray-700 overflow-hidden">
+        <div className="relative w-full overflow-hidden">
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
               <div className="animate-pulse flex flex-col items-center">
@@ -226,8 +238,8 @@ function ArticleCard({ article, currentColors }) {
           
           <img
             src={article.optimizedImageUrl}
-            alt={article.title}
-            className={`w-full h-full object-cover transition-opacity duration-300 ${
+            alt={article.imageAlt || article.title}
+            className={`w-full transition-opacity duration-300 ${
               imageLoaded ? 'opacity-100' : 'opacity-0'
             }`}
             onLoad={handleImageLoad}
@@ -244,21 +256,6 @@ function ArticleCard({ article, currentColors }) {
               </span>
             </div>
           )}
-        </div>
-      )}
-      
-      {/* Image placeholder */}
-      {(!hasImage || !shouldLoadImages) && (
-        <div className="w-full h-32 sm:h-36 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
-          <div className="text-center">
-            <div className="text-3xl mb-2">{categoryInfo?.icon || '📰'}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
-              {article.category}
-            </div>
-            {!shouldLoadImages && (
-              <div className="text-xs text-gray-400 mt-1">Data Saver Mode</div>
-            )}
-          </div>
         </div>
       )}
 
@@ -282,7 +279,10 @@ function ArticleCard({ article, currentColors }) {
         </div>
         
         {/* Title */}
-        <h2 className={`text-base sm:text-lg font-bold ${currentColors.text} mb-3 leading-tight line-clamp-3`}>
+        <h2 
+          id={`article-title-${article.guid}`}
+          className={`text-base sm:text-lg font-bold ${currentColors.text} mb-3 leading-tight line-clamp-3`}
+        >
           {article.title}
           {article.priority && (!hasImage || !shouldLoadImages) && (
             <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
@@ -300,10 +300,12 @@ function ArticleCard({ article, currentColors }) {
               {isExpanded ? article.description : getSmartPreview(article.description)}
             </p>
             
-            {article.description.length > 150 && (
+            {article.description.length > 250 && (
               <button
                 onClick={toggleExpansion}
                 className={`mt-2 text-xs ${currentColors.accentText} hover:underline flex items-center gap-1`}
+                aria-expanded={isExpanded}
+                aria-label={`${isExpanded ? 'Show less' : 'Read more'} of article: ${article.title}`}
               >
                 {isExpanded ? (
                   <>
@@ -370,8 +372,8 @@ function useInfiniteScroll(hasMore, loading, loadMore) {
 
 // Helper function to determine the next theme
 const getNextTheme = (currentTheme) => {
+  // No cycling - only direct light/dark selection
   if (currentTheme === 'light') return 'dark';
-  if (currentTheme === 'dark') return 'system';
   return 'light';
 };
 
@@ -392,6 +394,8 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchActive, setIsSearchActive] = useState(false)
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const [currentView, setCurrentView] = useState('grid') // 'grid' or 'reels'
+  const [showSearch, setShowSearch] = useState(false)
   
   // Infinite scroll state
   const [currentPage, setCurrentPage] = useState(0)
@@ -416,8 +420,8 @@ function App() {
       border: 'border-gray-200',
       accent: 'bg-gray-900 hover:bg-gray-800',
       accentText: 'text-gray-900 hover:text-gray-700',
-      categoryButton: 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50',
-      categoryButtonActive: 'bg-gray-900 text-white border-gray-900'
+      categoryButton: 'bg-white border border-gray-200 text-gray-900 hover:bg-gray-50',
+      categoryButtonActive: 'bg-gray-900 text-white border border-gray-900'
     },
     dark: {
       bg: 'bg-gray-900',
@@ -432,30 +436,39 @@ function App() {
       border: 'border-gray-600',
       accent: 'bg-white hover:bg-gray-100',
       accentText: 'text-white hover:text-gray-200',
-      categoryButton: 'bg-gray-700 border border-gray-600 text-gray-200 hover:bg-gray-600',
-      categoryButtonActive: 'bg-white text-gray-900 border-white'
+      categoryButton: 'bg-gray-800 border border-gray-700 text-gray-200 hover:bg-gray-700',
+      categoryButtonActive: 'bg-white text-gray-900 border border-white'
     }
   }
 
   // Theme management
   useEffect(() => {
+    // First check if there's a saved preference
     const savedTheme = localStorage.getItem('theme')
-    if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
-      setTheme(savedTheme)
+    
+    if (savedTheme) {
+      // Only respect saved theme if it's 'light' or 'dark'
+      if (['light', 'dark'].includes(savedTheme)) {
+        setTheme(savedTheme)
+      }
+    } else {
+      // No saved preference - match system theme
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      setTheme(prefersDark ? 'dark' : 'light')
     }
 
+    // Still listen for system changes while matching system
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
     const handleChange = () => {
-      if (theme === 'system') {
-        document.documentElement.classList.toggle('dark', mediaQuery.matches)
+      // Only update theme if no explicit user preference is saved
+      if (!localStorage.getItem('theme')) {
+        setTheme(mediaQuery.matches ? 'dark' : 'light')
       }
     }
 
     mediaQuery.addEventListener('change', handleChange)
-    handleChange()
-
     return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [theme])
+  }, [])
 
   useEffect(() => {
     localStorage.setItem('theme', theme)
@@ -761,294 +774,352 @@ function App() {
 
   const seoData = generateSEOData()
 
+  // Filter articles with images for reels
+  const articlesWithImages = useMemo(() => {
+    return allFeeds.filter(article => article.optimizedImageUrl)
+  }, [allFeeds])
+
+  // Add this new hook near your other hooks
+  const useScrollDirection = () => {
+    const [scrollDirection, setScrollDirection] = useState('up')
+    const [lastScroll, setLastScroll] = useState(0)
+
+    useEffect(() => {
+      const handleScroll = () => {
+        const currentScroll = window.pageYOffset
+        if (currentScroll <= 0) {
+          setScrollDirection('up')
+          return
+        }
+        
+        if (currentScroll > lastScroll && scrollDirection !== 'down') {
+          setScrollDirection('down')
+        } else if (currentScroll < lastScroll && scrollDirection !== 'up') {
+          setScrollDirection('up')
+        }
+        
+        setLastScroll(currentScroll)
+      }
+
+      window.addEventListener('scroll', handleScroll, { passive: true })
+      return () => window.removeEventListener('scroll', handleScroll)
+    }, [scrollDirection, lastScroll])
+
+    return scrollDirection
+  }
+
+  // Update the header section in your return statement
+  const scrollDirection = useScrollDirection()
+
   return (
     <HelmetProvider>
       <div className={`min-h-screen ${currentColors.bg} transition-colors duration-300`}>
-        <SEO
-          title={seoData.title}
-          description={seoData.description}
-          keywords={seoData.keywords}
-          type="website"
-        />
-
-        {/* Header */}
-        <header className={`sticky top-0 z-50 ${currentColors.headerBg} backdrop-blur-lg ${currentColors.border} border-b`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16 sm:h-20">
-              <div className="flex items-center space-x-3">
-                <Logo variant="compact" theme={theme === 'system' ? 'light' : theme} size="sm" />
-                <div className="hidden sm:block">
-                  <h1 className={`text-xl font-bold ${currentColors.text}`}>
-                    Harare Metro
-                  </h1>
-                  <p className={`text-sm ${currentColors.textMuted}`}>
-                    Zimbabwe News Aggregator
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="flex items-center">
-                  {isSearchActive ? (
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="text"
-                        placeholder="Search news..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className={`px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-offset-2 ${
-                          theme === 'dark' 
-                            ? 'bg-gray-700 border-gray-600 text-white focus:ring-white' 
-                            : 'bg-white border-gray-300 text-gray-900 focus:ring-gray-900'
-                        }`}
-                        autoFocus
-                      />
-                      <button
-                        onClick={clearSearch}
-                        className={`p-2 rounded-lg transition-colors ${currentColors.categoryButton}`}
-                      >
-                        <XMarkIcon className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleSearchToggle}
-                      className={`p-2 rounded-lg transition-colors ${currentColors.categoryButton}`}
-                    >
-                      <MagnifyingGlassIcon className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-               
-                {/* Add a "Refresh High Volume" button*/}
-                <button
-                  onClick={() => loadFeeds(true)}
-                  disabled={refreshing}
-                  className={`p-2 rounded-lg transition-all ${currentColors.categoryButton} ${refreshing ? 'animate-pulse' : ''}`}
-                  title="Refresh all 500 articles"
-                >
-                  <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-                  {/*refreshing && <span className="ml-1 text-xs">Loading 500...</span>*/}
-                </button>
-
-                {/* Temporary API test button 
-                <button
-                  onClick={async () => {
-                    console.log('=== Testing API directly ===')
-                    try {
-                      const response = await fetch('/api/feeds?limit=5')
-                      const data = await response.json()
-                      console.log('API Test Result:', data)
-                      console.log('Total articles:', data.length)
-                      console.log('Articles with imageUrl:', data.filter(a => a.imageUrl).length)
-                      console.log('Articles with optimizedImageUrl:', data.filter(a => a.optimizedImageUrl).length)
-                
-                      
-                      // Show sample article
-                      if (data.length > 0) {
-                        console.log('First article sample:', {
-                          title: data[0].title,
-                          source: data[0].source,
-                          imageUrl: data[0].imageUrl,
-                          optimizedImageUrl: data[0].optimizedImageUrl
-                        })
-                      }
-                    } catch (err) {
-                      console.error('API Test Error:', err)
-                    }
-                  }}
-                  className={`p-2 rounded-lg transition-all bg-blue-500 text-white text-xs`}
-                >
-                  Test API
-                </button>
-                */}
-
-                <button
-                  onClick={() => setTheme(getNextTheme(theme))}
-                  className={`p-2 rounded-lg transition-colors ${currentColors.categoryButton}`}
-                >
-                  {theme === 'light' ? (
-                    <SunIcon className="h-4 w-4" />
-                  ) : theme === 'dark' ? (
-                    <MoonIcon className="h-4 w-4" />
-                  ) : (
-                    <ComputerDesktopIcon className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-            </div>
+        {/* Updated Header */}
+        <header 
+          className={`fixed top-0 left-0 right-0 z-50 ${currentColors.headerBg} backdrop-blur-lg ${
+            currentColors.border
+          } border-b transition-transform duration-300 ${
+            scrollDirection === 'down' ? '-translate-y-full' : 'translate-y-0'
+          }`} 
+          role="banner"
+        >
+          <div className="h-16 flex items-center justify-center">
+            <Logo variant="compact" theme={theme === 'system' ? 'light' : theme} size="md" />
           </div>
         </header>
 
-        {/* Main Content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          {/* Error State */}
-          {error && (
-            <div className="mb-6">
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
-                <div className="flex items-center">
-                  <div className="flex-shrink-0">
-                    <XMarkIcon className="h-5 w-5 text-red-400" />
+        {/* Add padding to account for fixed header */}
+        <div className="pt-16">
+          {/* Main Content */}
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 lg:pb-6" role="main">
+            {currentView === 'grid' ? (
+              <>
+                {/* Error State */}
+                {error && (
+                  <div className="mb-6">
+                    <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <XMarkIcon className="h-5 w-5 text-red-400" />
+                        </div>
+                        <div className="ml-3">
+                          <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                            Error Loading News
+                          </h3>
+                          <p className="mt-1 text-sm text-red-600 dark:text-red-300">
+                            {error}
+                          </p>
+                        </div>
+                        <div className="ml-auto">
+                          <button
+                            onClick={() => loadFeeds(true)}
+                            className="text-red-600 dark:text-red-400 hover:text-red-500"
+                          >
+                            <ArrowPathIcon className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="ml-3">
-                    <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                      Error Loading News
-                    </h3>
-                    <p className="mt-1 text-sm text-red-600 dark:text-red-300">
-                      {error}
+                )}
+
+                {/* Category Filters - Horizontal Slider */}
+                <div className="mb-6">
+                  <div className="flex items-center space-x-2 mb-4">
+                    <div className="flex-1 overflow-x-auto" role="navigation" aria-label="News categories">
+                      <div className="flex space-x-2 pb-2">
+                        {CATEGORIES.map((category) => (
+                          <button
+                            key={category.id}
+                            onClick={() => setSelectedCategory(category.id)}
+                            className={`
+                              flex-shrink-0 px-3 sm:px-4 py-2 rounded-full transition-colors
+                              ${selectedCategory === category.id 
+                                ? `${currentColors.categoryButtonActive}` 
+                                : `${currentColors.categoryButton}`
+                              }
+                            `}
+                            aria-current={selectedCategory === category.id ? 'true' : undefined}
+                            aria-label={`Show ${category.label} news`}
+                          >
+                            <span aria-hidden="true" className="mr-1.5">{category.icon}</span>
+                            <span className={selectedCategory === category.id 
+                              ? currentColors.categoryButtonActive.includes('text-white') ? 'text-white' : 'text-gray-900'
+                              : currentColors.text
+                            }>{category.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Search Bar - New Position */}
+                <div className="mb-6">
+                  {isSearchActive && (
+                    <div className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl p-4`}>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1">
+                          <div className="relative">
+                            <label htmlFor="news-search" className="sr-only">
+                              Search news articles
+                            </label>
+                            <MagnifyingGlassIcon 
+                              className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4" 
+                              aria-hidden="true" 
+                            />
+                            <input
+                              id="news-search"
+                              type="search"
+                              placeholder="Search news..."
+                              value={searchQuery}
+                              onChange={(e) => setSearchQuery(e.target.value)}
+                              className={`w-full pl-9 pr-3 py-2 text-sm`}
+                              aria-label="Search news articles"
+                              aria-expanded={isSearchActive}
+                            />
+                          </div>
+                        </div>
+                        {searchQuery && (
+                          <button
+                            onClick={clearSearch}
+                            className={`p-2 rounded-lg transition-colors ${currentColors.categoryButton}`}
+                          >
+                            <XMarkIcon className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Enahnced Stats Display for High Volume */}
+                <div className={`${currentColors.statsBg} rounded-xl p-3 mb-6 ${currentColors.border} border`}>
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-4 flex-wrap">
+                      <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
+                        <NewspaperIcon className="h-4 w-4" />
+                        <span>{filteredTotal} Articles</span>
+                        {filteredTotal >= 400 && (
+                          <span className="text-xs bg-green-500 text-white px-1 rounded">HIGH VOLUME</span>
+                        )}
+                      </span>
+                      <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
+                        <StarIcon className="h-4 w-4" />
+                        <span>{priorityCount} Priority</span>
+                      </span>
+                      <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
+                        <PhotoIcon className="h-4 w-4" />
+                        <span>{imageCount} Images</span>
+                      </span>
+                      <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
+                        <GlobeAltIcon className="h-4 w-4" />
+                        <span>15 Sources</span>
+                      </span>
+                    </div>
+                    {lastUpdated && (
+                      <span className={`flex items-center space-x-1.5 ${currentColors.textMuted} text-xs`}>
+                        <ClockIcon className="h-4 w-4" />
+                        <span className="hidden sm:inline">
+                          Updated {formatDate(lastUpdated)}
+                        </span>
+                        <span className="sm:hidden">
+                          {formatDate(lastUpdated)}
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Loading State */}
+                {loading && allFeeds.length === 0 && (
+                  <div className="text-center py-12">
+                    <ArrowPathIcon className={`h-8 w-8 animate-spin mx-auto mb-4 ${currentColors.textMuted}`} />
+                    <p className={`${currentColors.textMuted}`}>Loading latest news...</p>
+                  </div>
+                )}
+
+                {/* Articles Grid */}
+                {!loading && displayedFeeds.length > 0 && currentView === 'grid' && (
+                  <div className="columns-1 sm:columns-2 lg:columns-3 gap-6">
+                    {displayedFeeds.map((article, index) => (
+                      <div key={`${article.guid}-${index}`} className="break-inside-avoid mb-6">
+                        <ArticleCard
+                          article={article}
+                          currentColors={currentColors}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Loading More Indicator */}
+                {loadingMore && (
+                  <div className="text-center py-8">
+                    <ArrowPathIcon className={`h-6 w-6 animate-spin mx-auto mb-2 ${currentColors.textMuted}`} />
+                    <p className={`text-sm ${currentColors.textMuted}`}>Loading more articles...</p>
+                  </div>
+                )}
+
+                {/* No More Content */}
+                {!hasMore && displayedFeeds.length > 0 && (
+                  <div className="text-center py-8">
+                    <p className={`text-sm ${currentColors.textMuted}`}>
+                      You've reached the end! 📰
                     </p>
                   </div>
-                  <div className="ml-auto">
-                    <button
-                      onClick={() => loadFeeds(true)}
-                      className="text-red-600 dark:text-red-400 hover:text-red-500"
-                    >
-                      <ArrowPathIcon className="h-4 w-4" />
-                    </button>
+                )}
+
+                {/* No Results */}
+                {!loading && displayedFeeds.length === 0 && allFeeds.length > 0 && (
+                  <div className="text-center py-12">
+                    <FunnelIcon className={`h-12 w-12 mx-auto mb-4 ${currentColors.textMuted}`} />
+                    <h3 className={`text-lg font-medium ${currentColors.text} mb-2`}>
+                      No articles found
+                    </h3>
+                    <p className={`${currentColors.textMuted} mb-4`}>
+                      Try adjusting your filters or search terms
+                    </p>
+                    {(selectedCategory !== 'all' || searchQuery) && (
+                      <button
+                        onClick={() => {
+                          setSelectedCategory('all')
+                          setSearchQuery('')
+                          setIsSearchActive(false)
+                        }}
+                        className={`px-4 py-2 rounded-lg ${currentColors.accent} ${currentColors.textLight} text-sm font-medium`}
+                      >
+                        Clear Filters
+                      </button>
+                    )}
                   </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Category Filters - Horizontal Slider */}
-          <div className="mb-6">
-            <div className="flex items-center space-x-2 mb-4">
-              <div className="flex-1 overflow-x-auto">
-                <div className="flex space-x-2 pb-2">
-                  {CATEGORIES.map((category) => (
-                    <button
-                      key={category.id}
-                      onClick={() => setSelectedCategory(category.id)}
-                      className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
-                        selectedCategory === category.id
-                          ? currentColors.categoryButtonActive
-                          : currentColors.categoryButton
-                      }`}
-                    >
-                      <span className="mr-1.5">{category.icon}</span>
-                      <span>{category.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Enahnced Stats Display for High Volume */}
-          <div className={`${currentColors.statsBg} rounded-xl p-3 mb-6 ${currentColors.border} border`}>
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center space-x-4 flex-wrap">
-                <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
-                  <NewspaperIcon className="h-4 w-4" />
-                  <span>{filteredTotal} Articles</span>
-                  {filteredTotal >= 400 && (
-                    <span className="text-xs bg-green-500 text-white px-1 rounded">HIGH VOLUME</span>
+                )}
+              </>
+            ) : (
+              // Reels view - only show on mobile/tablet
+              <div className="lg:hidden">
+                <ErrorBoundary>
+                  {loading ? (
+                    <div className="fixed inset-0 flex items-center justify-center bg-black">
+                      <ArrowPathIcon className="h-8 w-8 animate-spin text-white" />
+                    </div>
+                  ) : (
+                    <NewsReels 
+                      articles={articlesWithImages}
+                      currentColors={currentColors}
+                    />
                   )}
-                </span>
-                <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
-                  <StarIcon className="h-4 w-4" />
-                  <span>{priorityCount} Priority</span>
-                </span>
-                <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
-                  <PhotoIcon className="h-4 w-4" />
-                  <span>{imageCount} Images</span>
-                </span>
-                <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
-                  <GlobeAltIcon className="h-4 w-4" />
-                  <span>15 Sources</span>
-                </span>
+                </ErrorBoundary>
               </div>
-              {lastUpdated && (
-                <span className={`flex items-center space-x-1.5 ${currentColors.textMuted} text-xs`}>
-                  <ClockIcon className="h-4 w-4" />
-                  <span className="hidden sm:inline">
-                    Updated {formatDate(lastUpdated)}
-                  </span>
-                  <span className="sm:hidden">
-                    {formatDate(lastUpdated)}
-                  </span>
-                </span>
+            )}
+          </main>
+        </div>
+
+        {/* New Mobile Bottom Navigation */}
+        <nav className={`
+          fixed bottom-0 left-0 right-0 lg:hidden z-50 
+          ${currentColors.headerBg} backdrop-blur-lg ${currentColors.border} border-t
+        `}>
+          <div className="flex items-center justify-around h-16 px-4">
+            <button
+              onClick={() => setCurrentView('grid')}
+              className={`p-2 rounded-lg flex flex-col items-center`}
+              aria-label="Grid view"
+              aria-pressed={currentView === 'grid'}
+            >
+              <Squares2X2Icon className={`h-6 w-6 ${
+                currentView === 'grid' ? currentColors.text : currentColors.textMuted
+              }`} />
+              <span className={`text-xs mt-1 ${
+                currentView === 'grid' ? currentColors.text : currentColors.textMuted
+              }`}>Feed</span>
+            </button>
+
+            <button
+              onClick={() => setCurrentView('reels')}
+              className={`p-2 rounded-lg flex flex-col items-center`}
+              aria-label="Reels view"
+              aria-pressed={currentView === 'reels'}
+            >
+              <VideoCameraIcon className={`h-6 w-6 ${
+                currentView === 'reels' ? currentColors.text : currentColors.textMuted
+              }`} />
+              <span className={`text-xs mt-1 ${
+                currentView === 'reels' ? currentColors.text : currentColors.textMuted
+              }`}>Reels</span>
+            </button>
+
+            <button
+              onClick={() => setShowSearch(true)}
+              className={`p-2 rounded-lg flex flex-col items-center`}
+              aria-label="Search"
+            >
+              <MagnifyingGlassIcon className={`h-6 w-6 ${currentColors.textMuted}`} />
+              <span className={`text-xs mt-1 ${currentColors.textMuted}`}>Search</span>
+            </button>
+
+            <button
+              onClick={() => setTheme(getNextTheme(theme))}
+              className={`p-2 rounded-lg flex flex-col items-center`}
+              aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} theme`}
+            >
+              {theme === 'light' ? (
+                <>
+                  <SunIcon className={`h-6 w-6 ${currentColors.textMuted}`} />
+                  <span className={`text-xs mt-1 ${currentColors.textMuted}`}>Light</span>
+                </>
+              ) : (
+                <>
+                  <MoonIcon className={`h-6 w-6 ${currentColors.textMuted}`} />
+                  <span className={`text-xs mt-1 ${currentColors.textMuted}`}>Dark</span>
+                </>
               )}
-            </div>
+            </button>
           </div>
-
-          {/* Loading State */}
-          {loading && allFeeds.length === 0 && (
-            <div className="text-center py-12">
-              <ArrowPathIcon className={`h-8 w-8 animate-spin mx-auto mb-4 ${currentColors.textMuted}`} />
-              <p className={`${currentColors.textMuted}`}>Loading latest news...</p>
-            </div>
-          )}
-
-          {/* Articles Grid */}
-          {!loading && displayedFeeds.length > 0 && (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {displayedFeeds.map((article, index) => (
-                <ArticleCard
-                  key={`${article.guid}-${index}`}
-                  article={article}
-                  currentColors={currentColors}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Loading More Indicator */}
-          {loadingMore && (
-            <div className="text-center py-8">
-              <ArrowPathIcon className={`h-6 w-6 animate-spin mx-auto mb-2 ${currentColors.textMuted}`} />
-              <p className={`text-sm ${currentColors.textMuted}`}>Loading more articles...</p>
-            </div>
-          )}
-
-          {/* No More Content */}
-          {!hasMore && displayedFeeds.length > 0 && (
-            <div className="text-center py-8">
-              <p className={`text-sm ${currentColors.textMuted}`}>
-                You've reached the end! 📰
-              </p>
-            </div>
-          )}
-
-          {/* No Results */}
-          {!loading && displayedFeeds.length === 0 && allFeeds.length > 0 && (
-            <div className="text-center py-12">
-              <FunnelIcon className={`h-12 w-12 mx-auto mb-4 ${currentColors.textMuted}`} />
-              <h3 className={`text-lg font-medium ${currentColors.text} mb-2`}>
-                No articles found
-              </h3>
-              <p className={`${currentColors.textMuted} mb-4`}>
-                Try adjusting your filters or search terms
-              </p>
-              {(selectedCategory !== 'all' || searchQuery) && (
-                <button
-                  onClick={() => {
-                    setSelectedCategory('all')
-                    setSearchQuery('')
-                    setIsSearchActive(false)
-                  }}
-                  className={`px-4 py-2 rounded-lg ${currentColors.accent} ${currentColors.textLight} text-sm font-medium`}
-                >
-                  Clear Filters
-                </button>
-              )}
-            </div>
-          )}
-        </main>
-
-        {/* Scroll to Top Button */}
-        {showScrollTop && (
-          <button
-            onClick={scrollToTop}
-            className="fixed bottom-6 right-6 p-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50"
-          >
-            <ArrowUpIcon className="h-5 w-5" />
-          </button>
-        )}
+        </nav>
 
         {/* Footer */}
-        <footer className={`${currentColors.footerBg} text-center py-8 mt-12`}>
+        <footer className={`${currentColors.footerBg} text-center py-8 mt-12`} role="contentinfo">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-center space-x-2 mb-4">
               <HeartIcon className="h-5 w-5 text-red-400" />
@@ -1069,6 +1140,26 @@ function App() {
             </p>
           </div>
         </footer>
+
+        {/* Skip to main content link */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-lg z-50"
+        >
+          Skip to main content
+        </a>
+
+        {showSearch && (
+          <SearchPage
+            currentColors={currentColors}
+            allFeeds={allFeeds}
+            onClose={() => setShowSearch(false)}
+            onSelectArticle={(article) => {
+              setShowSearch(false)
+              // Handle article selection (e.g., scroll to article or open in reels view)
+            }}
+          />
+        )}
       </div>
     </HelmetProvider>
   )

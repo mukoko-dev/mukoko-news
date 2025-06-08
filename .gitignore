@@ -80,6 +80,7 @@ Thumbs.db
 # Cloudflare
 .wrangler/
 worker-configuration.d.ts
+.dev.vars
 
 # Backup files
 backup_*/
