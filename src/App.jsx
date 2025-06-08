@@ -12,8 +12,6 @@ import {
   MoonIcon,
   ComputerDesktopIcon,
   HeartIcon,
-  CalendarIcon,
-  TagIcon,
   MagnifyingGlassIcon,
   XMarkIcon,
   PhotoIcon,
@@ -22,7 +20,7 @@ import {
   ChevronUpIcon
 } from '@heroicons/react/24/outline'
 
-// Logo Component (unchanged)
+// Logo Component
 const Logo = ({ 
   variant = 'main', 
   theme = 'light', 
@@ -40,7 +38,7 @@ const Logo = ({
   }
   
   const [width, height] = sizes[size][variant]
-  const { stroke, fill, subtitle } = colors[theme]
+  const { stroke, fill } = colors[theme]
   
   if (variant === 'horizontal') {
     return (
@@ -50,33 +48,30 @@ const Logo = ({
               fontSize={height*0.56} 
               fontWeight="bold" 
               fill={fill}>HM</text>
-        <line x1={width*0.28} y1={height*0.2} x2={width*0.28} y2={height*0.8} 
-              stroke={stroke} strokeWidth="2"/>
-        <text x={width*0.37} y={height*0.44} 
+        <line x1={width*0.28} y1={height*0.2} x2={width*0.28} y2={height*0.8} stroke={stroke} strokeWidth="2"/>
+        <text x={width*0.34} y={height*0.4} 
               fontFamily="Georgia, Times New Roman, serif" 
-              fontSize={height*0.28} 
+              fontSize={height*0.32} 
               fontWeight="bold" 
-              fill={fill}>HARARE</text>
-        <text x={width*0.37} y={height*0.72} 
-              fontFamily="Georgia, Times New Roman, serif" 
-              fontSize={height*0.28} 
-              fill={subtitle}>METRO</text>
+              fill={fill}>HARARE METRO</text>
       </svg>
     )
   }
   
   return (
-    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="logo-compact">
-      <rect x="2" y="2" width={width-4} height={height-4} fill="none" stroke={stroke} strokeWidth="1.5"/>
-      <text x={width/2} y={height*0.65} textAnchor="middle" 
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="logo-main">
+      <rect x="2" y="2" width={width-4} height={height-4} fill="none" stroke={stroke} strokeWidth="2"/>
+      <rect x="6" y="6" width={width-12} height={height-12} fill="none" stroke={stroke} strokeWidth="1"/>
+      <text x={width/2} y={height*0.63} textAnchor="middle" 
             fontFamily="Georgia, Times New Roman, serif" 
-            fontSize={height*0.4} 
+            fontSize={height*0.53} 
             fontWeight="bold" 
             fill={fill}>HM</text>
     </svg>
   )
 }
 
+// Category configuration
 const CATEGORIES = [
   { id: 'all', label: 'All News', icon: '📰', primary: true },
   { id: 'politics', label: 'Politics', icon: '🏛️', primary: true },
@@ -84,41 +79,117 @@ const CATEGORIES = [
   { id: 'business', label: 'Business', icon: '💼', primary: true },
   { id: 'sports', label: 'Sports', icon: '⚽', primary: true },
   { id: 'harare', label: 'Harare', icon: '🏙️', primary: true },
-  { id: 'agriculture', label: 'Agriculture', icon: '🌾', primary: true },
   { id: 'technology', label: 'Technology', icon: '💻', primary: false },
+  { id: 'agriculture', label: 'Agriculture', icon: '🌾', primary: false },
   { id: 'health', label: 'Health', icon: '🏥', primary: false },
   { id: 'education', label: 'Education', icon: '🎓', primary: false },
   { id: 'entertainment', label: 'Entertainment', icon: '🎭', primary: false },
   { id: 'environment', label: 'Environment', icon: '🌍', primary: false },
-  { id: 'crime', label: 'Crime', icon: '🚔', primary: false },
+  { id: 'crime', label: 'Crime & Security', icon: '🚔', primary: false },
   { id: 'international', label: 'International', icon: '🌐', primary: false },
   { id: 'lifestyle', label: 'Lifestyle', icon: '✨', primary: false },
   { id: 'finance', label: 'Finance', icon: '💳', primary: false }
 ]
 
-// Enhanced ArticleCard for infinite scroll with expandable text
-function ArticleCard({ article, currentColors, isVisible = true }) {
+// Cache management class
+class CacheManager {
+  constructor() {
+    this.cache = new Map()
+    this.CACHE_DURATION = 5 * 60 * 1000 // 5 minutes
+  }
+
+  set(key, data) {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now()
+    })
+  }
+
+  get(key) {
+    const cached = this.cache.get(key)
+    if (!cached) return null
+
+    const isExpired = Date.now() - cached.timestamp > this.CACHE_DURATION
+    if (isExpired) {
+      this.cache.delete(key)
+      return null
+    }
+
+    return cached.data
+  }
+
+  isValid(key) {
+    const cached = this.cache.get(key)
+    return cached && (Date.now() - cached.timestamp < this.CACHE_DURATION)
+  }
+}
+
+// Global cache instance
+const cache = new CacheManager()
+
+// Scroll tracker hook for 25% scroll detection
+function useScrollTracker() {
+  const [scrollProgress, setScrollProgress] = useState(0)
+  const [hasReached25Percent, setHasReached25Percent] = useState(false)
+
+  useEffect(() => {
+    const updateScrollProgress = () => {
+      const scrollTop = window.scrollY
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight
+      const progress = Math.min((scrollTop / docHeight) * 100, 100)
+      
+      setScrollProgress(progress)
+      
+      if (progress >= 25 && !hasReached25Percent) {
+        setHasReached25Percent(true)
+      }
+    }
+
+    window.addEventListener('scroll', updateScrollProgress, { passive: true })
+    updateScrollProgress()
+
+    return () => window.removeEventListener('scroll', updateScrollProgress)
+  }, [hasReached25Percent])
+
+  return { scrollProgress, hasReached25Percent }
+}
+
+// Enhanced ArticleCard component
+function ArticleCard({ article, currentColors }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [isExpanded, setIsExpanded] = useState(false)
   const cardRef = useRef(null)
   
   const categoryInfo = CATEGORIES.find(cat => cat.id === article.category)
-  
-  // Use original image URL directly from worker
   const hasImage = article.imageUrl && !imageError
-  const showImagePlaceholder = !hasImage && !imageError
 
-  // Check if description is long enough to need expansion
-  const hasLongDescription = article.description && article.description.length > 150
-  
-  // Get preview text (first ~150 characters)
-  const getPreviewText = (text) => {
-    if (!text) return ''
-    if (text.length <= 150) return text
+  // Check if user prefers reduced data
+  const shouldLoadImages = useMemo(() => {
+    if (typeof navigator !== 'undefined' && 'connection' in navigator) {
+      const connection = navigator.connection
+      if (connection.saveData || connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
+        return false
+      }
+    }
     
-    // Find the last complete sentence or word break within 150 characters
-    const preview = text.substring(0, 150)
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-data: reduce)').matches) {
+      return false
+    }
+    
+    return true
+  }, [])
+
+  const handleImageLoad = () => setImageLoaded(true)
+  const handleImageError = () => {
+    setImageError(true)
+    setImageLoaded(false)
+  }
+
+  const getSmartPreview = (text, maxLength = 150) => {
+    if (!text || text.length <= maxLength) return text
+    
+    const preview = text.substring(0, maxLength)
     const lastPeriod = preview.lastIndexOf('.')
     const lastSpace = preview.lastIndexOf(' ')
     
@@ -136,38 +207,13 @@ function ArticleCard({ article, currentColors, isVisible = true }) {
     setIsExpanded(!isExpanded)
   }
 
-  const handleImageLoad = () => setImageLoaded(true)
-  const handleImageError = () => {
-    setImageError(true)
-    setImageLoaded(false)
-  }
-
-  // Intersection Observer for lazy loading
-  useEffect(() => {
-    if (!cardRef.current || !isVisible) return
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('animate-fade-in')
-          }
-        })
-      },
-      { threshold: 0.1, rootMargin: '50px' }
-    )
-
-    observer.observe(cardRef.current)
-    return () => observer.disconnect()
-  }, [isVisible])
-
   return (
     <article 
       ref={cardRef}
-      className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:transform hover:-translate-y-1 opacity-0`}
+      className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:transform hover:-translate-y-1`}
     >
       {/* Image Section */}
-      {hasImage && (
+      {hasImage && shouldLoadImages && (
         <div className="relative w-full h-48 sm:h-52 bg-gray-100 dark:bg-gray-700 overflow-hidden">
           {!imageLoaded && (
             <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600">
@@ -188,6 +234,7 @@ function ArticleCard({ article, currentColors, isVisible = true }) {
             onError={handleImageError}
             loading="lazy"
             decoding="async"
+            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
           />
           
           {article.priority && (
@@ -200,19 +247,24 @@ function ArticleCard({ article, currentColors, isVisible = true }) {
         </div>
       )}
       
-      {showImagePlaceholder && (
+      {/* Image placeholder */}
+      {(!hasImage || !shouldLoadImages) && (
         <div className="w-full h-32 sm:h-36 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center">
           <div className="text-center">
             <div className="text-3xl mb-2">{categoryInfo?.icon || '📰'}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400 font-medium uppercase tracking-wide">
               {article.category}
             </div>
+            {!shouldLoadImages && (
+              <div className="text-xs text-gray-400 mt-1">Data Saver Mode</div>
+            )}
           </div>
         </div>
       )}
 
       {/* Content Section */}
       <div className="p-4 sm:p-5">
+        {/* Article Header */}
         <div className="flex items-center justify-between mb-3 gap-2">
           <span className={`text-sm font-semibold ${currentColors.accentText} truncate`}>
             {article.source}
@@ -229,42 +281,47 @@ function ArticleCard({ article, currentColors, isVisible = true }) {
           </div>
         </div>
         
+        {/* Title */}
         <h2 className={`text-base sm:text-lg font-bold ${currentColors.text} mb-3 leading-tight line-clamp-3`}>
           {article.title}
-          {article.priority && !hasImage && (
+          {article.priority && (!hasImage || !shouldLoadImages) && (
             <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
               🇿🇼
             </span>
           )}
         </h2>
         
-        {/* Description - Instagram-style expandable text */}
+        {/* Description */}
         {article.description && (
           <div className="mb-4">
-            <p className={`${currentColors.textSecondary} text-sm sm:text-base leading-relaxed transition-all duration-300`}>
-              {isExpanded ? article.description : getPreviewText(article.description)}
-              {hasLongDescription && (
-                <button
-                  onClick={toggleExpansion}
-                  className={`ml-2 text-sm font-medium ${currentColors.accentText} hover:underline focus:outline-none inline-flex items-center transition-colors`}
-                >
-                  {isExpanded ? (
-                    <>
-                      <span>Show less</span>
-                      <ChevronUpIcon className="w-3 h-3 ml-1" />
-                    </>
-                  ) : (
-                    <>
-                      <span>Show more</span>
-                      <ChevronDownIcon className="w-3 h-3 ml-1" />
-                    </>
-                  )}
-                </button>
-              )}
+            <p className={`${currentColors.textSecondary} text-sm sm:text-base leading-relaxed ${
+              isExpanded ? '' : 'line-clamp-2 sm:line-clamp-3'
+            }`}>
+              {isExpanded ? article.description : getSmartPreview(article.description)}
             </p>
+            
+            {article.description.length > 150 && (
+              <button
+                onClick={toggleExpansion}
+                className={`mt-2 text-xs ${currentColors.accentText} hover:underline flex items-center gap-1`}
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUpIcon className="w-3 h-3" />
+                    Show Less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDownIcon className="w-3 h-3" />
+                    Read More
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
         
+        {/* Footer */}
         <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-600">
           <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium ${getCategoryColor(article.category)} truncate flex-shrink-0`}>
             <span className="mr-1">{categoryInfo?.icon || '📰'}</span>
@@ -298,7 +355,7 @@ function useInfiniteScroll(hasMore, loading, loadMore) {
       }
     }
 
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [hasMore, loading])
 
@@ -311,15 +368,19 @@ function useInfiniteScroll(hasMore, loading, loadMore) {
   return [isFetching, setIsFetching]
 }
 
+// Main App Component
 function App() {
-  const [allFeeds, setAllFeeds] = useState([]) // Store all fetched feeds
-  const [displayedFeeds, setDisplayedFeeds] = useState([]) // Currently displayed feeds
+  // Core state
+  const [allFeeds, setAllFeeds] = useState([])
+  const [displayedFeeds, setDisplayedFeeds] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
-  const [selectedCategory, setSelectedCategory] = useState('all')
-  const [showAllCategories, setShowAllCategories] = useState(false)
   const [lastUpdated, setLastUpdated] = useState(null)
+  
+  // UI state
+  const [selectedCategory, setSelectedCategory] = useState('all')
   const [theme, setTheme] = useState('system')
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchActive, setIsSearchActive] = useState(false)
@@ -328,8 +389,12 @@ function App() {
   // Infinite scroll state
   const [currentPage, setCurrentPage] = useState(0)
   const [hasMore, setHasMore] = useState(true)
-  const ITEMS_PER_PAGE = 15 // Reduced for better performance on mobile
+  const ITEMS_PER_PAGE = 15
 
+  // Scroll tracking
+  const { hasReached25Percent } = useScrollTracker()
+
+  // Theme configurations
   const themes = {
     light: {
       bg: 'bg-gray-50',
@@ -365,20 +430,11 @@ function App() {
     }
   }
 
-  // Theme management (unchanged)
+  // Theme management
   useEffect(() => {
-    const getSystemTheme = () => {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-
-    const savedTheme = localStorage.getItem('harare-metro-theme') || 'system'
-    setTheme(savedTheme)
-
-    if (savedTheme === 'system') {
-      const systemTheme = getSystemTheme()
-      document.documentElement.classList.toggle('dark', systemTheme === 'dark')
-    } else {
-      document.documentElement.classList.toggle('dark', savedTheme === 'dark')
+    const savedTheme = localStorage.getItem('theme')
+    if (savedTheme && ['light', 'dark', 'system'].includes(savedTheme)) {
+      setTheme(savedTheme)
     }
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
@@ -387,83 +443,90 @@ function App() {
         document.documentElement.classList.toggle('dark', mediaQuery.matches)
       }
     }
-    
+
     mediaQuery.addEventListener('change', handleChange)
+    handleChange()
+
     return () => mediaQuery.removeEventListener('change', handleChange)
   }, [theme])
 
-  // Scroll to top button
+  useEffect(() => {
+    localStorage.setItem('theme', theme)
+    
+    if (theme === 'system') {
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches
+      document.documentElement.classList.toggle('dark', isDark)
+    } else {
+      document.documentElement.classList.toggle('dark', theme === 'dark')
+    }
+  }, [theme])
+
+  const currentColors = themes[theme === 'system' ? 
+    (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : 
+    theme
+  ]
+
+  // Scroll progress tracking
   useEffect(() => {
     const handleScroll = () => {
-      setShowScrollTop(window.scrollY > 1000)
+      const scrolled = window.scrollY
+      setShowScrollTop(scrolled > 400)
     }
 
-    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('scroll', handleScroll, { passive: true })
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
-  const changeTheme = (newTheme) => {
-    setTheme(newTheme)
-    localStorage.setItem('harare-metro-theme', newTheme)
+  // Load feeds function with caching
+  const loadFeeds = useCallback(async (forceRefresh = false) => {
+    const cacheKey = `feeds_${selectedCategory}`
     
-    if (newTheme === 'system') {
-      const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-      document.documentElement.classList.toggle('dark', systemTheme === 'dark')
-    } else {
-      document.documentElement.classList.toggle('dark', newTheme === 'dark')
+    if (!forceRefresh && cache.isValid(cacheKey)) {
+      const cachedData = cache.get(cacheKey)
+      if (cachedData) {
+        setAllFeeds(cachedData)
+        setLoading(false)
+        return
+      }
     }
-  }
 
-  const getCurrentTheme = () => {
-    if (theme === 'system') {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-    }
-    return theme
-  }
-
-  const currentColors = themes[getCurrentTheme()]
-
-  // Load initial feeds
-  const loadFeeds = useCallback(async (refresh = false) => {
     try {
-      if (refresh) {
-        setLoading(true)
-        setCurrentPage(0)
-        setHasMore(true)
-      } else {
-        setLoadingMore(true)
-      }
-      
+      if (forceRefresh) setRefreshing(true)
+      else setLoading(true)
       setError(null)
+
+      const params = new URLSearchParams({
+        limit: '100',
+        ...(selectedCategory !== 'all' && { category: selectedCategory })
+      })
+
+      const response = await fetch(`/api/feeds?${params}`)
       
-      const response = await fetch('/api/feeds')
       if (!response.ok) {
-        throw new Error(`Failed to load news: ${response.status}`)
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
-      
+
       const data = await response.json()
       
-      if (refresh) {
-        setAllFeeds(data)
-        setDisplayedFeeds(data.slice(0, ITEMS_PER_PAGE))
-        setCurrentPage(1)
-        setLastUpdated(new Date())
-      } else {
-        setAllFeeds(prev => [...prev, ...data])
-      }
+      cache.set(cacheKey, data)
+      
+      setAllFeeds(data)
+      setLastUpdated(new Date().toISOString())
       
     } catch (err) {
-      setError(err.message)
-      console.error('Error loading feeds:', err)
+      console.error('Feed loading error:', err)
+      setError(`Failed to load news: ${err.message}`)
     } finally {
+      setRefreshing(false)
       setLoading(false)
-      setLoadingMore(false)
     }
-  }, [])
+  }, [selectedCategory])
 
   // Load more feeds for infinite scroll
   const loadMoreFeeds = useCallback(() => {
     if (loadingMore || !hasMore) return
+
+    setLoadingMore(true)
 
     const filtered = getFilteredFeeds(allFeeds)
     const nextPageStart = currentPage * ITEMS_PER_PAGE
@@ -472,16 +535,20 @@ function App() {
 
     if (nextPageItems.length === 0) {
       setHasMore(false)
+      setLoadingMore(false)
       return
     }
 
-    setDisplayedFeeds(prev => [...prev, ...nextPageItems])
-    setCurrentPage(prev => prev + 1)
+    setTimeout(() => {
+      setDisplayedFeeds(prev => [...prev, ...nextPageItems])
+      setCurrentPage(prev => prev + 1)
 
-    // Check if we have more items
-    if (nextPageEnd >= filtered.length) {
-      setHasMore(false)
-    }
+      if (nextPageEnd >= filtered.length) {
+        setHasMore(false)
+      }
+      
+      setLoadingMore(false)
+    }, 500)
   }, [allFeeds, currentPage, loadingMore, hasMore])
 
   // Filter function
@@ -515,13 +582,20 @@ function App() {
   // Initialize infinite scroll
   useInfiniteScroll(hasMore, loadingMore, loadMoreFeeds)
 
+  // Load feeds when component mounts
   useEffect(() => {
     loadFeeds(true)
     
-    // Auto-refresh every 10 minutes
     const interval = setInterval(() => loadFeeds(true), 10 * 60 * 1000)
     return () => clearInterval(interval)
   }, [loadFeeds])
+
+  // Backup loading trigger for 25% scroll
+  useEffect(() => {
+    if (hasReached25Percent && allFeeds.length === 0 && !loading) {
+      loadFeeds(true)
+    }
+  }, [hasReached25Percent, allFeeds.length, loading, loadFeeds])
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -570,139 +644,178 @@ function App() {
     }
   }
 
-  const primaryCategories = CATEGORIES.filter(cat => cat.primary)
-  const secondaryCategories = CATEGORIES.filter(cat => !cat.primary)
-  const categoriesToShow = showAllCategories ? CATEGORIES : primaryCategories
+  // Generate dynamic SEO data
+  const generateSEOData = () => {
+    let title = 'Zimbabwe News Aggregator'
+    let description = 'Stay informed with the latest news from Zimbabwe. Real-time aggregation from Herald, NewsDay, Chronicle, ZBC and more trusted local sources.'
+    let keywords = 'Zimbabwe news, Harare news, Zimbabwe politics, Zimbabwe economy, Herald Zimbabwe, NewsDay, Chronicle, ZBC News'
 
-  if (loading && displayedFeeds.length === 0) {
-    return (
-      <HelmetProvider>
-        <SEO />
-        <div className={`min-h-screen ${currentColors.bg} flex items-center justify-center font-serif`}>
-          <div className={`text-center ${currentColors.text} px-4`}>
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-gray-900 mx-auto mb-6"></div>
-            <h2 className="text-xl font-semibold mb-3">Loading Zimbabwe News</h2>
-            <p className={`${currentColors.textMuted} text-base`}>Connecting to local news sources...</p>
-          </div>
-        </div>
-      </HelmetProvider>
-    )
+    if (selectedCategory !== 'all') {
+      const categoryInfo = CATEGORIES.find(cat => cat.id === selectedCategory)
+      if (categoryInfo) {
+        title = `${categoryInfo.label} News - Zimbabwe`
+        description = `Latest ${categoryInfo.label.toLowerCase()} news from Zimbabwe. ${description}`
+        keywords = `Zimbabwe ${categoryInfo.label.toLowerCase()}, ${keywords}`
+      }
+    }
+
+    if (searchQuery.trim()) {
+      title = `"${searchQuery}" - Search Results`
+      description = `Search results for "${searchQuery}" in Zimbabwe news. ${description}`
+      keywords = `${searchQuery}, ${keywords}`
+    }
+
+    return { title, description, keywords }
   }
+
+  const seoData = generateSEOData()
 
   return (
     <HelmetProvider>
-      <SEO />
-      <div className={`min-h-screen ${currentColors.bg} flex flex-col font-serif`}>
+      <div className={`min-h-screen ${currentColors.bg} transition-colors duration-300`}>
+        <SEO
+          title={seoData.title}
+          description={seoData.description}
+          keywords={seoData.keywords}
+          type="website"
+        />
+
         {/* Header */}
-        <header className={`${currentColors.headerBg} backdrop-blur-sm shadow-lg sticky top-0 z-50 ${currentColors.border} border-b`}>
-          <div className="w-full px-3 sm:px-4">
-            <div className="flex items-center justify-between h-12 sm:h-14">
-              <div className="flex items-center space-x-2 min-w-0">
-                <div className="hidden md:block">
-                  <Logo variant="horizontal" theme={getCurrentTheme()} size="sm" />
-                </div>
-                <div className="md:hidden">
-                  <Logo variant="compact" theme={getCurrentTheme()} size="sm" />
+        <header className={`sticky top-0 z-50 ${currentColors.headerBg} backdrop-blur-lg ${currentColors.border} border-b`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16 sm:h-20">
+              <div className="flex items-center space-x-3">
+                <Logo variant="compact" theme={theme === 'system' ? 'light' : theme} size="sm" />
+                <div className="hidden sm:block">
+                  <h1 className={`text-xl font-bold ${currentColors.text}`}>
+                    Harare Metro
+                  </h1>
+                  <p className={`text-sm ${currentColors.textMuted}`}>
+                    Zimbabwe News Aggregator
+                  </p>
                 </div>
               </div>
-              
-              <div className="flex items-center space-x-1">
-                <button
-                  onClick={handleSearchToggle}
-                  className={`p-2 rounded-lg transition-colors flex items-center justify-center ${
-                    isSearchActive 
-                      ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900' 
-                      : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
-                  }`}
-                  title="Search news"
-                >
-                  <MagnifyingGlassIcon className="h-4 w-4" />
-                </button>
-                
-                <div className={`flex items-center ${currentColors.cardBg} ${currentColors.border} border rounded-lg p-0.5`}>
-                  <button
-                    onClick={() => changeTheme('light')}
-                    className={`p-1.5 rounded transition-colors flex items-center justify-center ${
-                      theme === 'light' 
-                        ? 'bg-yellow-100 text-yellow-600' 
-                        : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
-                    }`}
-                  >
-                    <SunIcon className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => changeTheme('dark')}
-                    className={`p-1.5 rounded transition-colors flex items-center justify-center ${
-                      theme === 'dark' 
-                        ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' 
-                        : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
-                    }`}
-                  >
-                    <MoonIcon className="h-3 w-3" />
-                  </button>
-                  <button
-                    onClick={() => changeTheme('system')}
-                    className={`p-1.5 rounded transition-colors flex items-center justify-center ${
-                      theme === 'system' 
-                        ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300' 
-                        : `${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700`
-                    }`}
-                  >
-                    <ComputerDesktopIcon className="h-3 w-3" />
-                  </button>
+
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                <div className="flex items-center">
+                  {isSearchActive ? (
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        placeholder="Search news..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className={`px-3 py-2 text-sm border rounded-lg focus:ring-2 focus:ring-offset-2 ${
+                          theme === 'dark' 
+                            ? 'bg-gray-700 border-gray-600 text-white focus:ring-white' 
+                            : 'bg-white border-gray-300 text-gray-900 focus:ring-gray-900'
+                        }`}
+                        autoFocus
+                      />
+                      <button
+                        onClick={clearSearch}
+                        className={`p-2 rounded-lg transition-colors ${currentColors.categoryButton}`}
+                      >
+                        <XMarkIcon className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleSearchToggle}
+                      className={`p-2 rounded-lg transition-colors ${currentColors.categoryButton}`}
+                    >
+                      <MagnifyingGlassIcon className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
-                
+
                 <button
                   onClick={() => loadFeeds(true)}
-                  disabled={loading}
-                  className={`p-2 rounded-lg transition-colors flex items-center justify-center ${currentColors.textMuted} hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50`}
-                  title="Refresh news"
+                  disabled={refreshing}
+                  className={`p-2 rounded-lg transition-all ${currentColors.categoryButton}`}
                 >
-                  <ArrowPathIcon className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                  <ArrowPathIcon className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+                </button>
+
+                <button
+                  onClick={() => setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light')}
+                  className={`p-2 rounded-lg transition-colors ${currentColors.categoryButton}`}
+                >
+                  {theme === 'light' ? (
+                    <SunIcon className="h-4 w-4" />
+                  ) : theme === 'dark' ? (
+                    <MoonIcon className="h-4 w-4" />
+                  ) : (
+                    <ComputerDesktopIcon className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
           </div>
         </header>
 
-        <div className="flex-1 max-w-7xl mx-auto w-full px-3 sm:px-4 py-4 sm:py-5">
-          {/* Search Bar */}
-          {isSearchActive && (
-            <div className={`${currentColors.statsBg} rounded-xl p-3 mb-4 ${currentColors.border} border`}>
-              <div className="relative">
-                <MagnifyingGlassIcon className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${currentColors.textMuted}`} />
-                <input
-                  type="text"
-                  placeholder="Search news..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full pl-10 pr-10 py-2 bg-transparent ${currentColors.text} placeholder-gray-400 text-sm font-serif focus:outline-none`}
-                  autoFocus
-                />
-                {searchQuery && (
-                  <button
-                    onClick={clearSearch}
-                    className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${currentColors.textMuted} hover:text-red-500`}
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                  </button>
-                )}
+        {/* Main Content */}
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {/* Error State */}
+          {error && (
+            <div className="mb-6">
+              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <XMarkIcon className="h-5 w-5 text-red-400" />
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
+                      Error Loading News
+                    </h3>
+                    <p className="mt-1 text-sm text-red-600 dark:text-red-300">
+                      {error}
+                    </p>
+                  </div>
+                  <div className="ml-auto">
+                    <button
+                      onClick={() => loadFeeds(true)}
+                      className="text-red-600 dark:text-red-400 hover:text-red-500"
+                    >
+                      <ArrowPathIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
               </div>
-              {searchQuery && (
-                <p className={`text-xs ${currentColors.textMuted} mt-2`}>
-                  Found {filteredTotal} articles matching "{searchQuery}"
-                </p>
-              )}
             </div>
           )}
 
+          {/* Category Filters - Horizontal Slider */}
+          <div className="mb-6">
+            <div className="flex items-center space-x-2 mb-4">
+              <div className="flex-1 overflow-x-auto">
+                <div className="flex space-x-2 pb-2">
+                  {CATEGORIES.map((category) => (
+                    <button
+                      key={category.id}
+                      onClick={() => setSelectedCategory(category.id)}
+                      className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${
+                        selectedCategory === category.id
+                          ? currentColors.categoryButtonActive
+                          : currentColors.categoryButton
+                      }`}
+                    >
+                      <span className="mr-1.5">{category.icon}</span>
+                      <span>{category.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Stats */}
-          <div className={`${currentColors.statsBg} rounded-xl p-3 mb-4 ${currentColors.border} border`}>
+          <div className={`${currentColors.statsBg} rounded-xl p-3 mb-6 ${currentColors.border} border`}>
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center space-x-4">
                 <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
                   <NewspaperIcon className="h-4 w-4" />
-                  <span>{displayedFeeds.length} of {filteredTotal}</span>
+                  <span>{filteredTotal} Articles</span>
                 </span>
                 <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
                   <StarIcon className="h-4 w-4" />
@@ -715,177 +828,140 @@ function App() {
               </div>
               {lastUpdated && (
                 <span className={`flex items-center space-x-1.5 ${currentColors.textMuted}`}>
-                  <ClockIcon className="h-3 w-3" />
-                  <span className="hidden sm:inline">Updated </span>
-                  <span>{formatDate(lastUpdated)}</span>
+                  <ClockIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">
+                    Updated {formatDate(lastUpdated)}
+                  </span>
+                  <span className="sm:hidden">
+                    {formatDate(lastUpdated)}
+                  </span>
                 </span>
               )}
             </div>
           </div>
 
-          {/* Category Filters */}
-          <div className="mb-5">
-            <div className="overflow-x-auto scrollbar-hide pb-2">
-              <div className="flex gap-2 min-w-max">
-                {categoriesToShow.map((category) => (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`flex items-center space-x-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                      selectedCategory === category.id
-                        ? currentColors.categoryButtonActive
-                        : currentColors.categoryButton
-                    }`}
-                  >
-                    <span className="text-sm">{category.icon}</span>
-                    <span>{category.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            {secondaryCategories.length > 0 && (
-              <button
-                onClick={() => setShowAllCategories(!showAllCategories)}
-                className={`${currentColors.textMuted} hover:${currentColors.text} text-sm font-medium transition-colors mt-2`}
-              >
-                {showAllCategories ? '← Show Less Categories' : `+ Show ${secondaryCategories.length} More Categories`}
-              </button>
-            )}
-          </div>
-
-          {/* Error Message */}
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-800 p-4 rounded-lg mb-6 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200">
-              <h3 className="font-semibold mb-2">Error Refreshing</h3>
-              <p className="text-sm">{error}</p>
+          {/* Loading State */}
+          {loading && allFeeds.length === 0 && (
+            <div className="text-center py-12">
+              <ArrowPathIcon className={`h-8 w-8 animate-spin mx-auto mb-4 ${currentColors.textMuted}`} />
+              <p className={`${currentColors.textMuted}`}>Loading latest news...</p>
             </div>
           )}
 
-          {/* Content */}
-          {displayedFeeds.length === 0 ? (
-            <div className={`${currentColors.cardBg} ${currentColors.border} border p-12 rounded-xl text-center`}>
-              <div className="text-6xl mb-4">
-                {searchQuery ? '🔍' : '📰'}
-              </div>
-              <h3 className={`text-xl font-semibold ${currentColors.text} mb-2`}>
-                {searchQuery ? 'No Search Results' : 'No Articles Found'}
-              </h3>
-              <p className={`text-base ${currentColors.textMuted}`}>
-                {searchQuery 
-                  ? `No articles match "${searchQuery}"` 
-                  : selectedCategory === 'all' 
-                    ? 'No news articles available.' 
-                    : `No articles in "${CATEGORIES.find(c => c.id === selectedCategory)?.label}".`
-                  }
+          {/* Articles Grid */}
+          {!loading && displayedFeeds.length > 0 && (
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {displayedFeeds.map((article, index) => (
+                <ArticleCard
+                  key={`${article.guid}-${index}`}
+                  article={article}
+                  currentColors={currentColors}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* Loading More Indicator */}
+          {loadingMore && (
+            <div className="text-center py-8">
+              <ArrowPathIcon className={`h-6 w-6 animate-spin mx-auto mb-2 ${currentColors.textMuted}`} />
+              <p className={`text-sm ${currentColors.textMuted}`}>Loading more articles...</p>
+            </div>
+          )}
+
+          {/* No More Content */}
+          {!hasMore && displayedFeeds.length > 0 && (
+            <div className="text-center py-8">
+              <p className={`text-sm ${currentColors.textMuted}`}>
+                You've reached the end! 📰
               </p>
             </div>
-          ) : (
-            <>
-              {/* Articles Grid */}
-              <div className="grid gap-6 grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-                {displayedFeeds.map((article, index) => (
-                  <ArticleCard 
-                    key={`${article.guid || article.link}-${index}`} 
-                    article={article} 
-                    currentColors={currentColors}
-                    isVisible={true}
-                  />
-                ))}
-              </div>
-
-              {/* Loading More Indicator */}
-              {loadingMore && (
-                <div className="flex justify-center items-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-gray-900"></div>
-                  <span className={`ml-3 ${currentColors.textMuted}`}>Loading more articles...</span>
-                </div>
-              )}
-
-              {/* End of Results */}
-              {!hasMore && displayedFeeds.length > 0 && (
-                <div className={`text-center py-8 ${currentColors.textMuted}`}>
-                  <div className="text-4xl mb-2">📰</div>
-                  <p>You've reached the end of all available articles!</p>
-                  <p className="text-sm mt-1">Pull down to refresh for new content</p>
-                </div>
-              )}
-            </>
           )}
-        </div>
+
+          {/* No Results */}
+          {!loading && displayedFeeds.length === 0 && allFeeds.length > 0 && (
+            <div className="text-center py-12">
+              <FunnelIcon className={`h-12 w-12 mx-auto mb-4 ${currentColors.textMuted}`} />
+              <h3 className={`text-lg font-medium ${currentColors.text} mb-2`}>
+                No articles found
+              </h3>
+              <p className={`${currentColors.textMuted} mb-4`}>
+                Try adjusting your filters or search terms
+              </p>
+              {(selectedCategory !== 'all' || searchQuery) && (
+                <button
+                  onClick={() => {
+                    setSelectedCategory('all')
+                    setSearchQuery('')
+                    setIsSearchActive(false)
+                  }}
+                  className={`px-4 py-2 rounded-lg ${currentColors.accent} ${currentColors.textLight} text-sm font-medium`}
+                >
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          )}
+        </main>
 
         {/* Scroll to Top Button */}
         {showScrollTop && (
           <button
             onClick={scrollToTop}
-            className={`fixed bottom-6 right-6 ${currentColors.accent} text-white p-3 rounded-full shadow-lg transition-all duration-300 hover:scale-110 z-40`}
-            title="Scroll to top"
+            className="fixed bottom-6 right-6 p-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50"
           >
             <ArrowUpIcon className="h-5 w-5" />
           </button>
         )}
 
         {/* Footer */}
-        <footer className={`${currentColors.footerBg} ${currentColors.border} border-t mt-12`}>
-          <div className="px-4 sm:px-6 py-8">
-            <div className="text-center text-white max-w-4xl mx-auto">
-              <div className="flex items-center justify-center mb-3">
-                <span className="text-base">Made with</span>
-                <HeartIcon className="h-5 w-5 mx-2 text-red-400" />
-                <span className="text-base">for Zimbabwe</span>
-              </div>
-              <a 
-                href="https://www.nyuchi.com" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-gray-300 hover:text-white transition-colors text-base font-medium"
-              >
-                Nyuchi Web Services
-              </a>
-              <p className="text-sm text-gray-400 mt-2">
-                © {new Date().getFullYear()} Harare Metro. All rights reserved
-              </p>
+        <footer className={`${currentColors.footerBg} text-center py-8 mt-12`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-center space-x-2 mb-4">
+              <HeartIcon className="h-5 w-5 text-red-400" />
+              <span className={`text-sm ${currentColors.textLight}`}>
+                Made with love for Zimbabwe by{' '}
+                <a 
+                  href="https://www.nyuchi.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-green-400 hover:text-green-300 transition-colors"
+                >
+                  Nyuchi Web Services
+                </a>
+              </span>
             </div>
+            <p className={`text-xs ${currentColors.textMuted}`}>
+              Aggregating news from Herald, NewsDay, Chronicle, ZBC, and other trusted Zimbabwean sources
+            </p>
           </div>
         </footer>
       </div>
-
-      {/* CSS for fade-in animation */}
-      <style jsx>{`
-        .animate-fade-in {
-          opacity: 1 !important;
-          animation: fadeIn 0.5s ease-in-out;
-        }
-        
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </HelmetProvider>
   )
 }
 
+// Helper function for category colors
 function getCategoryColor(category) {
   const colors = {
-    politics: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
-    economy: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200', 
-    business: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-200',
-    sports: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-200',
-    harare: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
-    agriculture: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
-    technology: 'bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-200',
-    health: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
-    education: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
-    entertainment: 'bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-200',
-    environment: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
-    crime: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-200',
-    international: 'bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-200',
-    lifestyle: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200',
-    finance: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-200',
-    general: 'bg-gray-100 text-gray-800 dark:bg-gray-700/50 dark:text-gray-200'
+    politics: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    economy: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    business: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    sports: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+    technology: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    health: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+    education: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+    entertainment: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    agriculture: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    harare: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    environment: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200',
+    crime: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    international: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200',
+    lifestyle: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
+    finance: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200'
   }
-  return colors[category] || colors.general
+  
+  return colors[category] || 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200'
 }
 
 export default App
