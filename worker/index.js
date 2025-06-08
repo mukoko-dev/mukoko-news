@@ -1,4 +1,74 @@
-// Enhanced Worker with SSR support for SEO and Simple Image Extraction
+// Simple image proxy handler (no optimization, just bypass hotlink protection)
+async function handleImageProxy(request, env) {
+  const url = new URL(request.url)
+  const imageUrl = url.searchParams.get('url')
+  
+  if (!imageUrl) {
+    return new Response('Missing image URL', { status: 400 })
+  }
+
+  try {
+    // Validate the image URL is from trusted domains
+    const imageUrlObj = new URL(imageUrl)
+    const isTrusted = TRUSTED_IMAGE_DOMAINS.some(domain => 
+      imageUrlObj.hostname.includes(domain)
+    )
+    
+    if (!isTrusted) {
+      return new Response('Untrusted image domain', { status: 403 })
+    }
+
+    // Check cache first
+    const cacheKey = `image:${imageUrl}`
+    const cached = await env.NEWS_STORAGE.get(cacheKey, { type: 'arrayBuffer' })
+    
+    if (cached) {
+      return new Response(cached, {
+        headers: {
+          'Content-Type': 'image/jpeg',
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    }
+
+    // Fetch original image with proper headers to bypass hotlink protection
+    const imageResponse = await fetch(imageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Referer': imageUrlObj.origin,
+        'Sec-Fetch-Dest': 'image',
+        'Sec-Fetch-Mode': 'no-cors',
+        'Sec-Fetch-Site': 'cross-site'
+      }
+    })
+
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image: ${imageResponse.status}`)
+    }
+
+    const imageBuffer = await imageResponse.arrayBuffer()
+    
+    // Cache the image for 24 hours
+    await env.NEWS_STORAGE.put(cacheKey, imageBuffer, {
+      expirationTtl: 86400 // 24 hours
+    })
+
+    return new Response(imageBuffer, {
+      headers: {
+        'Content-Type': imageResponse.headers.get('Content-Type') || 'image/jpeg',
+        'Cache-Control': 'public, max-age=86400',
+        'Access-Control-Allow-Origin': '*'
+      }
+    })
+
+  } catch (error) {
+    console.error('Image proxy error:', error)
+    return new Response('Failed to process image', { status: 500 })
+  }
+}// Enhanced Worker with SSR support for SEO and Simple Image Extraction
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
 import { XMLParser } from 'fast-xml-parser'
 
@@ -270,8 +340,16 @@ const CATEGORIES = [
   { id: 'finance', label: 'Finance', icon: '💳', primary: false }
 ]
 
-// Image extraction function - returns original URL (restored from working version)
+// Image extraction function - returns original URL (with debugging)
 function extractImageFromContent(content, link, enclosure = null, mediaContent = null) {
+  // Add some debugging for first few calls
+  if (Math.random() < 0.1) { // Only log 10% of calls to avoid spam
+    console.log(`[DEBUG] Extracting image for: ${link}`)
+    console.log(`[DEBUG] Content preview: ${content ? content.substring(0, 100) + '...' : 'No content'}`)
+    console.log(`[DEBUG] Has enclosure: ${!!enclosure}`)
+    console.log(`[DEBUG] Has mediaContent: ${!!mediaContent}`)
+  }
+
   if (!content && !enclosure && !mediaContent) return null
 
   const imageMatches = []
@@ -338,8 +416,14 @@ function extractImageFromContent(content, link, enclosure = null, mediaContent =
     })
     .filter(img => IMAGE_PATTERNS.some(pattern => pattern.test(img)))
   
-  // Return the first valid image URL directly (no optimization)
-  return validImages.length > 0 ? validImages[0] : null
+  const result = validImages.length > 0 ? validImages[0] : null
+  
+  // Debug successful extractions
+  if (result && Math.random() < 0.1) {
+    console.log(`[DEBUG] Successfully extracted image: ${result}`)
+  }
+  
+  return result
 }
 
 // SEO-friendly HTML template for server-side rendering
@@ -667,6 +751,11 @@ export default {
     console.log('Request:', url.pathname, 'User-Agent:', userAgent)
     
     try {
+      // Handle image proxy route
+      if (url.pathname.startsWith('/api/image-proxy')) {
+        return await handleImageProxy(request, env)
+      }
+
       // Handle API routes first (highest priority)
       if (url.pathname.startsWith('/api/')) {
         console.log('Handling API request:', url.pathname)
@@ -765,8 +854,8 @@ async function handleApiRequest(request, env, ctx) {
       sources: RSS_SOURCES.filter(s => s.enabled).length,
       totalSources: RSS_SOURCES.length,
       categories: Object.keys(CATEGORY_KEYWORDS).length,
-      message: 'Harare Metro API is healthy with image support!',
-      features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'image-extraction', 'seo-optimized'],
+      message: 'Harare Metro API is healthy with image proxy!',
+      features: ['enhanced-categorization', 'priority-detection', 'zimbabwe-focus', 'image-extraction', 'image-proxy', 'seo-optimized'],
       documentation: {
         schema: '/api/schema',
         swagger: 'https://petstore.swagger.io/?url=' + encodeURIComponent(request.url.replace('/api/health', '/api/schema'))
@@ -913,8 +1002,8 @@ async function getAllFeeds(request, env, corsHeaders) {
               relevanceScore: relevanceScore,
               guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`,
               imageUrl: extractedImage,
-              // Add optimizedImageUrl that just points to the original image (no actual optimization)
-              optimizedImageUrl: extractedImage
+              // Add proxy URL for images to bypass hotlink protection
+              optimizedImageUrl: extractedImage ? `/api/image-proxy?url=${encodeURIComponent(extractedImage)}` : null
             }
           })
           .filter(item => item.title !== 'No title')
@@ -923,10 +1012,12 @@ async function getAllFeeds(request, env, corsHeaders) {
         console.log(`Successfully processed ${processedItems.length} items from ${source.name}`)
         if (processedItems.length > 0) {
           const withImages = processedItems.filter(item => item.imageUrl)
-          console.log(`  - ${withImages.length} items have images`)
+          const withProxy = processedItems.filter(item => item.optimizedImageUrl)
+          console.log(`  - ${withImages.length} items have imageUrl`)
+          console.log(`  - ${withProxy.length} items have optimizedImageUrl`)
           if (withImages.length > 0) {
-            console.log(`  - Sample image: ${withImages[0].imageUrl}`)
-            console.log(`  - Sample item:`, JSON.stringify(withImages[0], null, 2))
+            console.log(`  - Sample imageUrl: ${withImages[0].imageUrl}`)
+            console.log(`  - Sample optimizedImageUrl: ${withImages[0].optimizedImageUrl}`)
           }
         }
         if (processedItems.length > 0) {
