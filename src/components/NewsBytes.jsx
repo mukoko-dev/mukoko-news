@@ -8,21 +8,25 @@ import {
   ShareIcon,
   ChevronUpIcon,
   ChevronDownIcon,
-  GlobeAltIcon
+  GlobeAltIcon,
+  ArrowsPointingOutIcon
 } from '@heroicons/react/24/outline'
 import { HeartIcon as HeartSolidIcon } from '@heroicons/react/24/solid'
 import ShareModal from './ShareModal'
+import ArticleModal from './ArticleModal'
 
 const NewsBytes = ({ articles = [], currentColors }) => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(true)
   const [likedArticles, setLikedArticles] = useState(new Set())
-  const [isExpanded, setIsExpanded] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const [shareArticle, setShareArticle] = useState(null)
   const [showHeader, setShowHeader] = useState(true)
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [showArticleModal, setShowArticleModal] = useState(false) // Add this state
+  
+  // Remove isExpanded state since we're replacing it with the modal
   
   const containerRef = useRef(null)
   const touchStartY = useRef(0)
@@ -141,7 +145,7 @@ const NewsBytes = ({ articles = [], currentColors }) => {
     if (isTransitioning || currentIndex >= articles.length - 1) return
     
     setIsTransitioning(true)
-    setIsExpanded(false)
+    // Remove setIsExpanded(false) since we don't have that state anymore
     
     // Smooth transition
     setTimeout(() => {
@@ -154,7 +158,7 @@ const NewsBytes = ({ articles = [], currentColors }) => {
     if (isTransitioning || currentIndex <= 0) return
     
     setIsTransitioning(true)
-    setIsExpanded(false)
+    // Remove setIsExpanded(false) since we don't have that state anymore
     
     // Smooth transition
     setTimeout(() => {
@@ -190,6 +194,16 @@ const NewsBytes = ({ articles = [], currentColors }) => {
     showHeaderTemporarily()
   }, [currentArticle, showHeaderTemporarily])
 
+  const handleOpenArticleModal = useCallback(() => {
+    setShowArticleModal(true)
+    setIsPlaying(false) // Pause playback when opening modal
+    showHeaderTemporarily()
+  }, [showHeaderTemporarily])
+
+  const handleCloseArticleModal = useCallback(() => {
+    setShowArticleModal(false)
+  }, [])
+
   const getSmartPreview = (text, maxLength = 120) => {
     if (!text || text.length <= maxLength) return text
     
@@ -222,36 +236,37 @@ const NewsBytes = ({ articles = [], currentColors }) => {
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         style={{ 
-          touchAction: 'none', // Prevent default touch behaviors
-          overscrollBehavior: 'none' // Prevent bounce scrolling
+          touchAction: 'none',
+          overscrollBehavior: 'none'
         }}
       >
-        {/* Background Image with clear visibility */}
+        {/* Background Image */}
         {currentArticle?.optimizedImageUrl && (
           <div className="absolute inset-0">
             <img
-              key={currentArticle.guid} // Force re-render for smooth transitions
+              key={currentArticle.guid}
               src={currentArticle.optimizedImageUrl}
               alt=""
               className={`w-full h-full object-cover transition-opacity duration-300 ${
                 isTransitioning ? 'opacity-80' : 'opacity-100'
               }`}
             />
-            {/* Lighter gradient overlay - only at bottom for text readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           </div>
         )}
 
-        {/* Content Overlay with smooth transitions */}
-        <div className={`relative h-full flex flex-col transition-opacity duration-200 ${
+        {/* FULL SCREEN GRADIENT OVERLAY - This should cover the entire screen */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent" />
+
+        {/* Content Layer - positioned above the overlay */}
+        <div className={`relative h-full flex flex-col transition-opacity duration-200 z-10 ${
           isTransitioning ? 'opacity-80' : 'opacity-100'
         }`}>
-          {/* Top Controls with lighter background */}
+          {/* Top Controls */}
           <div className={`flex-shrink-0 p-4 pt-safe transition-all duration-500 ease-in-out ${
             showHeader ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'
           }`}>
-            {/* Light overlay for top controls only when header is visible */}
-            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/30 to-transparent pointer-events-none" />
+            {/* Additional top gradient for extra contrast when header is visible */}
+            <div className="absolute inset-0 bg-gradient-to-b from-black/40 to-transparent pointer-events-none" />
             
             <div className="relative flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -292,15 +307,12 @@ const NewsBytes = ({ articles = [], currentColors }) => {
             </div>
           </div>
 
-          {/* Main Content Area - Clickable to pause/play */}
+          {/* Main Content Area */}
           <div 
             className="flex-1 flex items-end p-4 cursor-pointer"
             onClick={togglePlayPause}
           >
             <div className="w-full relative">
-              {/* Text background overlay - only behind text content */}
-              <div className="absolute inset-x-0 bottom-0 h-full bg-gradient-to-t from-black/90 via-black/40 to-transparent pointer-events-none" />
-              
               <div className="relative z-10">
                 {/* Priority Badge */}
                 {currentArticle?.priority && (
@@ -331,41 +343,29 @@ const NewsBytes = ({ articles = [], currentColors }) => {
                   {currentArticle?.title}
                 </h2>
 
-                {/* Description */}
+                {/* Description - UPDATED */}
                 {currentArticle?.description && (
                   <div className="mb-4 transition-opacity duration-300">
-                    <p className={`text-white/95 text-sm leading-relaxed transition-all duration-300 drop-shadow-md ${
-                      isExpanded ? '' : 'line-clamp-3'
-                    }`}>
-                      {isExpanded ? currentArticle.description : getSmartPreview(currentArticle.description)}
+                    <p className="text-white/95 text-sm leading-relaxed transition-all duration-300 drop-shadow-md line-clamp-3">
+                      {getSmartPreview(currentArticle.description)}
                     </p>
                     
                     {currentArticle.description.length > 120 && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setIsExpanded(!isExpanded)
-                          showHeaderTemporarily()
+                          handleOpenArticleModal() // Open modal instead of expanding
                         }}
                         className="mt-2 text-white/90 text-xs hover:text-white flex items-center gap-1 transition-colors duration-200 drop-shadow-lg"
                       >
-                        {isExpanded ? (
-                          <>
-                            <ChevronUpIcon className="w-3 h-3" />
-                            Show Less
-                          </>
-                        ) : (
-                          <>
-                            <ChevronDownIcon className="w-3 h-3" />
-                            Read More
-                          </>
-                        )}
+                        <ArrowsPointingOutIcon className="w-3 h-3" />
+                        Read More
                       </button>
                     )}
                   </div>
                 )}
 
-                {/* Keywords/Hashtags Section */}
+                {/* Keywords */}
                 {currentArticle?.keywords && currentArticle.keywords.length > 0 && (
                   <div className="mb-4 transition-opacity duration-300">
                     <div className="flex flex-wrap gap-1.5">
@@ -375,7 +375,6 @@ const NewsBytes = ({ articles = [], currentColors }) => {
                           className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-white/20 backdrop-blur-sm text-white border border-white/30"
                           onClick={(e) => {
                             e.stopPropagation()
-                            // Add search functionality here
                             console.log('Search for:', keyword)
                             showHeaderTemporarily()
                           }}
@@ -387,25 +386,38 @@ const NewsBytes = ({ articles = [], currentColors }) => {
                   </div>
                 )}
 
-                {/* Read Full Article Link */}
-                <a
-                  href={currentArticle?.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    showHeaderTemporarily()
-                  }}
-                  className="inline-flex items-center text-white/90 text-sm hover:text-white transition-colors duration-200 drop-shadow-lg"
-                >
-                  <span>Read Full Article</span>
-                  <GlobeAltIcon className="w-4 h-4 ml-1" />
-                </a>
+                {/* Action Links - UPDATED */}
+                <div className="flex items-center space-x-4">
+                  <a
+                    href={currentArticle?.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      showHeaderTemporarily()
+                    }}
+                    className="inline-flex items-center text-white/90 text-sm hover:text-white transition-colors duration-200 drop-shadow-lg"
+                  >
+                    <span>Read Original</span>
+                    <GlobeAltIcon className="w-4 h-4 ml-1" />
+                  </a>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleOpenArticleModal() // Add the modal functionality
+                    }}
+                    className="inline-flex items-center text-white/90 text-sm hover:text-white transition-colors duration-200 drop-shadow-lg"
+                  >
+                    <span>Read in Modal</span>
+                    <ArrowsPointingOutIcon className="w-4 h-4 ml-1" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Right Side Actions - with better contrast */}
+          {/* Right Side Actions */}
           <div className="absolute right-4 bottom-32 flex flex-col space-y-4 z-20">
             {/* Like Button */}
             <button
@@ -440,11 +452,14 @@ const NewsBytes = ({ articles = [], currentColors }) => {
             </button>
           </div>
 
-          {/* Bottom Navigation Hints - only show when header is visible */}
+          {/* Bottom Navigation Hints */}
           <div className={`flex-shrink-0 p-4 pb-safe transition-all duration-500 ease-in-out ${
             showHeader ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
           }`}>
-            <div className="flex justify-center space-x-8 text-white/70 text-xs">
+            {/* Additional bottom gradient for extra contrast when hints are visible */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+            
+            <div className="relative flex justify-center space-x-8 text-white/70 text-xs">
               <div className="flex items-center space-x-1">
                 <ChevronUpIcon className="h-4 w-4 drop-shadow-lg" />
                 <span className="drop-shadow-lg">Swipe up for next</span>
@@ -456,11 +471,11 @@ const NewsBytes = ({ articles = [], currentColors }) => {
           </div>
         </div>
 
-        {/* Navigation Arrows (for desktop) - with better visibility */}
+        {/* Navigation Arrows (Desktop) */}
         <button
           onClick={handlePrevious}
           disabled={currentIndex === 0 || isTransitioning}
-          className={`hidden md:block absolute left-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-all duration-200 border border-white/20 ${
+          className={`hidden md:block absolute left-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-all duration-200 border border-white/20 z-30 ${
             (currentIndex === 0 || isTransitioning) ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
           }`}
         >
@@ -470,16 +485,16 @@ const NewsBytes = ({ articles = [], currentColors }) => {
         <button
           onClick={handleNext}
           disabled={currentIndex === articles.length - 1 || isTransitioning}
-          className={`hidden md:block absolute right-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-all duration-200 border border-white/20 ${
+          className={`hidden md:block absolute right-4 top-1/2 transform -translate-y-1/2 p-3 rounded-full bg-black/40 backdrop-blur-sm text-white hover:bg-black/60 transition-all duration-200 border border-white/20 z-30 ${
             (currentIndex === articles.length - 1 || isTransitioning) ? 'opacity-50 cursor-not-allowed' : 'opacity-100'
           }`}
         >
           <ChevronDownIcon className="h-6 w-6" />
         </button>
 
-        {/* Loading indicator during transitions */}
+        {/* Loading Indicator */}
         {isTransitioning && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-40">
             <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin drop-shadow-lg"></div>
           </div>
         )}
@@ -498,6 +513,23 @@ const NewsBytes = ({ articles = [], currentColors }) => {
           text: 'text-gray-900 dark:text-white',
           textMuted: 'text-gray-500 dark:text-gray-400',
           categoryButton: 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600'
+        }}
+      />
+
+      {/* Article Modal - ADD THIS */}
+      <ArticleModal
+        article={currentArticle}
+        isOpen={showArticleModal}
+        onClose={handleCloseArticleModal}
+        currentColors={{
+          cardBg: 'bg-white dark:bg-gray-800',
+          text: 'text-gray-900 dark:text-white',
+          textMuted: 'text-gray-500 dark:text-gray-400',
+          textLight: 'text-white',
+          accent: 'bg-blue-600 hover:bg-blue-700',
+          accentText: 'text-blue-600 dark:text-blue-400',
+          categoryButton: 'bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600',
+          border: 'border-gray-200 dark:border-gray-700'
         }}
       />
     </>

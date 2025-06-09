@@ -53,6 +53,7 @@
     "prettier-plugin-tailwindcss": "^0.5.11",
     "vite": "^6.3.5",
     "vitest": "^3.2.2",
+    "workbox-webpack-plugin": "^7.3.0",
     "wrangler": "^4.19.1"
   }
 }

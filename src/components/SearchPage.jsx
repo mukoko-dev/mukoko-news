@@ -8,13 +8,15 @@ import {
   PhotoIcon,
   GlobeAltIcon,
   ClockIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  ChartBarIcon,
+  TagIcon
 } from '@heroicons/react/24/outline'
 
 const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpdated }) => {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('all')
-  const [sortBy, setSortBy] = useState('relevance') // 'relevance', 'date', 'priority'
+  const [showAnalytics, setShowAnalytics] = useState(true)
 
   // Categories for filtering
   const CATEGORIES = [
@@ -36,91 +38,84 @@ const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpd
     { id: 'finance', label: 'Finance', icon: '💳' }
   ]
 
-  // Filter and search articles
-  const filteredArticles = useMemo(() => {
-    let filtered = allFeeds
-
-    // Filter by category
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(article => article.category === selectedCategory)
-    }
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim()
-      filtered = filtered.filter(article => 
+  // Search results (for displaying search suggestions, not a feed)
+  const searchResults = useMemo(() => {
+    if (!searchQuery.trim()) return []
+    
+    const query = searchQuery.toLowerCase().trim()
+    return allFeeds
+      .filter(article => 
         article.title.toLowerCase().includes(query) ||
         article.description?.toLowerCase().includes(query) ||
         article.source.toLowerCase().includes(query) ||
         article.keywords?.some(keyword => keyword.toLowerCase().includes(query))
       )
-    }
+      .slice(0, 5) // Only show top 5 suggestions
+  }, [allFeeds, searchQuery])
 
-    // Sort articles
-    return filtered.sort((a, b) => {
-      switch (sortBy) {
-        case 'date':
-          return new Date(b.pubDate) - new Date(a.pubDate)
-        case 'priority':
-          if (a.priority !== b.priority) {
-            return b.priority - a.priority
-          }
-          return new Date(b.pubDate) - new Date(a.pubDate)
-        case 'relevance':
-        default:
-          // Priority first, then by relevance score, then by date
-          if (a.priority !== b.priority) {
-            return b.priority - a.priority
-          }
-          if (a.relevanceScore !== b.relevanceScore) {
-            return (b.relevanceScore || 0) - (a.relevanceScore || 0)
-          }
-          return new Date(b.pubDate) - new Date(a.pubDate)
-      }
+  // Comprehensive analytics
+  const analytics = useMemo(() => {
+    const now = new Date()
+    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+
+    // Source distribution
+    const sourceCount = {}
+    allFeeds.forEach(article => {
+      sourceCount[article.source] = (sourceCount[article.source] || 0) + 1
     })
-  }, [allFeeds, selectedCategory, searchQuery, sortBy])
+    const topSources = Object.entries(sourceCount)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
 
-  // Calculate stats
-  const stats = useMemo(() => {
-    const filtered = filteredArticles
-    const total = allFeeds
-    
-    return {
-      totalArticles: total.length,
-      filteredArticles: filtered.length,
-      priorityCount: total.filter(article => article.priority).length,
-      imageCount: total.filter(article => article.imageUrl || article.optimizedImageUrl).length,
-      filteredPriority: filtered.filter(article => article.priority).length,
-      filteredImages: filtered.filter(article => article.imageUrl || article.optimizedImageUrl).length,
-      sourcesCount: [...new Set(total.map(article => article.source))].length,
-      categoriesCount: [...new Set(total.map(article => article.category))].length
-    }
-  }, [allFeeds, filteredArticles])
+    // Category distribution
+    const categoryCount = {}
+    allFeeds.forEach(article => {
+      const cat = article.category || 'uncategorized'
+      categoryCount[cat] = (categoryCount[cat] || 0) + 1
+    })
+    const topCategories = Object.entries(categoryCount)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
 
-  // Format date helper
-  const formatDate = (dateString) => {
-    try {
-      const date = new Date(dateString)
-      const now = new Date()
-      const diffMs = now - date
-      const diffMins = Math.floor(diffMs / (1000 * 60))
-      const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-
-      if (diffMins < 60) {
-        return `${diffMins}m ago`
-      } else if (diffHours < 24) {
-        return `${diffHours}h ago`
-      } else if (diffDays < 7) {
-        return `${diffDays}d ago`
-      } else {
-        return date.toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric' 
+    // Keywords frequency
+    const keywordCount = {}
+    allFeeds.forEach(article => {
+      if (article.keywords) {
+        article.keywords.forEach(keyword => {
+          keywordCount[keyword] = (keywordCount[keyword] || 0) + 1
         })
       }
-    } catch {
-      return 'Recent'
+    })
+    const topKeywords = Object.entries(keywordCount)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 10)
+
+    // Time-based stats
+    const last24h = allFeeds.filter(article => new Date(article.pubDate) > oneDayAgo)
+    const lastWeek = allFeeds.filter(article => new Date(article.pubDate) > oneWeekAgo)
+
+    return {
+      total: allFeeds.length,
+      priority: allFeeds.filter(article => article.priority).length,
+      withImages: allFeeds.filter(article => article.optimizedImageUrl).length,
+      last24h: last24h.length,
+      lastWeek: lastWeek.length,
+      sourcesCount: Object.keys(sourceCount).length,
+      categoriesCount: Object.keys(categoryCount).length,
+      avgPerDay: Math.round(allFeeds.length / 7),
+      topSources,
+      topCategories,
+      topKeywords
+    }
+  }, [allFeeds])
+
+  // Handle search
+  const handleSearch = (query) => {
+    if (query.trim()) {
+      onClose()
+      // Trigger search in main app
+      window.dispatchEvent(new CustomEvent('globalSearch', { detail: query }))
     }
   }
 
@@ -129,12 +124,14 @@ const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpd
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onClose()
+      } else if (e.key === 'Enter' && searchQuery.trim()) {
+        handleSearch(searchQuery)
       }
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose])
+  }, [onClose, searchQuery])
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
@@ -146,13 +143,13 @@ const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpd
       
       {/* Search Panel */}
       <div className={`absolute inset-x-0 top-0 h-full ${currentColors.bg} overflow-y-auto`}>
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className={`sticky top-0 ${currentColors.headerBg} backdrop-blur-lg border-b ${currentColors.border} p-4`}>
             <div className="flex items-center gap-4">
               <button
                 onClick={onClose}
-                className={`p-2 rounded-lg transition-colors ${currentColors.categoryButton}`}
+                className={`p-3 rounded-lg ${currentColors.text}`}
                 aria-label="Close search"
               >
                 <XMarkIcon className="h-5 w-5" />
@@ -165,7 +162,7 @@ const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpd
                   />
                   <input
                     type="search"
-                    placeholder="Search articles, keywords, sources..."
+                    placeholder="Search Zimbabwe news..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className={`w-full pl-10 pr-4 py-3 text-base ${currentColors.cardBg} ${currentColors.text} border ${currentColors.border} rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
@@ -174,236 +171,218 @@ const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpd
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full transition-colors ${currentColors.categoryButton}`}
+                      className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-gray-700`}
                     >
                       <XMarkIcon className="h-4 w-4" />
                     </button>
                   )}
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Stats Section */}
-          <div className={`${currentColors.statsBg} border-b ${currentColors.border} p-4`}>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 text-sm">
-              <div className={`flex flex-col items-center p-3 rounded-lg ${currentColors.cardBg} ${currentColors.border} border`}>
-                <NewspaperIcon className={`h-5 w-5 ${currentColors.textMuted} mb-1`} />
-                <div className={`text-lg font-bold ${currentColors.text}`}>
-                  {stats.filteredArticles}
-                </div>
-                <div className={`text-xs ${currentColors.textMuted} text-center`}>
-                  {searchQuery || selectedCategory !== 'all' ? 'Filtered' : 'Total'} Articles
-                </div>
-                {stats.filteredArticles !== stats.totalArticles && (
-                  <div className={`text-xs ${currentColors.textMuted} mt-1`}>
-                    of {stats.totalArticles}
-                  </div>
-                )}
-              </div>
-
-              <div className={`flex flex-col items-center p-3 rounded-lg ${currentColors.cardBg} ${currentColors.border} border`}>
-                <StarIcon className={`h-5 w-5 ${currentColors.textMuted} mb-1`} />
-                <div className={`text-lg font-bold ${currentColors.text}`}>
-                  {stats.filteredPriority}
-                </div>
-                <div className={`text-xs ${currentColors.textMuted} text-center`}>
-                  Priority News
-                </div>
-                {stats.filteredPriority !== stats.priorityCount && (
-                  <div className={`text-xs ${currentColors.textMuted} mt-1`}>
-                    of {stats.priorityCount}
-                  </div>
-                )}
-              </div>
-
-              <div className={`flex flex-col items-center p-3 rounded-lg ${currentColors.cardBg} ${currentColors.border} border`}>
-                <PhotoIcon className={`h-5 w-5 ${currentColors.textMuted} mb-1`} />
-                <div className={`text-lg font-bold ${currentColors.text}`}>
-                  {stats.filteredImages}
-                </div>
-                <div className={`text-xs ${currentColors.textMuted} text-center`}>
-                  With Images
-                </div>
-                {stats.filteredImages !== stats.imageCount && (
-                  <div className={`text-xs ${currentColors.textMuted} mt-1`}>
-                    of {stats.imageCount}
-                  </div>
-                )}
-              </div>
-
-              <div className={`flex flex-col items-center p-3 rounded-lg ${currentColors.cardBg} ${currentColors.border} border`}>
-                <GlobeAltIcon className={`h-5 w-5 ${currentColors.textMuted} mb-1`} />
-                <div className={`text-lg font-bold ${currentColors.text}`}>
-                  {stats.sourcesCount}
-                </div>
-                <div className={`text-xs ${currentColors.textMuted} text-center`}>
-                  News Sources
-                </div>
-              </div>
-
-              <div className={`flex flex-col items-center p-3 rounded-lg ${currentColors.cardBg} ${currentColors.border} border`}>
-                <FunnelIcon className={`h-5 w-5 ${currentColors.textMuted} mb-1`} />
-                <div className={`text-lg font-bold ${currentColors.text}`}>
-                  {stats.categoriesCount}
-                </div>
-                <div className={`text-xs ${currentColors.textMuted} text-center`}>
-                  Categories
-                </div>
-              </div>
-
-              {lastUpdated && (
-                <div className={`flex flex-col items-center p-3 rounded-lg ${currentColors.cardBg} ${currentColors.border} border`}>
-                  <ClockIcon className={`h-5 w-5 ${currentColors.textMuted} mb-1`} />
-                  <div className={`text-sm font-bold ${currentColors.text}`}>
-                    {formatDate(lastUpdated)}
-                  </div>
-                  <div className={`text-xs ${currentColors.textMuted} text-center`}>
-                    Last Updated
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => setShowAnalytics(!showAnalytics)}
+                className={`p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700`}
+                aria-label="Toggle analytics"
+              >
+                <ChartBarIcon className={`p-3 rounded-lg ${currentColors.text}`} />
+              </button>
             </div>
 
-            {/* High Volume Indicator */}
-            {stats.totalArticles >= 400 && (
-              <div className="mt-3 text-center">
-                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-500 text-white">
-                  <ArrowPathIcon className="h-3 w-3 mr-1" />
-                  HIGH VOLUME: {stats.totalArticles}+ articles available
-                </span>
+            {/* Search Suggestions */}
+            {searchQuery && searchResults.length > 0 && (
+              <div className={`mt-3 ${currentColors.cardBg} border ${currentColors.border} rounded-xl p-3`}>
+                <h4 className={`text-sm font-medium ${currentColors.text} mb-2`}>
+                  Found {searchResults.length} matches:
+                </h4>
+                <div className="space-y-2">
+                  {searchResults.map((article, index) => (
+                    <button
+                      key={index}
+                      onClick={() => {
+                        onSelectArticle(article)
+                        onClose()
+                      }}
+                      className={`w-full text-left p-2 rounded-lg transition-colors ${currentColors.categoryButton} hover:bg-blue-100 dark:hover:bg-blue-900/30`}
+                    >
+                      <div className={`text-sm font-medium ${currentColors.text} line-clamp-1`}>
+                        {article.title}
+                      </div>
+                      <div className={`text-xs ${currentColors.textMuted}`}>
+                        {article.source} • {new Date(article.pubDate).toLocaleDateString()}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => handleSearch(searchQuery)}
+                  className={`mt-3 w-full py-2 px-4 rounded-lg ${currentColors.accent} text-sm font-medium transition-colors hover:opacity-90`}
+                  style={{ 
+                  color: currentColors.accent?.includes('white') || currentColors.accent?.includes('gray-100') ? 'black' : 'white'
+                  }}
+                >
+                  Search All Results
+                </button>
               </div>
             )}
           </div>
 
-          {/* Filters */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            {/* Category Filter */}
-            <div className="mb-4">
-              <h3 className={`text-sm font-medium ${currentColors.text} mb-2`}>Categories</h3>
-              <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map((category) => (
-                  <button
-                    key={category.id}
-                    onClick={() => setSelectedCategory(category.id)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      selectedCategory === category.id
-                        ? currentColors.categoryButtonActive
-                        : currentColors.categoryButton
-                    }`}
-                  >
-                    <span className="mr-1">{category.icon}</span>
-                    {category.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Sort Options */}
-            <div>
-              <h3 className={`text-sm font-medium ${currentColors.text} mb-2`}>Sort by</h3>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { id: 'relevance', label: 'Relevance' },
-                  { id: 'date', label: 'Newest First' },
-                  { id: 'priority', label: 'Priority First' }
-                ].map((sort) => (
-                  <button
-                    key={sort.id}
-                    onClick={() => setSortBy(sort.id)}
-                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                      sortBy === sort.id
-                        ? currentColors.categoryButtonActive
-                        : currentColors.categoryButton
-                    }`}
-                  >
-                    {sort.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Results */}
-          <div className="p-4">
-            {filteredArticles.length === 0 ? (
-              <div className="text-center py-12">
-                <MagnifyingGlassIcon className={`h-12 w-12 mx-auto mb-4 ${currentColors.textMuted}`} />
-                <h3 className={`text-lg font-medium ${currentColors.text} mb-2`}>
-                  No articles found
-                </h3>
-                <p className={`${currentColors.textMuted} mb-4`}>
-                  Try adjusting your search terms or filters
+          {/* Analytics Dashboard */}
+          {showAnalytics && (
+            <div className="p-6">
+              <div className="mb-6">
+                <h2 className={`text-xl font-bold ${currentColors.text} mb-2`}>
+                  Zimbabwe News Analytics
+                </h2>
+                <p className={`${currentColors.textMuted}`}>
+                  Real-time insights from 21+ trusted news sources
                 </p>
-                {(searchQuery || selectedCategory !== 'all') && (
-                  <button
-                    onClick={() => {
-                      setSearchQuery('')
-                      setSelectedCategory('all')
-                    }}
-                    className={`px-4 py-2 rounded-lg ${currentColors.accent} ${currentColors.textLight} text-sm font-medium`}
-                  >
-                    Clear All Filters
-                  </button>
-                )}
               </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredArticles.map((article, index) => (
-                  <div
-                    key={`${article.guid}-${index}`}
-                    onClick={() => onSelectArticle(article)}
-                    className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl p-4 hover:shadow-md transition-all duration-200 cursor-pointer`}
-                  >
-                    <div className="flex gap-4">
-                      {article.optimizedImageUrl && (
-                        <img
-                          src={article.optimizedImageUrl}
-                          alt={article.title}
-                          className="w-20 h-20 rounded-lg object-cover flex-shrink-0"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`text-sm font-medium ${currentColors.accentText}`}>
-                            {article.source}
-                          </span>
-                          {article.priority && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-green-500 to-yellow-500 text-white">
-                              🇿🇼 Priority
-                            </span>
-                          )}
-                          <span className={`text-xs ${currentColors.textMuted}`}>
-                            {formatDate(article.pubDate)}
+
+              
+
+              {/* Detailed Analytics */}
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Trending Keywords */}
+                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-6`}>
+                  <h3 className={`text-lg font-semibold ${currentColors.text} mb-4`}>
+                    Trending Keywords
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {analytics.topKeywords.map(([keyword, count], index) => (
+                      <button
+                        key={keyword}
+                        onClick={() => {
+                          setSearchQuery(keyword)
+                          handleSearch(keyword)
+                        }}
+                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${currentColors.categoryButton} hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors`}
+                      >
+                        <TagIcon className="h-3 w-3 mr-1" />
+                        {keyword} ({count})
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                
+                
+                {/* Top Sources */}
+                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-6`}>
+                  <h3 className={`text-lg font-semibold ${currentColors.text} mb-4`}>
+                    Top News Sources
+                  </h3>
+                  <div className="space-y-3">
+                    {analytics.topSources.map(([source, count], index) => (
+                      <div key={source} className="flex items-center justify-between">
+                        <span className={`text-sm ${currentColors.text}`}>{source}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-blue-500 h-2 rounded-full"
+                              style={{ width: `${(count / analytics.topSources[0][1]) * 100}%` }}
+                            />
+                          </div>
+                          <span className={`text-sm font-medium ${currentColors.text} w-8 text-right`}>
+                            {count}
                           </span>
                         </div>
-                        <h3 className={`font-semibold ${currentColors.text} mb-2 line-clamp-2`}>
-                          {article.title}
-                        </h3>
-                        {article.description && (
-                          <p className={`text-sm ${currentColors.textSecondary} line-clamp-2 mb-2`}>
-                            {article.description}
-                          </p>
-                        )}
-                        {article.keywords && article.keywords.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {article.keywords.slice(0, 3).map((keyword, i) => (
-                              <span
-                                key={i}
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${currentColors.categoryButton}`}
-                              >
-                                #{keyword}
-                              </span>
-                            ))}
-                          </div>
-                        )}
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
+                </div>
+
+                {/* Top Categories */}
+                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-6`}>
+                  <h3 className={`text-lg font-semibold ${currentColors.text} mb-4`}>
+                    Popular Categories
+                  </h3>
+                  <div className="space-y-3">
+                    {analytics.topCategories.map(([category, count], index) => (
+                      <div key={category} className="flex items-center justify-between">
+                        <span className={`text-sm ${currentColors.text} capitalize`}>
+                          {CATEGORIES.find(c => c.id === category)?.icon} {category}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                            <div 
+                              className="bg-green-500 h-2 rounded-full"
+                              style={{ width: `${(count / analytics.topCategories[0][1]) * 100}%` }}
+                            />
+                          </div>
+                          <span className={`text-sm font-medium ${currentColors.text} w-8 text-right`}>
+                            {count}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                
+
+              {/* Activity Stats */}
+              <div className={`mt-6 ${currentColors.cardBg} border ${currentColors.border} rounded-xl p-6`}>
+                <h3 className={`text-lg font-semibold ${currentColors.text} mb-4`}>
+                  Publishing Activity
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                  <div>
+                    <div className={`text-xl font-bold ${currentColors.text}`}>{analytics.avgPerDay}</div>
+                    <div className={`text-sm ${currentColors.textMuted}`}>Avg/Day</div>
+                  </div>
+                  <div>
+                    <div className={`text-xl font-bold ${currentColors.text}`}>{analytics.lastWeek}</div>
+                    <div className={`text-sm ${currentColors.textMuted}`}>This Week</div>
+                  </div>
+                  <div>
+                    <div className={`text-xl font-bold ${currentColors.text}`}>
+                      {Math.round((analytics.priority / analytics.total) * 100)}%
+                    </div>
+                    <div className={`text-sm ${currentColors.textMuted}`}>Priority Rate</div>
+                  </div>
+                  <div>
+                    <div className={`text-xl font-bold ${currentColors.text}`}>
+                      {Math.round((analytics.withImages / analytics.total) * 100)}%
+                    </div>
+                    <div className={`text-sm ${currentColors.textMuted}`}>Image Rate</div>
+                  </div>
+                </div>
               </div>
-            )}
+
+              {/* Overview Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 text-center`}>
+                  <NewspaperIcon className={`h-8 w-8 ${currentColors.textMuted} mx-auto mb-2`} />
+                  <div className={`text-2xl font-bold ${currentColors.text}`}>{analytics.total}</div>
+                  <div className={`text-sm ${currentColors.textMuted}`}>Total Articles</div>
+                </div>
+
+                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 text-center`}>
+                  <StarIcon className={`h-8 w-8 text-yellow-500 mx-auto mb-2`} />
+                  <div className={`text-2xl font-bold ${currentColors.text}`}>{analytics.priority}</div>
+                  <div className={`text-sm ${currentColors.textMuted}`}>Priority News</div>
+                </div>
+
+                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 text-center`}>
+                  <PhotoIcon className={`h-8 w-8 ${currentColors.textMuted} mx-auto mb-2`} />
+                  <div className={`text-2xl font-bold ${currentColors.text}`}>{analytics.withImages}</div>
+                  <div className={`text-sm ${currentColors.textMuted}`}>With Images</div>
+                </div>
+
+                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 text-center`}>
+                  <ClockIcon className={`h-8 w-8 text-green-500 mx-auto mb-2`} />
+                  <div className={`text-2xl font-bold ${currentColors.text}`}>{analytics.last24h}</div>
+                  <div className={`text-sm ${currentColors.textMuted}`}>Last 24 Hours</div>
+                </div>
+
+                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 text-center`}>
+                  <GlobeAltIcon className={`h-8 w-8 ${currentColors.textMuted} mx-auto mb-2`} />
+                  <div className={`text-2xl font-bold ${currentColors.text}`}>{analytics.sourcesCount}</div>
+                  <div className={`text-sm ${currentColors.textMuted}`}>News Sources</div>
+                </div>
+              </div>
+            </div>
           </div>
+          )}
         </div>
       </div>
     </div>

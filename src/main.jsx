@@ -1,6 +1,6 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
-import App from './App'
+import App from './App.jsx'
 import './index.css'
 
 console.log('main.jsx loaded')
@@ -9,7 +9,9 @@ console.log('main.jsx loaded')
 const rootElement = document.getElementById('root')
 
 if (rootElement) {
-  ReactDOM.createRoot(rootElement).render(
+  // Only create root once and render
+  const root = ReactDOM.createRoot(rootElement)
+  root.render(
     <React.StrictMode>
       <App />
     </React.StrictMode>
@@ -17,9 +19,3 @@ if (rootElement) {
 } else {
   console.error('Root element not found. Make sure you have a div with id="root" in your HTML.')
 }
-const root = ReactDOM.createRoot(rootElement)
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)

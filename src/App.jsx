@@ -26,12 +26,16 @@ import {
   ChevronUpIcon,
   Squares2X2Icon,
   VideoCameraIcon,
-  ShareIcon // Add this import
+  ShareIcon,
+  ArrowsPointingOutIcon // Add this line
 } from '@heroicons/react/24/outline'
 import NewsBytes from './components/NewsBytes'
 import ErrorBoundary from './components/ErrorBoundary'
 import SearchPage from './components/SearchPage'
 import ShareModal from './components/ShareModal'
+import ArticleModal from './components/ArticleModal' // Add this import
+import { usePWA } from './hooks/usePWA'
+import PWAPrompt from './components/PWAPrompt'
 
 // Logo Component
 const Logo = ({ 
@@ -200,8 +204,8 @@ const useScrollDirection = () => {
 function ArticleCard({ article, currentColors }) {
   const [imageLoaded, setImageLoaded] = useState(false)
   const [imageError, setImageError] = useState(false)
-  const [isExpanded, setIsExpanded] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showArticleModal, setShowArticleModal] = useState(false)
   const cardRef = useRef(null)
   
   const categoryInfo = CATEGORIES.find(cat => cat.id === article.category)
@@ -209,52 +213,32 @@ function ArticleCard({ article, currentColors }) {
 
   // Check if user prefers reduced data
   const shouldLoadImages = useMemo(() => {
-    if (typeof navigator !== 'undefined' && 'connection' in navigator) {
-      const connection = navigator.connection
-      if (connection.saveData || connection.effectiveType === 'slow-2g' || connection.effectiveType === '2g') {
-        return false
-      }
-    }
-    
-    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-reduced-data: reduce)').matches) {
-      return false
-    }
-    
-    return true
+    return !('connection' in navigator) || 
+           navigator.connection?.effectiveType === '4g' ||
+           !navigator.connection?.saveData
   }, [])
 
-  const handleImageLoad = () => setImageLoaded(true)
-  const handleImageError = () => {
+  const openModal = useCallback(() => {
+    setShowArticleModal(true)
+  }, [])
+
+  const closeModal = useCallback(() => {
+    setShowArticleModal(false)
+  }, [])
+
+  const handleImageLoad = useCallback(() => {
+    setImageLoaded(true)
+  }, [])
+
+  const handleImageError = useCallback(() => {
     setImageError(true)
-    setImageLoaded(false)
-  }
-
-  const getSmartPreview = (text, maxLength = 150) => {
-    if (!text || text.length <= maxLength) return text
-    
-    const preview = text.substring(0, maxLength)
-    const lastPeriod = preview.lastIndexOf('.')
-    const lastSpace = preview.lastIndexOf(' ')
-    
-    if (lastPeriod > 100) {
-      return preview.substring(0, lastPeriod + 1)
-    } else if (lastSpace > 100) {
-      return preview.substring(0, lastSpace) + '...'
-    }
-    return preview + '...'
-  }
-
-  const toggleExpansion = (e) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsExpanded(!isExpanded)
-  }
+  }, [])
 
   return (
     <>
       <article 
         ref={cardRef}
-        className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:transform hover:-translate-y-1`}
+        className={`${currentColors.cardBg} ${currentColors.border} border rounded-xl shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md`}
         aria-labelledby={`article-title-${article.guid}`}
       >
         {/* Image Section */}
@@ -289,19 +273,6 @@ function ArticleCard({ article, currentColors }) {
                 </span>
               </div>
             )}
-
-            {/* Share Button Overlay */}
-            <button
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                setShowShareModal(true)
-              }}
-              className="absolute top-3 left-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors flex items-center justify-center"
-              aria-label={`Share article: ${article.title}`}
-            >
-              <ShareIcon className="h-4 w-4" />
-            </button>
           </div>
         )}
 
@@ -313,20 +284,7 @@ function ArticleCard({ article, currentColors }) {
               {article.source}
             </span>
             <div className="flex items-center space-x-2">
-              {/* Share Button for articles without images */}
-              {(!hasImage || !shouldLoadImages) && (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    setShowShareModal(true)
-                  }}
-                  className={`p-1.5 rounded-full transition-colors ${currentColors.categoryButton}`}
-                  aria-label={`Share article: ${article.title}`}
-                >
-                  <ShareIcon className="h-4 w-4" />
-                </button>
-              )}
+              
               <div className={`flex items-center text-xs ${currentColors.textMuted}`}>
                 <span className="whitespace-nowrap">
                   {new Date(article.pubDate).toLocaleDateString('en-US', {
@@ -353,33 +311,28 @@ function ArticleCard({ article, currentColors }) {
             )}
           </h2>
           
-          {/* Description */}
+          {/* Description - UPDATED */}
           {article.description && (
             <div className="mb-4">
-              <p className={`${currentColors.textSecondary} text-sm sm:text-base leading-relaxed ${
-                isExpanded ? '' : 'line-clamp-2 sm:line-clamp-3'
-              }`}>
-                {isExpanded ? article.description : getSmartPreview(article.description)}
+              <p className={`${currentColors.textMuted} text-sm leading-relaxed line-clamp-3`}>
+                {article.description.length > 250 
+                  ? `${article.description.substring(0, 250)}...`
+                  : article.description
+                }
               </p>
               
               {article.description.length > 250 && (
                 <button
-                  onClick={toggleExpansion}
-                  className={`mt-2 text-xs ${currentColors.accentText} hover:underline flex items-center gap-1`}
-                  aria-expanded={isExpanded}
-                  aria-label={`${isExpanded ? 'Show less' : 'Read more'} of article: ${article.title}`}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    openModal() // Open modal instead of expanding
+                  }}
+                  className={`mt-2 text-xs ${currentColors.accentText} hover:underline flex items-center gap-1 transition-all duration-200 active:scale-95`}
+                  aria-label={`Read full article: ${article.title}`}
                 >
-                  {isExpanded ? (
-                    <>
-                      <ChevronUpIcon className="w-3 h-3" />
-                      Show Less
-                    </>
-                  ) : (
-                    <>
-                      <ChevronDownIcon className="w-3 h-3" />
-                      Read More
-                    </>
-                  )}
+                  <ArrowsPointingOutIcon className="w-3 h-3 transition-transform duration-200 active:scale-110" />
+                  Read More
                 </button>
               )}
             </div>
@@ -392,7 +345,7 @@ function ArticleCard({ article, currentColors }) {
                 {article.keywords.map((keyword, index) => (
                   <span
                     key={index}
-                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-all duration-200 cursor-pointer active:scale-95
                       ${currentColors.categoryButton} hover:bg-blue-100 dark:hover:bg-blue-900/30 
                       ${currentColors.textMuted} hover:text-blue-600 dark:hover:text-blue-400`}
                     onClick={(e) => {
@@ -409,23 +362,32 @@ function ArticleCard({ article, currentColors }) {
             </div>
           )}
           
-          {/* Footer */}
-          <div className="flex items-center justify-between gap-3 pt-3 border-t border-gray-200 dark:border-gray-600">
-            <span className={`text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded-full font-medium ${getCategoryColor(article.category)} truncate flex-shrink-0`}>
-              <span className="mr-1">{categoryInfo?.icon || '📰'}</span>
-              <span className="hidden sm:inline">{article.category}</span>
-            </span>
-            
-            <a
-              href={article.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${currentColors.accentText} text-xs sm:text-sm font-medium inline-flex items-center group transition-colors hover:underline`}
+          {/* Actions - UPDATED */}
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-gray-700">
+            <div className="flex items-center space-x-3">
+              <a
+                href={article.link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`text-xs ${currentColors.accentText} hover:underline flex items-center gap-1 transition-all duration-200 active:scale-95`}
+                aria-label={`Read full article: ${article.title}`}
+              >
+                <GlobeAltIcon className="w-3 h-3 transition-transform duration-200 active:scale-110" />
+                Read Original
+              </a>
+            </div>
+
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setShowShareModal(true)
+              }}
+              className="p-1.5 rounded-full transition-all duration-200 active:scale-95"
+              aria-label={`Share article: ${article.title}`}
             >
-              <span className="hidden sm:inline">Read Full Article</span>
-              <span className="sm:hidden">Read</span>
-              <GlobeAltIcon className="w-3 h-3 sm:w-4 sm:h-4 ml-1 group-hover:translate-x-0.5 transition-transform" />
-            </a>
+              <ShareIcon className={`h-4 w-4 transition-transform duration-200 active:scale-110 ${currentColors.text}`} />
+            </button>
           </div>
         </div>
       </article>
@@ -435,6 +397,14 @@ function ArticleCard({ article, currentColors }) {
         article={article}
         isOpen={showShareModal}
         onClose={() => setShowShareModal(false)}
+        currentColors={currentColors}
+      />
+
+      {/* Article Modal */}
+      <ArticleModal
+        article={article}
+        isOpen={showArticleModal}
+        onClose={closeModal}
         currentColors={currentColors}
       />
     </>
@@ -472,6 +442,9 @@ const getNextTheme = (currentTheme) => {
 
 // Main App Component
 function App() {
+  // Use the hook only here in the main App component
+  const { isOffline } = usePWA()
+
   // Core state
   const [allFeeds, setAllFeeds] = useState([])
   const [displayedFeeds, setDisplayedFeeds] = useState([])
@@ -866,6 +839,39 @@ function App() {
       <div className={`min-h-screen ${currentColors.bg} transition-colors duration-300`}>
         <SEO {...seoData} />
         
+        {/* Add PWA component - it uses the hook internally */}
+        <PWAPrompt currentColors={currentColors} />
+        
+        {/* Use isOffline in your error handling */}
+        {error && (
+          <div className="mb-6">
+            <div className={`${isOffline ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700' : 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700'} border rounded-xl p-4`}>
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <XMarkIcon className={`h-5 w-5 ${isOffline ? 'text-orange-400' : 'text-red-400'}`} />
+                </div>
+                <div className="ml-3">
+                  <h3 className={`text-sm font-medium ${isOffline ? 'text-orange-800 dark:text-orange-100' : 'text-red-800 dark:text-red-100'}`}>
+                    {isOffline ? 'Offline Mode' : 'Error Loading News'}
+                  </h3>
+                  <p className={`mt-1 text-sm ${isOffline ? 'text-orange-600 dark:text-orange-200' : 'text-red-600 dark:text-red-200'}`}>
+                    {isOffline ? 'Showing cached articles. Connect to internet for latest updates.' : error}
+                  </p>
+                </div>
+                <div className="ml-auto">
+                  <button
+                    onClick={() => loadFeeds(true)}
+                    className={`${isOffline ? 'text-orange-600 dark:text-orange-300 hover:text-orange-500' : 'text-red-600 dark:text-red-300 hover:text-red-500'}`}
+                    disabled={isOffline}
+                  >
+                    <ArrowPathIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Updated Header with auto-hide */}
         <header 
           className={`fixed top-0 left-0 right-0 z-50 ${currentColors.headerBg} backdrop-blur-lg ${
@@ -889,23 +895,24 @@ function App() {
                 {/* Error State with improved contrast */}
                 {error && (
                   <div className="mb-6">
-                    <div className="bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-xl p-4">
+                    <div className={`${isOffline ? 'bg-orange-50 dark:bg-orange-900/30 border-orange-200 dark:border-orange-700' : 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700'} border rounded-xl p-4`}>
                       <div className="flex items-center">
                         <div className="flex-shrink-0">
-                          <XMarkIcon className="h-5 w-5 text-red-400" />
+                          <XMarkIcon className={`h-5 w-5 ${isOffline ? 'text-orange-400' : 'text-red-400'}`} />
                         </div>
                         <div className="ml-3">
-                          <h3 className="text-sm font-medium text-red-800 dark:text-red-100">
-                            Error Loading News
+                          <h3 className={`text-sm font-medium ${isOffline ? 'text-orange-800 dark:text-orange-100' : 'text-red-800 dark:text-red-100'}`}>
+                            {isOffline ? 'Offline Mode' : 'Error Loading News'}
                           </h3>
-                          <p className="mt-1 text-sm text-red-600 dark:text-red-200">
-                            {error}
+                          <p className={`mt-1 text-sm ${isOffline ? 'text-orange-600 dark:text-orange-200' : 'text-red-600 dark:text-red-200'}`}>
+                            {isOffline ? 'Showing cached articles. Connect to internet for latest updates.' : error}
                           </p>
                         </div>
                         <div className="ml-auto">
                           <button
                             onClick={() => loadFeeds(true)}
-                            className="text-red-600 dark:text-red-300 hover:text-red-500"
+                            className={`${isOffline ? 'text-orange-600 dark:text-orange-300 hover:text-orange-500' : 'text-red-600 dark:text-red-300 hover:text-red-500'}`}
+                            disabled={isOffline}
                           >
                             <ArrowPathIcon className="h-4 w-4" />
                           </button>
@@ -1138,10 +1145,10 @@ function App() {
         {showScrollTop && (
           <button
             onClick={scrollToTop}
-            className={`fixed bottom-20 right-4 lg:bottom-6 z-40 p-3 rounded-full ${currentColors.accent} ${currentColors.textLight} shadow-lg transition-all duration-300 hover:scale-110`}
+            className={`fixed bottom-20 right-4 lg:bottom-6 z-40 p-3 rounded-full ${currentColors.accent} shadow-lg transition-all duration-300 hover:scale-110`}
             aria-label="Scroll to top"
           >
-            <ArrowUpIcon className="h-5 w-5" />
+            <ArrowUpIcon className={`h-5 w-5 ${theme === 'light' ? 'text-white' : 'text-black'}`} />
           </button>
         )}
 
