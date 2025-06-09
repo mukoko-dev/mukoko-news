@@ -325,9 +325,9 @@ const ArticleModal = ({ article, isOpen, onClose, currentColors }) => {
                 </div>
               )}
 
-              {/* Call to Action - Remove fontSize styles from buttons */}
+              {/* Call to Action - Updated responsive layout */}
               <div className="mt-8 pt-6 pb-16 border-t border-gray-800">
-                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+                <div className="flex flex-col sm:flex-row gap-4 items-center justify-center sm:justify-between">
                   <div>
                     <p className="text-gray-400 mb-2">
                       Want to read the complete article?
