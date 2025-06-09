@@ -885,6 +885,56 @@ async function setCachedArticles(env, articles) {
   }
 }
 
+// Function to extract relevant keywords from article content
+function extractRelevantKeywords(item, category, source) {
+  const title = cleanText(item.title?.text || item.title || '')
+  const description = cleanHtml(
+    item.description?.text || 
+    item.description || 
+    item.summary?.text || 
+    item.summary || 
+    item['content:encoded'] ||
+    ''
+  )
+  
+  const fullText = `${title} ${description}`.toLowerCase()
+  const keywords = new Set()
+  
+  // Get category-specific keywords
+  const categoryKeywords = CATEGORY_KEYWORDS[category] || []
+  
+  // Find matching keywords in the text
+  categoryKeywords.forEach(keyword => {
+    if (fullText.includes(keyword.toLowerCase())) {
+      keywords.add(keyword)
+    }
+  })
+  
+  // Add priority keywords if found
+  PRIORITY_KEYWORDS.forEach(keyword => {
+    if (fullText.includes(keyword.toLowerCase())) {
+      keywords.add(keyword)
+    }
+  })
+  
+  // Convert to array and limit to top 5 most relevant
+  const keywordArray = Array.from(keywords)
+  
+  // Sort by relevance (longer keywords first, then priority keywords)
+  return keywordArray
+    .sort((a, b) => {
+      const aPriority = PRIORITY_KEYWORDS.includes(a.toLowerCase())
+      const bPriority = PRIORITY_KEYWORDS.includes(b.toLowerCase())
+      
+      if (aPriority !== bPriority) {
+        return bPriority - aPriority // Priority keywords first
+      }
+      
+      return b.length - a.length // Longer keywords first
+    })
+    .slice(0, 5) // Limit to 5 keywords
+}
+
 // Helper function to process article items
 function processArticleItem(item, source) {
   try {
@@ -910,6 +960,9 @@ function processArticleItem(item, source) {
       content.includes(keyword.toLowerCase())
     )
     const relevanceScore = calculateRelevanceScore(content, title)
+    
+    // Extract keywords for this article
+    const keywords = extractRelevantKeywords(item, detectedCategory, source)
 
     // Parse date with fallback
     let pubDate
@@ -929,6 +982,7 @@ function processArticleItem(item, source) {
       category: detectedCategory,
       priority: isPriority,
       relevanceScore,
+      keywords, // Add keywords to the returned object
       guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`,
       imageUrl: extractedImage,
       optimizedImageUrl: extractedImage ? `/api/image-proxy?url=${encodeURIComponent(extractedImage)}` : null,

@@ -297,7 +297,7 @@ function ArticleCard({ article, currentColors }) {
                 e.stopPropagation()
                 setShowShareModal(true)
               }}
-              className="absolute top-3 left-3 p-2 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors flex items-center justify-center"
+              className="absolute top-3 left-3 w-8 h-8 rounded-full bg-black/50 backdrop-blur-sm text-white hover:bg-black/70 transition-colors flex items-center justify-center"
               aria-label={`Share article: ${article.title}`}
             >
               <ShareIcon className="h-4 w-4" />
@@ -382,6 +382,30 @@ function ArticleCard({ article, currentColors }) {
                   )}
                 </button>
               )}
+            </div>
+          )}
+
+          {/* Keywords/Hashtags Section */}
+          {article.keywords && article.keywords.length > 0 && (
+            <div className="mb-4">
+              <div className="flex flex-wrap gap-1.5">
+                {article.keywords.map((keyword, index) => (
+                  <span
+                    key={index}
+                    className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer
+                      ${currentColors.categoryButton} hover:bg-blue-100 dark:hover:bg-blue-900/30 
+                      ${currentColors.textMuted} hover:text-blue-600 dark:hover:text-blue-400`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      handleKeywordSearch(keyword)
+                    }}
+                    title={`Search for articles about ${keyword}`}
+                  >
+                    #{keyword}
+                  </span>
+                ))}
+              </div>
             </div>
           )}
           
@@ -827,6 +851,16 @@ function App() {
     return allFeeds.filter(article => article.optimizedImageUrl)
   }, [allFeeds])
 
+  // Add this function to handle keyword searches
+  const handleKeywordSearch = useCallback((keyword) => {
+    setSearchQuery(keyword)
+    setIsSearchActive(true)
+    setSelectedCategory('all') // Show all categories when searching
+    
+    // Scroll to top to show results
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }, [])
+
   return (
     <HelmetProvider>
       <div className={`min-h-screen ${currentColors.bg} transition-colors duration-300`}>
@@ -946,44 +980,6 @@ function App() {
                       </div>
                     </div>
                   )}
-                </div>
-
-                {/* Enhanced Stats Display with better contrast */}
-                <div className={`${currentColors.statsBg} rounded-xl p-3 mb-6 ${currentColors.border} border`}>
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-4 flex-wrap">
-                      <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
-                        <NewspaperIcon className="h-4 w-4" />
-                        <span>{filteredTotal} Articles</span>
-                        {filteredTotal >= 400 && (
-                          <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded font-medium">HIGH VOLUME</span>
-                        )}
-                      </span>
-                      <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
-                        <StarIcon className="h-4 w-4" />
-                        <span>{priorityCount} Priority</span>
-                      </span>
-                      <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
-                        <PhotoIcon className="h-4 w-4" />
-                        <span>{imageCount} Images</span>
-                      </span>
-                      <span className={`flex items-center space-x-1.5 ${currentColors.text} font-medium`}>
-                        <GlobeAltIcon className="h-4 w-4" />
-                        <span>21 Sources</span>
-                      </span>
-                    </div>
-                    {lastUpdated && (
-                      <span className={`flex items-center space-x-1.5 ${currentColors.textMuted} text-xs font-medium`}>
-                        <ClockIcon className="h-4 w-4" />
-                        <span className="hidden sm:inline">
-                          Updated {formatDate(lastUpdated)}
-                        </span>
-                        <span className="sm:hidden">
-                          {formatDate(lastUpdated)}
-                        </span>
-                      </span>
-                    )}
-                  </div>
                 </div>
 
                 {/* Loading State */}
@@ -1185,6 +1181,7 @@ function App() {
           <SearchPage
             currentColors={currentColors}
             allFeeds={allFeeds}
+            lastUpdated={lastUpdated} // Add this prop
             onClose={() => setShowSearch(false)}
             onSelectArticle={(article) => {
               setShowSearch(false)
