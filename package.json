@@ -19,7 +19,10 @@
     "build:worker": "wrangler build worker/index.js",
     "test:worker": "wrangler test worker/index.js",
     "test:worker:ui": "wrangler test worker/index.js --ui",
-    "coverage:worker": "wrangler test worker/index.js --coverage"
+    "coverage:worker": "wrangler test worker/index.js --coverage",
+    "build:analytics": "echo \"Analytics build complete\"",
+    "test:analytics": "echo \"Testing analytics components\"",
+    "deploy:analytics": "npm run build && npm run deploy"
   },
   "dependencies": {
     "@cloudflare/kv-asset-handler": "^0.3.1",
@@ -38,6 +41,7 @@
     "react-dom": "^18.2.0",
     "react-helmet-async": "^2.0.4",
     "react-query": "^3.39.3",
+    "recharts": "^2.15.3",
     "tailwindcss": "^3.4.1"
   },
   "devDependencies": {

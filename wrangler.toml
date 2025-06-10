@@ -11,6 +11,19 @@ binding = "NEWS_STORAGE"
 id = "472195d9dcb948b7a73c10b2716375ca"
 preview_id = "8c7b7c28e9fa4abc971935876cf9ca26"
 
+# Analytics Engine Configuration
+[[analytics_engine_datasets]]
+binding = "NEWS_ANALYTICS"
+dataset = "news_interactions"
+
+[[analytics_engine_datasets]]
+binding = "SEARCH_ANALYTICS"
+dataset = "search_queries"
+
+[[analytics_engine_datasets]]
+binding = "CATEGORY_ANALYTICS"
+dataset = "category_clicks"
+
 [triggers]
 crons = ["0 * * * *"]  # Changed from every 6 hours to every hour
 

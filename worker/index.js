@@ -1,4 +1,4 @@
-// Enhanced Worker with scheduled background fetching
+// Enhanced Worker with scheduled background fetching and text cleaning
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
 import { XMLParser } from 'fast-xml-parser'
 
@@ -334,27 +334,157 @@ const RSS_SOURCES = [
   }
 ]
 
-// Function to clean HTML content
-function cleanHtml(html) {
-  if (!html) return ''
+// Enhanced HTML entity decoder
+function decodeHtmlEntities(text) {
+  if (!text || typeof text !== 'string') return text;
   
-  return html
-    .replace(/<[^>]*>/g, '')
-    .replace(/&nbsp;/g, ' ')
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, ' ')
-    .trim()
-    .substring(0, 300)
+  // Common HTML entities mapping
+  const entityMap = {
+    // Quotes
+    '&#8217;': "'",  // Right single quotation mark
+    '&#8216;': "'",  // Left single quotation mark
+    '&#8220;': '"',  // Left double quotation mark
+    '&#8221;': '"',  // Right double quotation mark
+    '&#39;': "'",    // Apostrophe
+    '&quot;': '"',   // Quotation mark
+    '&apos;': "'",   // Apostrophe
+    
+    // Dashes
+    '&#8211;': '–',  // En dash
+    '&#8212;': '—',  // Em dash
+    '&#8213;': '―',  // Horizontal bar
+    
+    // Spaces and special characters
+    '&#160;': ' ',   // Non-breaking space
+    '&nbsp;': ' ',   // Non-breaking space
+    '&#8230;': '…',  // Horizontal ellipsis
+    
+    // Ampersands and basic entities
+    '&amp;': '&',    // Ampersand
+    '&lt;': '<',     // Less than
+    '&gt;': '>',     // Greater than
+    
+    // Accented characters
+    '&#224;': 'à',   // a with grave
+    '&#225;': 'á',   // a with acute
+    '&#226;': 'â',   // a with circumflex
+    '&#227;': 'ã',   // a with tilde
+    '&#228;': 'ä',   // a with diaeresis
+    '&#233;': 'é',   // e with acute
+    '&#234;': 'ê',   // e with circumflex
+    '&#235;': 'ë',   // e with diaeresis
+    '&#237;': 'í',   // i with acute
+    '&#238;': 'î',   // i with circumflex
+    '&#243;': 'ó',   // o with acute
+    '&#244;': 'ô',   // o with circumflex
+    '&#245;': 'õ',   // o with tilde
+    '&#250;': 'ú',   // u with acute
+    '&#251;': 'û',   // u with circumflex
+    
+    // Currency and symbols
+    '&#163;': '£',   // Pound sign
+    '&#164;': '¤',   // Generic currency
+    '&#165;': '¥',   // Yen sign
+    '&#8364;': '€',  // Euro sign
+    '&#36;': '$',    // Dollar sign
+    '&#162;': '¢',   // Cent sign
+    
+    // Mathematical symbols
+    '&#215;': '×',   // Multiplication sign
+    '&#247;': '÷',   // Division sign
+    '&#177;': '±',   // Plus-minus sign
+    '&#8730;': '√',  // Square root
+    
+    // Common symbols
+    '&#169;': '©',   // Copyright
+    '&#174;': '®',   // Registered trademark
+    '&#8482;': '™',  // Trademark
+    '&#167;': '§',   // Section sign
+    '&#182;': '¶',   // Pilcrow sign (paragraph)
+  };
+  
+  // Replace HTML entities
+  let decoded = text;
+  
+  // Replace known entities first
+  Object.entries(entityMap).forEach(([entity, replacement]) => {
+    decoded = decoded.replace(new RegExp(entity, 'g'), replacement);
+  });
+  
+  // Handle numeric entities (decimal) - &#1234;
+  decoded = decoded.replace(/&#(\d+);/g, (match, num) => {
+    try {
+      return String.fromCharCode(parseInt(num, 10));
+    } catch (e) {
+      return match; // Return original if conversion fails
+    }
+  });
+  
+  // Handle hex entities - &#x1234;
+  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
+    try {
+      return String.fromCharCode(parseInt(hex, 16));
+    } catch (e) {
+      return match; // Return original if conversion fails
+    }
+  });
+  
+  // Handle named entities using browser-like decoding
+  const namedEntities = {
+    'amp': '&', 'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'",
+    'nbsp': ' ', 'copy': '©', 'reg': '®', 'trade': '™',
+    'ldquo': '"', 'rdquo': '"', 'lsquo': "'", 'rsquo': "'",
+    'ndash': '–', 'mdash': '—', 'hellip': '…', 'euro': '€'
+  };
+  
+  Object.entries(namedEntities).forEach(([name, char]) => {
+    decoded = decoded.replace(new RegExp(`&${name};`, 'g'), char);
+  });
+  
+  return decoded;
 }
 
-// Function to clean text inputs
+// Enhanced text cleaning function
 function cleanText(text) {
-  if (!text) return ''
-  return text.toString().trim()
+  if (!text || typeof text !== 'string') return text;
+  
+  // First decode HTML entities
+  let cleaned = decodeHtmlEntities(text);
+  
+  // Remove HTML tags
+  cleaned = cleaned.replace(/<[^>]*>/g, '');
+  
+  // Normalize whitespace
+  cleaned = cleaned.replace(/\s+/g, ' ').trim();
+  
+  // Remove common unwanted patterns
+  cleaned = cleaned.replace(/\[…\]/g, '…');
+  cleaned = cleaned.replace(/\[&hellip;\]/g, '…');
+  
+  // Fix multiple spaces
+  cleaned = cleaned.replace(/\s{2,}/g, ' ');
+  
+  return cleaned;
+}
+
+// Function to clean HTML content (enhanced version)
+function cleanHtml(html) {
+  if (!html) return '';
+  
+  // First decode HTML entities
+  let cleaned = decodeHtmlEntities(html);
+  
+  // Remove HTML tags
+  cleaned = cleaned.replace(/<[^>]*>/g, '');
+  
+  // Clean up common artifacts
+  cleaned = cleaned
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .substring(0, 300);
+    
+  return cleaned;
 }
 
 // Helper function to check if URL is an image
@@ -506,7 +636,7 @@ function extractImageFromContent(item, link) {
         img = img.trim()
         
         // Remove HTML entities
-        img = img.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+        img = img.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
         
         // Handle relative URLs
         if (img.startsWith('//')) {
@@ -741,10 +871,16 @@ async function fetchAllFeedsBackground(env) {
   const parser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '@_',
-    textNodeName: 'text',
-    parseAttributeValue: false,
-    trimValues: true
-  })
+    textNodeName: '#text',
+    ignoreNameSpace: false,
+    removeNSPrefix: false,
+    parseTagValue: true,
+    parseAttributeValue: true,
+    trimValues: true,
+    // Enhanced entity handling
+    processEntities: true,
+    htmlEntities: true
+  });
 
   const enabledSources = RSS_SOURCES.filter(source => source.enabled)
   console.log(`Processing ${enabledSources.length} RSS sources in background`)
@@ -935,20 +1071,22 @@ function extractRelevantKeywords(item, category, source) {
     .slice(0, 5) // Limit to 5 keywords
 }
 
-// Helper function to process article items
+// Helper function to process article items with enhanced text cleaning
 function processArticleItem(item, source) {
   try {
-    const title = cleanText(item.title?.text || item.title || '')
+    // Extract and clean title with enhanced decoding
+    const rawTitle = item.title?.text || item.title || ''
+    const title = cleanText(rawTitle)
     if (!title || title.length < 10) return null
 
-    const description = cleanHtml(
-      item.description?.text || 
-      item.description || 
-      item.summary?.text || 
-      item.summary || 
-      item['content:encoded'] ||
-      ''
-    )
+    // Extract and clean description with enhanced decoding
+    const rawDescription = item.description?.text || 
+                          item.description || 
+                          item.summary?.text || 
+                          item.summary || 
+                          item['content:encoded'] ||
+                          ''
+    const description = cleanHtml(rawDescription)
 
     const link = item.link?.text || item.link || item.id || item.guid?.text || item.guid || '#'
     if (link === '#') return null
@@ -1017,6 +1155,172 @@ function removeDuplicateArticles(articles) {
   return unique
 }
 
+// Analytics tracking functions
+async function trackArticleView(request, env) {
+  try {
+    const url = new URL(request.url)
+    const articleId = url.searchParams.get('id')
+    const source = url.searchParams.get('source')
+    const category = url.searchParams.get('category')
+    
+    // Get user context
+    const country = request.cf?.country || 'Unknown'
+    const userAgent = request.headers.get('user-agent') || ''
+    const referer = request.headers.get('referer') || ''
+    
+    // Write analytics data point
+    env.NEWS_ANALYTICS.writeDataPoint({
+      blobs: [
+        'article_view',           // Event type
+        source || 'unknown',      // News source
+        category || 'general',    // Article category
+        country,                  // User country
+        extractDevice(userAgent), // Device type
+        referer                   // Referrer
+      ],
+      doubles: [
+        1,                        // View count
+        Date.now()               // Timestamp for additional time tracking
+      ],
+      indexes: [articleId || 'unknown'] // Article ID for sampling
+    })
+    
+    console.log(`Tracked article view: ${articleId} from ${source}`)
+  } catch (error) {
+    console.error('Error tracking article view:', error)
+  }
+}
+
+// Track search queries
+async function trackSearch(request, env) {
+  try {
+    const url = new URL(request.url)
+    const query = url.searchParams.get('q') || ''
+    const category = url.searchParams.get('category') || 'all'
+    const source = url.searchParams.get('source') || 'all'
+    
+    const country = request.cf?.country || 'Unknown'
+    const userAgent = request.headers.get('user-agent') || ''
+    
+    env.SEARCH_ANALYTICS.writeDataPoint({
+      blobs: [
+        'search_query',
+        query.toLowerCase(),      // Search term
+        category,                 // Filtered category
+        source,                   // Filtered source
+        country,
+        extractDevice(userAgent)
+      ],
+      doubles: [
+        1,                        // Search count
+        query.length             // Query length
+      ],
+      indexes: [generateSearchId()] // Unique search session
+    })
+    
+    console.log(`Tracked search: "${query}" in ${category}`)
+  } catch (error) {
+    console.error('Error tracking search:', error)
+  }
+}
+
+// Track category clicks
+async function trackCategoryClick(request, env) {
+  try {
+    const url = new URL(request.url)
+    const category = url.pathname.split('/').pop()
+    const source = url.searchParams.get('source')
+    
+    const country = request.cf?.country || 'Unknown'
+    const userAgent = request.headers.get('user-agent') || ''
+    
+    env.CATEGORY_ANALYTICS.writeDataPoint({
+      blobs: [
+        'category_click',
+        category,
+        source || 'all',
+        country,
+        extractDevice(userAgent)
+      ],
+      doubles: [
+        1                         // Click count
+      ],
+      indexes: [category]         // Category as sampling key
+    })
+    
+    console.log(`Tracked category click: ${category}`)
+  } catch (error) {
+    console.error('Error tracking category click:', error)
+  }
+}
+
+// Helper functions for analytics
+function extractDevice(userAgent) {
+  if (/Mobile|Android|iPhone/i.test(userAgent)) return 'mobile'
+  if (/Tablet|iPad/i.test(userAgent)) return 'tablet'
+  return 'desktop'
+}
+
+function generateSearchId() {
+  return Math.random().toString(36).substring(2, 15)
+}
+
+// Analytics API handler
+async function handleAnalyticsApi(request, env) {
+  const url = new URL(request.url)
+  const path = url.pathname.replace('/api/analytics/', '')
+  
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  }
+  
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders })
+  }
+  
+  try {
+    console.log(`Analytics API call: ${path}`)
+    
+    switch (path) {
+      case 'article-view':
+        await trackArticleView(request, env)
+        return new Response(JSON.stringify({ success: true, tracked: 'article_view' }), { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      case 'search':
+        await trackSearch(request, env)
+        return new Response(JSON.stringify({ success: true, tracked: 'search_query' }), { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      default:
+        if (path.startsWith('category/')) {
+          await trackCategoryClick(request, env)
+          return new Response(JSON.stringify({ success: true, tracked: 'category_click' }), { 
+            status: 200,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          })
+        }
+        return new Response(JSON.stringify({ error: 'Analytics endpoint not found' }), { 
+          status: 404,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+    }
+  } catch (error) {
+    console.error('Analytics API error:', error)
+    return new Response(JSON.stringify({ 
+      error: 'Analytics tracking failed', 
+      message: error.message 
+    }), { 
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    })
+  }
+}
+
 // Updated API handlers
 async function handleApiRequest(request, env, ctx) {
   const url = new URL(request.url)
@@ -1033,6 +1337,11 @@ async function handleApiRequest(request, env, ctx) {
 
   try {
     console.log(`API Request: ${request.method} ${url.pathname}`)
+
+    // Handle analytics endpoints
+    if (url.pathname.startsWith('/api/analytics/')) {
+      return await handleAnalyticsApi(request, env)
+    }
 
     if (url.pathname === '/api/health') {
       const lastRefresh = await env.NEWS_STORAGE.get(CACHE_KEYS.LAST_REFRESH)
@@ -1069,7 +1378,7 @@ async function handleApiRequest(request, env, ctx) {
 
     return new Response(JSON.stringify({
       error: 'API endpoint not found',
-      available_endpoints: ['/api/health', '/api/feeds'],
+      available_endpoints: ['/api/health', '/api/feeds', '/api/analytics/*'],
       method: request.method,
       path: url.pathname
     }), { 
@@ -1257,7 +1566,7 @@ async function getNextScheduledRefresh(env) {
   }
 }
 
-// Basic HTML fallback function - SINGLE DECLARATION
+// Basic HTML fallback function
 function getBasicHTML() {
   return `<!DOCTYPE html>
 <html lang="en">
