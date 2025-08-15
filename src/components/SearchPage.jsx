@@ -1,23 +1,32 @@
-import EnhancedAnalyticsSection from './EnhancedAnalyticsSection'
+// Auto-updated to use ShadCN UI approach
 import React, { useState, useMemo, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
+import { IconGroup } from '@/components/ui/icon-group'
+import { cn } from '@/lib/utils'
 import { 
   MagnifyingGlassIcon, 
   XMarkIcon, 
-  FunnelIcon,
-  NewspaperIcon,
-  StarIcon,
-  PhotoIcon,
-  GlobeAltIcon,
-  ClockIcon,
-  ArrowPathIcon,
   ChartBarIcon,
-  TagIcon
+  ArrowPathIcon,
 } from '@heroicons/react/24/outline'
+import EnhancedAnalyticsSection from './EnhancedAnalyticsSection'
+import { useAnalytics } from '../hooks/useAnalytics'
+import Footer from './Footer'
 
-const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpdated }) => {
+const SearchPage = ({ 
+  currentColors, 
+  allFeeds, 
+  onClose, 
+  onSelectArticle, 
+  lastUpdated,
+  recentSearches = [],
+  onAddRecentSearch 
+}) => {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedCategory, setSelectedCategory] = useState('all')
   const [showAnalytics, setShowAnalytics] = useState(true)
+  const [isSearchMode, setIsSearchMode] = useState(false)
+  const { trackSearch, trackArticleView } = useAnalytics()
 
   // Categories for filtering
   const CATEGORIES = [
@@ -39,84 +48,64 @@ const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpd
     { id: 'finance', label: 'Finance', icon: '💳' }
   ]
 
-  // Search results (for displaying search suggestions, not a feed)
+  // Search results with analytics tracking
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return []
     
     const query = searchQuery.toLowerCase().trim()
-    return allFeeds
+    const results = allFeeds
       .filter(article => 
-        article.title.toLowerCase().includes(query) ||
+        article.title?.toLowerCase().includes(query) ||
         article.description?.toLowerCase().includes(query) ||
-        article.source.toLowerCase().includes(query) ||
+        article.source?.toLowerCase().includes(query) ||
         article.keywords?.some(keyword => keyword.toLowerCase().includes(query))
       )
-      .slice(0, 5) // Only show top 5 suggestions
+      .slice(0, 10) // Show more results for search mode
+    
+    return results
   }, [allFeeds, searchQuery])
 
-  // Comprehensive analytics
-  const analytics = useMemo(() => {
-    const now = new Date()
-    const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-
-    // Source distribution
-    const sourceCount = {}
-    allFeeds.forEach(article => {
-      sourceCount[article.source] = (sourceCount[article.source] || 0) + 1
-    })
-    const topSources = Object.entries(sourceCount)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 5)
-
-    // Category distribution
-    const categoryCount = {}
-    allFeeds.forEach(article => {
-      const cat = article.category || 'uncategorized'
-      categoryCount[cat] = (categoryCount[cat] || 0) + 1
-    })
-    const topCategories = Object.entries(categoryCount)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 5)
-
-    // Keywords frequency
-    const keywordCount = {}
-    allFeeds.forEach(article => {
-      if (article.keywords) {
-        article.keywords.forEach(keyword => {
-          keywordCount[keyword] = (keywordCount[keyword] || 0) + 1
-        })
-      }
-    })
-    const topKeywords = Object.entries(keywordCount)
-      .sort(([,a], [,b]) => b - a)
-      .slice(0, 10)
-
-    // Time-based stats
-    const last24h = allFeeds.filter(article => new Date(article.pubDate) > oneDayAgo)
-    const lastWeek = allFeeds.filter(article => new Date(article.pubDate) > oneWeekAgo)
-
-    return {
-      total: allFeeds.length,
-      priority: allFeeds.filter(article => article.priority).length,
-      withImages: allFeeds.filter(article => article.optimizedImageUrl).length,
-      last24h: last24h.length,
-      lastWeek: lastWeek.length,
-      sourcesCount: Object.keys(sourceCount).length,
-      categoriesCount: Object.keys(categoryCount).length,
-      avgPerDay: Math.round(allFeeds.length / 7),
-      topSources,
-      topCategories,
-      topKeywords
-    }
-  }, [allFeeds])
-
-  // Handle search
-  const handleSearch = (query) => {
+  // Handle search with analytics tracking
+  const handleSearch = async (query) => {
     if (query.trim()) {
-      onClose()
-      // Trigger search in main app
-      window.dispatchEvent(new CustomEvent('globalSearch', { detail: query }))
+      // Track the search
+      await trackSearch(query, { category: 'all', source: 'all' })
+      
+      // Add to recent searches
+      if (onAddRecentSearch) {
+        onAddRecentSearch(query.trim())
+      }
+      
+      // Set search mode to show results
+      setIsSearchMode(true)
+      setShowAnalytics(false)
+    }
+  }
+
+  // Handle article selection with analytics tracking
+  const handleSelectArticle = async (article) => {
+    // Track article view
+    await trackArticleView(article)
+    
+    // Call parent handler
+    onSelectArticle(article)
+    onClose()
+  }
+
+  // Handle keyword search from analytics
+  const handleKeywordSearch = async (keyword) => {
+    setSearchQuery(keyword)
+    await handleSearch(keyword)
+  }
+
+  // Toggle between search and analytics modes
+  const toggleMode = () => {
+    if (isSearchMode) {
+      setIsSearchMode(false)
+      setShowAnalytics(true)
+      setSearchQuery('')
+    } else {
+      setShowAnalytics(!showAnalytics)
     }
   }
 
@@ -124,7 +113,13 @@ const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpd
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        onClose()
+        if (isSearchMode) {
+          setIsSearchMode(false)
+          setSearchQuery('')
+          setShowAnalytics(true)
+        } else {
+          onClose()
+        }
       } else if (e.key === 'Enter' && searchQuery.trim()) {
         handleSearch(searchQuery)
       }
@@ -132,7 +127,7 @@ const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpd
 
     document.addEventListener('keydown', handleKeyDown)
     return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [onClose, searchQuery])
+  }, [isSearchMode, searchQuery, onClose])
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
@@ -144,16 +139,16 @@ const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpd
       
       {/* Search Panel */}
       <div className={`absolute inset-x-0 top-0 h-full ${currentColors.bg} overflow-y-auto`}>
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto min-h-full flex flex-col">
           {/* Header */}
-          <div className={`sticky top-0 ${currentColors.headerBg} backdrop-blur-lg border-b ${currentColors.border} p-4`}>
+          <div className={`sticky top-0 ${currentColors.headerBg} backdrop-blur-lg border-b ${currentColors.border} p-4 z-10`}>
             <div className="flex items-center gap-4">
               <button
                 onClick={onClose}
-                className={`p-3 rounded-lg ${currentColors.text}`}
+                className={`p-3 rounded-lg ${currentColors.text} hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors`}
                 aria-label="Close search"
               >
-                <XMarkIcon className="h-5 w-5" />
+                <IconButton tooltip="XMarkIcon" className="h-4 w-4"><IconButton><XMarkIcon className="h-4 w-4" /></IconButton></IconButton>
               </button>
               
               <div className="flex-1">
@@ -166,224 +161,180 @@ const SearchPage = ({ currentColors, allFeeds, onClose, onSelectArticle, lastUpd
                     placeholder="Search Zimbabwe news..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className={`w-full pl-10 pr-4 py-3 text-base ${currentColors.cardBg} ${currentColors.text} border ${currentColors.border} rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent`}
+                    onKeyPress={(e) => e.key === 'Enter' && handleSearch(searchQuery)}
+                    className={`w-full pl-10 pr-4 py-3 text-base ${currentColors.cardBg} ${currentColors.text} border ${currentColors.border} rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all`}
                     autoFocus
                   />
                   {searchQuery && (
                     <button
-                      onClick={() => setSearchQuery('')}
+                      onClick={() => {
+                        setSearchQuery('')
+                        setIsSearchMode(false)
+                        setShowAnalytics(true)
+                      }}
                       className={`absolute right-3 top-1/2 transform -translate-y-1/2 p-1 rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-gray-700`}
                     >
-                      <XMarkIcon className="h-4 w-4" />
+                      <IconButton tooltip="XMarkIcon" className="h-4 w-4"><IconButton><XMarkIcon className="h-4 w-4" /></IconButton></IconButton>
                     </button>
                   )}
                 </div>
               </div>
 
+              {/* Mode Toggle Button */}
               <button
-                onClick={() => setShowAnalytics(!showAnalytics)}
-                className={`p-2 rounded-lg transition-colors hover:bg-gray-100 dark:hover:bg-gray-700`}
-                aria-label="Toggle analytics"
+                onClick={toggleMode}
+                className={`flex items-center px-4 py-2 rounded-lg transition-all font-medium ${
+                  showAnalytics && !isSearchMode
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : `${currentColors.categoryButton} hover:scale-105`
+                }`}
+                aria-label={isSearchMode ? "Show analytics" : "Toggle analytics"}
               >
-                <ChartBarIcon className={`p-3 rounded-lg ${currentColors.text}`} />
+                <IconButton tooltip="ChartBarIcon" className="h-4 w-4"><IconButton><ChartBarIcon className="h-4 w-4" /></IconButton></IconButton>
+                {isSearchMode ? 'Analytics' : (showAnalytics ? 'Hide Analytics' : 'Show Analytics')}
               </button>
             </div>
 
-            {/* Search Suggestions */}
-            {searchQuery && searchResults.length > 0 && (
-              <div className={`mt-3 ${currentColors.cardBg} border ${currentColors.border} rounded-xl p-3`}>
-                <h4 className={`text-sm font-medium ${currentColors.text} mb-2`}>
-                  Found {searchResults.length} matches:
-                </h4>
-                <div className="space-y-2">
-                  {searchResults.map((article, index) => (
-                    <button
-                      key={index}
-                      onClick={() => {
-                        onSelectArticle(article)
-                        onClose()
-                      }}
-                      className={`w-full text-left p-2 rounded-lg transition-colors ${currentColors.categoryButton} hover:bg-blue-100 dark:hover:bg-blue-900/30`}
-                    >
-                      <div className={`text-sm font-medium ${currentColors.text} line-clamp-1`}>
-                        {article.title}
-                      </div>
-                      <div className={`text-xs ${currentColors.textMuted}`}>
-                        {article.source} • {new Date(article.pubDate).toLocaleDateString()}
-                      </div>
-                    </button>
-                  ))}
-                </div>
+            {/* Quick Search Button */}
+            {searchQuery && !isSearchMode && (
+              <div className="mt-3">
                 <button
                   onClick={() => handleSearch(searchQuery)}
-                  className={`mt-3 w-full py-2 px-4 rounded-lg ${currentColors.accent} text-sm font-medium transition-colors hover:opacity-90`}
-                  style={{ 
-                  color: currentColors.accent?.includes('white') || currentColors.accent?.includes('gray-100') ? 'black' : 'white'
-                  }}
+                  className={`w-full py-3 px-4 rounded-xl ${currentColors.accent} text-white font-medium transition-all hover:opacity-90 flex items-center justify-center shadow-lg`}
                 >
-                  Search All Results
+                  <IconButton tooltip="MagnifyingGlassIcon" className="h-4 w-4"><IconButton><MagnifyingGlassIcon className="h-4 w-4" /></IconButton></IconButton>
+                  Search for "{searchQuery}"
                 </button>
               </div>
             )}
           </div>
 
-          {/* Analytics Dashboard */}
-          {showAnalytics && (
-            <div className="p-6">
-              <div className="mb-6">
-                <h2 className={`text-xl font-bold ${currentColors.text} mb-2`}>
-                  Zimbabwe News Analytics
-                </h2>
-                <p className={`${currentColors.textMuted}`}>
-                  Real-time insights from 21+ trusted news sources
-                </p>
-              </div>
+          {/* Content Area - Flex grow to push footer down */}
+          <div className="flex-1">
+            {/* Search Results Mode */}
+            {isSearchMode && (
+              <div className="p-6">
+                <div className="mb-6">
+                  <h2 className={`text-xl font-bold ${currentColors.text} mb-2`}>
+                    Search Results for "{searchQuery}"
+                  </h2>
+                  <p className={`${currentColors.textMuted}`}>
+                    Found {searchResults.length} articles
+                  </p>
+                </div>
 
-              
-
-              {/* Detailed Analytics */}
-              <div className="grid lg:grid-cols-3 gap-6">
-                {/* Trending Keywords */}
-                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-6`}>
-                  <h3 className={`text-lg font-semibold ${currentColors.text} mb-4`}>
-                    Trending Keywords
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    {analytics.topKeywords.map(([keyword, count], index) => (
+                {searchResults.length > 0 ? (
+                  <div className="space-y-4">
+                    {searchResults.map((article, index) => (
                       <button
-                        key={keyword}
-                        onClick={() => {
-                          setSearchQuery(keyword)
-                          handleSearch(keyword)
-                        }}
-                        className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${currentColors.categoryButton} hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors`}
+                        key={`${article.link || article.guid}-${index}`}
+                        onClick={() => handleSelectArticle(article)}
+                        className={`w-full text-left p-4 rounded-xl border ${currentColors.border} ${currentColors.cardBg} hover:shadow-lg transition-all group`}
                       >
-                        <TagIcon className="h-3 w-3 mr-1" />
-                        {keyword} ({count})
+                        <div className="flex items-start gap-4">
+                          {article.optimizedImageUrl && (
+                            <img
+                              src={article.optimizedImageUrl}
+                              alt={article.title}
+                              className="w-20 h-20 object-cover rounded-lg flex-shrink-0"
+                              loading="lazy"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h3 className={`font-semibold ${currentColors.text} group-hover:text-blue-600 transition-colors line-clamp-2 mb-2`}>
+                              {article.title}
+                            </h3>
+                            {article.description && (
+                              <p className={`text-sm ${currentColors.textMuted} line-clamp-2 mb-2`}>
+                                {article.description}
+                              </p>
+                            )}
+                            <div className="flex items-center gap-4 text-xs">
+                              <span className={`${currentColors.textMuted}`}>
+                                {article.source}
+                              </span>
+                              <span className={`${currentColors.textMuted}`}>
+                                {article.pubDate ? new Date(article.pubDate).toLocaleDateString() : 'Recent'}
+                              </span>
+                              {article.category && (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 rounded-full">
+                                  {article.category}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
                       </button>
                     ))}
                   </div>
-                </div>
-                
-                
-                {/* Top Sources */}
-                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-6`}>
-                  <h3 className={`text-lg font-semibold ${currentColors.text} mb-4`}>
-                    Top News Sources
-                  </h3>
-                  <div className="space-y-3">
-                    {analytics.topSources.map(([source, count], index) => (
-                      <div key={source} className="flex items-center justify-between">
-                        <span className={`text-sm ${currentColors.text}`}>{source}</span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div 
-                              className="bg-blue-500 h-2 rounded-full"
-                              style={{ width: `${(count / analytics.topSources[0][1]) * 100}%` }}
-                            />
-                          </div>
-                          <span className={`text-sm font-medium ${currentColors.text} w-8 text-right`}>
-                            {count}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                ) : (
+                  <div className={`text-center py-12 ${currentColors.textMuted}`}>
+                    <IconButton tooltip="MagnifyingGlassIcon" className="h-4 w-4"><IconButton><MagnifyingGlassIcon className="h-4 w-4" /></IconButton></IconButton>
+                    <p className="text-lg mb-2">No articles found</p>
+                    <p className="text-sm">Try different keywords or check your spelling</p>
                   </div>
-                </div>
-
-                {/* Top Categories */}
-                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-6`}>
-                  <h3 className={`text-lg font-semibold ${currentColors.text} mb-4`}>
-                    Popular Categories
-                  </h3>
-                  <div className="space-y-3">
-                    {analytics.topCategories.map(([category, count], index) => (
-                      <div key={category} className="flex items-center justify-between">
-                        <span className={`text-sm ${currentColors.text} capitalize`}>
-                          {CATEGORIES.find(c => c.id === category)?.icon} {category}
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <div className="w-20 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div 
-                              className="bg-green-500 h-2 rounded-full"
-                              style={{ width: `${(count / analytics.topCategories[0][1]) * 100}%` }}
-                            />
-                          </div>
-                          <span className={`text-sm font-medium ${currentColors.text} w-8 text-right`}>
-                            {count}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                
-
-              {/* Activity Stats */}
-              <div className={`mt-6 ${currentColors.cardBg} border ${currentColors.border} rounded-xl p-6`}>
-                <h3 className={`text-lg font-semibold ${currentColors.text} mb-4`}>
-                  Publishing Activity
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                  <div>
-                    <div className={`text-xl font-bold ${currentColors.text}`}>{analytics.avgPerDay}</div>
-                    <div className={`text-sm ${currentColors.textMuted}`}>Avg/Day</div>
-                  </div>
-                  <div>
-                    <div className={`text-xl font-bold ${currentColors.text}`}>{analytics.lastWeek}</div>
-                    <div className={`text-sm ${currentColors.textMuted}`}>This Week</div>
-                  </div>
-                  <div>
-                    <div className={`text-xl font-bold ${currentColors.text}`}>
-                      {Math.round((analytics.priority / analytics.total) * 100)}%
-                    </div>
-                    <div className={`text-sm ${currentColors.textMuted}`}>Priority Rate</div>
-                  </div>
-                  <div>
-                    <div className={`text-xl font-bold ${currentColors.text}`}>
-                      {Math.round((analytics.withImages / analytics.total) * 100)}%
-                    </div>
-                    <div className={`text-sm ${currentColors.textMuted}`}>Image Rate</div>
-                  </div>
-                </div>
+                )}
               </div>
+            )}
 
-              {/* Overview Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 text-center`}>
-                  <NewspaperIcon className={`h-8 w-8 ${currentColors.textMuted} mx-auto mb-2`} />
-                  <div className={`text-2xl font-bold ${currentColors.text}`}>{analytics.total}</div>
-                  <div className={`text-sm ${currentColors.textMuted}`}>Total Articles</div>
+            {/* Analytics Mode */}
+            {showAnalytics && !isSearchMode && (
+              <EnhancedAnalyticsSection
+                currentColors={currentColors}
+                allFeeds={allFeeds}
+                searchQuery={searchQuery}
+                recentSearches={recentSearches}
+                onKeywordSearch={handleKeywordSearch}
+              />
+            )}
+
+            {/* Default Mode - Search Suggestions */}
+            {!showAnalytics && !isSearchMode && searchQuery && (
+              <div className="p-6">
+                <div className="mb-6">
+                  <h2 className={`text-xl font-bold ${currentColors.text} mb-2`}>
+                    Search Suggestions
+                  </h2>
+                  <p className={`${currentColors.textMuted}`}>
+                    Found {searchResults.length} matches for "{searchQuery}"
+                  </p>
                 </div>
 
-                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 text-center`}>
-                  <StarIcon className={`h-8 w-8 text-yellow-500 mx-auto mb-2`} />
-                  <div className={`text-2xl font-bold ${currentColors.text}`}>{analytics.priority}</div>
-                  <div className={`text-sm ${currentColors.textMuted}`}>Priority News</div>
-                </div>
-
-                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 text-center`}>
-                  <PhotoIcon className={`h-8 w-8 ${currentColors.textMuted} mx-auto mb-2`} />
-                  <div className={`text-2xl font-bold ${currentColors.text}`}>{analytics.withImages}</div>
-                  <div className={`text-sm ${currentColors.textMuted}`}>With Images</div>
-                </div>
-
-                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 text-center`}>
-                  <ClockIcon className={`h-8 w-8 text-green-500 mx-auto mb-2`} />
-                  <div className={`text-2xl font-bold ${currentColors.text}`}>{analytics.last24h}</div>
-                  <div className={`text-sm ${currentColors.textMuted}`}>Last 24 Hours</div>
-                </div>
-
-                <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 text-center`}>
-                  <GlobeAltIcon className={`h-8 w-8 ${currentColors.textMuted} mx-auto mb-2`} />
-                  <div className={`text-2xl font-bold ${currentColors.text}`}>{analytics.sourcesCount}</div>
-                  <div className={`text-sm ${currentColors.textMuted}`}>News Sources</div>
-                </div>
+                {searchResults.length > 0 && (
+                  <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 shadow-lg`}>
+                    <h4 className={`text-sm font-medium ${currentColors.text} mb-3`}>
+                      Quick Results:
+                    </h4>
+                    <div className="space-y-2 mb-4">
+                      {searchResults.slice(0, 5).map((article, index) => (
+                        <button
+                          key={`suggestion-${index}`}
+                          onClick={() => handleSelectArticle(article)}
+                          className={`w-full text-left p-3 rounded-lg transition-colors ${currentColors.categoryButton} hover:bg-blue-100 dark:hover:bg-blue-900/30`}
+                        >
+                          <div className={`text-sm font-medium ${currentColors.text} line-clamp-1 mb-1`}>
+                            {article.title}
+                          </div>
+                          <div className={`text-xs ${currentColors.textMuted}`}>
+                            {article.source} • {article.pubDate ? new Date(article.pubDate).toLocaleDateString() : 'Recent'}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => handleSearch(searchQuery)}
+                      className={`w-full py-2 px-4 rounded-lg ${currentColors.accent} text-white text-sm font-medium transition-colors hover:opacity-90 shadow-md`}
+                    >
+                      View All {searchResults.length} Results
+                    </button>
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
-          )}
+
+          {/* Enhanced Footer */}
+          <Footer currentColors={currentColors} />
         </div>
       </div>
     </div>

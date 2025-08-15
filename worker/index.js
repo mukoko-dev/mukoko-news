@@ -1,1620 +1,555 @@
-// Enhanced Worker with scheduled background fetching and text cleaning
+/* eslint-env worker */
+/* global Response, Request, URL, __STATIC_CONTENT_MANIFEST */
 import { getAssetFromKV } from '@cloudflare/kv-asset-handler'
-import { XMLParser } from 'fast-xml-parser'
+import ConfigService from './services/ConfigService.js'
+// import { D1UserService } from './services/D1UserService.js'  // DISABLED: Using Supabase now
+import { AnalyticsEngineService } from './services/AnalyticsEngineService.js'
+import RSSFeedService from './services/RSSFeedService.js'
+import { CacheService } from './services/CacheService.js'
+import { handleApiRequest } from './api.js'
+import { CloudflareImagesService } from './services/CloudflareImagesService.js'
 
-// Cache configuration for scheduled updates
+// Cache configuration
 const CACHE_CONFIG = {
   ARTICLES_TTL: 14 * 24 * 60 * 60, // 2 weeks in seconds
-  SCHEDULED_REFRESH_INTERVAL: 60 * 60, // 1 hour in seconds
-  MAX_ARTICLES: 10000, // Increased article storage
-  ITEMS_PER_SOURCE: 50, // More items per source
+  SCHEDULED_REFRESH_INTERVAL: 60 * 60 * 1000, // 1 hour in milliseconds
+  MAX_ARTICLES: 20000,           // Increased from 10000
+  ITEMS_PER_SOURCE: 100,         // Increased from 50
+  MIN_LIMIT: 100,                // New minimum limit
+  MAX_LIMIT: 1000,               // New maximum limit
   CACHE_HEADERS: {
-    'Cache-Control': 'public, max-age=300, s-maxage=600', // 5min browser, 10min CDN
-    'CDN-Cache-Control': 'max-age=600', // 10 minutes CDN cache
+    'Cache-Control': 'public, max-age=300, s-maxage=600',
+    'CDN-Cache-Control': 'max-age=600',
     'Cloudflare-CDN-Cache-Control': 'max-age=600'
   }
 }
 
-// Cache keys
-const CACHE_KEYS = {
-  ALL_ARTICLES: 'cache:all_articles',
-  LAST_REFRESH: 'cache:last_refresh',
-  ARTICLE_COUNT: 'cache:article_count',
-  REFRESH_LOCK: 'cache:refresh_lock', // Prevent concurrent refreshes
-  LAST_SCHEDULED_RUN: 'cache:last_scheduled_run'
-}
-
-// Comprehensive list of trusted image domains for Zimbabwe news sites
-const TRUSTED_IMAGE_DOMAINS = [
-  // Primary Zimbabwe news sites
-  'herald.co.zw',
-  'newsday.co.zw', 
-  'chronicle.co.zw',
-  'zbc.co.zw',
-  'businessweekly.co.zw',
-  'techzim.co.zw',
-  'thestandard.co.zw',
-  'zimlive.com',
-  'newzimbabwe.com',
-  'theindependent.co.zw',
-  'sundaymail.co.zw',
-  '263chat.com',
-  'dailynews.co.zw',
-  'zimeye.net',
-  'pindula.co.zw',
-  'zimbabwesituation.com',
-  'nehandaradio.com',
-  'opennews.co.zw',
-  'fingaz.co.zw',
-  'manicapost.co.zw',
-  'southerneye.co.zw',
+// Initialize services with CORRECT bindings
+function initializeServices(env) {
+  // FIXED: Use correct binding names
+  const configService = new ConfigService(env.CONFIG_STORAGE)
   
-  // WordPress and common CMS domains
-  'wp.com',
-  'wordpress.com',
-  'files.wordpress.com',
-  'i0.wp.com',
-  'i1.wp.com',
-  'i2.wp.com',
-  'i3.wp.com',
-  
-  // CDN and image hosting services
-  'cloudinary.com',
-  'res.cloudinary.com',
-  'imgur.com',
-  'i.imgur.com',
-  'gravatar.com',
-  'secure.gravatar.com',
-  'amazonaws.com',
-  's3.amazonaws.com',
-  'cloudfront.net',
-  'unsplash.com',
-  'images.unsplash.com',
-  'pexels.com',
-  'images.pexels.com',
-  
-  // Google services
-  'googleusercontent.com',
-  'lh3.googleusercontent.com',
-  'lh4.googleusercontent.com',
-  'lh5.googleusercontent.com',
-  'blogger.googleusercontent.com',
-  'drive.google.com',
-  
-  // Social media image domains
-  'fbcdn.net',
-  'scontent.fhre1-1.fna.fbcdn.net',
-  'pbs.twimg.com',
-  'abs.twimg.com',
-  'instagram.com',
-  
-  // News agency images
-  'ap.org',
-  'apnews.com',
-  'reuters.com',
-  'bbci.co.uk',
-  'bbc.co.uk',
-  'cnn.com',
-  'media.cnn.com',
-  
-  // African news networks
-  'africanews.com',
-  'mg.co.za',
-  'news24.com',
-  'timeslive.co.za',
-  'iol.co.za',
-  'citizen.co.za',
-  
-  // Generic domains that might host images
-  'photobucket.com',
-  'flickr.com',
-  'staticflickr.com',
-  'wikimedia.org',
-  'upload.wikimedia.org'
-]
-
-// Keywords to prioritize for Zimbabwe/Harare relevance
-const PRIORITY_KEYWORDS = [
-  'harare', 'zimbabwe', 'zim', 'bulawayo', 'mutare', 'gweru', 'kwekwe',
-  'parliament', 'government', 'mnangagwa', 'zanu-pf', 'mdc', 'chamisa',
-  'economy', 'inflation', 'currency', 'bond', 'rtgs', 'usd',
-  'mining', 'tobacco', 'agriculture', 'maize', 'cotton',
-  'warriors', 'dynamos', 'caps united', 'highlanders'
-];
-
-// Enhanced category mapping with global trending categories
-const CATEGORY_KEYWORDS = {
-  politics: [
-    'parliament', 'government', 'election', 'party', 'minister', 'president', 'policy', 
-    'zanu', 'mdc', 'opposition', 'mnangagwa', 'chamisa', 'cabinet', 'senate', 'mp', 
-    'constituency', 'voter', 'ballot', 'democracy', 'governance', 'corruption',
-    'sanctions', 'diplomatic', 'ambassador'
-  ],
-  economy: [
-    'economy', 'economic', 'inflation', 'currency', 'budget', 'finance', 'bank', 
-    'investment', 'gdp', 'trade', 'bond', 'rtgs', 'usd', 'forex', 'revenue',
-    'tax', 'fiscal', 'monetary', 'debt', 'loan', 'imf', 'world bank', 'stock exchange',
-    'zse', 'commodity', 'export', 'import', 'manufacturing'
-  ],
-  business: [
-    'business', 'company', 'entrepreneur', 'startup', 'market', 'industry', 
-    'corporate', 'commerce', 'mining', 'tobacco', 'retail', 'wholesale',
-    'sme', 'tender', 'procurement', 'partnership', 'merger', 'acquisition',
-    'ceo', 'director', 'shareholder', 'profit', 'revenue', 'growth'
-  ],
-  sports: [
-    'sport', 'football', 'soccer', 'cricket', 'rugby', 'warriors', 'dynamos', 
-    'caps united', 'highlanders', 'afcon', 'fifa', 'world cup', 'olympics',
-    'athletics', 'boxing', 'tennis', 'golf', 'swimming', 'basketball',
-    'volleyball', 'netball', 'hockey', 'cycling', 'marathon'
-  ],
-  harare: [
-    'harare', 'capital', 'city council', 'mayor', 'cbd', 'avondale', 'borrowdale', 
-    'chitungwiza', 'municipality', 'ward', 'councillor', 'rates', 'water', 'sewer',
-    'traffic', 'kombi', 'transport', 'housing', 'residential', 'suburbs'
-  ],
-  agriculture: [
-    'agriculture', 'farming', 'tobacco', 'maize', 'cotton', 'wheat', 'soya',
-    'irrigation', 'crop', 'harvest', 'season', 'drought', 'rainfall',
-    'fertilizer', 'seed', 'land reform', 'farmer', 'commercial', 'communal'
-  ],
-  technology: [
-    'technology', 'tech', 'digital', 'internet', 'mobile', 'app', 'software',
-    'innovation', 'startup', 'fintech', 'blockchain', 'ai', 'data',
-    'cybersecurity', 'telecoms', 'econet', 'netone', 'telecel'
-  ],
-  health: [
-    'health', 'hospital', 'medical', 'doctor', 'patient', 'medicine', 'treatment',
-    'disease', 'covid', 'vaccination', 'clinic', 'healthcare', 'pharmacy',
-    'outbreak', 'epidemic', 'maternal', 'child health', 'malaria', 'hiv', 'aids'
-  ],
-  education: [
-    'education', 'school', 'student', 'teacher', 'university', 'college',
-    'examination', 'zimsec', 'results', 'fees', 'scholarship', 'learning',
-    'curriculum', 'graduation', 'degree', 'diploma', 'research'
-  ],
-  entertainment: [
-    'entertainment', 'music', 'artist', 'movie', 'film', 'celebrity', 'culture',
-    'festival', 'concert', 'award', 'album', 'song', 'dance', 'theatre',
-    'comedy', 'fashion', 'beauty', 'lifestyle'
-  ],
-  environment: [
-    'environment', 'climate', 'weather', 'conservation', 'wildlife', 'forest',
-    'pollution', 'green', 'renewable', 'solar', 'clean', 'nature',
-    'endangered', 'national park', 'tourism', 'safari'
-  ],
-  crime: [
-    'crime', 'police', 'arrest', 'court', 'trial', 'judge', 'sentence', 'prison',
-    'theft', 'robbery', 'murder', 'investigation', 'security', 'violence',
-    'corruption', 'fraud', 'smuggling', 'drugs'
-  ],
-  international: [
-    'international', 'world', 'global', 'foreign', 'embassy', 'visa', 'travel',
-    'tourism', 'export', 'import', 'trade', 'relations', 'diplomatic',
-    'african union', 'sadc', 'united nations', 'brexit', 'china', 'uk', 'usa'
-  ],
-  lifestyle: [
-    'lifestyle', 'fashion', 'food', 'recipe', 'home', 'family', 'relationship',
-    'wedding', 'travel', 'vacation', 'hobby', 'fitness', 'diet', 'beauty'
-  ],
-  finance: [
-    'finance', 'financial', 'money', 'cash', 'loan', 'credit', 'savings',
-    'insurance', 'pension', 'investment', 'portfolio', 'shares', 'dividend',
-    'interest', 'mortgage', 'banking', 'microfinance'
-  ]
-};
-
-// RSS feed sources
-const RSS_SOURCES = [
-  {
-    name: 'Herald Zimbabwe',
-    url: 'https://www.herald.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'NewsDay Zimbabwe', 
-    url: 'https://www.newsday.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'Chronicle Zimbabwe',
-    url: 'https://www.chronicle.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'ZBC News',
-    url: 'https://www.zbc.co.zw/feed/',
-    category: 'news',
-    enabled: true
-  },
-  {
-    name: 'Business Weekly',
-    url: 'https://businessweekly.co.zw/feed/',
-    category: 'business',
-    enabled: true
-  },
-  {
-    name: 'Techzim',
-    url: 'https://www.techzim.co.zw/feed/',
-    category: 'technology',
-    enabled: true
-  },
-  {
-    name: 'The Standard',
-    url: 'https://www.thestandard.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'ZimLive',
-    url: 'https://www.zimlive.com/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'New Zimbabwe',
-    url: 'https://www.newzimbabwe.com/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'The Independent',
-    url: 'https://www.theindependent.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'Sunday Mail',
-    url: 'https://www.sundaymail.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: '263Chat',
-    url: 'https://263chat.com/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'Daily News',
-    url: 'https://www.dailynews.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'ZimEye',
-    url: 'https://zimeye.net/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'Pindula News',
-    url: 'https://news.pindula.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'Zimbabwe Situation',
-    url: 'https://zimbabwesituation.com/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'Nehanda Radio',
-    url: 'https://nehandaradio.com/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'Open News Zimbabwe',
-    url: 'https://opennews.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'Financial Gazette',
-    url: 'https://fingaz.co.zw/feed/',
-    category: 'business',
-    enabled: true
-  },
-  {
-    name: 'Manica Post',
-    url: 'https://manicapost.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  },
-  {
-    name: 'Southern Eye',
-    url: 'https://southerneye.co.zw/feed/',
-    category: 'general',
-    enabled: true
-  }
-]
-
-// Enhanced HTML entity decoder
-function decodeHtmlEntities(text) {
-  if (!text || typeof text !== 'string') return text;
-  
-  // Common HTML entities mapping
-  const entityMap = {
-    // Quotes
-    '&#8217;': "'",  // Right single quotation mark
-    '&#8216;': "'",  // Left single quotation mark
-    '&#8220;': '"',  // Left double quotation mark
-    '&#8221;': '"',  // Right double quotation mark
-    '&#39;': "'",    // Apostrophe
-    '&quot;': '"',   // Quotation mark
-    '&apos;': "'",   // Apostrophe
-    
-    // Dashes
-    '&#8211;': '–',  // En dash
-    '&#8212;': '—',  // Em dash
-    '&#8213;': '―',  // Horizontal bar
-    
-    // Spaces and special characters
-    '&#160;': ' ',   // Non-breaking space
-    '&nbsp;': ' ',   // Non-breaking space
-    '&#8230;': '…',  // Horizontal ellipsis
-    
-    // Ampersands and basic entities
-    '&amp;': '&',    // Ampersand
-    '&lt;': '<',     // Less than
-    '&gt;': '>',     // Greater than
-    
-    // Accented characters
-    '&#224;': 'à',   // a with grave
-    '&#225;': 'á',   // a with acute
-    '&#226;': 'â',   // a with circumflex
-    '&#227;': 'ã',   // a with tilde
-    '&#228;': 'ä',   // a with diaeresis
-    '&#233;': 'é',   // e with acute
-    '&#234;': 'ê',   // e with circumflex
-    '&#235;': 'ë',   // e with diaeresis
-    '&#237;': 'í',   // i with acute
-    '&#238;': 'î',   // i with circumflex
-    '&#243;': 'ó',   // o with acute
-    '&#244;': 'ô',   // o with circumflex
-    '&#245;': 'õ',   // o with tilde
-    '&#250;': 'ú',   // u with acute
-    '&#251;': 'û',   // u with circumflex
-    
-    // Currency and symbols
-    '&#163;': '£',   // Pound sign
-    '&#164;': '¤',   // Generic currency
-    '&#165;': '¥',   // Yen sign
-    '&#8364;': '€',  // Euro sign
-    '&#36;': '$',    // Dollar sign
-    '&#162;': '¢',   // Cent sign
-    
-    // Mathematical symbols
-    '&#215;': '×',   // Multiplication sign
-    '&#247;': '÷',   // Division sign
-    '&#177;': '±',   // Plus-minus sign
-    '&#8730;': '√',  // Square root
-    
-    // Common symbols
-    '&#169;': '©',   // Copyright
-    '&#174;': '®',   // Registered trademark
-    '&#8482;': '™',  // Trademark
-    '&#167;': '§',   // Section sign
-    '&#182;': '¶',   // Pilcrow sign (paragraph)
-  };
-  
-  // Replace HTML entities
-  let decoded = text;
-  
-  // Replace known entities first
-  Object.entries(entityMap).forEach(([entity, replacement]) => {
-    decoded = decoded.replace(new RegExp(entity, 'g'), replacement);
-  });
-  
-  // Handle numeric entities (decimal) - &#1234;
-  decoded = decoded.replace(/&#(\d+);/g, (match, num) => {
-    try {
-      return String.fromCharCode(parseInt(num, 10));
-    } catch (e) {
-      return match; // Return original if conversion fails
-    }
-  });
-  
-  // Handle hex entities - &#x1234;
-  decoded = decoded.replace(/&#x([0-9a-fA-F]+);/g, (match, hex) => {
-    try {
-      return String.fromCharCode(parseInt(hex, 16));
-    } catch (e) {
-      return match; // Return original if conversion fails
-    }
-  });
-  
-  // Handle named entities using browser-like decoding
-  const namedEntities = {
-    'amp': '&', 'lt': '<', 'gt': '>', 'quot': '"', 'apos': "'",
-    'nbsp': ' ', 'copy': '©', 'reg': '®', 'trade': '™',
-    'ldquo': '"', 'rdquo': '"', 'lsquo': "'", 'rsquo': "'",
-    'ndash': '–', 'mdash': '—', 'hellip': '…', 'euro': '€'
-  };
-  
-  Object.entries(namedEntities).forEach(([name, char]) => {
-    decoded = decoded.replace(new RegExp(`&${name};`, 'g'), char);
-  });
-  
-  return decoded;
-}
-
-// Enhanced text cleaning function
-function cleanText(text) {
-  if (!text || typeof text !== 'string') return text;
-  
-  // First decode HTML entities
-  let cleaned = decodeHtmlEntities(text);
-  
-  // Remove HTML tags
-  cleaned = cleaned.replace(/<[^>]*>/g, '');
-  
-  // Normalize whitespace
-  cleaned = cleaned.replace(/\s+/g, ' ').trim();
-  
-  // Remove common unwanted patterns
-  cleaned = cleaned.replace(/\[…\]/g, '…');
-  cleaned = cleaned.replace(/\[&hellip;\]/g, '…');
-  
-  // Fix multiple spaces
-  cleaned = cleaned.replace(/\s{2,}/g, ' ');
-  
-  return cleaned;
-}
-
-// Function to clean HTML content (enhanced version)
-function cleanHtml(html) {
-  if (!html) return '';
-  
-  // First decode HTML entities
-  let cleaned = decodeHtmlEntities(html);
-  
-  // Remove HTML tags
-  cleaned = cleaned.replace(/<[^>]*>/g, '');
-  
-  // Clean up common artifacts
-  cleaned = cleaned
-    .replace(/&nbsp;/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .substring(0, 300);
-    
-  return cleaned;
-}
-
-// Helper function to check if URL is an image
-function isImageUrl(url) {
-  if (!url || typeof url !== 'string') return false
-  
-  const imageExtensions = /\.(jpe?g|png|gif|webp|svg|bmp|avif|ico|tiff?)(\?.*)?$/i
-  const imageParams = /[?&](format|f)=(jpe?g|png|gif|webp|svg|bmp|avif)/i
-  
-  return imageExtensions.test(url) || imageParams.test(url)
-}
-
-// Function to detect category based on content
-function detectCategory(content) {
-  let maxMatches = 0
-  let detectedCategory = null
-
-  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    const matches = keywords.filter(keyword => 
-      content.includes(keyword.toLowerCase())
-    ).length
-
-    if (matches > maxMatches) {
-      maxMatches = matches
-      detectedCategory = category
-    }
-  }
-
-  return detectedCategory
-}
-
-// Function to calculate relevance score for sorting
-function calculateRelevanceScore(content, title) {
-  let score = 0
-  
-  PRIORITY_KEYWORDS.forEach(keyword => {
-    if (content.includes(keyword.toLowerCase())) {
-      score += title.toLowerCase().includes(keyword.toLowerCase()) ? 3 : 1
-    }
-  })
-
-  return Math.min(score, 10)
-}
-
-// Enhanced but simplified image extraction function
-function extractImageFromContent(item, link) {
-  // Debug logging (reduced frequency)
-  if (Math.random() < 0.1) { // Only log 10% of calls
-    console.log(`[DEBUG] Extracting image for: ${item.title || 'Unknown title'}`)
-  }
-
-  const imageMatches = []
-  
-  // 1. RSS Media tags (highest priority)
-  try {
-    if (item['media:content'] && item['media:content']['@_url']) {
-      const mediaUrl = item['media:content']['@_url']
-      if (isImageUrl(mediaUrl)) {
-        imageMatches.push(mediaUrl)
-      }
-    }
-  } catch (e) {
-    console.log('[DEBUG] Error extracting media:content:', e.message)
-  }
-  
-  // 2. RSS Enclosure tags
-  try {
-    if (item.enclosure && item.enclosure['@_type']?.startsWith('image/') && item.enclosure['@_url']) {
-      imageMatches.push(item.enclosure['@_url'])
-    }
-  } catch (e) {
-    console.log('[DEBUG] Error extracting enclosure:', e.message)
-  }
-  
-  // 3. RSS Image tag
-  try {
-    if (item.image) {
-      const imgUrl = typeof item.image === 'string' ? item.image : item.image.url || item.image['@_url']
-      if (imgUrl && isImageUrl(imgUrl)) {
-        imageMatches.push(imgUrl)
-      }
-    }
-  } catch (e) {
-    console.log('[DEBUG] Error extracting RSS image:', e.message)
-  }
-  
-  // 4. WordPress specific fields
-  try {
-    if (item['wp:featured_image']) {
-      imageMatches.push(item['wp:featured_image'])
-    }
-    
-    if (item['wp:attachment_url'] && isImageUrl(item['wp:attachment_url'])) {
-      imageMatches.push(item['wp:attachment_url'])
-    }
-  } catch (e) {
-    console.log('[DEBUG] Error extracting WordPress fields:', e.message)
-  }
-  
-  // 5. Content fields to search
-  const contentFields = [
-    item.description,
-    item['content:encoded'],
-    item.content,
-    item.summary
-  ].filter(Boolean)
-  
-  // 6. Extract from content fields
-  contentFields.forEach((content) => {
-    try {
-      if (typeof content === 'object') {
-        content = content.text || content['#text'] || content._ || ''
-      }
-      
-      if (typeof content === 'string' && content.length > 0) {
-        // Extract img src attributes
-        const imgRegex = /<img[^>]+src=["']([^"']+)["'][^>]*>/gi
-        let match
-        while ((match = imgRegex.exec(content)) !== null) {
-          imageMatches.push(match[1])
-        }
-        
-        // Extract meta og:image
-        const metaRegex = /<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["'][^>]*>/gi
-        let metaMatch
-        while ((metaMatch = metaRegex.exec(content)) !== null) {
-          imageMatches.push(metaMatch[1])
-        }
-        
-        // Extract direct image URLs
-        const imageUrlRegex = /https?:\/\/[^\s<>"']+\.(?:jpe?g|png|gif|webp|svg|bmp|avif)(?:\?[^\s<>"']*)?/gi
-        let urlMatch
-        while ((urlMatch = imageUrlRegex.exec(content)) !== null) {
-          imageMatches.push(urlMatch[0])
-        }
-      }
-    } catch (e) {
-      console.log('[DEBUG] Error processing content field:', e.message)
-    }
-  })
-  
-  // 7. Process and validate all found images
-  const validImages = imageMatches
-    .map(img => {
-      try {
-        if (!img || typeof img !== 'string') return null
-        
-        // Clean up the URL
-        img = img.trim()
-        
-        // Remove HTML entities
-        img = img.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&')
-        
-        // Handle relative URLs
-        if (img.startsWith('//')) {
-          return `https:${img}`
-        } else if (img.startsWith('/')) {
-          const baseUrl = new URL(link)
-          return `${baseUrl.protocol}//${baseUrl.hostname}${img}`
-        } else if (!img.startsWith('http')) {
-          const baseUrl = new URL(link)
-          return `${baseUrl.protocol}//${baseUrl.hostname}/${img.replace(/^\.\//, '')}`
-        }
-        return img
-      } catch (e) {
-        return null
-      }
-    })
-    .filter(Boolean)
-    .filter(img => {
-      try {
-        // Validate it's actually an image URL
-        if (!isImageUrl(img)) return false
-        
-        const imgUrl = new URL(img)
-        // Check if it's from a trusted domain
-        const isTrusted = TRUSTED_IMAGE_DOMAINS.some(domain => 
-          imgUrl.hostname.includes(domain) || imgUrl.hostname.endsWith(domain)
-        )
-        
-        return isTrusted
-      } catch (e) {
-        return false
-      }
-    })
-    .filter((img, index, arr) => arr.indexOf(img) === index) // Remove duplicates
-  
-  const result = validImages.length > 0 ? validImages[0] : null
-  
-  if (result && Math.random() < 0.1) {
-    console.log(`[DEBUG] Successfully extracted image: ${result}`)
-  }
-  
-  return result
-}
-
-// Simple image proxy handler
-async function handleImageProxy(request, env) {
-  const url = new URL(request.url)
-  const imageUrl = url.searchParams.get('url')
-  
-  if (!imageUrl) {
-    return new Response('Missing image URL', { status: 400 })
-  }
-
-  try {
-    // Validate the image URL is from trusted domains
-    const imageUrlObj = new URL(imageUrl)
-    const isTrusted = TRUSTED_IMAGE_DOMAINS.some(domain => 
-      imageUrlObj.hostname.includes(domain)
-    )
-    
-    if (!isTrusted) {
-      return new Response('Untrusted image domain', { status: 403 })
-    }
-
-    // Check cache first
-    const cacheKey = `image:${imageUrl}`
-    const cached = await env.NEWS_STORAGE.get(cacheKey, { type: 'arrayBuffer' })
-    
-    if (cached) {
-      return new Response(cached, {
-        headers: {
-          'Content-Type': 'image/jpeg',
-          'Cache-Control': 'public, max-age=86400',
-          'Access-Control-Allow-Origin': '*'
-        }
-      })
-    }
-
-    // Fetch original image
-    const imageResponse = await fetch(imageUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        'Accept': 'image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'Referer': imageUrlObj.origin
-      }
-    })
-
-    if (!imageResponse.ok) {
-      throw new Error(`Failed to fetch image: ${imageResponse.status}`)
-    }
-
-    const imageBuffer = await imageResponse.arrayBuffer()
-    
-    // Cache the image for 24 hours
-    await env.NEWS_STORAGE.put(cacheKey, imageBuffer, {
-      expirationTtl: 86400
-    })
-
-    return new Response(imageBuffer, {
-      headers: {
-        'Content-Type': imageResponse.headers.get('Content-Type') || 'image/jpeg',
-        'Cache-Control': 'public, max-age=86400',
-        'Access-Control-Allow-Origin': '*'
-      }
-    })
-
-  } catch (error) {
-    console.error('Image proxy error:', error)
-    return new Response('Failed to process image', { status: 500 })
-  }
-}
-
-// Bot detection function
-function isBot(userAgent) {
-  if (!userAgent) return false
-  
-  const botPatterns = [
-    'googlebot', 'bingbot', 'slurp', 'duckduckbot', 'baiduspider',
-    'yandexbot', 'facebookexternalhit', 'twitterbot', 'rogerbot',
-    'linkedinbot', 'embedly', 'quora', 'showyoubot', 'outbrain',
-    'pinterest', 'slackbot', 'vkshare', 'w3c_validator', 'redditbot',
-    'applebot', 'whatsapp', 'flipboard', 'tumblr', 'bitlybot'
-  ]
-  
-  return botPatterns.some(pattern => 
-    userAgent.toLowerCase().includes(pattern)
+  // FIXED: CacheService expects (newsStorageKV, contentCacheKV) with correct binding names
+  const cacheService = new CacheService(
+    env.NEWS_STORAGE,      // newsStorageKV (for articles)
+    env.CONTENT_CACHE      // contentCacheKV (for search/general cache) - FIXED name
   )
-}
-
-// Background refresh lock management
-async function acquireRefreshLock(env) {
-  const lockKey = CACHE_KEYS.REFRESH_LOCK
-  const lockValue = `lock-${Date.now()}`
-  const lockTTL = 30 * 60 // 30 minutes max lock time
   
-  try {
-    // Try to acquire lock
-    await env.NEWS_STORAGE.put(lockKey, lockValue, { 
-      expirationTtl: lockTTL,
-      metadata: { acquiredAt: new Date().toISOString() }
-    })
-    
-    // Verify we got the lock
-    const currentLock = await env.NEWS_STORAGE.get(lockKey)
-    return currentLock === lockValue
-  } catch (error) {
-    console.error('Error acquiring refresh lock:', error)
-    return false
+  // DISABLED: User service now handled by Supabase directly in frontend
+  // const userService = env.USER_DB ? new D1UserService(env.USER_DB) : null
+  const userService = null // User operations moved to Supabase
+  
+  // FIXED: Analytics service with correct 3 datasets
+  const analyticsService = new AnalyticsEngineService({
+    categoryClicks: env.CATEGORY_CLICKS || null,
+    newsInteractions: env.NEWS_INTERACTIONS || null,
+    searchQueries: env.SEARCH_QUERIES || null
+  })
+  
+  const imagesService = new CloudflareImagesService(env)
+  const rssService = new RSSFeedService(configService)
+
+  // Services initialized successfully
+  
+  return {
+    configService,
+    cacheService,
+    userService,
+    analyticsService,
+    imagesService,
+    rssService
   }
 }
 
-async function releaseRefreshLock(env) {
-  try {
-    await env.NEWS_STORAGE.delete(CACHE_KEYS.REFRESH_LOCK)
-  } catch (error) {
-    console.error('Error releasing refresh lock:', error)
-  }
-}
-
-// Check if scheduled refresh is needed
-async function shouldRunScheduledRefresh(env) {
-  try {
-    const lastScheduledRun = await env.NEWS_STORAGE.get(CACHE_KEYS.LAST_SCHEDULED_RUN)
-    if (!lastScheduledRun) return true
-
-    const lastRunTime = new Date(lastScheduledRun)
-    const now = new Date()
-    const timeDiff = (now - lastRunTime) / 1000 // seconds
-
-    return timeDiff >= CACHE_CONFIG.SCHEDULED_REFRESH_INTERVAL
-  } catch (error) {
-    console.error('Error checking scheduled refresh status:', error)
-    return true
-  }
-}
-
-// Background scheduled refresh function
+// Background scheduled refresh function - FULLY AUTONOMOUS
 async function runScheduledRefresh(env) {
-  console.log('Attempting scheduled refresh...')
+  const startTime = Date.now()
   
-  // Check if refresh is needed
-  const needsRefresh = await shouldRunScheduledRefresh(env)
-  if (!needsRefresh) {
-    console.log('Scheduled refresh not needed yet')
-    return { success: false, reason: 'Not time for refresh' }
-  }
-
-  // Try to acquire lock
-  const lockAcquired = await acquireRefreshLock(env)
-  if (!lockAcquired) {
-    console.log('Could not acquire refresh lock, another process may be running')
-    return { success: false, reason: 'Lock acquisition failed' }
-  }
-
   try {
-    console.log('Starting scheduled background refresh')
-    const startTime = Date.now()
+    // Starting autonomous scheduled refresh
     
-    // Fetch fresh articles
-    const freshArticles = await fetchAllFeedsBackground(env)
+    const { cacheService, rssService } = initializeServices(env)
     
-    // Update last scheduled run timestamp
-    await env.NEWS_STORAGE.put(
-      CACHE_KEYS.LAST_SCHEDULED_RUN,
-      new Date().toISOString(),
-      { expirationTtl: CACHE_CONFIG.ARTICLES_TTL }
-    )
-
-    const duration = Date.now() - startTime
-    console.log(`Scheduled refresh completed in ${duration}ms, fetched ${freshArticles.length} articles`)
-    
-    return { 
-      success: true, 
-      articlesCount: freshArticles.length,
-      duration: duration,
-      timestamp: new Date().toISOString()
+    // Check if refresh is needed (autonomous decision)
+    const needsRefresh = await cacheService.shouldRunScheduledRefresh(CACHE_CONFIG.SCHEDULED_REFRESH_INTERVAL)
+    if (!needsRefresh) {
+      // Scheduled refresh not needed yet
+      return { success: true, reason: 'Not time for refresh', skipped: true }
     }
-  } catch (error) {
-    console.error('Scheduled refresh failed:', error)
-    return { success: false, reason: error.message }
-  } finally {
-    // Always release the lock
-    await releaseRefreshLock(env)
-  }
-}
 
-// Background feed fetching (optimized for scheduled runs)
-async function fetchAllFeedsBackground(env) {
-  console.log('Background feed fetching started')
-  
-  const allFeeds = []
-  const parser = new XMLParser({
-    ignoreAttributes: false,
-    attributeNamePrefix: '@_',
-    textNodeName: '#text',
-    ignoreNameSpace: false,
-    removeNSPrefix: false,
-    parseTagValue: true,
-    parseAttributeValue: true,
-    trimValues: true,
-    // Enhanced entity handling
-    processEntities: true,
-    htmlEntities: true
-  });
+    // Try to acquire lock (autonomous)
+    const lockAcquired = await cacheService.acquireRefreshLock()
+    if (!lockAcquired) {
+      // Could not acquire refresh lock - another process running
+      return { success: true, reason: 'Another refresh in progress', skipped: true }
+    }
 
-  const enabledSources = RSS_SOURCES.filter(source => source.enabled)
-  console.log(`Processing ${enabledSources.length} RSS sources in background`)
-
-  // Process feeds in parallel with aggressive timeouts for background processing
-  const feedPromises = enabledSources.map(async (source) => {
-    try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout for background
-
-      const response = await fetch(source.url, {
-        headers: {
-          'User-Agent': 'Harare Metro News Aggregator/2.0 (Zimbabwe; +https://harare-metro.nyuchi.dev)',
-          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
-          'Cache-Control': 'no-cache'
-        },
-        signal: controller.signal,
-        cf: {
-          cacheTtl: 60, // Short cache for background fetches
-          cacheEverything: false
-        }
-      })
-
-      clearTimeout(timeoutId)
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-      }
-
-      const xmlText = await response.text()
-      if (!xmlText || xmlText.length < 100) {
-        throw new Error('Empty or invalid RSS response')
-      }
-
-      const feedData = parser.parse(xmlText)
+    // Starting RSS fetch from all sources
+    
+    // Fetch fresh articles autonomously
+    const freshArticles = await rssService.fetchAllFeedsBackground(
+      CACHE_CONFIG.ITEMS_PER_SOURCE,
+      CACHE_CONFIG.MAX_ARTICLES
+    )
+    
+    if (freshArticles && freshArticles.length > 0) {
+      // Cache the articles using CacheService
+      await cacheService.setCachedArticles(freshArticles)
+      await cacheService.setLastScheduledRun()
       
-      let items = feedData?.rss?.channel?.item || 
-                  feedData?.feed?.entry || 
-                  feedData?.channel?.item || 
-                  feedData?.rss?.item ||
-                  []
-
-      if (!Array.isArray(items)) {
-        items = items ? [items] : []
-      }
-
-      if (items.length === 0) {
-        return []
-      }
-
-      const processedItems = items
-        .slice(0, CACHE_CONFIG.ITEMS_PER_SOURCE)
-        .map(item => processArticleItem(item, source))
-        .filter(Boolean)
-
-      return processedItems
-
-    } catch (error) {
-      console.error(`Background fetch error for ${source.name}:`, error.message)
-      return []
-    }
-  })
-
-  // Wait for all feeds with a timeout
-  const feedResults = await Promise.allSettled(feedPromises)
-  
-  // Collect successful results
-  feedResults.forEach((result, index) => {
-    if (result.status === 'fulfilled' && Array.isArray(result.value)) {
-      allFeeds.push(...result.value)
-    } else if (result.status === 'rejected') {
-      console.error(`Background feed ${enabledSources[index].name} failed:`, result.reason)
-    }
-  })
-
-  console.log(`Background fetch collected: ${allFeeds.length} articles`)
-
-  // Remove duplicates and cache
-  const uniqueFeeds = removeDuplicateArticles(allFeeds)
-  const cachedArticles = await setCachedArticles(env, uniqueFeeds)
-  
-  return cachedArticles
-}
-
-// Enhanced caching functions
-async function getCachedArticles(env) {
-  try {
-    console.log('Attempting to get cached articles...')
-    const cached = await env.NEWS_STORAGE.get(CACHE_KEYS.ALL_ARTICLES, { type: 'json' })
-    
-    if (cached && Array.isArray(cached)) {
-      console.log(`Retrieved ${cached.length} articles from cache`)
-      return cached
-    } else if (cached) {
-      console.log('Cached data exists but is not an array:', typeof cached)
-      return []
-    } else {
-      console.log('No valid cached articles found')
-      return []
-    }
-  } catch (error) {
-    console.error('Error retrieving cached articles:', error)
-    return []
-  }
-}
-
-async function setCachedArticles(env, articles) {
-  try {
-    // Sort by date (newest first) and limit to MAX_ARTICLES
-    const sortedArticles = articles
-      .sort((a, b) => new Date(b.pubDate) - new Date(a.pubDate))
-      .slice(0, CACHE_CONFIG.MAX_ARTICLES)
-
-    await env.NEWS_STORAGE.put(
-      CACHE_KEYS.ALL_ARTICLES, 
-      JSON.stringify(sortedArticles),
-      { expirationTtl: CACHE_CONFIG.ARTICLES_TTL }
-    )
-
-    // Update metadata
-    await env.NEWS_STORAGE.put(
-      CACHE_KEYS.LAST_REFRESH, 
-      new Date().toISOString(),
-      { expirationTtl: CACHE_CONFIG.ARTICLES_TTL }
-    )
-
-    await env.NEWS_STORAGE.put(
-      CACHE_KEYS.ARTICLE_COUNT, 
-      sortedArticles.length.toString(),
-      { expirationTtl: CACHE_CONFIG.ARTICLES_TTL }
-    )
-
-    console.log(`Cached ${sortedArticles.length} articles`)
-    return sortedArticles
-  } catch (error) {
-    console.error('Error caching articles:', error)
-    return articles
-  }
-}
-
-// Function to extract relevant keywords from article content
-function extractRelevantKeywords(item, category, source) {
-  const title = cleanText(item.title?.text || item.title || '')
-  const description = cleanHtml(
-    item.description?.text || 
-    item.description || 
-    item.summary?.text || 
-    item.summary || 
-    item['content:encoded'] ||
-    ''
-  )
-  
-  const fullText = `${title} ${description}`.toLowerCase()
-  const keywords = new Set()
-  
-  // Get category-specific keywords
-  const categoryKeywords = CATEGORY_KEYWORDS[category] || []
-  
-  // Find matching keywords in the text
-  categoryKeywords.forEach(keyword => {
-    if (fullText.includes(keyword.toLowerCase())) {
-      keywords.add(keyword)
-    }
-  })
-  
-  // Add priority keywords if found
-  PRIORITY_KEYWORDS.forEach(keyword => {
-    if (fullText.includes(keyword.toLowerCase())) {
-      keywords.add(keyword)
-    }
-  })
-  
-  // Convert to array and limit to top 5 most relevant
-  const keywordArray = Array.from(keywords)
-  
-  // Sort by relevance (longer keywords first, then priority keywords)
-  return keywordArray
-    .sort((a, b) => {
-      const aPriority = PRIORITY_KEYWORDS.includes(a.toLowerCase())
-      const bPriority = PRIORITY_KEYWORDS.includes(b.toLowerCase())
+      const duration = Date.now() - startTime
+      // Autonomous refresh completed successfully
       
-      if (aPriority !== bPriority) {
-        return bPriority - aPriority // Priority keywords first
-      }
-      
-      return b.length - a.length // Longer keywords first
-    })
-    .slice(0, 5) // Limit to 5 keywords
-}
-
-// Helper function to process article items with enhanced text cleaning
-function processArticleItem(item, source) {
-  try {
-    // Extract and clean title with enhanced decoding
-    const rawTitle = item.title?.text || item.title || ''
-    const title = cleanText(rawTitle)
-    if (!title || title.length < 10) return null
-
-    // Extract and clean description with enhanced decoding
-    const rawDescription = item.description?.text || 
-                          item.description || 
-                          item.summary?.text || 
-                          item.summary || 
-                          item['content:encoded'] ||
-                          ''
-    const description = cleanHtml(rawDescription)
-
-    const link = item.link?.text || item.link || item.id || item.guid?.text || item.guid || '#'
-    if (link === '#') return null
-
-    const content = `${title} ${description}`.toLowerCase()
-    const extractedImage = extractImageFromContent(item, link)
-    const detectedCategory = detectCategory(content) || source.category
-    const isPriority = PRIORITY_KEYWORDS.some(keyword => 
-      content.includes(keyword.toLowerCase())
-    )
-    const relevanceScore = calculateRelevanceScore(content, title)
-    
-    // Extract keywords for this article
-    const keywords = extractRelevantKeywords(item, detectedCategory, source)
-
-    // Parse date with fallback
-    let pubDate
-    try {
-      const dateStr = item.pubDate || item.published || item.updated || item.date
-      pubDate = dateStr ? new Date(dateStr).toISOString() : new Date().toISOString()
-    } catch {
-      pubDate = new Date().toISOString()
-    }
-
-    return {
-      title,
-      description,
-      link,
-      pubDate,
-      source: source.name,
-      category: detectedCategory,
-      priority: isPriority,
-      relevanceScore,
-      keywords, // Add keywords to the returned object
-      guid: item.guid?.text || item.guid || item.id || `${source.name}-${Date.now()}-${Math.random()}`,
-      imageUrl: extractedImage,
-      optimizedImageUrl: extractedImage ? `/api/image-proxy?url=${encodeURIComponent(extractedImage)}` : null,
-      wordCount: (title + ' ' + description).split(' ').length,
-      processed: new Date().toISOString()
-    }
-  } catch (error) {
-    console.error('Error processing article item:', error)
-    return null
-  }
-}
-
-// Function to remove duplicate articles
-function removeDuplicateArticles(articles) {
-  const seen = new Set()
-  const unique = []
-
-  for (const article of articles) {
-    // Create a normalized title for comparison
-    const normalizedTitle = article.title
-      .toLowerCase()
-      .replace(/[^\w\s]/g, '')
-      .replace(/\s+/g, ' ')
-      .trim()
-
-    if (!seen.has(normalizedTitle)) {
-      seen.add(normalizedTitle)
-      unique.push(article)
-    }
-  }
-
-  return unique
-}
-
-// Analytics tracking functions
-async function trackArticleView(request, env) {
-  try {
-    const url = new URL(request.url)
-    const articleId = url.searchParams.get('id')
-    const source = url.searchParams.get('source')
-    const category = url.searchParams.get('category')
-    
-    // Get user context
-    const country = request.cf?.country || 'Unknown'
-    const userAgent = request.headers.get('user-agent') || ''
-    const referer = request.headers.get('referer') || ''
-    
-    // Write analytics data point
-    env.NEWS_ANALYTICS.writeDataPoint({
-      blobs: [
-        'article_view',           // Event type
-        source || 'unknown',      // News source
-        category || 'general',    // Article category
-        country,                  // User country
-        extractDevice(userAgent), // Device type
-        referer                   // Referrer
-      ],
-      doubles: [
-        1,                        // View count
-        Date.now()               // Timestamp for additional time tracking
-      ],
-      indexes: [articleId || 'unknown'] // Article ID for sampling
-    })
-    
-    console.log(`Tracked article view: ${articleId} from ${source}`)
-  } catch (error) {
-    console.error('Error tracking article view:', error)
-  }
-}
-
-// Track search queries
-async function trackSearch(request, env) {
-  try {
-    const url = new URL(request.url)
-    const query = url.searchParams.get('q') || ''
-    const category = url.searchParams.get('category') || 'all'
-    const source = url.searchParams.get('source') || 'all'
-    
-    const country = request.cf?.country || 'Unknown'
-    const userAgent = request.headers.get('user-agent') || ''
-    
-    env.SEARCH_ANALYTICS.writeDataPoint({
-      blobs: [
-        'search_query',
-        query.toLowerCase(),      // Search term
-        category,                 // Filtered category
-        source,                   // Filtered source
-        country,
-        extractDevice(userAgent)
-      ],
-      doubles: [
-        1,                        // Search count
-        query.length             // Query length
-      ],
-      indexes: [generateSearchId()] // Unique search session
-    })
-    
-    console.log(`Tracked search: "${query}" in ${category}`)
-  } catch (error) {
-    console.error('Error tracking search:', error)
-  }
-}
-
-// Track category clicks
-async function trackCategoryClick(request, env) {
-  try {
-    const url = new URL(request.url)
-    const category = url.pathname.split('/').pop()
-    const source = url.searchParams.get('source')
-    
-    const country = request.cf?.country || 'Unknown'
-    const userAgent = request.headers.get('user-agent') || ''
-    
-    env.CATEGORY_ANALYTICS.writeDataPoint({
-      blobs: [
-        'category_click',
-        category,
-        source || 'all',
-        country,
-        extractDevice(userAgent)
-      ],
-      doubles: [
-        1                         // Click count
-      ],
-      indexes: [category]         // Category as sampling key
-    })
-    
-    console.log(`Tracked category click: ${category}`)
-  } catch (error) {
-    console.error('Error tracking category click:', error)
-  }
-}
-
-// Helper functions for analytics
-function extractDevice(userAgent) {
-  if (/Mobile|Android|iPhone/i.test(userAgent)) return 'mobile'
-  if (/Tablet|iPad/i.test(userAgent)) return 'tablet'
-  return 'desktop'
-}
-
-function generateSearchId() {
-  return Math.random().toString(36).substring(2, 15)
-}
-
-// Analytics API handler
-async function handleAnalyticsApi(request, env) {
-  const url = new URL(request.url)
-  const path = url.pathname.replace('/api/analytics/', '')
-  
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  }
-  
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
-  
-  try {
-    console.log(`Analytics API call: ${path}`)
-    
-    switch (path) {
-      case 'article-view':
-        await trackArticleView(request, env)
-        return new Response(JSON.stringify({ success: true, tracked: 'article_view' }), { 
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-      case 'search':
-        await trackSearch(request, env)
-        return new Response(JSON.stringify({ success: true, tracked: 'search_query' }), { 
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-      default:
-        if (path.startsWith('category/')) {
-          await trackCategoryClick(request, env)
-          return new Response(JSON.stringify({ success: true, tracked: 'category_click' }), { 
-            status: 200,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          })
-        }
-        return new Response(JSON.stringify({ error: 'Analytics endpoint not found' }), { 
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        })
-    }
-  } catch (error) {
-    console.error('Analytics API error:', error)
-    return new Response(JSON.stringify({ 
-      error: 'Analytics tracking failed', 
-      message: error.message 
-    }), { 
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
-}
-
-// Updated API handlers
-async function handleApiRequest(request, env, ctx) {
-  const url = new URL(request.url)
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'Access-Control-Max-Age': '86400'
-  }
-
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders })
-  }
-
-  try {
-    console.log(`API Request: ${request.method} ${url.pathname}`)
-
-    // Handle analytics endpoints
-    if (url.pathname.startsWith('/api/analytics/')) {
-      return await handleAnalyticsApi(request, env)
-    }
-
-    if (url.pathname === '/api/health') {
-      const lastRefresh = await env.NEWS_STORAGE.get(CACHE_KEYS.LAST_REFRESH)
-      const articleCount = await env.NEWS_STORAGE.get(CACHE_KEYS.ARTICLE_COUNT)
-      const lastScheduledRun = await env.NEWS_STORAGE.get(CACHE_KEYS.LAST_SCHEDULED_RUN)
-      
-      return new Response(JSON.stringify({
-        status: 'ok',
+      return { 
+        success: true, 
+        articlesCount: freshArticles.length,
+        duration: duration,
         timestamp: new Date().toISOString(),
-        lastRefresh: lastRefresh || 'Never',
-        lastScheduledRun: lastScheduledRun || 'Never',
-        cachedArticles: parseInt(articleCount) || 0,
-        sources: RSS_SOURCES.filter(s => s.enabled).length,
-        maxArticles: CACHE_CONFIG.MAX_ARTICLES,
-        refreshInterval: `${CACHE_CONFIG.SCHEDULED_REFRESH_INTERVAL / 60} minutes`,
-        message: 'Harare Metro API is healthy!'
-      }), {
-        headers: { 
-          ...corsHeaders, 
-          'Content-Type': 'application/json',
-          ...CACHE_CONFIG.CACHE_HEADERS
+        autonomous: true
+      }
+    } else {
+      // No articles fetched during refresh
+      return { 
+        success: false, 
+        reason: 'No articles fetched',
+        articlesCount: 0 
+      }
+    }
+    
+  } catch (error) {
+    const duration = Date.now() - startTime
+    // Autonomous refresh failed
+    return { 
+      success: false, 
+      reason: error.message,
+      autonomous: true,
+      duration: duration
+    }
+  } finally {
+    // Always release lock
+    try {
+      const { cacheService } = initializeServices(env)
+      await cacheService.releaseRefreshLock()
+      // Refresh lock released
+    } catch {
+      // Failed to release lock
+    }
+  }
+}
+
+// Initial data loading function - AUTONOMOUS
+async function _ensureInitialData(env) {
+  try {
+    // Checking if initial data load is needed
+    
+    const { cacheService, rssService } = initializeServices(env)
+    
+    // Check if we have any cached articles
+    const existingArticles = await cacheService.getCachedArticles()
+    
+    if (existingArticles && existingArticles.length > 0) {
+      // Found cached articles, no initial load needed
+      return { success: true, reason: 'Data already available', articlesCount: existingArticles.length }
+    }
+    
+    // No cached data found, performing initial load
+    
+    // Try to acquire lock for initial load
+    const lockAcquired = await cacheService.acquireRefreshLock()
+    if (!lockAcquired) {
+      // Another process is loading data, waiting...
+      return { success: true, reason: 'Another process loading', skipped: true }
+    }
+    
+    try {
+      // Perform initial RSS fetch
+      const articles = await rssService.fetchAllFeedsBackground(
+        CACHE_CONFIG.ITEMS_PER_SOURCE,
+        CACHE_CONFIG.MAX_ARTICLES
+      )
+      
+      if (articles && articles.length > 0) {
+        await cacheService.setCachedArticles(articles)
+        await cacheService.setLastScheduledRun()
+        
+        // Initial load completed
+        return { 
+          success: true, 
+          articlesCount: articles.length,
+          initialLoad: true 
         }
-      })
-    }
-
-    if (url.pathname === '/api/feeds') {
-      return await handleFeedsRequest(request, env, corsHeaders, ctx)
-    }
-
-    // Admin refresh endpoint (for future admin panel)
-    if (url.pathname === '/api/admin/refresh') {
-      return await handleAdminRefreshRequest(request, env, corsHeaders)
-    }
-
-    return new Response(JSON.stringify({
-      error: 'API endpoint not found',
-      available_endpoints: ['/api/health', '/api/feeds', '/api/analytics/*'],
-      method: request.method,
-      path: url.pathname
-    }), { 
-      status: 404,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-
-  } catch (error) {
-    console.error('API request error:', error)
-    console.error('Error stack:', error.stack)
-    
-    return new Response(JSON.stringify({ 
-      error: 'Internal server error',
-      message: error.message,
-      timestamp: new Date().toISOString()
-    }), { 
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
-}
-
-async function handleFeedsRequest(request, env, corsHeaders, ctx) {
-  try {
-    console.log('Handling feeds request...')
-    
-    const url = new URL(request.url)
-    const limit = Math.min(parseInt(url.searchParams.get('limit')) || 100, 1000)
-    const category = url.searchParams.get('category')
-    const search = url.searchParams.get('search')
-    
-    console.log(`Request params: limit=${limit}, category=${category}, search=${search}`)
-    
-    // Try scheduled refresh in background if needed (non-blocking)
-    ctx.waitUntil(runScheduledRefresh(env))
-    
-    // Always serve from cache for fast response
-    let allFeeds = await getCachedArticles(env)
-    console.log(`Retrieved ${allFeeds.length} articles from cache`)
-    
-    // If no cache exists, initialize with fresh data (only on first run)
-    if (!allFeeds || allFeeds.length === 0) {
-      console.log('No cached articles found, initializing cache')
-      try {
-        allFeeds = await fetchAllFeedsBackground(env)
-        console.log(`Initialized with ${allFeeds.length} fresh articles`)
-      } catch (initError) {
-        console.error('Failed to initialize cache:', initError)
-        // Return empty array rather than undefined
-        allFeeds = []
+      } else {
+        // No articles loaded during initial fetch
+        return { success: false, reason: 'No articles fetched' }
       }
+      
+    } finally {
+      await cacheService.releaseRefreshLock()
     }
-
-    // Ensure allFeeds is always an array
-    if (!Array.isArray(allFeeds)) {
-      console.error('allFeeds is not an array:', typeof allFeeds, allFeeds)
-      allFeeds = []
-    }
-
-    // Filter articles
-    let filteredFeeds = allFeeds
-
-    if (category && category !== 'all') {
-      filteredFeeds = filteredFeeds.filter(feed => 
-        feed && feed.category === category
-      )
-      console.log(`Filtered to ${filteredFeeds.length} articles for category: ${category}`)
-    }
-
-    if (search) {
-      const searchLower = search.toLowerCase()
-      filteredFeeds = filteredFeeds.filter(feed =>
-        feed && (
-          (feed.title && feed.title.toLowerCase().includes(searchLower)) ||
-          (feed.description && feed.description.toLowerCase().includes(searchLower)) ||
-          (feed.source && feed.source.toLowerCase().includes(searchLower))
-        )
-      )
-      console.log(`Filtered to ${filteredFeeds.length} articles for search: ${search}`)
-    }
-
-    // Sort by priority and date
-    const sortedFeeds = filteredFeeds
-      .filter(feed => feed && feed.title) // Ensure valid articles
-      .sort((a, b) => {
-        if (a.priority !== b.priority) return b.priority - a.priority
-        if (a.relevanceScore !== b.relevanceScore) return b.relevanceScore - a.relevanceScore
-        return new Date(b.pubDate) - new Date(a.pubDate)
-      })
-      .slice(0, limit)
-
-    // Always return a consistent response structure
-    const response = {
-      success: true,
-      articles: sortedFeeds, // Ensure this is always an array
-      meta: {
-        total: filteredFeeds.length,
-        returned: sortedFeeds.length,
-        cached: true,
-        lastRefresh: await env.NEWS_STORAGE.get(CACHE_KEYS.LAST_REFRESH) || new Date().toISOString(),
-        nextScheduledRefresh: await getNextScheduledRefresh(env),
-        categories: [...new Set(allFeeds.filter(f => f && f.category).map(f => f.category))].sort(),
-        sources: [...new Set(allFeeds.filter(f => f && f.source).map(f => f.source))].sort()
-      }
-    }
-
-    console.log(`Returning ${sortedFeeds.length} articles with structure:`, {
-      success: response.success,
-      articlesCount: response.articles.length,
-      articlesType: Array.isArray(response.articles) ? 'array' : typeof response.articles
-    })
-
-    return new Response(JSON.stringify(response), {
-      headers: { 
-        ...corsHeaders, 
-        'Content-Type': 'application/json',
-        ...CACHE_CONFIG.CACHE_HEADERS
-      }
-    })
-
-  } catch (error) {
-    console.error('Feeds request error:', error)
-    console.error('Error stack:', error.stack)
     
-    // Return a consistent error structure
-    return new Response(JSON.stringify({ 
-      success: false,
-      error: 'Failed to fetch feeds',
-      message: error.message,
-      articles: [], // Always provide an empty array
-      meta: {
-        total: 0,
-        returned: 0,
-        cached: false,
-        lastRefresh: null,
-        nextScheduledRefresh: null,
-        categories: [],
-        sources: []
-      },
-      timestamp: new Date().toISOString()
-    }), { 
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
-  }
-}
-
-// Admin-only refresh endpoint (for future admin panel)
-async function handleAdminRefreshRequest(request, env, corsHeaders) {
-  try {
-    // TODO: Add admin authentication when admin panel is implemented
-    // For now, this endpoint is disabled
-    return new Response(JSON.stringify({ 
-      error: 'Admin functionality not yet implemented',
-      message: 'This endpoint will be available in the admin panel release'
-    }), { 
-      status: 501,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
   } catch (error) {
-    console.error('Admin refresh request error:', error)
-    return new Response(JSON.stringify({ 
-      error: 'Failed to process admin request',
-      message: error.message 
-    }), { 
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    })
+    // Initial data load failed
+    return { success: false, reason: error.message }
   }
 }
 
-// Helper function to calculate next scheduled refresh time
-async function getNextScheduledRefresh(env) {
-  try {
-    const lastScheduledRun = await env.NEWS_STORAGE.get(CACHE_KEYS.LAST_SCHEDULED_RUN)
-    if (!lastScheduledRun) return 'Soon'
-
-    const lastRunTime = new Date(lastScheduledRun)
-    const nextRunTime = new Date(lastRunTime.getTime() + (CACHE_CONFIG.SCHEDULED_REFRESH_INTERVAL * 1000))
-    
-    return nextRunTime.toISOString()
-  } catch (error) {
-    console.error('Error calculating next refresh time:', error)
-    return 'Unknown'
+// MISSING: Validate environment function with CORRECT binding names
+function _validateEnvironment(env) {
+  const issues = []
+  const warnings = []
+  
+  // Critical bindings - FIXED names
+  if (!env.NEWS_STORAGE) issues.push('NEWS_STORAGE KV binding missing')
+  if (!env.CONFIG_STORAGE) issues.push('CONFIG_STORAGE KV binding missing')
+  if (!env.CONTENT_CACHE) issues.push('CONTENT_CACHE KV binding missing')
+  
+  // Optional but recommended - FIXED name
+  if (!env.USER_STORAGE) warnings.push('USER_STORAGE binding missing (user features disabled)')
+  if (!env.CATEGORY_CLICKS) warnings.push('CATEGORY_CLICKS Analytics binding missing')
+  if (!env.NEWS_INTERACTIONS) warnings.push('NEWS_INTERACTIONS Analytics binding missing')
+  if (!env.SEARCH_QUERIES) warnings.push('SEARCH_QUERIES Analytics binding missing')
+  
+  // Image service
+  if (!env.CLOUDFLARE_ACCOUNT_ID) warnings.push('CLOUDFLARE_ACCOUNT_ID missing (image optimization disabled)')
+  if (!env.CLOUDFLARE_API_TOKEN) warnings.push('CLOUDFLARE_API_TOKEN missing (image optimization disabled)')
+  
+  return {
+    valid: issues.length === 0,
+    issues,
+    warnings,
+    bindingsOk: issues.length === 0,
+    allFeaturesAvailable: issues.length === 0 && warnings.length === 0
   }
 }
 
-// Basic HTML fallback function
+// Basic HTML fallback with embedded React app
 function getBasicHTML() {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Harare Metro - Zimbabwe News</title>
+    <title>Mukoko - Modern News Aggregator</title>
+    <link rel="icon" href="/favicon.png" type="image/png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; }
-        .error { color: #dc2626; background: #fef2f2; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        }
+        
+        body { 
+            font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: #000000;
+            min-height: 100vh;
+            color: #ffffff;
+            font-weight: 400;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            padding: 60px 24px; 
+            text-align: center;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .logo-container {
+            margin-bottom: 48px;
+        }
+        
+        .logo {
+            display: inline-block;
+            padding: 24px;
+            border: 2px solid #ffffff;
+            margin-bottom: 24px;
+        }
+        
+        .logo-inner {
+            border: 1px solid #ffffff;
+            padding: 20px 32px;
+        }
+        
+        .logo-mk {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            font-size: 3rem;
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 8px;
+            line-height: 1;
+            letter-spacing: -0.02em;
+        }
+        
+        .logo-text {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            font-size: 0.9rem;
+            color: #a3a3a3;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        
+        .tagline {
+            color: #a3a3a3;
+            font-size: 1.1rem;
+            font-weight: 300;
+            margin-bottom: 48px;
+        }
+        
+        .loading {
+            background: #0f0f0f;
+            border: 1px solid #262626;
+            border-radius: 12px;
+            padding: 40px 32px;
+            margin-bottom: 48px;
+        }
+        
+        .spinner {
+            width: 32px;
+            height: 32px;
+            border: 2px solid #404040;
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 24px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading h3 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            color: #ffffff;
+            margin-bottom: 12px;
+        }
+        
+        .loading p {
+            color: #a3a3a3;
+            font-weight: 300;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-top: 48px;
+        }
+        
+        .feature {
+            background: #0f0f0f;
+            border: 1px solid #262626;
+            padding: 32px 24px;
+            border-radius: 12px;
+            transition: all 0.2s ease;
+        }
+        
+        .feature:hover {
+            border-color: #404040;
+            background: #1a1a1a;
+        }
+        
+        .feature h3 {
+            color: #ffffff;
+            margin-bottom: 12px;
+            font-weight: 500;
+            font-size: 1.1rem;
+        }
+        
+        .feature p {
+            color: #a3a3a3;
+            font-weight: 300;
+            font-size: 0.95rem;
+        }
+        
+        @media (max-width: 768px) {
+            .container { 
+                padding: 40px 20px; 
+            }
+            .logo-mk { 
+                font-size: 2.5rem; 
+            }
+            .features {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+        }
+        
+        @media (prefers-color-scheme: light) {
+            body {
+                background: #ffffff;
+                color: #000000;
+            }
+            .logo, .logo-inner {
+                border-color: #000000;
+            }
+            .logo-mk {
+                color: #000000;
+            }
+            .tagline, .loading p, .feature p {
+                color: #666666;
+            }
+            .loading, .feature {
+                background: #fafafa;
+                border-color: #e5e5e5;
+            }
+            .feature:hover {
+                border-color: #d4d4d4;
+                background: #f5f5f5;
+            }
+            .loading h3, .feature h3 {
+                color: #000000;
+            }
+            .spinner {
+                border-color: #e5e5e5;
+                border-top-color: #000000;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🇿🇼 Harare Metro</h1>
-        <div class="error">
-            <h3>Application Loading...</h3>
-            <p>If this message persists, there may be an issue with the application.</p>
+        <div class="logo-container">
+            <div class="logo">
+                <div class="logo-inner">
+                    <div class="logo-mk">MK</div>
+                    <div class="logo-text">MUKOKO</div>
+                </div>
+            </div>
+            <p class="tagline">Modern news aggregation platform</p>
         </div>
-        <p>Zimbabwe's premier news aggregator - bringing you the latest from trusted local sources.</p>
+        
+        <div class="loading">
+            <div class="spinner"></div>
+            <h3>Loading Latest News...</h3>
+            <p>Aggregating news from trusted sources worldwide</p>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <h3>🌍 Global Sources</h3>
+                <p>Curated news from trusted publishers worldwide</p>
+            </div>
+            <div class="feature">
+                <h3>🔍 Smart Search</h3>
+                <p>AI-powered search to find exactly what matters</p>
+            </div>
+            <div class="feature">
+                <h3>📱 Mobile First</h3>
+                <p>Seamless experience across all your devices</p>
+            </div>
+        </div>
     </div>
+
     <div id="root"></div>
+    
+    <script>
+        // Auto-refresh after 5 seconds if still showing fallback
+        setTimeout(() => {
+            if (document.getElementById('root').innerHTML === '') {
+                window.location.reload();
+            }
+        }, 5000);
+    </script>
 </body>
 </html>`
+}
+
+// Export utility functions that the API file might need
+export {
+  CACHE_CONFIG,
+  initializeServices,
+  runScheduledRefresh
 }
 
 // Main Cloudflare Worker export
 export default {
   async fetch(request, env, ctx) {
-    const url = new URL(request.url)
-    
     try {
-      console.log(`Worker request: ${request.method} ${url.pathname}`)
-
-      // Handle image proxy
-      if (url.pathname.startsWith('/api/image-proxy')) {
-        return await handleImageProxy(request, env)
+      const url = new URL(request.url)
+      
+      // Handle CORS preflight requests
+      if (request.method === 'OPTIONS') {
+        return new Response(null, {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-ID',
+          }
+        })
       }
-
-      // Handle API routes
+      
+      // Handle API requests (delegates to api.js)
       if (url.pathname.startsWith('/api/')) {
         return await handleApiRequest(request, env, ctx)
       }
-
-      // Handle static assets
-      if (url.pathname.startsWith('/assets/') || url.pathname.includes('.')) {
+      
+      // Handle static files - SIMPLIFIED for Vite build structure
+      const isAssetRequest = (
+        url.pathname.startsWith('/assets/') ||     // Vite assets folder
+        url.pathname.endsWith('.js') || 
+        url.pathname.endsWith('.css') || 
+        url.pathname.endsWith('.ico') ||
+        url.pathname.endsWith('.png') ||
+        url.pathname.endsWith('.svg') ||
+        url.pathname.endsWith('.jpg') ||
+        url.pathname.endsWith('.jpeg') ||
+        url.pathname.endsWith('.webp') ||
+        url.pathname.endsWith('.woff') ||
+        url.pathname.endsWith('.woff2') ||
+        url.pathname.endsWith('.ttf') ||
+        url.pathname.endsWith('.map') ||          // Add source maps
+        url.pathname === '/favicon.ico' ||
+        url.pathname === '/vite.svg' ||
+        url.pathname === '/manifest.json'
+      )
+      
+      if (isAssetRequest) {
         try {
+          // Check if we have static content binding
+          if (!env.__STATIC_CONTENT) {
+            // For source maps, return 404 silently
+            if (url.pathname.endsWith('.map')) {
+              return new Response('Source map not available', { 
+                status: 404,
+                headers: { 'Content-Type': 'text/plain' }
+              })
+            }
+            
+            // Static content not available for: ${url.pathname}
+            
+            // For missing favicon, return a simple one
+            if (url.pathname === '/favicon.ico' || url.pathname === '/vite.svg') {
+              return new Response(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+                  <text y="24" font-size="24">🇿🇼</text>
+                </svg>
+              `, { 
+                status: 200,
+                headers: { 
+                  'Content-Type': 'image/svg+xml',
+                  'Cache-Control': 'public, max-age=86400'
+                }
+              })
+            }
+            
+            return new Response('Static content not configured', { 
+              status: 503,
+              headers: { 'Content-Type': 'text/plain' }
+            })
+          }
+
+          // Try to get the asset directly from KV
           const response = await getAssetFromKV({
             request,
             waitUntil: ctx.waitUntil.bind(ctx),
@@ -1624,15 +559,77 @@ export default {
           })
           
           const newResponse = new Response(response.body, response)
-          newResponse.headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+          
+          // Set appropriate cache headers based on file type
+          if (url.pathname.startsWith('/assets/')) {
+            // Vite assets are hashed and immutable
+            newResponse.headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+          } else if (url.pathname.endsWith('.css') || url.pathname.endsWith('.js')) {
+            newResponse.headers.set('Cache-Control', 'public, max-age=31536000, immutable')
+          } else if (url.pathname.endsWith('.map')) {
+            // Source maps - shorter cache
+            newResponse.headers.set('Cache-Control', 'public, max-age=3600')
+          } else {
+            newResponse.headers.set('Cache-Control', 'public, max-age=86400')
+          }
+          
           return newResponse
-        } catch (e) {
-          console.log('Asset not found:', url.pathname)
+          
+        } catch {
+          // Handle source maps silently
+          if (url.pathname.endsWith('.map')) {
+            return new Response('Source map not found', { 
+              status: 404,
+              headers: { 'Content-Type': 'text/plain' }
+            })
+          }
+          
+          // Only log actual missing assets, not common ones
+          if (!url.pathname.includes('favicon') && 
+              !url.pathname.includes('vite.svg') && 
+              !url.pathname.includes('manifest.json') &&
+              !url.pathname.endsWith('.map')) {
+            // Asset not found: ${url.pathname}
+          }
+          
+          // For missing favicon/vite.svg, return a simple SVG
+          if (url.pathname === '/favicon.ico' || url.pathname === '/vite.svg') {
+            return new Response(`
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+                <circle cx="16" cy="16" r="14" fill="#2563eb"/>
+                <text x="16" y="22" font-size="16" text-anchor="middle" fill="white">🇿🇼</text>
+              </svg>
+            `, { 
+              status: 200,
+              headers: { 
+                'Content-Type': 'image/svg+xml',
+                'Cache-Control': 'public, max-age=86400'
+              }
+            })
+          }
+          
+          // Return proper 404 for other missing assets
+          return new Response('Asset not found', { 
+            status: 404,
+            headers: { 'Content-Type': 'text/plain' }
+          })
         }
       }
 
-      // Serve React app
+      // Serve React app (SPA fallback) for all other routes
       try {
+        // Check if we have static content
+        if (!env.__STATIC_CONTENT) {
+          // Static content not available, serving enhanced fallback HTML
+          return new Response(getBasicHTML(), {
+            headers: { 
+              'Content-Type': 'text/html;charset=UTF-8',
+              'Cache-Control': 'public, max-age=300'
+            }
+          })
+        }
+
+        // Always serve index.html for SPA routes
         const response = await getAssetFromKV({
           request: new Request(new URL('/index.html', request.url)),
           waitUntil: ctx.waitUntil.bind(ctx),
@@ -1643,9 +640,11 @@ export default {
         
         const newResponse = new Response(response.body, response)
         newResponse.headers.set('Cache-Control', 'public, max-age=3600')
+        newResponse.headers.set('Content-Type', 'text/html;charset=UTF-8')
         return newResponse
-      } catch (e) {
-        console.log('Serving fallback HTML')
+        
+      } catch {
+        // index.html not found, serving enhanced fallback HTML
         return new Response(getBasicHTML(), {
           headers: { 
             'Content-Type': 'text/html;charset=UTF-8',
@@ -1654,34 +653,29 @@ export default {
         })
       }
 
-    } catch (error) {
-      console.error('Worker error:', error)
-      console.error('Error stack:', error.stack)
-      
-      return new Response(JSON.stringify({
-        error: 'Internal Server Error',
-        message: error.message,
-        timestamp: new Date().toISOString()
-      }), { 
-        status: 500,
-        headers: { 
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Cache-Control': 'no-cache' 
-        }
-      })
+    } catch {
+      // Worker error occurred
+      return new Response('Internal Server Error', { status: 500 })
     }
   },
 
   // Scheduled event handler for Cloudflare Cron Triggers
-  async scheduled(controller, env, ctx) {
-    console.log('Scheduled event triggered:', new Date().toISOString())
+  async scheduled(controller, env, _ctx) {
+    // Cron trigger executed
     
     try {
       const result = await runScheduledRefresh(env)
-      console.log('Scheduled refresh result:', result)
+      
+      if (result.success) {
+        // Scheduled refresh successful: articles in duration
+      } else {
+        // Scheduled refresh skipped: reason
+      }
+      
+      return result
     } catch (error) {
-      console.error('Scheduled refresh error:', error)
+      // Scheduled event handler failed
+      return { success: false, error: error.message }
     }
   }
 }

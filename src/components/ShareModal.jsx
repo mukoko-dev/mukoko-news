@@ -1,3 +1,4 @@
+// Fixed ShareModal.jsx - Add missing React import
 import React, { useState, useEffect } from 'react'
 import {
   XMarkIcon,
@@ -53,7 +54,7 @@ const ShareModal = ({ article, isOpen, onClose, currentColors }) => {
       name: 'Facebook',
       icon: '📘',
       color: 'bg-blue-600 hover:bg-blue-700',
-      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}&quote=${encodeURIComponent(article?.title)}`
+      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`
     },
     {
       name: 'LinkedIn',
@@ -66,130 +67,94 @@ const ShareModal = ({ article, isOpen, onClose, currentColors }) => {
       icon: '✈️',
       color: 'bg-blue-400 hover:bg-blue-500',
       url: `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(article?.title)}`
-    },
-    {
-      name: 'Reddit',
-      icon: '🔸',
-      color: 'bg-orange-500 hover:bg-orange-600',
-      url: `https://reddit.com/submit?url=${encodeURIComponent(shareUrl)}&title=${encodeURIComponent(article?.title)}`
     }
   ]
 
   if (!isOpen || !article) return null
 
-  const handleShare = (url) => {
-    window.open(url, '_blank', 'width=600,height=400')
-  }
-
-  const handleNativeShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: article.title,
-          text: article.description,
-          url: shareUrl
-        })
-      } catch (err) {
-        console.log('Native share failed, using fallback')
-      }
-    }
-  }
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black bg-opacity-50 backdrop-blur-sm">
-      <div className={`${currentColors.cardBg} rounded-t-3xl w-full max-w-md mx-4 mb-0 transform transition-transform duration-300`}>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className={`${currentColors.cardBg} rounded-2xl shadow-2xl max-w-md w-full max-h-[80vh] overflow-hidden`}>
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-          <h3 className={`text-lg font-semibold ${currentColors.text}`}>Share Article</h3>
+        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center space-x-3">
+            <ShareIcon className={`h-6 w-6 ${currentColors.text}`} />
+            <h3 className={`text-lg font-semibold ${currentColors.text}`}>
+              Share Article
+            </h3>
+          </div>
           <button
             onClick={onClose}
-            className={`p-2 rounded-full transition-colors ${currentColors.categoryButton}`}
+            className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
-            <XMarkIcon className="h-5 w-5" />
+            <XMarkIcon className={`h-5 w-5 ${currentColors.textMuted}`} />
           </button>
         </div>
 
-        {/* Article Preview */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <div className="flex space-x-3">
-            {article.optimizedImageUrl && (
-              <img
-                src={article.optimizedImageUrl}
-                alt={article.title}
-                className="w-16 h-16 rounded-lg object-cover flex-shrink-0"
-              />
-            )}
-            <div className="flex-1 min-w-0">
-              <h4 className={`text-sm font-medium ${currentColors.text} line-clamp-2 mb-1`}>
-                {article.title}
-              </h4>
-              <p className={`text-xs ${currentColors.textMuted}`}>
-                {article.source} • {new Date(article.pubDate).toLocaleDateString()}
-              </p>
-            </div>
+        {/* Content */}
+        <div className="p-6 space-y-6">
+          {/* Article Preview */}
+          <div className={`p-4 rounded-lg ${currentColors.statsBg}`}>
+            <h4 className={`font-medium ${currentColors.text} mb-2 line-clamp-2`}>
+              {article.title}
+            </h4>
+            <p className={`text-sm ${currentColors.textMuted}`}>
+              {article.source} • {new Date(article.pubDate).toLocaleDateString()}
+            </p>
           </div>
-        </div>
 
-        {/* Copy Link */}
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <button
-            onClick={copyToClipboard}
-            className={`w-full flex items-center justify-between p-3 rounded-xl transition-colors ${
-              copied ? 'bg-green-100 dark:bg-green-900/30' : currentColors.categoryButton
-            }`}
-          >
-            <div className="flex items-center space-x-3">
-              {copied ? (
-                <CheckIcon className="h-5 w-5 text-green-600" />
-              ) : (
-                <LinkIcon className="h-5 w-5" />
-              )}
-              <span className={`font-medium ${copied ? 'text-green-600' : currentColors.text}`}>
-                {copied ? 'Link Copied!' : 'Copy Link'}
-              </span>
+          {/* Copy Link */}
+          <div>
+            <label className={`block text-sm font-medium ${currentColors.text} mb-2`}>
+              Copy Link
+            </label>
+            <div className="flex">
+              <input
+                type="text"
+                value={shareUrl}
+                readOnly
+                className={`flex-1 px-3 py-2 border rounded-l-lg ${currentColors.border} ${currentColors.inputBg} ${currentColors.text} text-sm`}
+              />
+              <button
+                onClick={copyToClipboard}
+                className={`px-4 py-2 rounded-r-lg transition-all ${
+                  copied 
+                    ? 'bg-green-500 text-white' 
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                {copied ? (
+                  <CheckIcon className="h-4 w-4" />
+                ) : (
+                  <LinkIcon className="h-4 w-4" />
+                )}
+              </button>
             </div>
             {copied && (
-              <span className="text-xs text-green-600">✓</span>
+              <p className="text-green-600 text-sm mt-1">Link copied to clipboard!</p>
             )}
-          </button>
-        </div>
-
-        {/* Native Share (if available) */}
-        {navigator.share && (
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <button
-              onClick={handleNativeShare}
-              className={`w-full flex items-center justify-center space-x-3 p-3 rounded-xl transition-colors ${currentColors.categoryButton}`}
-            >
-              <ShareIcon className="h-5 w-5" />
-              <span className={`font-medium ${currentColors.text}`}>
-                More Options
-              </span>
-            </button>
           </div>
-        )}
 
-        {/* Social Media Options */}
-        <div className="p-4">
-          <div className="grid grid-cols-3 gap-3">
-            {shareOptions.map((option) => (
-              <button
-                key={option.name}
-                onClick={() => handleShare(option.url)}
-                className={`flex flex-col items-center justify-center p-4 rounded-xl text-white transition-transform hover:scale-105 ${option.color}`}
-              >
-                <span className="text-2xl mb-2">{option.icon}</span>
-                <span className="text-xs font-medium">{option.name}</span>
-              </button>
-            ))}
+          {/* Share Options */}
+          <div>
+            <label className={`block text-sm font-medium ${currentColors.text} mb-3`}>
+              Share on Social Media
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              {shareOptions.map(option => (
+                <a
+                  key={option.name}
+                  href={option.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`flex items-center justify-center space-x-2 px-4 py-3 rounded-lg text-white font-medium transition-all hover:scale-105 ${option.color}`}
+                >
+                  <span className="text-lg">{option.icon}</span>
+                  <span className="text-sm">{option.name}</span>
+                </a>
+              ))}
+            </div>
           </div>
-        </div>
-
-        {/* Footer */}
-        <div className="p-4 pt-0">
-          <p className={`text-xs ${currentColors.textMuted} text-center`}>
-            Share news from Harare Metro - Zimbabwe's trusted news source
-          </p>
         </div>
       </div>
     </div>

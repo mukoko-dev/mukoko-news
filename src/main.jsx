@@ -2,20 +2,23 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './index.css'
+import { AuthProvider } from './contexts/AuthContext.jsx'
 
-console.log('main.jsx loaded')
+// Performance measurement
+const startTime = window.performance?.now() || 0
 
-// Ensure the root element exists before trying to render
-const rootElement = document.getElementById('root')
-
-if (rootElement) {
-  // Only create root once and render
-  const root = ReactDOM.createRoot(rootElement)
-  root.render(
-    <React.StrictMode>
+ReactDOM.createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <AuthProvider>
       <App />
-    </React.StrictMode>
-  )
-} else {
-  console.error('Root element not found. Make sure you have a div with id="root" in your HTML.')
-}
+    </AuthProvider>
+  </React.StrictMode>,
+)
+
+// Log page load time
+window.addEventListener('load', () => {
+  if (window.performance?.now) {
+    const _loadTime = window.performance.now() - startTime
+    // Page loaded successfully
+  }
+})

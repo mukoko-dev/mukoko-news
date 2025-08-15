@@ -1,276 +1,143 @@
-const CACHE_NAME = 'harare-metro-v1'
-const STATIC_CACHE = 'harare-metro-static-v1'
-const API_CACHE = 'harare-metro-api-v1'
-const IMAGE_CACHE = 'harare-metro-images-v1'
+// Service Worker for Harare Metro PWA
 
-// Assets to cache on install
-const STATIC_ASSETS = [
+const CACHE_NAME = 'harare-metro-v1.0.0'
+const API_CACHE_NAME = 'harare-metro-api-v1.0.0'
+
+// Check if we're in development mode
+const isDevelopment = location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === 'app.mukoko.com'
+
+// Files to cache for offline functionality (skip in development)
+const STATIC_CACHE_URLS = isDevelopment ? [] : [
   '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
   '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/icon-192x192.png',
+  '/icon-512x512.png',
 ]
 
-// API endpoints to cache
-const API_ENDPOINTS = [
-  '/api/feeds'
+// API endpoints to cache (always cache these)
+const API_CACHE_URLS = [
+  '/api/feeds',
+  '/api/health',
+  '/api/admin/refresh-status'
 ]
 
 // Install event - cache static assets
-self.addEventListener('install', event => {
-  console.log('🔧 Service Worker installing...')
+self.addEventListener('install', (event) => {
+  console.log('SW: Installing service worker')
+  
+  if (isDevelopment) {
+    console.log('SW: Development mode - skipping static cache')
+    self.skipWaiting()
+    return
+  }
   
   event.waitUntil(
-    Promise.all([
-      // Cache static assets
-      caches.open(STATIC_CACHE).then(cache => {
-        console.log('📦 Caching static assets')
-        return cache.addAll(STATIC_ASSETS)
-      }),
-      
-      // Skip waiting to activate immediately
-      self.skipWaiting()
-    ])
+    caches.open(CACHE_NAME).then((cache) => {
+      console.log('SW: Caching static assets')
+      return cache.addAll(STATIC_CACHE_URLS)
+    })
   )
 })
 
 // Activate event - clean up old caches
-self.addEventListener('activate', event => {
-  console.log('✅ Service Worker activating...')
+self.addEventListener('activate', (event) => {
+  console.log('SW: Activating service worker')
   
   event.waitUntil(
-    Promise.all([
-      // Clean up old caches
-      caches.keys().then(cacheNames => {
-        return Promise.all(
-          cacheNames.map(cacheName => {
-            if (cacheName !== STATIC_CACHE && 
-                cacheName !== API_CACHE && 
-                cacheName !== IMAGE_CACHE) {
-              console.log('🗑️ Deleting old cache:', cacheName)
-              return caches.delete(cacheName)
-            }
-          })
-        )
-      }),
-      
-      // Take control of all clients
-      self.clients.claim()
-    ])
-  )
-})
-
-// Fetch event - implement caching strategies
-self.addEventListener('fetch', event => {
-  const { request } = event
-  const url = new URL(request.url)
-
-  // Handle API requests
-  if (url.pathname.startsWith('/api/')) {
-    event.respondWith(handleApiRequest(request))
-    return
-  }
-
-  // Handle image requests
-  if (request.destination === 'image') {
-    event.respondWith(handleImageRequest(request))
-    return
-  }
-
-  // Handle navigation requests
-  if (request.mode === 'navigate') {
-    event.respondWith(handleNavigationRequest(request))
-    return
-  }
-
-  // Handle static assets
-  event.respondWith(handleStaticRequest(request))
-})
-
-// API Request Handler - Network First with Cache Fallback
-async function handleApiRequest(request) {
-  const cache = await caches.open(API_CACHE)
-  
-  try {
-    console.log('🌐 Fetching from network:', request.url)
-    
-    // Try network first
-    const networkResponse = await fetch(request, {
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
+    caches.keys().then((cacheNames) => {
+      return Promise.all(
+        cacheNames.map((cacheName) => {
+          if (cacheName !== CACHE_NAME && cacheName !== API_CACHE_NAME) {
+            console.log('SW: Deleting old cache:', cacheName)
+            return caches.delete(cacheName)
+          }
+        })
+      )
+    }).then(() => {
+      console.log('SW: Service worker activated')
+      return self.clients.claim()
     })
-    
-    if (networkResponse.ok) {
-      // Cache successful responses
-      const responseClone = networkResponse.clone()
-      await cache.put(request, responseClone)
-      console.log('💾 Cached API response:', request.url)
-      
-      return networkResponse
-    }
-    
-    throw new Error(`Network response not ok: ${networkResponse.status}`)
-    
-  } catch (error) {
-    console.log('📱 Network failed, trying cache:', request.url)
-    
-    // Try cache as fallback
-    const cachedResponse = await cache.match(request)
-    
-    if (cachedResponse) {
-      console.log('📦 Serving from cache:', request.url)
-      
-      // Add offline indicator header
-      const headers = new Headers(cachedResponse.headers)
-      headers.set('X-Served-From', 'cache')
-      
-      return new Response(cachedResponse.body, {
-        status: cachedResponse.status,
-        statusText: cachedResponse.statusText,
-        headers: headers
-      })
-    }
-    
-    // Return offline fallback
-    return new Response(
-      JSON.stringify({
-        error: 'Offline',
-        message: 'No cached data available. Please check your connection.',
-        articles: [],
-        offline: true
-      }),
-      {
-        status: 503,
-        headers: { 
-          'Content-Type': 'application/json',
-          'X-Served-From': 'offline-fallback'
-        }
-      }
-    )
-  }
-}
-
-// Image Request Handler - Cache First
-async function handleImageRequest(request) {
-  const cache = await caches.open(IMAGE_CACHE)
-  
-  // Try cache first
-  const cachedResponse = await cache.match(request)
-  if (cachedResponse) {
-    return cachedResponse
-  }
-  
-  try {
-    // Fetch from network
-    const networkResponse = await fetch(request)
-    
-    if (networkResponse.ok) {
-      // Cache the image
-      const responseClone = networkResponse.clone()
-      await cache.put(request, responseClone)
-    }
-    
-    return networkResponse
-  } catch (error) {
-    // Return placeholder image for offline
-    return new Response(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><rect width="400" height="300" fill="#f3f4f6"/><text x="200" y="150" text-anchor="middle" font-family="Arial" font-size="16" fill="#9ca3af">Image unavailable offline</text></svg>',
-      { headers: { 'Content-Type': 'image/svg+xml' } }
-    )
-  }
-}
-
-// Navigation Request Handler - App Shell
-async function handleNavigationRequest(request) {
-  const cache = await caches.open(STATIC_CACHE)
-  
-  try {
-    // Try network first for navigation
-    const networkResponse = await fetch(request)
-    return networkResponse
-  } catch (error) {
-    // Serve app shell from cache
-    const cachedResponse = await cache.match('/')
-    return cachedResponse || new Response('Offline', { status: 503 })
-  }
-}
-
-// Static Request Handler - Cache First
-async function handleStaticRequest(request) {
-  const cache = await caches.open(STATIC_CACHE)
-  
-  // Try cache first
-  const cachedResponse = await cache.match(request)
-  if (cachedResponse) {
-    return cachedResponse
-  }
-  
-  // Fetch from network and cache
-  try {
-    const networkResponse = await fetch(request)
-    
-    if (networkResponse.ok) {
-      const responseClone = networkResponse.clone()
-      await cache.put(request, responseClone)
-    }
-    
-    return networkResponse
-  } catch (error) {
-    return new Response('Resource not available offline', { status: 503 })
-  }
-}
-
-// Background sync for sending analytics/usage data
-self.addEventListener('sync', event => {
-  if (event.tag === 'analytics-sync') {
-    event.waitUntil(syncAnalytics())
-  }
-})
-
-async function syncAnalytics() {
-  // Sync any pending analytics data when back online
-  console.log('📊 Syncing analytics data...')
-}
-
-// Push notifications (for future use)
-self.addEventListener('push', event => {
-  if (!event.data) return
-  
-  const data = event.data.json()
-  
-  const options = {
-    body: data.body,
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/badge-72x72.png',
-    tag: 'news-update',
-    data: data.url,
-    actions: [
-      {
-        action: 'open',
-        title: 'Read Article'
-      },
-      {
-        action: 'close',
-        title: 'Dismiss'
-      }
-    ]
-  }
-  
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
   )
 })
 
-// Handle notification clicks
-self.addEventListener('notificationclick', event => {
-  event.notification.close()
+// Fetch event - implement caching strategy
+self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url)
   
-  if (event.action === 'open') {
+  // Skip service worker for development server requests
+  if (isDevelopment && (
+    url.pathname.includes('@react-refresh') ||
+    url.pathname.includes('@vite/client') ||
+    url.pathname.includes('src/main.jsx') ||
+    url.pathname.includes('node_modules') ||
+    url.searchParams.has('import') ||
+    url.searchParams.has('t') // Vite timestamp query
+  )) {
+    console.log('SW: Skipping dev request:', url.pathname)
+    return // Let the request go through normally
+  }
+  
+  // Handle API requests (always cache these)
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      caches.open(API_CACHE_NAME).then((cache) => {
+        return fetch(event.request)
+          .then((response) => {
+            // Only cache successful responses
+            if (response.status === 200) {
+              cache.put(event.request, response.clone())
+            }
+            return response
+          })
+          .catch(() => {
+            // Return cached version if network fails
+            return cache.match(event.request)
+          })
+      })
+    )
+    return
+  }
+  
+  // Skip all other caching in development
+  if (isDevelopment) {
+    return // Let request go through normally
+  }
+  
+  // Production caching strategy for static assets
+  event.respondWith(
+    caches.match(event.request).then((response) => {
+      if (response) {
+        return response
+      }
+      
+      return fetch(event.request).then((response) => {
+        // Don't cache non-successful responses
+        if (!response || response.status !== 200 || response.type !== 'basic') {
+          return response
+        }
+        
+        const responseToCache = response.clone()
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache)
+        })
+        
+        return response
+      })
+    })
+  )
+})
+
+// Message handler for cache management
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'CLEAR_CACHE') {
     event.waitUntil(
-      clients.openWindow(event.notification.data || '/')
+      caches.keys().then((cacheNames) => {
+        return Promise.all(
+          cacheNames.map((cacheName) => caches.delete(cacheName))
+        )
+      }).then(() => {
+        event.ports[0].postMessage({ success: true })
+      })
     )
   }
 })

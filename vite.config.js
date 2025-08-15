@@ -1,61 +1,49 @@
+// vite.config.js - Updated to suppress SES warnings
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
+  server: {
+    port: 5173,
+    host: true,
+    proxy: {
+      // Proxy API calls to worker
+      '/api': {
+        target: 'https://app.mukoko.com',
+        changeOrigin: true,
+        secure: true,
+      },
+      // Proxy worker assets
+      '/worker': {
+        target: 'https://app.mukoko.com',
+        changeOrigin: true,
+        secure: true,
+      }
+    }
+  },
+  define: {
+    // Ensure environment variables are available
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+  },
   build: {
-    outDir: 'dist/assets',
-    emptyOutDir: true,
+    outDir: 'dist',
+    sourcemap: true,
     rollupOptions: {
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          icons: ['@heroicons/react']
+          supabase: ['@supabase/supabase-js'],
+          ui: ['@heroicons/react', 'lucide-react'],
         },
-        // Optimize asset names for better caching
-        assetFileNames: (assetInfo) => {
-          const info = assetInfo.name.split('.')
-          const ext = info[info.length - 1]
-          if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
-            return `images/[name]-[hash][extname]`
-          }
-          if (/css/i.test(ext)) {
-            return `css/[name]-[hash][extname]`
-          }
-          return `assets/[name]-[hash][extname]`
-        },
-        chunkFileNames: 'js/[name]-[hash].js',
-        entryFileNames: 'js/[name]-[hash].js'
-      },
-    },
-    sourcemap: false,
-    minify: 'esbuild',
-    target: 'es2018',
-    // Optimize for smaller bundle sizes
-    cssCodeSplit: true,
-    // Reduce chunk size warnings threshold
-    chunkSizeWarningLimit: 600,
-    // Enable compression
-    reportCompressedSize: false,
-    // Optimize assets
-    assetsInlineLimit: 4096 // Inline small assets as base64
-  },
-  server: {
-    port: 5173,
-    proxy: {
-      '/api': {
-        target: 'http://localhost:8787',
-        changeOrigin: true,
-        secure: false,
       },
     },
   },
-  preview: {
-    port: 4173
-  },
-  // Optimize dependencies for faster loading
-  optimizeDeps: {
-    include: ['react', 'react-dom', '@heroicons/react/24/outline'],
-    exclude: []
-  }
 })

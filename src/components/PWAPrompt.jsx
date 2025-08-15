@@ -1,107 +1,68 @@
-import React from 'react'
-import { 
-  ArrowDownOnSquareIcon, 
-  XMarkIcon,
-  WifiIcon,
-  ExclamationTriangleIcon,
-  ArrowPathIcon
-} from '@heroicons/react/24/outline'
-import { usePWA } from '../hooks/usePWA'
+// PWA Prompt - TEMPORARILY DISABLED
 
-const PWAPrompt = ({ currentColors }) => {
-  // Hook is used inside this component
-  const { 
-    isInstallable, 
-    isOffline, 
-    updateAvailable, 
-    installApp, 
-    updateApp 
-  } = usePWA()
+/*
+import React, { useState } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { XMarkIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline'
 
-  // Don't show if nothing to display
-  if (!isInstallable && !isOffline && !updateAvailable) {
-    return null
+const PWAPrompt = ({ onInstall, currentColors }) => {
+  const [isVisible, setIsVisible] = useState(true)
+
+  if (!isVisible) return null
+
+  const handleInstall = async () => {
+    const success = await onInstall()
+    if (success) {
+      setIsVisible(false)
+    }
   }
 
   return (
-    <div className="fixed top-20 left-4 right-4 z-50 space-y-2">
-      {/* Install Prompt */}
-      {isInstallable && (
-        <div className={`${currentColors.cardBg} border ${currentColors.border} rounded-xl p-4 shadow-lg backdrop-blur-lg`}>
-          <div className="flex items-start gap-3">
-            <div className="flex-shrink-0">
-              <ArrowDownOnSquareIcon className="h-6 w-6 text-blue-500" />
+    <div className="fixed bottom-20 left-4 right-4 z-50 md:left-auto md:right-4 md:max-w-sm">
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center space-x-2">
+              <ArrowDownTrayIcon className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-md">Install Harare Metro</h3>
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className={`text-sm font-semibold ${currentColors.text} mb-1`}>
-                Install Harare Metro
-              </h3>
-              <p className={`text-xs ${currentColors.textMuted} mb-3`}>
-                Get the full app experience with offline reading, push notifications, and faster loading.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={installApp}
-                  className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-xs font-medium rounded-lg transition-colors"
-                >
-                  Install
-                </button>
-                <button
-                  onClick={() => {
-                    // Hide install prompt (you might want to track this in localStorage)
-                    localStorage.setItem('pwa-install-dismissed', 'true')
-                  }}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${currentColors.categoryButton}`}
-                >
-                  Maybe Later
-                </button>
-              </div>
-            </div>
+            <button
+              onClick={() => setIsVisible(false)}
+              className="btn-icon"
+              aria-label="Close"
+              data-slot="close-button"
+            >
+              <XMarkIcon className="h-4 w-4" />
+            </button>
           </div>
-        </div>
-      )}
-
-      {/* Offline Indicator */}
-      {isOffline && (
-        <div className={`${currentColors.cardBg} border border-orange-200 dark:border-orange-700 rounded-xl p-4 shadow-lg backdrop-blur-lg bg-orange-50 dark:bg-orange-900/30`}>
-          <div className="flex items-center gap-3">
-            <ExclamationTriangleIcon className="h-5 w-5 text-orange-500 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                You're offline
-              </p>
-              <p className="text-xs text-orange-600 dark:text-orange-300">
-                Showing cached articles. Some images may not load.
-              </p>
-            </div>
+          
+          <p className="text-xs text-muted-foreground mb-3">
+            Install our app for faster access and offline reading.
+          </p>
+          
+          <div className="flex space-x-2">
+            <Button onClick={handleInstall} size="sm" className="flex-1">
+              Install
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setIsVisible(false)}
+            >
+              Later
+            </Button>
           </div>
-        </div>
-      )}
-
-      {/* Update Available */}
-      {updateAvailable && (
-        <div className={`${currentColors.cardBg} border border-green-200 dark:border-green-700 rounded-xl p-4 shadow-lg backdrop-blur-lg bg-green-50 dark:bg-green-900/30`}>
-          <div className="flex items-start gap-3">
-            <ArrowPathIcon className="h-5 w-5 text-green-500 flex-shrink-0" />
-            <div className="flex-1">
-              <h3 className="text-sm font-semibold text-green-800 dark:text-green-200 mb-1">
-                Update Available
-              </h3>
-              <p className="text-xs text-green-600 dark:text-green-300 mb-3">
-                A new version of Harare Metro is ready with improvements and bug fixes.
-              </p>
-              <button
-                onClick={updateApp}
-                className="px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors"
-              >
-                Update Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        </CardContent>
+      </Card>
     </div>
   )
 }
 
 export default PWAPrompt
+*/
+
+// Simple disabled component
+export default function PWAPrompt() {
+  return null
+}

@@ -1,81 +1,24 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    
-    <!-- Primary Meta Tags -->
-    <title>Harare Metro - Zimbabwe News Aggregator</title>
-    <meta name="title" content="Harare Metro - Zimbabwe News Aggregator" />
-    <meta name="description" content="Stay informed with the latest news from Zimbabwe. Real-time aggregation from Herald, NewsDay, Chronicle, ZBC and more trusted local sources." />
-    <meta name="keywords" content="Zimbabwe news, Harare news, Zimbabwe politics, Zimbabwe economy, Herald Zimbabwe, NewsDay, Chronicle, ZBC News, ZBC, Herald, NewsDay, local news, politics, economy, sports" />
-    <meta name="author" content="Nyuchi Web Services" />
-    <meta name="robots" content="index, follow" />
-    
-    <!-- Favicons - Your existing icons -->
-    <link rel="icon" type="image/x-icon" href="/android-chrome-192x192.png" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/android-chrome-192x192.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/android-chrome-512x512.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Harare Metro - Zimbabwe News</title>
     
-    <!-- PWA Manifest - Keep your existing file -->
-    <link rel="manifest" href="/public/manifest.json" />
+    <!-- Remove PWA manifest and meta tags for now -->
+    <!-- <link rel="manifest" href="/manifest.json"> -->
+    <!-- <meta name="theme-color" content="#2563eb"> -->
     
-    <!-- PWA Meta Tags -->
-    <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Harare Metro" />
-    <meta name="application-name" content="Harare Metro" />
-    <meta name="msapplication-config" content="/browserconfig.xml" />
+    <!-- Keep basic meta tags -->
+    <meta name="description" content="Zimbabwe's premier news aggregator - Latest news from trusted local sources">
+    <meta name="keywords" content="Zimbabwe news, Harare, local news, politics, business, sports">
     
-    <!-- Open Graph / Facebook -->
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://www.hararemetro.co.zw/" />
-    <meta property="og:title" content="Harare Metro - Zimbabwe News Aggregator" />
-    <meta property="og:description" content="Stay informed with the latest news from Zimbabwe. Real-time aggregation from trusted local sources." />
-    <meta property="og:image" content="https://www.hararemetro.co.zw/og-image.png" />
-    <meta property="og:site_name" content="Harare Metro" />
-    <meta property="og:locale" content="en_ZW" />
-    
-    <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image" />
-    <meta property="twitter:url" content="https://www.hararemetro.co.zw/" />
-    <meta property="twitter:title" content="Harare Metro - Zimbabwe News Aggregator" />
-    <meta property="twitter:description" content="Stay informed with the latest news from Zimbabwe. Real-time aggregation from trusted local sources." />
-    <meta property="twitter:image" content="https://www.hararemetro.co.zw/twitter-image.png" />
-    
-    <!-- Theme Color -->
-    <meta name="theme-color" content="#059669" />
-    <meta name="msapplication-TileColor" content="#059669" />
-    
-    <!-- Preconnect to improve performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    
-    <!-- DNS Prefetch for API -->
-    <link rel="dns-prefetch" href="//api.hararemetro.co.zw" />
+    <!-- Basic favicon -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🇿🇼</text></svg>">
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
-    
-    <!-- Service Worker Registration -->
-    <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-              console.log('✅ SW registered: ', registration);
-            })
-            .catch(registrationError => {
-              console.log('❌ SW registration failed: ', registrationError);
-            });
-        });
-      }
-    </script>
   </body>
 </html>

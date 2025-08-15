@@ -2,345 +2,713 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global Typography - Georgia serif to match branding */
 @layer base {
+  /* TRUE MONOCHROME ShadCN theme - zinc-based with no colors */
+  :root {
+    /* Light theme - pure monochrome with zinc grays */
+    --background: 0 0% 100%; /* zinc-50 */
+    --foreground: 0 0% 0%; /* Pure black for maximum contrast */
+    --card: 0 0% 100%; /* white */
+    --card-foreground: 0 0% 0%; /* Pure black */
+    --popover: 0 0% 100%; /* white */
+    --popover-foreground: 0 0% 0%; /* Pure black */
+    --primary: 0 0% 0%; /* Pure black primary */
+    --primary-foreground: 0 0% 100%; /* Pure white */
+    --secondary: 0 0% 96%; /* zinc-100 */
+    --secondary-foreground: 0 0% 0%; /* Pure black */
+    --muted: 0 0% 96%; /* zinc-100 */
+    --muted-foreground: 0 0% 40%; /* Strong gray for readability */
+    --accent: 0 0% 94%; /* zinc-200 */
+    --accent-foreground: 0 0% 0%; /* Pure black */
+    --destructive: 0 84.2% 60.2%; /* zinc-500 - gray instead of red */
+    --destructive-foreground: 0 0% 100%; /* Pure white */
+    --border: 0 0% 88%; /* zinc-200 */
+    --input: 0 0% 88%; /* zinc-200 */
+    --ring: 0 0% 0%; /* Pure black focus ring */
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    /* Dark theme - pure black background like mobile apps */
+    --background: 0 0% 0%; /* Pure black background */
+    --foreground: 0 0% 100%; /* Pure white text */
+    --card: 0 0% 6%; /* Very dark gray cards for depth */
+    --card-foreground: 0 0% 100%; /* Pure white */
+    --popover: 0 0% 6%; /* Match card */
+    --popover-foreground: 0 0% 100%; /* Pure white */
+    --primary: 0 0% 100%; /* Pure white for primary */
+    --primary-foreground: 0 0% 0%; /* Pure black */
+    --secondary: 0 0% 10%; /* Dark secondary */
+    --secondary-foreground: 0 0% 100%; /* Pure white */
+    --muted: 0 0% 10%; /* Match secondary */
+    --muted-foreground: 0 0% 70%; /* Strong contrast for muted text */
+    --accent: 0 0% 14%; /* Slightly lighter accent */
+    --accent-foreground: 0 0% 100%; /* Pure white */
+    --destructive: 0 62.8% 30.6%; /* Keep destructive as is */
+    --destructive-foreground: 0 0% 100%; /* Pure white */
+    --border: 0 0% 15%; /* Visible border */
+    --input: 0 0% 14%; /* Match accent */
+    --ring: 0 0% 100%; /* Pure white focus ring */
+    --chart-1: 220 70% 50%; 
+    --chart-2: 160 60% 45%; 
+    --chart-3: 30 80% 55%; 
+    --chart-4: 280 65% 60%; 
+    --chart-5: 340 75% 55%;
+  }
+
+  /* Import Poppins font */
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+  /* Poppins font stack for everything */
   html {
-    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   
   body {
     margin: 0;
-    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     font-display: swap;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    line-height: 1.6;
+    /* Tighter spacing for mobile app feel */
+    line-height: 1.5;
+    letter-spacing: 0;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-weight: 400;
+    /* Better contrast for readability */
+    font-size: 16px;
   }
 
-  /* Better typography hierarchy */
+  /* Sharp, readable headings with Poppins */
   h1, h2, h3, h4, h5, h6 {
-    font-family: Georgia, 'Times New Roman', Times, serif;
-    font-weight: 700;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 600;
     line-height: 1.3;
+    letter-spacing: -0.01em;
+    margin-bottom: 0.75em;
+    color: hsl(var(--foreground)); /* Full opacity */
   }
 
-  /* Improve reading for all text */
+  /* Make h1 and h2 bolder for hierarchy */
+  h1, h2 {
+    font-weight: 700;
+  }
+
+  /* Sharp, readable text with full opacity */
   p, span, div {
-    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    color: hsl(var(--foreground)); /* Full opacity - no transparency */
   }
 
   /* Better button typography */
   button {
-    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
     font-weight: 500;
+    letter-spacing: 0;
   }
 
   /* Input typography */
   input, textarea {
-    font-family: Georgia, 'Times New Roman', Times, serif;
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+
+  /* ShadCN component base styles */
+  * {
+    border-color: hsl(var(--border));
   }
 }
 
-/* Custom font utility classes */
+/* Sharp, readable font utilities */
 @layer utilities {
-  .font-serif {
-    font-family: Georgia, 'Times New Roman', Times, serif;
+  .font-sans {
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
   }
   
-  /* Better text sizes for readability */
+  /* Clear, readable text sizes with sharp contrast */
   .text-article-title {
-    font-size: 1.25rem;
+    font-size: 1.125rem;
     line-height: 1.4;
-    font-weight: 700;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: hsl(var(--foreground)); /* Full opacity */
+  }
+  
+  @media (min-width: 640px) {
+    .text-article-title {
+      font-size: 1.25rem;
+      line-height: 1.3;
+    }
   }
   
   .text-article-description {
-    font-size: 1rem;
-    line-height: 1.6;
+    font-size: 0.95rem;
+    line-height: 1.5; /* Tighter spacing */
+    font-weight: 400;
+    color: hsl(var(--foreground)); /* Full opacity for readability */
+  }
+  
+  @media (min-width: 640px) {
+    .text-article-description {
+      font-size: 1rem;
+      line-height: 1.5;
+    }
   }
   
   .text-source {
     font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0;
+    color: hsl(var(--muted-foreground)); /* Still muted but stronger */
+  }
+
+  /* Mobile-optimized text */
+  .text-mobile-friendly {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: hsl(var(--foreground)); /* Full opacity */
+  }
+
+  @media (min-width: 640px) {
+    .text-mobile-friendly {
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+  }
+
+  /* Sharp monochrome utilities */
+  .monochrome-primary {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+  
+  .monochrome-secondary {
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+  }
+  
+  .monochrome-muted {
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* High contrast text utilities */
+  .text-sharp {
+    color: hsl(var(--foreground));
+    font-weight: 500;
+  }
+
+  .text-bold-readable {
+    color: hsl(var(--foreground));
     font-weight: 600;
-    letter-spacing: 0.025em;
-  }
-
-  /* Enhanced contrast for accessibility */
-  .text-high-contrast {
-    color: #000000;
-  }
-  
-  .dark .text-high-contrast {
-    color: #ffffff;
-  }
-  
-  .text-medium-contrast {
-    color: #374151;
-  }
-  
-  .dark .text-medium-contrast {
-    color: #d1d5db;
-  }
-  
-  .text-low-contrast {
-    color: #6b7280;
-  }
-  
-  .dark .text-low-contrast {
-    color: #9ca3af;
   }
 }
 
-/* Performance optimizations for low-end devices */
-* {
-  -webkit-overflow-scrolling: touch;
+/* Simple loading skeleton */
+.loading-skeleton {
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--muted) / 0.5) 50%, hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
 }
 
-/* Hide scrollbar for category slider */
-.scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+@keyframes loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari and Opera */
+/* Clean image handling */
+img {
+  max-width: 100%;
+  height: auto;
+  loading: lazy;
+  decoding: async;
 }
 
-/* Improved line clamping with better spacing */
+.article-image {
+  image-rendering: auto;
+  object-fit: cover;
+  object-position: center;
+  transition: opacity 0.3s ease;
+  background-color: hsl(var(--muted));
+}
+
+/* Sharp focus styles */
+.focus-ring:focus,
+button:focus,
+input:focus,
+a:focus {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 2px;
+  border-radius: calc(var(--radius) - 4px);
+}
+
+/* Universal button styling - no size/border changes on any action */
+button {
+  /* Smooth transitions for background and color only */
+  transition: background-color 0.2s ease, color 0.2s ease, backdrop-filter 0.2s ease;
+  /* Prevent any size changes */
+  transform: none !important;
+  box-shadow: none !important;
+  /* Ensure consistent sizing - FIX SPACING ISSUES */
+  font-weight: 500;
+  letter-spacing: 0;
+  /* Modern button styling */
+  border-radius: 9999px; /* Full rounded */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* Touch optimization */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* FIX: Remove default browser spacing */
+  margin: 0;
+  padding: 0.25;
+  /* FIX: Normalize line-height to prevent extra space */
+  line-height: 1;
+  /* FIX: Prevent vertical-align issues */
+  vertical-align: baseline;
+  /* FIX: Remove any inherited spacing */
+  border-spacing: 0;
+}
+
+/* Default button styling when no specific class is applied */
+button:not([class*="btn-"]):not([class*="category-button"]):not([class*="monochrome-"]) {
+  /* Light theme default */
+  background-color: rgba(0, 0, 0, 0.1);
+  color: hsl(var(--foreground));
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 9999px; /* Full rounded */
+}
+
+button:not([class*="btn-"]):not([class*="category-button"]):not([class*="monochrome-"]):hover {
+  background-color: rgba(0, 0, 0, 0.2);
+  color: hsl(var(--foreground));
+  border-radius: 9999px; /* Full rounded */
+}
+
+button:not([class*="btn-"]):not([class*="category-button"]):not([class*="monochrome-"]):active {
+  background-color: rgba(0, 0, 0, 0.25);
+  color: hsl(var(--muted-foreground));
+  border-radius: 9999px; /* Full rounded */
+}
+
+/* Dark theme default button */
+.dark button:not([class*="btn-"]):not([class*="category-button"]):not([class*="monochrome-"]) {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: hsl(var(--foreground));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px; /* Full rounded */
+}
+
+.dark button:not([class*="btn-"]):not([class*="category-button"]):not([class*="monochrome-"]):hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: hsl(var(--foreground));
+  border-radius: 9999px; /* Full rounded */
+}
+
+.dark button:not([class*="btn-"]):not([class*="category-button"]):not([class*="monochrome-"]):active {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: hsl(var(--muted-foreground));
+  border-radius: 9999px; /* Full rounded */
+}
+
+/* Override any existing button styles that might add spacing */
+button:hover,
+button:active,
+button:focus {
+  transform: none !important;
+  box-shadow: none !important;
+  margin: 0.15 !important;
+  border-radius: 9999px; /* Full rounded */
+}
+
+/* Category buttons with glassmorphism styling */
+.category-button {
+  /* Same base styling but with explicit spacing control */
+  transition: background-color 0.2s ease, color 0.2s ease, backdrop-filter 0.2s ease;
+  transform: none !important;
+  box-shadow: none !important;
+  font-weight: 500;
+  letter-spacing: 0;
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* FIX: Explicit spacing control */
+  margin: 0.15 !important;
+  padding: 0.15 !important; /* Let Button component handle padding */
+  line-height: 1 !important;
+  vertical-align: baseline !important;
+  border-spacing: 0 !important;
+  /* Category button specific styling */
+  background-color: rgba(0, 0, 0, 0.05);
+  color: hsl(var(--foreground));
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.category-button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+  color: hsl(var(--foreground));
+  transform: none !important;
+  box-shadow: none !important;
+  margin: 0.15 !important;
+  padding: 0.15 !important;
+}
+
+.category-button.active {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: hsl(var(--primary-foreground));
+  transform: none !important;
+  box-shadow: none !important;
+  margin: 0.15 !important;
+  padding: 0.15 !important;
+}
+
+/* Force text elements inside active category buttons to inherit the button color */
+.category-button.active .text-category,
+.category-button.active span {
+  color: inherit !important;
+}
+
+/* Force badges inside active category buttons to have contrasting colors */
+.category-button.active [data-slot="badge"] {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Dark theme category buttons */
+.dark .category-button {
+  background-color: rgba(255, 255, 255, 0.05);
+  color: hsl(var(--foreground));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dark .category-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: hsl(var(--foreground));
+  transform: none !important;
+  box-shadow: none !important;
+  margin: 0.15 !important;
+  padding: 0.15 !important;
+}
+
+.dark .category-button.active {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: hsl(var(--primary-foreground));
+  transform: none !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+  padding: 0.15 !important;
+}
+
+/* Force text elements inside active dark theme category buttons */
+.dark .category-button.active .text-category,
+.dark .category-button.active span {
+  color: inherit !important;
+}
+
+/* Force badges inside active dark theme category buttons */
+.dark .category-button.active [data-slot="badge"] {
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  color: black !important;
+  border-color: rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Primary button style */
+.btn-primary {
+  transition: background-color 0.2s ease, color 0.2s ease, backdrop-filter 0.2s ease;
+  transform: none !important;
+  box-shadow: none !important;
+  min-height: 44px;
+  font-weight: 500;
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  border: 1px solid hsl(var(--primary));
+}
+
+.btn-primary:hover {
+  background-color: hsl(var(--primary) / 0.9);
+  color: hsl(var(--primary-foreground));
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-primary:active {
+  background-color: hsl(var(--primary) / 0.8);
+  color: hsl(var(--primary-foreground));
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Secondary button style */
+.btn-secondary {
+  transition: background-color 0.2s ease, color 0.2s ease, backdrop-filter 0.2s ease;
+  transform: none !important;
+  box-shadow: none !important;
+  min-height: 44px;
+  font-weight: 500;
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  background-color: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.btn-secondary:hover {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.btn-secondary:active {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Icon button - completely transparent with icon lift effect */
+.btn-icon {
+  /* Transparent background always */
+  background-color: transparent !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  /* Only icon transitions */
+  transition: transform 0.2s ease;
+  /* No size constraints */
+  min-height: auto;
+  min-width: auto;
+  padding: 0.5rem; /* Minimal padding for touch target */
+  border-radius: 0.5rem; /* Subtle radius */
+  /* Touch optimization */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* Icon styling */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Icon inside button gets the lift effect */
+.btn-icon svg,
+.btn-icon .icon {
+  transition: transform 0.2s ease, filter 0.2s ease;
+  transform: translateY(0);
+  /* Ensure icon is clickable */
+  pointer-events: none;
+}
+
+/* Icon lift on hover */
+.btn-icon:hover svg,
+.btn-icon:hover .icon {
+  transform: translateY(-2px);
+}
+
+/* Icon press down on active */
+.btn-icon:active svg,
+.btn-icon:active .icon {
+  transform: translateY(0);
+}
+
+/* Icon color adjustments for better visibility */
+.btn-icon {
+  color: hsl(var(--foreground) / 0.7);
+}
+
+.btn-icon:hover {
+  color: hsl(var(--foreground));
+}
+
+.btn-icon:active {
+  color: hsl(var(--foreground) / 0.8);
+}
+
+/* Dark theme icon adjustments */
+.dark .btn-icon {
+  color: hsl(var(--foreground) / 0.7);
+}
+
+.dark .btn-icon:hover {
+  color: hsl(var(--foreground));
+}
+
+.dark .btn-icon:active {
+  color: hsl(var(--foreground) / 0.8);
+}
+
+/* Badge spacing fixes - same as buttons */
+[data-slot="badge"],
+.badge {
+  /* Remove any inherited spacing issues */
+  margin: 0 !important;
+  /* Fix line-height to prevent extra vertical space */
+  line-height: 1 !important;
+  /* Prevent vertical-align issues */
+  vertical-align: baseline !important;
+  /* Remove any border spacing */
+  border-spacing: 0 !important;
+  /* Ensure tight fit */
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Link button style */
+.link-button {
+  /* Same base styling as buttons */
+  transition: background-color 0.2s ease, color 0.2s ease, backdrop-filter 0.2s ease;
+  transform: none !important;
+  box-shadow: none !important;
+  min-height: 44px;
+  font-weight: 500;
+  border-radius: 9999px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  /* Link-specific styling */
+  background-color: transparent; /* No background */
+  color: hsl(var(--primary)); /* Primary color for links */
+  border: none; /* No border */
+}
+.link-button:hover {
+  background-color: rgba(0, 0, 0, 0.05); /* Subtle hover effect */
+  color: hsl(var(--primary-foreground)); /* Lighter text on hover */
+  transform: none !important;
+  box-shadow: none !important;
+}
+.link-button:active {
+  background-color: rgba(0, 0, 0, 0.1); /* Darker active effect */
+  color: hsl(var(--primary-foreground)); /* Maintain text color */
+  transform: none !important;
+  box-shadow: none !important;
+}
+/* Force link buttons to have no extra spacing */
+.link-button {
+  margin: 0 !important;
+  padding: 0.25rem 0.5rem !important; /* Consistent padding */
+  line-height: 1 !important; /* Prevent extra vertical space */
+  vertical-align: baseline !important; /* Prevent alignment issues */
+  border-spacing: 0 !important; /* Remove any border spacing */
+}
+/* Force link buttons to have no extra spacing */
+.link-button span,
+.link-button a {
+  margin: 0 !important; /* Remove any inherited margin */
+  padding: 0 !important; /* Remove any inherited padding */
+  line-height: 1 !important; /* Prevent extra vertical space */
+  vertical-align: baseline !important; /* Prevent alignment issues */
+}
+
+/* Badge text should also have tight spacing */
+[data-slot="badge"] span,
+.badge span {
+  line-height: 1 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Clean article cards */
+.article-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+}
+
+.article-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px hsl(var(--foreground) / 0.1);
+}
+
+/* Masonry grid support */
+.columns-1 {
+  column-count: 1;
+}
+
+.columns-2 {
+  column-count: 2;
+}
+
+.columns-3 {
+  column-count: 3;
+}
+
+.break-inside-avoid {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Ensure smooth masonry layout */
+.article-card {
+  display: inline-block;
+  width: 100%;
+  margin-bottom: 1rem;
+}
+
+/* List view optimizations */
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  word-break: break-word;
-  line-height: 1.5;
 }
 
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  word-break: break-word;
-  line-height: 1.6;
-}
-
-/* Performance improvements for animations */
-@layer utilities {
-  .will-change-transform {
-    will-change: transform;
+/* Responsive masonry */
+@media (max-width: 768px) {
+  .columns-2 {
+    column-count: 1;
   }
-  
-  .gpu-accelerated {
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    perspective: 1000px;
-  }
-  
-  /* Better hover effects */
-  @media (hover: hover) {
-    .hover-lift:hover {
-      transform: translateY(-4px);
-      transition: transform 0.2s ease-out;
-    }
-  }
-  
-  /* Reduce motion for users who prefer it */
-  @media (prefers-reduced-motion: reduce) {
-    * {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
-    }
+  .columns-3 {
+    column-count: 1;
   }
 }
 
-/* Better loading skeleton */
-.loading-skeleton {
-  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
-  background-size: 200% 100%;
-  animation: loading 1.5s infinite;
-}
-
-.dark .loading-skeleton {
-  background: linear-gradient(90deg, #374151 25%, #4b5563 50%, #374151 75%);
-  background-size: 200% 100%;
-}
-
-@keyframes loading {
-  0% {
-    background-position: 200% 0;
-  }
-  100% {
-    background-position: -200% 0;
+@media (min-width: 768px) and (max-width: 1024px) {
+  .columns-3 {
+    column-count: 2;
   }
 }
 
-/* Natural image rendering - let browsers handle small RSS images naturally */
-img {
-  max-width: 100%;
-  height: auto;
-  /* Use browser defaults for best quality with small images */
-  image-rendering: auto;
-  /* Standard loading for better compatibility */
-  loading: lazy;
-  decoding: async;
-}
-
-/* Simple, clean article images - no filters or enhancements */
-.article-image {
-  /* Let browser handle image rendering naturally */
-  image-rendering: auto;
-  /* Simple, clean display */
-  object-fit: cover;
-  object-position: center;
-  /* Smooth transitions only */
-  transition: opacity 0.3s ease;
-  /* Simple background for loading */
-  background-color: #f3f4f6;
-}
-
-.dark .article-image {
-  background-color: #374151;
-}
-
-/* Enhanced focus styles for accessibility */
-.focus-ring:focus,
-button:focus,
-input:focus,
-a:focus {
-  outline: 2px solid #374151;
-  outline-offset: 2px;
-  border-radius: 4px;
-}
-
-.dark .focus-ring:focus,
-.dark button:focus,
-.dark input:focus,
-.dark a:focus {
-  outline-color: #d1d5db;
-}
-
-/* Better button states */
-button {
-  transition: all 0.2s ease;
-}
-
-button:hover {
-  transform: translateY(-1px);
-}
-
-button:active {
-  transform: translateY(0);
-}
-
-/* Category button improvements */
-.category-button {
-  transition: all 0.2s ease;
-  min-height: 44px; /* Better touch targets */
-  font-weight: 500;
-}
-
-.category-button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.dark .category-button:hover {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-}
-
-/* Card improvements */
-.article-card {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.article-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.1);
-}
-
-.dark .article-card:hover {
-  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.3);
-}
-
-/* Better spacing utilities */
+/* Tighter spacing utilities */
 .section-spacing {
-  padding: 1.5rem 0;
+  padding: 1rem 0;
 }
 
 @media (min-width: 640px) {
+  .section-spacing {
+    padding: 1.5rem 0;
+  }
+}
+
+@media (min-width: 1024px) {
   .section-spacing {
     padding: 2rem 0;
   }
 }
 
-@media (min-width: 1024px) {
-  .section-spacing {
-    padding: 2.5rem 0;
-  }
-}
-
-/* Improved container max-width for better readability */
-.content-container {
-  max-width: 90rem; /* Wider for better use of space */
-  margin: 0 auto;
-  padding: 0 1rem;
-}
-
-@media (min-width: 640px) {
-  .content-container {
-    padding: 0 1.5rem;
-  }
-}
-
-@media (min-width: 1024px) {
-  .content-container {
-    padding: 0 2rem;
-  }
-}
-
-/* Typography scale for better hierarchy */
-.text-heading-1 {
-  font-size: 2.25rem;
-  line-height: 1.2;
-  font-weight: 700;
-}
-
-.text-heading-2 {
-  font-size: 1.875rem;
-  line-height: 1.25;
-  font-weight: 700;
-}
-
-.text-heading-3 {
-  font-size: 1.5rem;
-  line-height: 1.3;
-  font-weight: 600;
-}
-
-.text-body-large {
-  font-size: 1.125rem;
-  line-height: 1.6;
-}
-
-.text-body {
-  font-size: 1rem;
-  line-height: 1.6;
-}
-
-.text-body-small {
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-.text-caption {
-  font-size: 0.75rem;
-  line-height: 1.4;
-}
-
-/* Better mobile touch targets */
+/* Mobile-optimized for app-like experience */
 @media (max-width: 768px) {
   button, 
   .category-button,
@@ -348,79 +716,58 @@ button:active {
     min-height: 44px;
     min-width: 44px;
   }
+
+  /* Sharp mobile typography */
+  body {
+    font-size: 16px; /* Standard mobile size */
+  }
+
+  h1 {
+    font-size: 1.5rem;
+    line-height: 1.3;
+    font-weight: 700;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+    line-height: 1.3;
+    font-weight: 600;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+    line-height: 1.4;
+    font-weight: 600;
+  }
+
+  /* Tighter mobile paragraph spacing */
+  p {
+    margin-bottom: 0.875em;
+    line-height: 1.5;
+  }
 }
 
-/* High contrast mode support */
+/* High contrast mode - pure black and white */
 @media (prefers-contrast: high) {
+  :root {
+    --foreground: 0 0% 0%; /* Pure black text */
+    --background: 0 0% 100%; /* Pure white background */
+    --border: 0 0% 0%; /* Black borders */
+  }
+  
+  .dark {
+    --foreground: 0 0% 100%; /* Pure white text */
+    --background: 0 0% 0%; /* Pure black background */
+    --border: 0 0% 100%; /* White borders */
+  }
+  
   .category-button {
-    border: 2px solid currentColor;
+    border: 2px solid hsl(var(--border));
   }
   
   .article-card {
-    border: 2px solid currentColor;
+    border: 2px solid hsl(var(--border));
   }
-}
-
-/* Minimize reflows */
-.stable-layout {
-  contain: layout style paint;
-}
-
-/* Simple image container - no quality modifications */
-.image-container {
-  position: relative;
-  overflow: hidden;
-  /* Prevent layout shift */
-  contain: layout style paint;
-}
-
-.image-container img {
-  /* Natural browser rendering */
-  image-rendering: auto;
-  /* Standard object fitting */
-  object-fit: cover;
-  object-position: center;
-  /* Smooth loading transition only */
-  transition: opacity 0.3s ease-in-out;
-}
-
-/* Loading state for images */
-.image-loading {
-  background: linear-gradient(90deg, 
-    rgba(243, 244, 246, 0.8) 25%, 
-    rgba(229, 231, 235, 0.8) 50%, 
-    rgba(243, 244, 246, 0.8) 75%);
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-.dark .image-loading {
-  background: linear-gradient(90deg, 
-    rgba(55, 65, 81, 0.8) 25%, 
-    rgba(75, 85, 99, 0.8) 50%, 
-    rgba(55, 65, 81, 0.8) 75%);
-  background-size: 200% 100%;
-}
-
-@keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-/* Image error state */
-.image-error {
-  background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #6b7280;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.dark .image-error {
-  background: linear-gradient(135deg, #374151 0%, #4b5563 100%);
-  color: #9ca3af;
 }
 
 /* Print styles */
@@ -431,44 +778,23 @@ button:active {
   
   body {
     font-size: 12pt;
-    line-height: 1.5;
+    line-height: 1.4;
     color: #000 !important;
     background: #fff !important;
   }
   
   .article-card {
-    border: 1px solid #ccc !important;
+    border: 1px solid #000 !important;
     page-break-inside: avoid;
     margin-bottom: 1rem;
   }
-  
-  img, .article-image {
-    /* Natural print rendering */
-    -webkit-print-color-adjust: exact;
-    print-color-adjust: exact;
-  }
 }
 
-/* Let browsers handle images naturally on all devices */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  img, .article-image {
-    /* Use browser defaults for high DPI displays */
-    image-rendering: auto;
+@layer base {
+  * {
+    @apply border-border;
   }
-}
-
-/* Browser-specific natural rendering */
-@supports (-webkit-appearance: none) {
-  img, .article-image {
-    /* Let Safari handle images naturally */
-    image-rendering: auto;
-  }
-}
-
-/* Firefox natural rendering */
-@-moz-document url-prefix() {
-  img, .article-image {
-    /* Let Firefox handle images naturally */
-    image-rendering: auto;
+  body {
+    @apply bg-background text-foreground;
   }
 }

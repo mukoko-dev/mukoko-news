@@ -1,7 +1,7 @@
 {
-  "name": "Harare Metro - Zimbabwe News",
-  "short_name": "Harare Metro",
-  "description": "Stay informed with the latest news from Zimbabwe. Real-time aggregation from Herald, NewsDay, Chronicle, ZBC and more trusted local sources.",
+  "name": "Mukoko - News Aggregator",
+  "short_name": "Mukoko",
+  "description": "Stay informed with the latest news from trusted sources. Modern news aggregation platform.",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#000000",
@@ -64,28 +64,14 @@
     {
       "name": "Latest News",
       "short_name": "Latest",
-      "description": "View latest Zimbabwe news",
+      "description": "View latest news",
       "url": "/?category=all",
       "icons": [{ "src": "/icons/shortcut-latest.png", "sizes": "96x96" }]
     },
     {
-      "name": "Politics",
-      "short_name": "Politics",
-      "description": "Zimbabwe political news",
-      "url": "/?category=politics",
-      "icons": [{ "src": "/icons/shortcut-politics.png", "sizes": "96x96" }]
-    },
-    {
-      "name": "Economy",
-      "short_name": "Economy",
-      "description": "Zimbabwe economic news",
-      "url": "/?category=economy",
-      "icons": [{ "src": "/icons/shortcut-economy.png", "sizes": "96x96" }]
-    },
-    {
       "name": "Search",
       "short_name": "Search",
-      "description": "Search Zimbabwe news",
+      "description": "Search news",
       "url": "/?action=search",
       "icons": [{ "src": "/icons/shortcut-search.png", "sizes": "96x96" }]
     }

@@ -3,28 +3,35 @@ import React from 'react'
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props)
-    this.state = { hasError: false }
+    this.state = { hasError: false, error: null }
   }
 
   static getDerivedStateFromError(error) {
-    return { hasError: true }
+    return { hasError: true, error }
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo)
+    console.log('Error caught by boundary:', error, errorInfo)
   }
 
   render() {
     if (this.state.hasError) {
       return (
-        <div className="text-center py-12">
-          <h2 className="text-xl font-bold mb-2">Something went wrong</h2>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-gray-900 text-white rounded-lg"
-          >
-            Refresh Page
-          </button>
+        <div className="min-h-screen flex items-center justify-center bg-background">
+          <div className="text-center p-8">
+            <h1 className="text-2xl font-bold text-destructive mb-4">
+              Something went wrong
+            </h1>
+            <p className="text-muted-foreground mb-4">
+              The application encountered an error. Please refresh the page.
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
       )
     }
