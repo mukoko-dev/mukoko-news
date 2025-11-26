@@ -1,20 +1,28 @@
 {
-  "name": "harare-metro",
-  "version": "2.0.0",
-  "description": "Zimbabwe's premier news aggregation platform - a modern full-stack app powered by Cloudflare Workers, Hono backend, React Router frontend, and D1 database",
+  "name": "mukoko-news",
+  "version": "3.0.0",
+  "description": "Mukoko News - Zimbabwe's Modern News Platform. Expo + React Native app (mobile & web) with Cloudflare Workers backend, Hono API, and D1 database",
   "private": true,
   "type": "module",
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.5",
+    "@mui/material": "^7.3.5",
     "@radix-ui/react-slot": "^1.2.3",
-    "@supabase/supabase-js": "^2.39.0",
+    "@react-navigation/bottom-tabs": "^7.8.6",
+    "@react-navigation/native": "^7.1.21",
+    "@react-navigation/stack": "^7.6.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "fast-xml-parser": "^4.5.3",
+    "fast-xml-parser": "^5.3.2",
     "hono": "^4.9.7",
     "isbot": "5.1.26",
     "lucide-react": "^0.468.0",
     "react": "19.0.0",
-    "react-dom": "19.0.0",
+    "react-dom": "^19.0.0",
+    "react-native-gesture-handler": "^2.29.1",
+    "react-native-screens": "^4.18.0",
     "react-router": "7.6.3",
     "tailwind-merge": "^3.3.1"
   },
@@ -54,6 +62,10 @@
     "deploy:test": "./scripts/deploy-all.sh test",
     "generate:sitemap": "node scripts/generate-sitemap.js",
     "generate:sw-cache": "node scripts/generate-sw-cache.js",
-    "generate:pwa": "npm run generate:sitemap && npm run generate:sw-cache"
+    "generate:pwa": "npm run generate:sitemap && npm run generate:sw-cache",
+    "mobile": "cd mobile && npm start",
+    "mobile:ios": "cd mobile && npm run ios",
+    "mobile:android": "cd mobile && npm run android",
+    "mobile:install": "cd mobile && npm install"
   }
 }
