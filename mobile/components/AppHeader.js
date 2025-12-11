@@ -48,6 +48,16 @@ export default function AppHeader() {
       }
     };
 
+    const handleTrendingPress = () => {
+      try {
+        // Navigate to Discover screen which shows trending content
+        navigation.navigate('Discover');
+        setMenuVisible(false);
+      } catch (e) {
+        console.log('Navigation to Discover not available');
+      }
+    };
+
     const handleNavigate = (screenName) => {
       try {
         navigation.navigate(screenName);
@@ -79,28 +89,57 @@ export default function AppHeader() {
             />
           )}
 
-          <View style={styles.logoContainer}>
-            <Logo size="sm" />
-          </View>
+          {/* Logo - clickable to go home */}
+          <TouchableOpacity
+            style={styles.logoContainer}
+            onPress={() => handleNavigate('Home')}
+            activeOpacity={0.7}
+          >
+            <Logo size="sm" showText={true} theme="dark" />
+          </TouchableOpacity>
 
+          {/* Spacer for desktop layout */}
+          {isTabletOrDesktop && <View style={styles.spacer} />}
+
+          {/* Action buttons */}
           <View style={styles.actions}>
+            {/* Trending/Insights Icon - highlighted in brand color */}
+            <IconButton
+              icon="chart-line"
+              onPress={handleTrendingPress}
+              iconColor={mukokoTheme.colors.primary}
+              size={22}
+              style={styles.actionButton}
+            />
+
+            {/* Search Icon */}
             <IconButton
               icon="magnify"
               onPress={handleSearchPress}
               iconColor={mukokoTheme.colors.onSurface}
-              size={24}
+              size={22}
+              style={styles.actionButton}
             />
+
+            {/* Theme Toggle (visual placeholder - future implementation) */}
             <IconButton
               icon="white-balance-sunny"
-              onPress={() => {}}
-              iconColor={mukokoTheme.colors.onSurface}
-              size={24}
+              onPress={() => {
+                // Theme toggle will be implemented with ThemeContext
+                console.log('Theme toggle - feature coming soon');
+              }}
+              iconColor={mukokoTheme.colors.onSurfaceVariant}
+              size={22}
+              style={styles.actionButton}
             />
+
+            {/* Profile/Login Icon */}
             <IconButton
               icon="account-circle-outline"
               onPress={handleProfilePress}
               iconColor={mukokoTheme.colors.onSurface}
-              size={24}
+              size={22}
+              style={styles.actionButton}
             />
           </View>
         </View>
@@ -169,12 +208,19 @@ const styles = StyleSheet.create({
     marginRight: mukokoTheme.spacing.xs,
   },
   logoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  spacer: {
     flex: 1,
-    justifyContent: 'center',
   },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 2,
+  },
+  actionButton: {
+    margin: 0,
   },
   modalOverlay: {
     flex: 1,
