@@ -1,350 +1,282 @@
-# Harare Metro
+# Mukoko News
 
-**Zimbabwe's Premier News Aggregation Platform**
+**Zimbabwe's Modern News Aggregation Platform**
 
-A modern, AI-powered news aggregation platform built on Cloudflare's edge infrastructure, bringing together news from across Zimbabwe's media landscape with intelligent author recognition, content classification, and quality scoring.
+A mobile-first news aggregation platform built for Zimbabweans, bringing together news from across Zimbabwe's media landscape with intelligent content processing, beautiful UI, and offline-first capabilities.
 
 [![Cloudflare Workers](https://img.shields.io/badge/Cloudflare-Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.cloudflare.com/)
-[![React Router](https://img.shields.io/badge/React_Router-7-CA4245?logo=react-router&logoColor=white)](https://reactrouter.com/)
+[![React Native](https://img.shields.io/badge/React_Native-Expo-000020?logo=expo&logoColor=white)](https://expo.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4.1-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 
-## 🌍 Live Deployment
+## Live Deployment
 
-- **Frontend**: [www.hararemetro.co.zw](https://www.hararemetro.co.zw)
-- **Admin Panel**: [admin.hararemetro.co.zw](https://admin.hararemetro.co.zw)
+- **Mobile App (Web)**: [mukoko-news.vercel.app](https://mukoko-news.vercel.app)
+- **Backend API**: [news-worker.mukoko.com](https://news-worker.mukoko.com)
 
-## 🆕 What's New (October 31, 2025)
+## What's New (December 2025)
 
-### Today's Article Count
-The homepage now displays **daily article count** instead of total database count, showing users fresh content published today. Currently showing 55 articles published today out of 352 total.
+### Mobile UI Overhaul (v0.8.0)
+- **ArticleCard Component** - Multiple variants (featured, horizontal, compact, default) with image error handling
+- **CategoryChips Component** - Horizontal scrollable category filters
+- **Responsive HomeScreen** - 2025 news app patterns with featured cards and quick-scan layout
+- **NewsBytesScreen** - Fixed positioning with safe area insets
+- **Offline-First** - Service worker and IndexedDB caching for web
 
-### Complete Auth System
-- ✅ Login, Register, and Forgot Password pages now live at `/auth/*`
-- ✅ User profile pages at `/@/:username`
-- ✅ Settings pages at `/settings/profile`
-- ✅ Enhanced 404 error page with Zimbabwe flag branding
+### SEO & Open Graph (v0.8.0)
+- **Dynamic Sitemaps** - Auto-generated article, news, and category sitemaps
+- **Open Graph Tags** - Full OG metadata for article sharing
+- **JSON-LD Schema** - NewsArticle structured data for search engines
+- **Auto SEO Updates** - Cron job updates article metadata every 6 hours
 
-### PWA & Favicon Improvements
-- ✅ Proper favicon support across frontend and backend
-- ✅ PWA icons configured for mobile installation
-- ✅ Manifest shortcuts with correct icon references
+### Platform Stats
+- **400+ articles** aggregated from Zimbabwe news sources
+- **10+ news sources** including Herald, NewsDay, ZimLive, Chronicle
+- **Real-time updates** - Hourly RSS feed refresh
+- **Sub-100ms API response** - Edge-deployed globally
 
-### Live Metrics
-- **352 articles** in database from Zimbabwe news sources
-- **55 articles** published today
-- **9 active routes** including auth and profile pages
-- **Sub-100ms** response times globally
+## Features
 
-## ✨ Features
+### For Users
+- Fresh Zimbabwe news from multiple trusted sources
+- Category filtering (Politics, Business, Sports, Entertainment, etc.)
+- Quick-scan article cards for fast browsing
+- TikTok-style NewsBytes for short-form news consumption
+- Offline reading capability (PWA)
+- Clean, modern UI with Zimbabwe flag color scheme
 
-### Platform Features
-- 📰 **Automated RSS Feed Aggregation** - Hourly refresh from Zimbabwe news sources
-- 🤖 **AI-Powered Content Processing** - Author recognition, keyword extraction, quality scoring
-- 👨‍💼 **Journalist Recognition** - Auto-generated author profiles across multiple outlets
-- 🎯 **Smart Categorization** - 256-keyword taxonomy across 32 categories
-- 📊 **Analytics Dashboard** - Comprehensive insights and content quality metrics
-- 📱 **Mobile-First Design** - TikTok-like modern UI with Zimbabwe flag branding
-- ⚡ **Edge-Deployed** - Sub-100ms response times globally via Cloudflare
+### For Developers
+- **Multi-Platform Architecture** - React Native mobile + Cloudflare Workers backend
+- **AI Content Processing** - Author recognition, keyword extraction, quality scoring
+- **Real-time Analytics** - Article views, engagement tracking
+- **SEO Optimized** - Dynamic sitemaps, OG tags, structured data
+- **Edge Deployed** - Cloudflare Workers for global performance
 
-### Technical Features
-- 🚀 **2-Worker Architecture** - Separate frontend and backend workers
-- 💾 **Cloudflare D1 Database** - Serverless SQLite at the edge
-- 🧠 **Cloudflare Workers AI** - On-demand AI processing
-- 📈 **Analytics Engine** - Real-time user interaction tracking
-- 🎨 **Zimbabwe Flag Color Palette** - Brand-consistent design system
-- 📱 **Progressive Web App (PWA)** - Install on mobile devices
-- 🔄 **Server-Side Rendering (SSR)** - React Router 7 with Vite
-
-## 🏗️ Architecture
-
-### 2-Worker Design
+## Architecture
 
 ```
-┌──────────────────────────────────────┐
-│   www.hararemetro.co.zw              │
-│   Frontend Worker (React Router SSR) │
-│   • User-facing application          │
-│   • Basic API endpoints              │
-│   • Cron trigger handler             │
-└──────────────────────────────────────┘
-                 ↓
-        Hourly Cron Trigger
-                 ↓
-┌──────────────────────────────────────┐
-│   admin.hararemetro.co.zw            │
-│   Backend Worker (Admin + APIs)      │
-│   • Admin dashboard                  │
-│   • RSS processing with AI           │
-│   • Author recognition               │
-│   • Content quality scoring          │
-│   • User engagement APIs             │
-│   • Authentication                   │
-└──────────────────────────────────────┘
-                 ↓
-     Single D1 Database
-     (hararemetro_articles)
+┌─────────────────────────────────────────────┐
+│          Mobile App (React Native)          │
+│     mukoko-news.vercel.app / App Stores     │
+│  • React Native Paper UI                    │
+│  • Offline-first with IndexedDB             │
+│  • Service Worker for web                   │
+└─────────────────────────────────────────────┘
+                      ↓
+              REST API Calls
+                      ↓
+┌─────────────────────────────────────────────┐
+│      Backend Worker (Cloudflare)            │
+│        news-worker.mukoko.com               │
+│  • RSS feed aggregation                     │
+│  • AI content processing                    │
+│  • User authentication                      │
+│  • SEO metadata generation                  │
+│  • Dynamic sitemap generation               │
+└─────────────────────────────────────────────┘
+                      ↓
+           Cloudflare D1 Database
 ```
 
-### Technology Stack
+## Technology Stack
 
-**Frontend:**
-- React 19 with React Router 7 (SSR)
-- Tailwind CSS 4.x
-- Vite build system
-- TypeScript
-- Lucide React icons
+**Mobile App:**
+- React Native + Expo
+- React Native Paper (Material Design 3)
+- React Navigation
+- Custom Zimbabwe color theme
 
 **Backend:**
+- Cloudflare Workers
 - Hono web framework
+- Cloudflare D1 (SQLite)
 - Cloudflare Workers AI
 - fast-xml-parser for RSS
-- TypeScript
 
-**Data & Infrastructure:**
-- Cloudflare D1 (SQLite edge database)
-- Cloudflare Analytics Engine
-- Cloudflare Workers (both workers)
-- Cloudflare Vectorize (semantic search)
+**Infrastructure:**
+- Cloudflare Workers (serverless)
+- Cloudflare D1 (database)
+- Cloudflare KV (sessions/cache)
+- Vercel (mobile web hosting)
 
-## 📁 Project Structure
+## Project Structure
 
 ```
-/harare-metro/                  # Monorepo root (frontend)
-├── workers/
-│   └── app.ts                  # ✅ Frontend worker (SSR + cron handler)
-├── app/                        # React Router application
-│   ├── root.tsx
-│   ├── routes/
-│   └── components/
-├── database/
-│   ├── D1Service.js            # Shared database service
-│   └── schema.sql
-├── backend/                    # ✅ Backend worker (separate deployment)
-│   ├── index.ts                # Backend entry point
-│   ├── services/               # All business logic
-│   │   ├── RSSFeedService.ts
+/mukoko-news/
+├── mobile/                     # React Native + Expo app
+│   ├── screens/               # App screens
+│   ├── components/            # Reusable components
+│   ├── api/                   # Backend API client
+│   ├── contexts/              # React contexts
+│   └── theme.js               # Zimbabwe color theme
+│
+├── backend/                    # Cloudflare Worker
+│   ├── index.ts               # API routes
+│   ├── services/              # Business logic
+│   │   ├── SEOService.ts      # SEO metadata generation
+│   │   ├── SimpleRSSService.ts
 │   │   ├── ArticleAIService.ts
-│   │   ├── AuthorProfileService.ts
 │   │   └── ...
-│   └── admin/                  # Admin dashboard
-├── wrangler.jsonc              # Frontend worker config
-└── backend/wrangler.jsonc      # Backend worker config
+│   └── wrangler.jsonc         # Worker config
+│
+└── database/
+    ├── schema.sql             # Database schema
+    └── migrations/            # Schema migrations
 ```
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
 - Node.js 20+
 - npm or yarn
-- Cloudflare account (for deployment)
+- Cloudflare account (for backend)
+- Expo CLI (for mobile development)
 
-### Local Development
+### Mobile Development
 
 ```bash
+# Navigate to mobile directory
+cd mobile
+
 # Install dependencies
 npm install
 
-# Start frontend development server
+# Start Expo development server
+npm start
+
+# Run on iOS
+npm run ios
+
+# Run on Android
+npm run android
+
+# Build for web
+npm run build
+```
+
+### Backend Development
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Install dependencies
+npm install
+
+# Start local development
 npm run dev
 
-# In another terminal, start backend worker
-npm run dev:backend
-
-# Generate TypeScript types
-npm run cf-typegen
-
-# Type check
-npm run typecheck
-```
-
-### Build
-
-```bash
-# Build frontend
-npm run build
-
-# Build and validate
-npm run validate
-```
-
-### Deployment
-
-```bash
-# Deploy frontend worker
+# Deploy to Cloudflare
 npm run deploy
-
-# Deploy backend worker
-npm run deploy:backend
-
-# Deploy both workers
-npm run deploy:all
 ```
 
-## 📚 Documentation
+## API Endpoints
 
-Comprehensive documentation is available in:
+### Public Endpoints
 
-- **[CLAUDE.md](./CLAUDE.md)** - Complete architecture guide, API reference, and development guidelines
-- **[guides/](./guides/)** - Feature-specific documentation
-  - [Deployment Guide](./guides/DEPLOYMENT_GUIDE.md)
-  - [Analytics Guide](./guides/ANALYTICS_GUIDE.md)
-  - [Role System](./guides/ROLE_SYSTEM.md)
-  - [Security](./guides/SECURITY.md)
+```
+GET  /api/feeds              # Get paginated articles
+GET  /api/categories         # Get all categories
+GET  /api/news-bytes         # Get articles with images
+GET  /api/search             # Search articles
+GET  /api/authors            # Get journalist profiles
+```
 
-## 🎨 Design System
+### SEO Endpoints
+
+```
+GET  /sitemap.xml            # Sitemap index
+GET  /sitemap-articles.xml   # Articles sitemap
+GET  /sitemap-news.xml       # Google News sitemap
+GET  /api/seo/article/:slug  # Article OG metadata
+GET  /robots.txt             # Robots configuration
+```
+
+### Admin Endpoints
+
+```
+POST /api/admin/refresh-rss  # Manual RSS refresh
+GET  /api/admin/stats        # Platform statistics
+POST /api/admin/seo/batch-update  # Update article SEO
+```
+
+## Design System
 
 ### Zimbabwe Flag Color Palette
 
-The platform uses Zimbabwe's national flag colors throughout:
-
-- **Green (#00A651)**: Primary actions, success states
-- **Yellow (#FDD116)**: Warnings, highlights
-- **Red (#EF3340)**: Errors, urgent actions
-- **Black (#000000)**: Dark mode backgrounds
-- **White (#FFFFFF)**: Text on dark backgrounds
+- **Green (#00A651)**: Primary actions, success states, growth
+- **Yellow (#FDD116)**: Warnings, highlights, mineral wealth
+- **Red (#EF3340)**: Errors, urgent actions, heritage
+- **Black (#000000)**: Dark backgrounds, strength
+- **White (#FFFFFF)**: Light backgrounds, peace
 
 ### Typography
 
-- **Headings**: Georgia serif (brand identity)
-- **Body Text**: Inter sans-serif (readability)
+- **Headings**: Noto Serif (editorial feel)
+- **Body**: Noto Sans (readability)
 
-### Brand Element
+## Database Schema
 
-All pages feature the Zimbabwe flag strip (8px vertical gradient) on the left edge.
+**Core Tables:**
+- `articles` - News articles with SEO fields
+- `categories` - Article categories
+- `news_sources` - RSS feed sources
+- `authors` - Journalist profiles
 
-## 🔧 Key Features
+**User Tables:**
+- `users` - User accounts
+- `user_bookmarks` - Saved articles
+- `user_likes` - Liked articles
+- `user_reading_history` - Reading engagement
 
-### RSS Feed Processing
+**System Tables:**
+- `cron_logs` - Background job history
+- `system_config` - Platform settings
 
-- **Hourly Automated Refresh**: Cron trigger at the top of every hour
-- **Zimbabwe News Sources**: Herald, NewsDay, Chronicle, ZimLive, The Standard, and more
-- **AI Content Pipeline**:
-  - Author extraction and deduplication
-  - Content cleaning (remove noise, image URLs)
-  - Keyword classification (256-keyword taxonomy)
-  - Quality scoring
-  - Category assignment
-
-### Author Recognition
-
-- **Cross-Outlet Tracking**: Authors tracked across multiple news sources
-- **Auto-Generated Profiles**: Professional profiles for Zimbabwe journalists
-- **Engagement Metrics**: Article counts, quality scores, follower counts
-- **Deduplication**: Smart name matching across outlets
-
-### Admin Dashboard
-
-Access at [admin.hararemetro.co.zw](https://admin.hararemetro.co.zw)
-
-Features:
-- Manual RSS refresh
-- Source management
-- Author profiles
-- Content quality insights
-- Analytics dashboard
-- System configuration
-
-## 🌐 API Endpoints
-
-### Frontend Worker (`www.hararemetro.co.zw`)
-
-```
-GET  /api/health              # Health check
-GET  /api/feeds               # Get articles (paginated)
-GET  /api/categories          # Get all categories
-GET  /api/article/by-source-slug  # Get single article
-GET  /api/manifest.json       # PWA manifest
-```
-
-### Backend Worker (`admin.hararemetro.co.zw`)
-
-```
-GET  /                        # Admin dashboard
-POST /api/admin/refresh-rss   # Manual RSS refresh
-GET  /api/admin/stats         # Platform statistics
-GET  /api/admin/authors       # Author profiles
-GET  /api/admin/ai-pipeline-status  # AI processing stats
-# ... and more (see CLAUDE.md for full API reference)
-```
-
-## 🔐 Environment Variables
-
-### Frontend Worker
-
-```env
-NODE_ENV=production
-BACKEND_URL=https://admin.hararemetro.co.zw
-LOG_LEVEL=info
-ROLES_ENABLED=true
-DEFAULT_ROLE=creator
-```
+## Environment Variables
 
 ### Backend Worker
 
 ```env
 NODE_ENV=production
 LOG_LEVEL=info
-ROLES_ENABLED=true
-DEFAULT_ROLE=creator
-ADMIN_ROLES=admin,super_admin,moderator
-CREATOR_ROLES=creator,business-creator,author
+ADMIN_SESSION_SECRET=<set via wrangler secret>
 ```
 
-## 📊 Database Schema
-
-Single D1 database (`hararemetro_articles`) shared across both workers:
-
-**Core Tables:**
-- `articles` - News articles
-- `categories` - Article categories
-- `news_sources` - RSS feed sources
-- `authors` - Journalist profiles
-- `keywords` - Classification keywords
-
-**Relationships:**
-- `article_authors` - Many-to-many
-- `article_keywords` - Many-to-many
-
-**User Engagement** (Phase 2):
-- `article_comments` - User comments
-- `comment_likes` - Comment likes
-- `user_follows` - Following sources/authors
-
-**System:**
-- `system_config` - Platform configuration
-- `users` - User accounts
-- `user_preferences` - User settings
-- `daily_source_stats` - RSS statistics
-- `ai_processing_log` - AI pipeline logs
-- `cron_logs` - Cron execution history
-
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch
+2. Create a feature branch (`git checkout -b feat/amazing-feature`)
 3. Make your changes
-4. Ensure TypeScript compilation passes: `npm run typecheck`
-5. Submit a pull request
+4. Create a Pull Request (never commit directly to main)
 
-## 📝 License
+See [CLAUDE.md](./CLAUDE.md) for detailed development guidelines.
 
-Copyright © 2025 Harare Metro. All rights reserved.
+## Roadmap
 
-## 🙏 Acknowledgments
+### Phase 2 (In Progress)
+- [ ] User authentication flow testing
+- [ ] User profile pages
+- [ ] Comments and engagement
+- [ ] Push notifications
 
-- Built on Cloudflare Workers platform
-- Powered by Cloudflare Workers AI
-- Celebrating Zimbabwe journalism through author recognition
-- Zimbabwe flag colors represent national pride and heritage
+### Phase 3 (Planned)
+- [ ] Personalized feed algorithm
+- [ ] iOS App Store release
+- [ ] Android Play Store release
+- [ ] Regional expansion
 
-## 📞 Support
+## License
 
-- **Issues**: [GitHub Issues](https://github.com/nyuchitech/harare-metro/issues)
-- **Documentation**: [CLAUDE.md](./CLAUDE.md)
-- **Admin Dashboard**: [admin.hararemetro.co.zw](https://admin.hararemetro.co.zw)
+Copyright 2025 Mukoko News. All rights reserved.
+
+## Acknowledgments
+
+- Built on Cloudflare's edge infrastructure
+- Powered by React Native and Expo
+- Celebrating Zimbabwe journalism
+- Zimbabwe flag colors represent national pride
 
 ---
 
-**Harare Metro** - Bringing Zimbabwe news to the world, one article at a time. 🇿🇼
+**Mukoko News** - Zimbabwe's news, beautifully delivered.

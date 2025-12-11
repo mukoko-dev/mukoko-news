@@ -3522,12 +3522,283 @@ app.get("/api/search/by-author", async (c) => {
   }
 });
 
-export default app;
+// ============================================================
+// SEO & SITEMAP ENDPOINTS
+// ============================================================
 
-// Export Durable Object classes for Cloudflare Workers (disabled for now)
-// export {
-//   ArticleInteractionsDO,
-//   UserBehaviorDO,
-//   RealtimeCountersDO,
-//   RealtimeAnalyticsDO
-// };
+import { SEOService } from "./services/SEOService.js";
+
+// Dynamic sitemap index
+app.get("/sitemap.xml", async (c) => {
+  try {
+    const seoService = new SEOService(c.env.DB);
+    const sitemap = await seoService.generateSitemapIndex();
+    return new Response(sitemap, {
+      headers: {
+        "Content-Type": "application/xml",
+        "Cache-Control": "public, max-age=3600" // 1 hour cache
+      }
+    });
+  } catch (error: any) {
+    console.error("[SEO] Sitemap index error:", error);
+    return c.text("Sitemap generation failed", 500);
+  }
+});
+
+// Articles sitemap
+app.get("/sitemap-articles.xml", async (c) => {
+  try {
+    const seoService = new SEOService(c.env.DB);
+    const sitemap = await seoService.generateArticleSitemap({ limit: 5000 });
+    return new Response(sitemap, {
+      headers: {
+        "Content-Type": "application/xml",
+        "Cache-Control": "public, max-age=3600"
+      }
+    });
+  } catch (error: any) {
+    console.error("[SEO] Articles sitemap error:", error);
+    return c.text("Sitemap generation failed", 500);
+  }
+});
+
+// Google News sitemap (last 2 days)
+app.get("/sitemap-news.xml", async (c) => {
+  try {
+    const seoService = new SEOService(c.env.DB);
+    const sitemap = await seoService.generateNewsSitemap();
+    return new Response(sitemap, {
+      headers: {
+        "Content-Type": "application/xml",
+        "Cache-Control": "public, max-age=900" // 15 min cache for news
+      }
+    });
+  } catch (error: any) {
+    console.error("[SEO] News sitemap error:", error);
+    return c.text("Sitemap generation failed", 500);
+  }
+});
+
+// Category-specific sitemap
+app.get("/sitemap-:category.xml", async (c) => {
+  try {
+    const category = c.req.param("category");
+    if (category === "articles" || category === "news") {
+      return c.notFound(); // Already handled above
+    }
+    const seoService = new SEOService(c.env.DB);
+    const sitemap = await seoService.generateArticleSitemap({
+      category,
+      limit: 2000
+    });
+    return new Response(sitemap, {
+      headers: {
+        "Content-Type": "application/xml",
+        "Cache-Control": "public, max-age=3600"
+      }
+    });
+  } catch (error: any) {
+    console.error("[SEO] Category sitemap error:", error);
+    return c.text("Sitemap generation failed", 500);
+  }
+});
+
+// Get SEO metadata for an article (for SSR/prerendering)
+app.get("/api/seo/article/:slug", async (c) => {
+  try {
+    const slug = c.req.param("slug");
+    const article = await c.env.DB.prepare(`
+      SELECT id, slug, title, description, content, author, category, tags,
+             image_url, optimized_image_url, published_at, updated_at, word_count, source
+      FROM articles
+      WHERE slug = ? AND status = 'published'
+    `).bind(slug).first();
+
+    if (!article) {
+      return c.json({ error: "Article not found" }, 404);
+    }
+
+    const seoService = new SEOService(c.env.DB);
+    const seo = await seoService.generateArticleSEO(article as any);
+
+    return c.json({
+      success: true,
+      seo,
+      metaTags: seoService.generateMetaTags(seo)
+    });
+  } catch (error: any) {
+    console.error("[SEO] Article SEO error:", error);
+    return c.json({ error: "SEO generation failed" }, 500);
+  }
+});
+
+// Get SEO metadata for homepage
+app.get("/api/seo/homepage", async (c) => {
+  try {
+    const seoService = new SEOService(c.env.DB);
+    const seo = seoService.generateHomepageSEO();
+
+    return c.json({
+      success: true,
+      seo,
+      metaTags: seoService.generateMetaTags(seo)
+    });
+  } catch (error: any) {
+    console.error("[SEO] Homepage SEO error:", error);
+    return c.json({ error: "SEO generation failed" }, 500);
+  }
+});
+
+// Get SEO metadata for category page
+app.get("/api/seo/category/:category", async (c) => {
+  try {
+    const category = c.req.param("category");
+
+    // Get article count for category
+    const countResult = await c.env.DB.prepare(`
+      SELECT COUNT(*) as count FROM articles
+      WHERE category = ? AND status = 'published'
+    `).bind(category).first();
+
+    const seoService = new SEOService(c.env.DB);
+    const seo = seoService.generateCategorySEO(category, (countResult as any)?.count || 0);
+
+    return c.json({
+      success: true,
+      seo,
+      metaTags: seoService.generateMetaTags(seo)
+    });
+  } catch (error: any) {
+    console.error("[SEO] Category SEO error:", error);
+    return c.json({ error: "SEO generation failed" }, 500);
+  }
+});
+
+// Admin: Batch update SEO for articles
+app.post("/api/admin/seo/batch-update", async (c) => {
+  try {
+    const { batchSize = 100 } = await c.req.json().catch(() => ({}));
+
+    const seoService = new SEOService(c.env.DB);
+    const result = await seoService.autoUpdateArticleSEO(batchSize);
+
+    return c.json({
+      success: true,
+      message: `Updated SEO for ${result.updated} articles`,
+      ...result
+    });
+  } catch (error: any) {
+    console.error("[SEO] Batch update error:", error);
+    return c.json({ error: "SEO batch update failed" }, 500);
+  }
+});
+
+// Admin: Get SEO status/stats
+app.get("/api/admin/seo/stats", async (c) => {
+  try {
+    const stats = await c.env.DB.prepare(`
+      SELECT
+        COUNT(*) as total_articles,
+        SUM(CASE WHEN meta_description IS NOT NULL AND meta_description != '' THEN 1 ELSE 0 END) as with_meta_description,
+        SUM(CASE WHEN seo_title IS NOT NULL AND seo_title != '' THEN 1 ELSE 0 END) as with_seo_title,
+        SUM(CASE WHEN canonical_url IS NOT NULL AND canonical_url != '' THEN 1 ELSE 0 END) as with_canonical,
+        SUM(CASE WHEN og_image IS NOT NULL AND og_image != '' THEN 1 ELSE 0 END) as with_og_image,
+        SUM(CASE WHEN seo_updated_at IS NOT NULL THEN 1 ELSE 0 END) as with_seo_data,
+        SUM(CASE WHEN seo_updated_at IS NULL OR seo_updated_at < datetime('now', '-7 days') THEN 1 ELSE 0 END) as needs_update
+      FROM articles
+      WHERE status = 'published'
+    `).first();
+
+    return c.json({
+      success: true,
+      stats: {
+        totalArticles: (stats as any)?.total_articles || 0,
+        withMetaDescription: (stats as any)?.with_meta_description || 0,
+        withSeoTitle: (stats as any)?.with_seo_title || 0,
+        withCanonical: (stats as any)?.with_canonical || 0,
+        withOgImage: (stats as any)?.with_og_image || 0,
+        withSeoData: (stats as any)?.with_seo_data || 0,
+        needsUpdate: (stats as any)?.needs_update || 0
+      }
+    });
+  } catch (error: any) {
+    console.error("[SEO] Stats error:", error);
+    return c.json({ error: "Failed to get SEO stats" }, 500);
+  }
+});
+
+// robots.txt
+app.get("/robots.txt", async (c) => {
+  const robotsTxt = `# Mukoko News - Zimbabwe's Modern News Platform
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /admin/
+Allow: /api/seo/
+
+# Sitemaps
+Sitemap: https://news.mukoko.com/sitemap.xml
+Sitemap: https://news.mukoko.com/sitemap-news.xml
+
+# Crawl delay for polite crawling
+Crawl-delay: 1
+`;
+
+  return new Response(robotsTxt, {
+    headers: {
+      "Content-Type": "text/plain",
+      "Cache-Control": "public, max-age=86400" // 24 hour cache
+    }
+  });
+});
+
+// Scheduled handler for cron jobs
+const scheduledHandler = async (
+  controller: ScheduledController,
+  env: Bindings,
+  ctx: ExecutionContext
+) => {
+  console.log(`[CRON] Scheduled task triggered at ${new Date().toISOString()}`);
+  console.log(`[CRON] Cron expression: ${controller.cron}`);
+
+  try {
+    // Run SEO batch update
+    const seoService = new SEOService(env.DB);
+    const result = await seoService.autoUpdateArticleSEO(200); // Process 200 articles per run
+
+    console.log(`[CRON] SEO update complete: ${result.updated} updated, ${result.errors} errors`);
+
+    // Log the cron execution to database
+    await env.DB.prepare(`
+      INSERT INTO cron_logs (cron_type, status, articles_processed, errors, execution_time_ms, created_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).bind(
+      'seo_batch_update',
+      result.errors === 0 ? 'success' : 'partial',
+      result.updated,
+      result.errors,
+      0 // Could calculate actual time
+    ).run();
+
+  } catch (error: any) {
+    console.error('[CRON] SEO update failed:', error);
+
+    // Log failure
+    await env.DB.prepare(`
+      INSERT INTO cron_logs (cron_type, status, error_message, created_at)
+      VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+    `).bind('seo_batch_update', 'failed', error.message).run();
+  }
+};
+
+// Type for scheduled controller
+interface ScheduledController {
+  scheduledTime: number;
+  cron: string;
+  noRetry(): void;
+}
+
+export default {
+  fetch: app.fetch,
+  scheduled: scheduledHandler
+};
