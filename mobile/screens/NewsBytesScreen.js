@@ -60,24 +60,33 @@ export default function NewsBytesScreen({ navigation }) {
   const loadNewsBytes = async () => {
     try {
       setLoading(true);
-      const { data, error } = await newsBytes.getFeed({ limit: 20 });
+      // Request more articles since we'll filter out those without images
+      const { data, error } = await newsBytes.getFeed({ limit: 50 });
 
       if (data?.articles) {
-        const transformedBytes = data.articles.map((article) => ({
-          id: article.id,
-          title: article.title,
-          description: article.description || '',
-          source: article.source,
-          source_id: article.source_id,
-          slug: article.slug,
-          category: article.category,
-          image_url: article.image_url || article.imageUrl,
-          published_at: article.published_at || article.pubDate,
-          likesCount: article.likesCount || 0,
-          commentsCount: article.commentsCount || 0,
-          isLiked: article.isLiked || false,
-          isSaved: article.isSaved || false,
-        }));
+        // Transform and filter - ONLY include articles with valid images
+        const transformedBytes = data.articles
+          .filter((article) => {
+            const imageUrl = article.image_url || article.imageUrl;
+            // Only include articles with valid image URLs
+            return imageUrl && imageUrl.trim().length > 0 && imageUrl.startsWith('http');
+          })
+          .map((article) => ({
+            id: article.id,
+            title: article.title,
+            description: article.description || '',
+            source: article.source,
+            source_id: article.source_id,
+            slug: article.slug,
+            category: article.category,
+            image_url: article.image_url || article.imageUrl,
+            published_at: article.published_at || article.pubDate,
+            likesCount: article.likesCount || 0,
+            commentsCount: article.commentsCount || 0,
+            isLiked: article.isLiked || false,
+            isSaved: article.isSaved || false,
+          }))
+          .slice(0, 20); // Limit to 20 after filtering
 
         const initialState = {};
         transformedBytes.forEach(byte => {
@@ -215,18 +224,12 @@ export default function NewsBytesScreen({ navigation }) {
         activeOpacity={1}
         onPress={() => handleViewArticle(item)}
       >
-        {/* Background Image */}
-        {item.image_url ? (
-          <Image
-            source={{ uri: item.image_url }}
-            style={styles.backgroundImage}
-            resizeMode="cover"
-          />
-        ) : (
-          <View style={[styles.backgroundImage, styles.placeholderBackground]}>
-            <Text style={styles.placeholderIcon}>📰</Text>
-          </View>
-        )}
+        {/* Background Image - Only articles with images are shown */}
+        <Image
+          source={{ uri: item.image_url }}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        />
 
         {/* Gradient Overlay - Full height for better readability */}
         <LinearGradient
@@ -414,15 +417,6 @@ const styles = StyleSheet.create({
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: '#1a1a1a',
-  },
-  placeholderBackground: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#2a2a2a',
-  },
-  placeholderIcon: {
-    fontSize: 64,
-    opacity: 0.3,
   },
   gradientOverlay: {
     ...StyleSheet.absoluteFillObject,
