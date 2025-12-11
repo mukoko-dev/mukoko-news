@@ -12,13 +12,17 @@ const logoIcon = require('../assets/mukoko-logo-compact.png');
  * @param {string} variant - 'compact' | 'horizontal' | 'text'
  * @param {string} size - 'sm' | 'md' | 'lg'
  * @param {boolean} showText - Whether to show text next to logo (for compact variant)
- * @param {string} theme - 'light' | 'dark' (for text color)
+ * @param {boolean} showFlag - Whether to show Zimbabwe flag emoji (default: false for cleaner headers)
+ * @param {string} textStyle - 'light' | 'dark' - 'light' = white text (for dark backgrounds), 'dark' = black text (for light backgrounds)
  */
 export default function Logo({
   variant = 'compact',
   size = 'md',
   showText = true,
-  theme = 'light',
+  showFlag = false,
+  textStyle = 'dark',
+  // Legacy prop for backwards compatibility
+  theme,
   style,
 }) {
   const sizes = {
@@ -29,9 +33,14 @@ export default function Logo({
 
   const { logoSize, fontSize, spacing } = sizes[size];
 
-  const textColor = theme === 'dark'
-    ? mukokoTheme.colors.onSurface
-    : mukokoTheme.colors.onPrimary;
+  // Use theme prop if provided for backwards compatibility, otherwise use textStyle
+  const effectiveStyle = theme || textStyle;
+
+  // textStyle: 'dark' = dark/black text (for light backgrounds like white headers)
+  //            'light' = light/white text (for dark backgrounds like colored buttons)
+  const textColor = effectiveStyle === 'dark'
+    ? mukokoTheme.colors.onSurface      // Dark text for light backgrounds
+    : mukokoTheme.colors.onPrimary;      // Light/white text for dark backgrounds
 
   // Text only variant
   if (variant === 'text') {
@@ -40,7 +49,7 @@ export default function Logo({
         <Text style={[styles.text, { fontSize, color: textColor }]}>
           Mukoko News
         </Text>
-        <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>
+        {showFlag && <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>}
       </View>
     );
   }
@@ -61,7 +70,7 @@ export default function Logo({
         <Text style={[styles.text, { fontSize, color: textColor }]}>
           Mukoko News
         </Text>
-        <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>
+        {showFlag && <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>}
       </View>
     );
   }
@@ -79,13 +88,11 @@ export default function Logo({
         resizeMode="contain"
       />
       {showText && (
-        <>
-          <Text style={[styles.text, { fontSize, color: textColor }]}>
-            Mukoko
-          </Text>
-          <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>
-        </>
+        <Text style={[styles.text, { fontSize, color: textColor }]}>
+          Mukoko
+        </Text>
       )}
+      {showFlag && <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>}
     </View>
   );
 }

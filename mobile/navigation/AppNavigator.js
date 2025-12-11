@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet, Dimensions, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import { IconButton } from 'react-native-paper';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import mukokoTheme from '../theme';
 import AppHeader from '../components/AppHeader';
 import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
@@ -122,28 +122,30 @@ function MainTabs() {
         tabBarInactiveTintColor: mukokoTheme.colors.onSurfaceVariant,
         tabBarStyle: isTabletOrDesktop ? { display: 'none' } : {
           position: 'absolute',
-          bottom: 20,
-          left: 10,
-          right: 10,
+          bottom: 16,
+          left: 16,
+          right: 16,
           backgroundColor: mukokoTheme.colors.surface,
-          borderRadius: 24,
-          borderWidth: 0,
-          paddingBottom: 12,
-          paddingTop: 12,
-          height: 70,
-          elevation: 8,
+          borderRadius: 20,
+          height: 60,
+          paddingBottom: 0,
+          paddingTop: 0,
+          borderWidth: 1,
+          borderColor: mukokoTheme.colors.outlineVariant,
+          elevation: 4,
           shadowColor: '#000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.15,
-          shadowRadius: 12,
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.1,
+          shadowRadius: 8,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 6,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontFamily: mukokoTheme.fonts.medium.fontFamily,
-          marginTop: 2,
-        },
-        tabBarIconStyle: {
-          marginBottom: 2,
+          marginTop: -2,
+          marginBottom: 4,
         },
       }}
     >
@@ -154,11 +156,10 @@ function MainTabs() {
         options={{
           tabBarLabel: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <IconButton
-              icon={focused ? 'home' : 'home-outline'}
-              iconColor={color}
-              size={24}
-              style={{ margin: 0, padding: 0 }}
+            <MaterialCommunityIcons
+              name={focused ? 'home' : 'home-outline'}
+              size={22}
+              color={color}
             />
           ),
         }}
@@ -171,28 +172,26 @@ function MainTabs() {
         options={{
           tabBarLabel: 'Discover',
           tabBarIcon: ({ color, focused }) => (
-            <IconButton
-              icon={focused ? 'compass' : 'compass-outline'}
-              iconColor={color}
-              size={24}
-              style={{ margin: 0, padding: 0 }}
+            <MaterialCommunityIcons
+              name={focused ? 'compass' : 'compass-outline'}
+              size={22}
+              color={color}
             />
           ),
         }}
       />
 
-      {/* 3. NewsBytes Tab (Center - Featured with larger icon) */}
+      {/* 3. NewsBytes Tab (Center - Featured) */}
       <Tab.Screen
         name="Bytes"
         component={BytesStack}
         options={{
           tabBarLabel: 'Bytes',
           tabBarIcon: ({ color, focused }) => (
-            <IconButton
-              icon={focused ? 'play-circle' : 'play-circle-outline'}
-              iconColor={focused ? mukokoTheme.colors.accent : color}
-              size={focused ? 30 : 28}
-              style={{ margin: 0, padding: 0 }}
+            <MaterialCommunityIcons
+              name={focused ? 'play-circle' : 'play-circle-outline'}
+              size={focused ? 26 : 24}
+              color={focused ? mukokoTheme.colors.accent : color}
             />
           ),
         }}
@@ -204,12 +203,11 @@ function MainTabs() {
         component={SearchStack}
         options={{
           tabBarLabel: 'Search',
-          tabBarIcon: ({ color, focused }) => (
-            <IconButton
-              icon="magnify"
-              iconColor={color}
-              size={24}
-              style={{ margin: 0, padding: 0 }}
+          tabBarIcon: ({ color }) => (
+            <MaterialCommunityIcons
+              name="magnify"
+              size={22}
+              color={color}
             />
           ),
         }}
@@ -222,11 +220,10 @@ function MainTabs() {
         options={{
           tabBarLabel: 'Profile',
           tabBarIcon: ({ color, focused }) => (
-            <IconButton
-              icon={focused ? 'account-circle' : 'account-circle-outline'}
-              iconColor={color}
-              size={24}
-              style={{ margin: 0, padding: 0 }}
+            <MaterialCommunityIcons
+              name={focused ? 'account-circle' : 'account-circle-outline'}
+              size={22}
+              color={color}
             />
           ),
         }}
