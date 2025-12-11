@@ -1,40 +1,96 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
   View,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  ActivityIndicator,
   Image,
+  Platform,
 } from 'react-native';
 import {
   Text,
   Searchbar,
   Chip,
   Button,
-  IconButton,
-  Card,
+  ActivityIndicator,
+  Surface,
 } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
-import HeaderNavigation from '../components/HeaderNavigation';
-import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
+import CategoryChips from '../components/CategoryChips';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI, categories as categoriesAPI } from '../api/client';
 
 /**
+ * Memoized Search Result Card
+ */
+const SearchResultCard = memo(({ article, onPress }) => {
+  const [imageError, setImageError] = useState(false);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Today';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+    });
+  };
+
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => onPress(article)}
+      style={styles.resultCard}
+    >
+      <Surface style={styles.card} elevation={1}>
+        <View style={styles.cardRow}>
+          {/* Image */}
+          <View style={styles.cardImageContainer}>
+            {article.image_url && !imageError ? (
+              <Image
+                source={{ uri: article.image_url }}
+                style={styles.cardImage}
+                resizeMode="cover"
+                onError={() => setImageError(true)}
+                fadeDuration={0}
+              />
+            ) : (
+              <View style={[styles.cardImage, styles.imagePlaceholder]}>
+                <Text style={styles.placeholderText}>📰</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Content */}
+          <View style={styles.cardContent}>
+            <Text style={styles.cardSource}>{article.source || 'News'}</Text>
+            <Text style={styles.cardTitle} numberOfLines={2}>
+              {article.title}
+            </Text>
+            <Text style={styles.cardDate}>{formatDate(article.published_at)}</Text>
+          </View>
+        </View>
+      </Surface>
+    </TouchableOpacity>
+  );
+}, (prevProps, nextProps) => prevProps.article.id === nextProps.article.id);
+
+/**
  * SearchScreen - Search news articles
- *
- * Features:
- * - Full-text search with debouncing
- * - Category filters
- * - Search suggestions
- * - Recent searches
- * - Results grid
+ * Clean design without duplicate headers
  */
 export default function SearchScreen({ navigation }) {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
@@ -44,8 +100,6 @@ export default function SearchScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [total, setTotal] = useState(0);
   const [error, setError] = useState(null);
-
-  // Debounce timer
   const [debounceTimer, setDebounceTimer] = useState(null);
 
   useEffect(() => {
@@ -76,7 +130,6 @@ export default function SearchScreen({ navigation }) {
       setError(null);
       setActiveQuery(query);
 
-      // Call search API
       const result = await articlesAPI.search({
         q: query,
         category,
@@ -104,12 +157,10 @@ export default function SearchScreen({ navigation }) {
   const handleSearchChange = (text) => {
     setSearchQuery(text);
 
-    // Clear existing debounce timer
     if (debounceTimer) {
       clearTimeout(debounceTimer);
     }
 
-    // Set new debounce timer (500ms delay)
     const timer = setTimeout(() => {
       if (text.trim().length > 0) {
         performSearch(text, selectedCategory);
@@ -129,375 +180,248 @@ export default function SearchScreen({ navigation }) {
     }
   };
 
-  const handleCategoryPress = async (category) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const handleCategoryPress = async (categorySlug) => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
 
-    if (selectedCategory === category) {
+    if (selectedCategory === categorySlug) {
       setSelectedCategory(null);
       if (activeQuery) {
         await performSearch(activeQuery, null);
       }
     } else {
-      setSelectedCategory(category);
+      setSelectedCategory(categorySlug);
       if (activeQuery) {
-        await performSearch(activeQuery, category);
+        await performSearch(activeQuery, categorySlug);
       }
     }
   };
 
-  const handleArticlePress = (article) => {
+  const handleArticlePress = useCallback((article) => {
     navigation.navigate('ArticleDetail', {
       articleId: article.id,
       source: article.source_id || article.source,
       slug: article.slug,
     });
-  };
+  }, [navigation]);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Today';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
+  const handleSuggestionPress = (categoryName) => {
+    setSearchQuery(categoryName.toLowerCase());
+    performSearch(categoryName.toLowerCase());
   };
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.container}>
-        {/* Zimbabwe Flag Strip */}
-        <ZimbabweFlagStrip />
-
-        {/* Header */}
-        <HeaderNavigation
-          navigation={navigation}
-          currentRoute="Search"
-          isAuthenticated={isAuthenticated}
-          title="Search"
+    <View style={styles.container}>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <Searchbar
+          placeholder="Search Zimbabwe news..."
+          value={searchQuery}
+          onChangeText={handleSearchChange}
+          onSubmitEditing={handleSearchSubmit}
+          style={styles.searchbar}
+          inputStyle={styles.searchInput}
+          iconColor={mukokoTheme.colors.primary}
+          loading={loading}
         />
-
-        {/* Content */}
-        <View style={styles.content}>
-          {/* Search Bar */}
-          <View style={styles.searchContainer}>
-            <Searchbar
-              placeholder="Search Zimbabwe news..."
-              value={searchQuery}
-              onChangeText={handleSearchChange}
-              onSubmitEditing={handleSearchSubmit}
-              style={styles.searchbar}
-              iconColor={mukokoTheme.colors.primary}
-              loading={loading}
-            />
-          </View>
-
-          {/* Search Info */}
-          {activeQuery && (
-            <View style={styles.searchInfo}>
-              <Text style={styles.searchInfoTitle}>
-                Search Results for "{activeQuery}"
-              </Text>
-              <Text style={styles.searchInfoSubtitle}>
-                Found {total} article{total !== 1 ? 's' : ''} from Zimbabwe news sources
-              </Text>
-            </View>
-          )}
-
-          {/* Category Filters */}
-          {categories.length > 0 && activeQuery && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.categoriesScroll}
-              contentContainerStyle={styles.categoriesContent}
-            >
-              <Chip
-                selected={!selectedCategory}
-                onPress={() => handleCategoryPress(null)}
-                style={[
-                  styles.categoryChip,
-                  !selectedCategory && styles.categoryChipSelected,
-                ]}
-                textStyle={styles.categoryChipText}
-              >
-                🏠 All Categories
-              </Chip>
-              {categories.map((category) => (
-                <Chip
-                  key={category.id}
-                  selected={selectedCategory === category.id}
-                  onPress={() => handleCategoryPress(category.id)}
-                  style={[
-                    styles.categoryChip,
-                    selectedCategory === category.id && styles.categoryChipSelected,
-                  ]}
-                  textStyle={styles.categoryChipText}
-                >
-                  {category.emoji} {category.name}
-                </Chip>
-              ))}
-            </ScrollView>
-          )}
-
-          {/* Error State */}
-          {error && (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorText}>{error}</Text>
-            </View>
-          )}
-
-          {/* No Query State */}
-          {!activeQuery && !loading && (
-            <View style={styles.centerContainer}>
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyEmoji}>🔍</Text>
-                <Text style={styles.emptyTitle}>Search Zimbabwe News</Text>
-                <Text style={styles.emptyMessage}>
-                  Find articles from trusted Zimbabwe news sources. Search by keywords, topics, or current events.
-                </Text>
-                {categories.length > 0 && (
-                  <View style={styles.suggestionsContainer}>
-                    <Text style={styles.suggestionsTitle}>Suggested Topics:</Text>
-                    <View style={styles.suggestionsChips}>
-                      {categories.slice(0, 6).map((category) => (
-                        <Chip
-                          key={category.id}
-                          onPress={() => {
-                            setSearchQuery(category.name.toLowerCase());
-                            performSearch(category.name.toLowerCase());
-                          }}
-                          style={styles.suggestionChip}
-                          textStyle={styles.suggestionChipText}
-                        >
-                          {category.emoji} {category.name}
-                        </Chip>
-                      ))}
-                    </View>
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* No Results State */}
-          {activeQuery && results.length === 0 && !loading && !error && (
-            <View style={styles.centerContainer}>
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyEmoji}>📭</Text>
-                <Text style={styles.emptyTitle}>No Results Found</Text>
-                <Text style={styles.emptyMessage}>
-                  No articles found for "{activeQuery}". Try different keywords or browse categories.
-                </Text>
-                <Button
-                  mode="contained"
-                  onPress={() => navigation.navigate('Home')}
-                  style={styles.emptyButton}
-                  buttonColor={mukokoTheme.colors.primary}
-                >
-                  Browse All News
-                </Button>
-              </View>
-            </View>
-          )}
-
-          {/* Search Results */}
-          {results.length > 0 && (
-            <ScrollView
-              style={styles.resultsScroll}
-              contentContainerStyle={styles.resultsContent}
-            >
-              {results.map((article, index) => (
-                <TouchableOpacity
-                  key={article.id || index}
-                  activeOpacity={0.7}
-                  onPress={() => handleArticlePress(article)}
-                  style={styles.resultCard}
-                >
-                  <Card style={styles.card}>
-                    {article.image_url && (
-                      <Image
-                        source={{ uri: article.image_url }}
-                        style={styles.cardImage}
-                        resizeMode="cover"
-                      />
-                    )}
-                    <Card.Content style={styles.cardContent}>
-                      {/* Meta */}
-                      <View style={styles.cardMeta}>
-                        <Chip
-                          mode="flat"
-                          style={styles.sourceChip}
-                          textStyle={styles.sourceChipText}
-                        >
-                          {article.source || 'Unknown'}
-                        </Chip>
-                        <Text style={styles.cardDate}>
-                          {formatDate(article.published_at)}
-                        </Text>
-                      </View>
-
-                      {/* Title */}
-                      <Text style={styles.cardTitle}>{article.title}</Text>
-
-                      {/* Description */}
-                      {article.description && (
-                        <Text
-                          style={styles.cardDescription}
-                          numberOfLines={3}
-                          ellipsizeMode="tail"
-                        >
-                          {article.description}
-                        </Text>
-                      )}
-
-                      {/* Actions */}
-                      <View style={styles.cardActions}>
-                        <Text style={styles.readMoreText}>Read More →</Text>
-                        <View style={styles.cardActionButtons}>
-                          <IconButton
-                            icon="heart-outline"
-                            size={18}
-                            iconColor={mukokoTheme.colors.onSurfaceVariant}
-                            style={styles.actionIcon}
-                          />
-                          <IconButton
-                            icon="bookmark-outline"
-                            size={18}
-                            iconColor={mukokoTheme.colors.onSurfaceVariant}
-                            style={styles.actionIcon}
-                          />
-                        </View>
-                      </View>
-                    </Card.Content>
-                  </Card>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          )}
-
-          {/* Loading State */}
-          {loading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={mukokoTheme.colors.primary} />
-              <Text style={styles.loadingText}>Searching...</Text>
-            </View>
-          )}
-        </View>
       </View>
-    </SafeAreaView>
+
+      {/* Category Filter (only show when there's a query) */}
+      {activeQuery && categories.length > 0 && (
+        <CategoryChips
+          categories={categories}
+          selectedCategory={selectedCategory}
+          onCategoryPress={handleCategoryPress}
+          showAll={true}
+          showEmojis={true}
+        />
+      )}
+
+      {/* Search Results Info */}
+      {activeQuery && !loading && (
+        <View style={styles.resultsInfo}>
+          <Text style={styles.resultsInfoText}>
+            {total} result{total !== 1 ? 's' : ''} for "{activeQuery}"
+          </Text>
+        </View>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      {/* Empty State - No Query */}
+      {!activeQuery && !loading && (
+        <View style={styles.emptyStateContainer}>
+          <View style={styles.emptyStateCard}>
+            <Text style={styles.emptyEmoji}>🔍</Text>
+            <Text style={styles.emptyTitle}>Search Zimbabwe News</Text>
+            <Text style={styles.emptyMessage}>
+              Find articles from trusted Zimbabwe news sources
+            </Text>
+
+            {categories.length > 0 && (
+              <View style={styles.suggestionsContainer}>
+                <Text style={styles.suggestionsTitle}>Popular Topics</Text>
+                <View style={styles.suggestionsGrid}>
+                  {categories.slice(0, 6).map((category) => (
+                    <Chip
+                      key={category.id}
+                      onPress={() => handleSuggestionPress(category.name)}
+                      style={styles.suggestionChip}
+                      textStyle={styles.suggestionChipText}
+                    >
+                      {category.emoji} {category.name}
+                    </Chip>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* No Results State */}
+      {activeQuery && results.length === 0 && !loading && !error && (
+        <View style={styles.emptyStateContainer}>
+          <View style={styles.emptyStateCard}>
+            <Text style={styles.emptyEmoji}>📭</Text>
+            <Text style={styles.emptyTitle}>No Results</Text>
+            <Text style={styles.emptyMessage}>
+              No articles found for "{activeQuery}"
+            </Text>
+            <Button
+              mode="contained"
+              onPress={() => navigation.navigate('Home')}
+              style={styles.browseButton}
+              buttonColor={mukokoTheme.colors.primary}
+            >
+              Browse All News
+            </Button>
+          </View>
+        </View>
+      )}
+
+      {/* Search Results */}
+      {results.length > 0 && (
+        <ScrollView
+          style={styles.resultsScroll}
+          contentContainerStyle={styles.resultsContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {results.map((article) => (
+            <SearchResultCard
+              key={article.id}
+              article={article}
+              onPress={handleArticlePress}
+            />
+          ))}
+
+          {/* Bottom padding for tab bar */}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={mukokoTheme.colors.primary} />
+          <Text style={styles.loadingText}>Searching...</Text>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: mukokoTheme.colors.background,
-  },
   container: {
     flex: 1,
     backgroundColor: mukokoTheme.colors.background,
   },
-  content: {
-    flex: 1,
-  },
+
+  // Search Bar
   searchContainer: {
     padding: mukokoTheme.spacing.md,
     backgroundColor: mukokoTheme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
+    borderBottomColor: mukokoTheme.colors.outlineVariant,
   },
   searchbar: {
     backgroundColor: mukokoTheme.colors.surfaceVariant,
-    borderRadius: 24,
+    borderRadius: mukokoTheme.roundness,
     elevation: 0,
   },
-  searchInfo: {
-    padding: mukokoTheme.spacing.md,
+  searchInput: {
+    fontSize: 16,
+  },
+
+  // Results Info
+  resultsInfo: {
+    paddingHorizontal: mukokoTheme.spacing.md,
+    paddingVertical: mukokoTheme.spacing.sm,
     backgroundColor: mukokoTheme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
+    borderBottomColor: mukokoTheme.colors.outlineVariant,
   },
-  searchInfoTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontWeight: mukokoTheme.fonts.serifBold.fontWeight,
-    fontSize: 18,
-    color: mukokoTheme.colors.onSurface,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  searchInfoSubtitle: {
+  resultsInfoText: {
     fontSize: 14,
     color: mukokoTheme.colors.onSurfaceVariant,
   },
-  categoriesScroll: {
-    backgroundColor: mukokoTheme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
-  },
-  categoriesContent: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-    gap: mukokoTheme.spacing.sm,
-  },
-  categoryChip: {
-    marginRight: mukokoTheme.spacing.sm,
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
-  },
-  categoryChipSelected: {
-    backgroundColor: mukokoTheme.colors.primary,
-  },
-  categoryChipText: {
-    fontSize: 13,
-  },
+
+  // Error
   errorContainer: {
     margin: mukokoTheme.spacing.md,
-    padding: mukokoTheme.spacing.lg,
+    padding: mukokoTheme.spacing.md,
     backgroundColor: mukokoTheme.colors.errorContainer,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: mukokoTheme.colors.error,
+    borderRadius: mukokoTheme.roundness - 8,
   },
   errorText: {
     color: mukokoTheme.colors.onErrorContainer,
     fontSize: 14,
     textAlign: 'center',
   },
-  centerContainer: {
+
+  // Empty State
+  emptyStateContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: mukokoTheme.spacing.xl,
   },
-  emptyCard: {
+  emptyStateCard: {
     backgroundColor: mukokoTheme.colors.surface,
-    borderRadius: 16,
+    borderRadius: mukokoTheme.roundness,
     padding: mukokoTheme.spacing.xl,
     alignItems: 'center',
     maxWidth: 400,
-    borderWidth: 1,
-    borderColor: mukokoTheme.colors.outline,
+    width: '100%',
   },
   emptyEmoji: {
-    fontSize: 60,
+    fontSize: 48,
     marginBottom: mukokoTheme.spacing.md,
   },
   emptyTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontWeight: mukokoTheme.fonts.serifBold.fontWeight,
     fontSize: 20,
-    marginBottom: mukokoTheme.spacing.sm,
     color: mukokoTheme.colors.onSurface,
+    marginBottom: mukokoTheme.spacing.xs,
     textAlign: 'center',
   },
   emptyMessage: {
-    color: mukokoTheme.colors.onSurfaceVariant,
     fontSize: 14,
+    color: mukokoTheme.colors.onSurfaceVariant,
     textAlign: 'center',
     marginBottom: mukokoTheme.spacing.lg,
   },
-  emptyButton: {
-    borderRadius: 24,
+  browseButton: {
+    borderRadius: mukokoTheme.roundness,
   },
+
+  // Suggestions
   suggestionsContainer: {
     width: '100%',
     marginTop: mukokoTheme.spacing.md,
@@ -505,11 +429,10 @@ const styles = StyleSheet.create({
   suggestionsTitle: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    fontWeight: mukokoTheme.fonts.medium.fontWeight,
     color: mukokoTheme.colors.onSurface,
     marginBottom: mukokoTheme.spacing.sm,
   },
-  suggestionsChips: {
+  suggestionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: mukokoTheme.spacing.xs,
@@ -520,81 +443,71 @@ const styles = StyleSheet.create({
   suggestionChipText: {
     fontSize: 12,
   },
+
+  // Results
   resultsScroll: {
     flex: 1,
   },
   resultsContent: {
     padding: mukokoTheme.spacing.md,
-    gap: mukokoTheme.spacing.md,
   },
   resultCard: {
-    marginBottom: mukokoTheme.spacing.md,
+    marginBottom: mukokoTheme.spacing.sm,
   },
   card: {
+    borderRadius: mukokoTheme.roundness - 8,
     backgroundColor: mukokoTheme.colors.surface,
-    borderRadius: 16,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: mukokoTheme.colors.outline,
+  },
+  cardRow: {
+    flexDirection: 'row',
+    padding: mukokoTheme.spacing.sm,
+  },
+  cardImageContainer: {
+    width: 100,
+    height: 80,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: mukokoTheme.colors.surfaceVariant,
   },
   cardImage: {
     width: '100%',
-    height: 180,
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
+    height: '100%',
+  },
+  imagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontSize: 24,
+    opacity: 0.5,
   },
   cardContent: {
-    paddingVertical: mukokoTheme.spacing.md,
+    flex: 1,
+    marginLeft: mukokoTheme.spacing.sm,
+    justifyContent: 'center',
   },
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  sourceChip: {
-    backgroundColor: mukokoTheme.colors.primaryContainer,
-    height: 24,
-  },
-  sourceChipText: {
+  cardSource: {
     fontSize: 11,
-    color: mukokoTheme.colors.onPrimaryContainer,
-  },
-  cardDate: {
-    fontSize: 12,
-    color: mukokoTheme.colors.onSurfaceVariant,
+    color: mukokoTheme.colors.primary,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 2,
   },
   cardTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontWeight: mukokoTheme.fonts.serifBold.fontWeight,
-    fontSize: 16,
-    lineHeight: 22,
-    marginBottom: mukokoTheme.spacing.sm,
+    fontSize: 14,
+    lineHeight: 18,
     color: mukokoTheme.colors.onSurface,
+    marginBottom: 4,
   },
-  cardDescription: {
-    fontSize: 14,
-    lineHeight: 20,
+  cardDate: {
+    fontSize: 11,
     color: mukokoTheme.colors.onSurfaceVariant,
-    marginBottom: mukokoTheme.spacing.md,
   },
-  cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  readMoreText: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    fontWeight: mukokoTheme.fonts.medium.fontWeight,
-    color: mukokoTheme.colors.primary,
-  },
-  cardActionButtons: {
-    flexDirection: 'row',
-    gap: mukokoTheme.spacing.xs,
-  },
-  actionIcon: {
-    margin: 0,
-  },
+
+  // Loading
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -604,5 +517,10 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 14,
     color: mukokoTheme.colors.onSurfaceVariant,
+  },
+
+  // Bottom padding for floating tab bar
+  bottomPadding: {
+    height: 100,
   },
 });

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -7,44 +7,157 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  Platform,
 } from 'react-native';
 import {
   Text,
-  Chip,
   ActivityIndicator,
-  IconButton,
-  Card,
+  Surface,
 } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
-import HeaderNavigation from '../components/HeaderNavigation';
-import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
+import CategoryChips from '../components/CategoryChips';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI, categories as categoriesAPI } from '../api/client';
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - mukokoTheme.spacing.md * 3) / 2;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Responsive column calculation
+const getColumnCount = (screenWidth) => {
+  if (screenWidth >= 1200) return 4;
+  if (screenWidth >= 900) return 3;
+  if (screenWidth >= 600) return 2;
+  return 2;
+};
+
+/**
+ * Memoized Article Card to prevent re-renders
+ */
+const ArticleCard = memo(({ article, onPress, cardWidth, variant }) => {
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
+
+  const handleImageLoad = useCallback(() => setImageLoaded(true), []);
+  const handleImageError = useCallback(() => setImageError(true), []);
+
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Today';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays === 1) return 'Yesterday';
+    if (diffDays < 7) return `${diffDays}d ago`;
+
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'short',
+    });
+  };
+
+  // Featured card (large, full width)
+  if (variant === 'featured') {
+    return (
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => onPress(article)}
+        style={styles.featuredCard}
+      >
+        <View style={styles.featuredImageContainer}>
+          {article.image_url && !imageError ? (
+            <Image
+              source={{ uri: article.image_url }}
+              style={styles.featuredImage}
+              resizeMode="cover"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              fadeDuration={0}
+            />
+          ) : (
+            <View style={[styles.featuredImage, styles.imagePlaceholder]}>
+              <Text style={styles.placeholderText}>📰</Text>
+            </View>
+          )}
+          <View style={styles.featuredOverlay} />
+          <View style={styles.featuredContent}>
+            <View style={styles.featuredBadge}>
+              <Text style={styles.featuredBadgeText}>🔥 TRENDING</Text>
+            </View>
+            <Text style={styles.featuredTitle} numberOfLines={3}>
+              {article.title}
+            </Text>
+            <View style={styles.featuredMeta}>
+              <Text style={styles.featuredSource}>{article.source || 'News'}</Text>
+              <Text style={styles.featuredDot}>•</Text>
+              <Text style={styles.featuredDate}>{formatDate(article.published_at)}</Text>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
+  // Grid card (standard)
+  return (
+    <TouchableOpacity
+      activeOpacity={0.8}
+      onPress={() => onPress(article)}
+      style={[styles.gridCard, { width: cardWidth }]}
+    >
+      <Surface style={styles.cardSurface} elevation={1}>
+        <View style={styles.cardImageWrapper}>
+          {article.image_url && !imageError ? (
+            <Image
+              source={{ uri: article.image_url }}
+              style={styles.cardImage}
+              resizeMode="cover"
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              fadeDuration={0}
+            />
+          ) : (
+            <View style={[styles.cardImage, styles.imagePlaceholder]}>
+              <Text style={styles.placeholderText}>📰</Text>
+            </View>
+          )}
+        </View>
+        <View style={styles.cardBody}>
+          <Text style={styles.cardSource}>{article.source || 'News'}</Text>
+          <Text style={styles.cardTitle} numberOfLines={3}>
+            {article.title}
+          </Text>
+          <Text style={styles.cardDate}>{formatDate(article.published_at)}</Text>
+        </View>
+      </Surface>
+    </TouchableOpacity>
+  );
+}, (prevProps, nextProps) => prevProps.article.id === nextProps.article.id);
 
 /**
  * DiscoverScreen - Trending and featured content
- *
- * Features:
- * - Trending articles grid
- * - Featured categories
- * - Visual masonry-style layout
- * - Pull-to-refresh
+ * Clean, modern design without duplicate headers
  */
 export default function DiscoverScreen({ navigation }) {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [articles, setArticles] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [total, setTotal] = useState(0);
-  const [todayCount, setTodayCount] = useState(0);
+  const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
+
+  // Handle screen resize
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenWidth(window.width);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   useEffect(() => {
     loadInitialData();
@@ -77,8 +190,6 @@ export default function DiscoverScreen({ navigation }) {
 
       if (result.data?.articles) {
         setArticles(result.data.articles);
-        setTotal(result.data.total || 0);
-        setTodayCount(result.data.todayCount || 0);
       }
     } catch (err) {
       console.error('[Discover] Load articles error:', err);
@@ -91,287 +202,264 @@ export default function DiscoverScreen({ navigation }) {
     setRefreshing(false);
   };
 
-  const handleCategoryPress = async (category) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const handleCategoryPress = async (categorySlug) => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
 
-    if (selectedCategory === category) {
+    if (selectedCategory === categorySlug) {
       setSelectedCategory(null);
       await loadArticles(null);
     } else {
-      setSelectedCategory(category);
-      await loadArticles(category);
+      setSelectedCategory(categorySlug);
+      await loadArticles(categorySlug);
     }
   };
 
-  const handleArticlePress = (article) => {
+  const handleArticlePress = useCallback((article) => {
     navigation.navigate('ArticleDetail', {
       articleId: article.id,
       source: article.source_id || article.source,
       slug: article.slug,
     });
-  };
+  }, [navigation]);
 
-  const formatDate = (dateString) => {
-    if (!dateString) return 'Today';
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  // Calculate card width based on columns
+  const columnCount = getColumnCount(screenWidth);
+  const cardGap = mukokoTheme.spacing.sm;
+  const horizontalPadding = mukokoTheme.spacing.md * 2;
+  const cardWidth = (screenWidth - horizontalPadding - (cardGap * (columnCount - 1))) / columnCount;
 
-    if (diffDays === 0) return 'Today';
-    if (diffDays === 1) return 'Yesterday';
-    if (diffDays < 7) return `${diffDays} days ago`;
-
-    return date.toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-    });
-  };
-
-  const renderArticleCard = (article, index) => {
-    // Alternate between tall and short cards for visual interest
-    const isTall = index % 3 === 0;
-
-    return (
-      <TouchableOpacity
-        key={article.id}
-        activeOpacity={0.7}
-        onPress={() => handleArticlePress(article)}
-        style={[
-          styles.articleCard,
-          isTall ? styles.articleCardTall : styles.articleCardShort,
-        ]}
-      >
-        <Card style={styles.card}>
-          {article.image_url && (
-            <Image
-              source={{ uri: article.image_url }}
-              style={[
-                styles.cardImage,
-                isTall ? styles.cardImageTall : styles.cardImageShort,
-              ]}
-              resizeMode="cover"
-            />
-          )}
-          <View style={styles.cardOverlay}>
-            <View style={styles.cardContent}>
-              {/* Source Badge */}
-              <Chip
-                mode="flat"
-                style={styles.sourceChip}
-                textStyle={styles.sourceChipText}
-              >
-                {article.source || 'Unknown'}
-              </Chip>
-
-              {/* Title */}
-              <Text
-                style={styles.cardTitle}
-                numberOfLines={isTall ? 4 : 3}
-                ellipsizeMode="tail"
-              >
-                {article.title}
-              </Text>
-
-              {/* Meta */}
-              <View style={styles.cardMeta}>
-                <Text style={styles.cardDate}>{formatDate(article.published_at)}</Text>
-                {article.category && (
-                  <>
-                    <Text style={styles.metaDivider}>•</Text>
-                    <Text style={styles.cardCategory}>{article.category}</Text>
-                  </>
-                )}
-              </View>
-            </View>
-          </View>
-        </Card>
-      </TouchableOpacity>
-    );
-  };
+  // Featured article is first one
+  const featuredArticle = articles[0];
+  const gridArticles = articles.slice(1);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.container}>
-        {/* Zimbabwe Flag Strip */}
-        <ZimbabweFlagStrip />
+    <View style={styles.container}>
+      {/* Category Filter Bar */}
+      <CategoryChips
+        categories={categories}
+        selectedCategory={selectedCategory}
+        onCategoryPress={handleCategoryPress}
+        showAll={true}
+        showEmojis={true}
+      />
 
-        {/* Header */}
-        <HeaderNavigation
-          navigation={navigation}
-          currentRoute="Discover"
-          isAuthenticated={isAuthenticated}
-          title="Discover"
-        />
-
-        {/* Content */}
-        <View style={styles.content}>
-          {/* Stats Header */}
-          {!loading && (
-            <View style={styles.statsHeader}>
-              <View style={styles.statsRow}>
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{todayCount}</Text>
-                  <Text style={styles.statLabel}>Today</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{total}</Text>
-                  <Text style={styles.statLabel}>Total Articles</Text>
-                </View>
-                <View style={styles.statDivider} />
-                <View style={styles.statItem}>
-                  <Text style={styles.statValue}>{categories.length}</Text>
-                  <Text style={styles.statLabel}>Categories</Text>
-                </View>
-              </View>
-            </View>
-          )}
-
-          {/* Categories */}
-          {categories.length > 0 && (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              style={styles.categoriesScroll}
-              contentContainerStyle={styles.categoriesContent}
-            >
-              <Chip
-                selected={!selectedCategory}
-                onPress={() => handleCategoryPress(null)}
-                style={[
-                  styles.categoryChip,
-                  !selectedCategory && styles.categoryChipSelected,
-                ]}
-                textStyle={styles.categoryChipText}
-              >
-                🔥 Trending
-              </Chip>
-              {categories.map((category) => (
-                <Chip
-                  key={category.id}
-                  selected={selectedCategory === category.id}
-                  onPress={() => handleCategoryPress(category.id)}
-                  style={[
-                    styles.categoryChip,
-                    selectedCategory === category.id && styles.categoryChipSelected,
-                  ]}
-                  textStyle={styles.categoryChipText}
-                >
-                  {category.emoji} {category.name}
-                </Chip>
-              ))}
-            </ScrollView>
-          )}
-
-          {/* Loading State */}
-          {loading && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color={mukokoTheme.colors.primary} />
-              <Text style={styles.loadingText}>Discovering trending news...</Text>
-            </View>
-          )}
-
-          {/* Articles Grid */}
-          {!loading && articles.length > 0 && (
-            <ScrollView
-              style={styles.articlesScroll}
-              contentContainerStyle={styles.articlesContent}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  colors={[mukokoTheme.colors.primary]}
-                  tintColor={mukokoTheme.colors.primary}
-                />
-              }
-            >
-              <View style={styles.articlesGrid}>
-                {articles.map((article, index) => renderArticleCard(article, index))}
-              </View>
-            </ScrollView>
-          )}
-
-          {/* Empty State */}
-          {!loading && articles.length === 0 && (
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyEmoji}>🔍</Text>
-              <Text style={styles.emptyTitle}>No Articles Found</Text>
-              <Text style={styles.emptyMessage}>
-                Try selecting a different category or check back later.
-              </Text>
-            </View>
-          )}
+      {/* Loading State */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={mukokoTheme.colors.primary} />
+          <Text style={styles.loadingText}>Discovering trending news...</Text>
         </View>
-      </View>
-    </SafeAreaView>
+      )}
+
+      {/* Content */}
+      {!loading && articles.length > 0 && (
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[mukokoTheme.colors.primary]}
+              tintColor={mukokoTheme.colors.primary}
+            />
+          }
+        >
+          {/* Featured Article */}
+          {featuredArticle && (
+            <ArticleCard
+              article={featuredArticle}
+              onPress={handleArticlePress}
+              variant="featured"
+            />
+          )}
+
+          {/* Section Title */}
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>
+              {selectedCategory ? `${selectedCategory}` : 'Latest Stories'}
+            </Text>
+          </View>
+
+          {/* Grid Articles */}
+          <View style={styles.grid}>
+            {gridArticles.map((article) => (
+              <ArticleCard
+                key={article.id}
+                article={article}
+                onPress={handleArticlePress}
+                cardWidth={cardWidth}
+              />
+            ))}
+          </View>
+
+          {/* Bottom padding for tab bar */}
+          <View style={styles.bottomPadding} />
+        </ScrollView>
+      )}
+
+      {/* Empty State */}
+      {!loading && articles.length === 0 && (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyEmoji}>🔍</Text>
+          <Text style={styles.emptyTitle}>No Articles Found</Text>
+          <Text style={styles.emptyMessage}>
+            Try selecting a different category or pull to refresh.
+          </Text>
+        </View>
+      )}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: mukokoTheme.colors.background,
-  },
   container: {
     flex: 1,
     backgroundColor: mukokoTheme.colors.background,
   },
-  content: {
+  scrollView: {
     flex: 1,
   },
-  statsHeader: {
-    backgroundColor: mukokoTheme.colors.surface,
-    paddingVertical: mukokoTheme.spacing.md,
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-  },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontWeight: mukokoTheme.fonts.serifBold.fontWeight,
-    fontSize: 24,
-    color: mukokoTheme.colors.primary,
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-  statDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: mukokoTheme.colors.outline,
-  },
-  categoriesScroll: {
-    backgroundColor: mukokoTheme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
-  },
-  categoriesContent: {
+  scrollContent: {
     paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
+    paddingTop: mukokoTheme.spacing.md,
+  },
+
+  // Featured Card
+  featuredCard: {
+    marginBottom: mukokoTheme.spacing.lg,
+    borderRadius: mukokoTheme.roundness,
+    overflow: 'hidden',
+  },
+  featuredImageContainer: {
+    height: 220,
+    position: 'relative',
+  },
+  featuredImage: {
+    width: '100%',
+    height: '100%',
+  },
+  featuredOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  featuredContent: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: mukokoTheme.spacing.md,
+  },
+  featuredBadge: {
+    backgroundColor: mukokoTheme.colors.accent,
+    paddingHorizontal: mukokoTheme.spacing.sm,
+    paddingVertical: 4,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+    marginBottom: mukokoTheme.spacing.sm,
+  },
+  featuredBadgeText: {
+    fontSize: 11,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    color: mukokoTheme.colors.onAccent,
+    letterSpacing: 0.5,
+  },
+  featuredTitle: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 20,
+    lineHeight: 26,
+    color: '#FFFFFF',
+    marginBottom: mukokoTheme.spacing.sm,
+  },
+  featuredMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  featuredSource: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+  featuredDot: {
+    color: 'rgba(255,255,255,0.6)',
+    marginHorizontal: mukokoTheme.spacing.xs,
+  },
+  featuredDate: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.7)',
+  },
+
+  // Section Header
+  sectionHeader: {
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  sectionTitle: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 18,
+    color: mukokoTheme.colors.onSurface,
+    textTransform: 'capitalize',
+  },
+
+  // Grid
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: mukokoTheme.spacing.sm,
   },
-  categoryChip: {
-    marginRight: mukokoTheme.spacing.sm,
+  gridCard: {
+    marginBottom: mukokoTheme.spacing.sm,
+  },
+  cardSurface: {
+    borderRadius: mukokoTheme.roundness - 8,
+    backgroundColor: mukokoTheme.colors.surface,
+    overflow: 'hidden',
+  },
+  cardImageWrapper: {
+    height: 120,
     backgroundColor: mukokoTheme.colors.surfaceVariant,
   },
-  categoryChipSelected: {
-    backgroundColor: mukokoTheme.colors.primary,
+  cardImage: {
+    width: '100%',
+    height: '100%',
   },
-  categoryChipText: {
-    fontSize: 13,
+  cardBody: {
+    padding: mukokoTheme.spacing.sm,
   },
+  cardSource: {
+    fontSize: 11,
+    color: mukokoTheme.colors.primary,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  cardTitle: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 14,
+    lineHeight: 18,
+    color: mukokoTheme.colors.onSurface,
+    marginBottom: mukokoTheme.spacing.xs,
+  },
+  cardDate: {
+    fontSize: 11,
+    color: mukokoTheme.colors.onSurfaceVariant,
+  },
+
+  // Placeholders
+  imagePlaceholder: {
+    backgroundColor: mukokoTheme.colors.surfaceVariant,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  placeholderText: {
+    fontSize: 32,
+    opacity: 0.5,
+  },
+
+  // Loading
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -382,88 +470,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: mukokoTheme.colors.onSurfaceVariant,
   },
-  articlesScroll: {
-    flex: 1,
-  },
-  articlesContent: {
-    padding: mukokoTheme.spacing.md,
-  },
-  articlesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-  },
-  articleCard: {
-    width: CARD_WIDTH,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  articleCardTall: {
-    height: 320,
-  },
-  articleCardShort: {
-    height: 240,
-  },
-  card: {
-    flex: 1,
-    backgroundColor: mukokoTheme.colors.surface,
-    borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: mukokoTheme.colors.outline,
-  },
-  cardImage: {
-    width: '100%',
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
-  },
-  cardImageTall: {
-    height: 200,
-  },
-  cardImageShort: {
-    height: 140,
-  },
-  cardOverlay: {
-    flex: 1,
-  },
-  cardContent: {
-    flex: 1,
-    padding: mukokoTheme.spacing.sm,
-    justifyContent: 'space-between',
-  },
-  sourceChip: {
-    backgroundColor: mukokoTheme.colors.primaryContainer,
-    alignSelf: 'flex-start',
-    height: 22,
-  },
-  sourceChipText: {
-    fontSize: 10,
-    color: mukokoTheme.colors.onPrimaryContainer,
-  },
-  cardTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontWeight: mukokoTheme.fonts.serifBold.fontWeight,
-    fontSize: 14,
-    lineHeight: 18,
-    color: mukokoTheme.colors.onSurface,
-    flex: 1,
-    marginVertical: mukokoTheme.spacing.xs,
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  cardDate: {
-    fontSize: 11,
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-  metaDivider: {
-    marginHorizontal: mukokoTheme.spacing.xs,
-    color: mukokoTheme.colors.onSurfaceVariant,
-    fontSize: 11,
-  },
-  cardCategory: {
-    fontSize: 11,
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
+
+  // Empty State
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -476,7 +484,6 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontWeight: mukokoTheme.fonts.serifBold.fontWeight,
     fontSize: 20,
     marginBottom: mukokoTheme.spacing.sm,
     color: mukokoTheme.colors.onSurface,
@@ -486,5 +493,10 @@ const styles = StyleSheet.create({
     color: mukokoTheme.colors.onSurfaceVariant,
     fontSize: 14,
     textAlign: 'center',
+  },
+
+  // Bottom padding for floating tab bar
+  bottomPadding: {
+    height: 100,
   },
 });
