@@ -1,22 +1,91 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Image } from 'react-native';
 import mukokoTheme from '../theme';
 
-export default function Logo({ size = 'md', style }) {
+// Import logo asset
+const logoIcon = require('../assets/mukoko-logo-compact.png');
+
+/**
+ * Logo Component
+ * Displays the Mukoko News logo with different variants
+ *
+ * @param {string} variant - 'compact' | 'horizontal' | 'text'
+ * @param {string} size - 'sm' | 'md' | 'lg'
+ * @param {boolean} showText - Whether to show text next to logo (for compact variant)
+ * @param {string} theme - 'light' | 'dark' (for text color)
+ */
+export default function Logo({
+  variant = 'compact',
+  size = 'md',
+  showText = true,
+  theme = 'light',
+  style,
+}) {
   const sizes = {
-    sm: { fontSize: 20, padding: 4 },
-    md: { fontSize: 24, padding: 8 },
-    lg: { fontSize: 32, padding: 12 },
+    sm: { logoSize: 28, fontSize: 16, spacing: 6 },
+    md: { logoSize: 36, fontSize: 20, spacing: 8 },
+    lg: { logoSize: 48, fontSize: 28, spacing: 10 },
   };
 
-  const { fontSize, padding } = sizes[size];
+  const { logoSize, fontSize, spacing } = sizes[size];
 
+  const textColor = theme === 'dark'
+    ? mukokoTheme.colors.onSurface
+    : mukokoTheme.colors.onPrimary;
+
+  // Text only variant
+  if (variant === 'text') {
+    return (
+      <View style={[styles.container, { gap: spacing }, style]}>
+        <Text style={[styles.text, { fontSize, color: textColor }]}>
+          Mukoko News
+        </Text>
+        <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>
+      </View>
+    );
+  }
+
+  // Horizontal variant - icon with full "Mukoko News" text
+  if (variant === 'horizontal') {
+    return (
+      <View style={[styles.container, { gap: spacing }, style]}>
+        <Image
+          source={logoIcon}
+          style={{
+            width: logoSize,
+            height: logoSize,
+            borderRadius: logoSize / 4,
+          }}
+          resizeMode="contain"
+        />
+        <Text style={[styles.text, { fontSize, color: textColor }]}>
+          Mukoko News
+        </Text>
+        <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>
+      </View>
+    );
+  }
+
+  // Compact variant (default) - icon with short text
   return (
-    <View style={[styles.container, { padding }, style]}>
-      <Text style={[styles.text, { fontSize }]}>
-        Mukoko News
-      </Text>
-      <Text style={[styles.flag, { fontSize: fontSize * 0.7 }]}>🇿🇼</Text>
+    <View style={[styles.container, { gap: spacing }, style]}>
+      <Image
+        source={logoIcon}
+        style={{
+          width: logoSize,
+          height: logoSize,
+          borderRadius: logoSize / 4,
+        }}
+        resizeMode="contain"
+      />
+      {showText && (
+        <>
+          <Text style={[styles.text, { fontSize, color: textColor }]}>
+            Mukoko
+          </Text>
+          <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>
+        </>
+      )}
     </View>
   );
 }
@@ -25,12 +94,10 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   text: {
     fontWeight: '700',
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    color: mukokoTheme.colors.onSurface,
   },
   flag: {
     lineHeight: 24,

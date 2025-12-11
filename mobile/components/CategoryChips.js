@@ -1,6 +1,6 @@
 /**
  * CategoryChips Component
- * Horizontal scrollable category filter with proper spacing and visual feedback
+ * Horizontal scrollable category filter with emojis, borders, and visual feedback
  * Following 2025 news app design patterns
  */
 
@@ -12,33 +12,41 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Text } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import mukokoTheme from '../theme';
 
-// Category icon mapping
-const CATEGORY_ICONS = {
-  all: 'newspaper-variant-multiple-outline',
-  politics: 'bank',
-  business: 'chart-line',
-  sports: 'soccer',
-  entertainment: 'movie-open',
-  technology: 'laptop',
-  health: 'heart-pulse',
-  world: 'earth',
-  local: 'map-marker',
-  opinion: 'comment-quote',
-  breaking: 'lightning-bolt',
+// Category emoji mapping - adds visual interest and quick recognition
+const CATEGORY_EMOJIS = {
+  all: '📰',
+  politics: '🏛️',
+  business: '💼',
+  sports: '⚽',
+  entertainment: '🎬',
+  technology: '💻',
+  health: '🏥',
+  world: '🌍',
+  local: '📍',
+  opinion: '💭',
+  breaking: '⚡',
+  crime: '🚨',
+  education: '📚',
+  environment: '🌱',
+  lifestyle: '✨',
+  agriculture: '🌾',
+  mining: '⛏️',
+  tourism: '✈️',
+  finance: '💰',
+  culture: '🎭',
 };
 
 /**
- * CategoryChips - Horizontal scrollable category filter
+ * CategoryChips - Horizontal scrollable category filter with emojis
  *
  * @param {Array} categories - Array of category objects { id, name, slug, article_count }
  * @param {string|null} selectedCategory - Currently selected category slug
  * @param {Function} onCategoryPress - Callback when a category is pressed
  * @param {boolean} showAll - Whether to show "All" chip at the start
  * @param {boolean} showCounts - Whether to show article counts
- * @param {boolean} showIcons - Whether to show category icons
+ * @param {boolean} showEmojis - Whether to show category emojis (default: true)
  */
 export default function CategoryChips({
   categories = [],
@@ -46,16 +54,16 @@ export default function CategoryChips({
   onCategoryPress,
   showAll = true,
   showCounts = false,
-  showIcons = false,
+  showEmojis = true,
   style,
 }) {
   const allCategories = showAll
     ? [{ id: 'all', name: 'All', slug: null }, ...categories]
     : categories;
 
-  const getIconName = (categoryName) => {
+  const getEmoji = (categoryName) => {
     const lowerName = categoryName.toLowerCase();
-    return CATEGORY_ICONS[lowerName] || 'tag-outline';
+    return CATEGORY_EMOJIS[lowerName] || '📄';
   };
 
   const isSelected = (category) => {
@@ -74,7 +82,7 @@ export default function CategoryChips({
       >
         {allCategories.map((category, index) => {
           const selected = isSelected(category);
-          const iconName = getIconName(category.name);
+          const emoji = getEmoji(category.name);
 
           return (
             <TouchableOpacity
@@ -87,13 +95,8 @@ export default function CategoryChips({
                 index === 0 && styles.chipFirst,
               ]}
             >
-              {showIcons && (
-                <MaterialCommunityIcons
-                  name={iconName}
-                  size={16}
-                  color={selected ? mukokoTheme.colors.onPrimary : mukokoTheme.colors.onSurfaceVariant}
-                  style={styles.chipIcon}
-                />
+              {showEmojis && (
+                <Text style={styles.chipEmoji}>{emoji}</Text>
               )}
               <Text
                 style={[
@@ -127,14 +130,21 @@ export function CategoryPills({
   selectedCategories = [],
   onCategoryToggle,
   multiSelect = true,
+  showEmojis = true,
   style,
 }) {
   const isSelected = (categorySlug) => selectedCategories.includes(categorySlug);
+
+  const getEmoji = (categoryName) => {
+    const lowerName = categoryName.toLowerCase();
+    return CATEGORY_EMOJIS[lowerName] || '📄';
+  };
 
   return (
     <View style={[styles.pillsContainer, style]}>
       {categories.map((category, index) => {
         const selected = isSelected(category.slug || category.id);
+        const emoji = getEmoji(category.name);
 
         return (
           <TouchableOpacity
@@ -146,6 +156,9 @@ export function CategoryPills({
               selected && styles.pillSelected,
             ]}
           >
+            {showEmojis && (
+              <Text style={styles.pillEmoji}>{emoji}</Text>
+            )}
             <Text
               style={[
                 styles.pillText,
@@ -155,12 +168,7 @@ export function CategoryPills({
               {category.name}
             </Text>
             {selected && (
-              <MaterialCommunityIcons
-                name="check"
-                size={14}
-                color={mukokoTheme.colors.onPrimary}
-                style={styles.pillCheck}
-              />
+              <Text style={styles.pillCheck}>✓</Text>
             )}
           </TouchableOpacity>
         );
@@ -186,25 +194,30 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
+    backgroundColor: mukokoTheme.colors.surface,
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.sm - 2,
     borderRadius: mukokoTheme.roundness,
     marginRight: mukokoTheme.spacing.xs,
+    // Soft border for unselected chips
+    borderWidth: 1.5,
+    borderColor: mukokoTheme.colors.outline,
+    gap: mukokoTheme.spacing.xs,
   },
   chipFirst: {
     marginLeft: 0,
   },
   chipSelected: {
     backgroundColor: mukokoTheme.colors.primary,
+    borderColor: mukokoTheme.colors.primary,
   },
-  chipIcon: {
-    marginRight: mukokoTheme.spacing.xs,
+  chipEmoji: {
+    fontSize: 14,
   },
   chipText: {
     fontSize: 13,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
+    color: mukokoTheme.colors.onSurface,
     letterSpacing: 0.1,
   },
   chipTextSelected: {
@@ -212,8 +225,8 @@ const styles = StyleSheet.create({
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
   countBadge: {
-    marginLeft: mukokoTheme.spacing.xs,
-    backgroundColor: mukokoTheme.colors.outline,
+    marginLeft: mukokoTheme.spacing.xs / 2,
+    backgroundColor: mukokoTheme.colors.surfaceVariant,
     paddingHorizontal: mukokoTheme.spacing.xs,
     paddingVertical: 2,
     borderRadius: 10,
@@ -243,16 +256,20 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
+    backgroundColor: mukokoTheme.colors.surface,
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.sm,
     borderRadius: mukokoTheme.roundness,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: mukokoTheme.colors.outline,
+    gap: mukokoTheme.spacing.xs,
   },
   pillSelected: {
     backgroundColor: mukokoTheme.colors.primary,
     borderColor: mukokoTheme.colors.primary,
+  },
+  pillEmoji: {
+    fontSize: 14,
   },
   pillText: {
     fontSize: 13,
@@ -261,8 +278,11 @@ const styles = StyleSheet.create({
   },
   pillTextSelected: {
     color: mukokoTheme.colors.onPrimary,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
   pillCheck: {
-    marginLeft: mukokoTheme.spacing.xs,
+    fontSize: 12,
+    color: mukokoTheme.colors.onPrimary,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
 });

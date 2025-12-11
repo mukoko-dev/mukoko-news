@@ -1,21 +1,24 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, StatusBar } from 'react-native';
-import { Appbar, IconButton } from 'react-native-paper';
+import { View, StyleSheet, TouchableOpacity, StatusBar, Image } from 'react-native';
+import { Appbar, IconButton, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import mukokoTheme from '../theme';
-import Logo from './Logo';
+
+// Import logo image
+const logoIcon = require('../assets/mukoko-logo-compact.png');
 
 /**
  * Mukoko News Header Navigation Component
  *
- * Top navigation bar with logo, search, and profile actions
- * Adapted from Harare Metro web version for React Native
+ * Top navigation bar with logo, search, insights, and profile actions
+ * Designed for both mobile and desktop web views
  *
  * Props:
  * - navigation: React Navigation object
  * - currentRoute: Current route name
  * - isAuthenticated: Boolean for auth state
  * - onSearchPress: Callback for search action
+ * - onInsightsPress: Callback for insights/trending action
  * - showBack: Show back button (optional)
  * - title: Custom title text (optional, overrides logo)
  */
@@ -24,6 +27,7 @@ export default function HeaderNavigation({
   currentRoute = 'Home',
   isAuthenticated = false,
   onSearchPress,
+  onInsightsPress,
   showBack = false,
   title,
 }) {
@@ -35,8 +39,15 @@ export default function HeaderNavigation({
     if (onSearchPress) {
       onSearchPress();
     } else {
-      // Navigate to search screen when implemented
-      console.log('Search pressed');
+      navigation.navigate('Search');
+    }
+  };
+
+  const handleInsightsPress = () => {
+    if (onInsightsPress) {
+      onInsightsPress();
+    } else {
+      navigation.navigate('Discover');
     }
   };
 
@@ -44,8 +55,7 @@ export default function HeaderNavigation({
     if (isAuthenticated) {
       navigation.navigate('Profile');
     } else {
-      // Navigate to auth screen
-      navigation.navigate('Profile');
+      navigation.navigate('Login');
     }
   };
 
@@ -79,40 +89,61 @@ export default function HeaderNavigation({
               color={mukokoTheme.colors.onPrimary}
             />
           ) : (
-            <View style={styles.logoContainer}>
-              <TouchableOpacity
-                onPress={handleHomePress}
-                activeOpacity={0.7}
-                accessible
-                accessibilityLabel="Go to home"
-              >
-                <Logo variant="compact" size="md" />
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity
+              onPress={handleHomePress}
+              activeOpacity={0.7}
+              accessible
+              accessibilityLabel="Go to home"
+              style={styles.logoContainer}
+            >
+              <Image
+                source={logoIcon}
+                style={styles.logoImage}
+                resizeMode="contain"
+              />
+              <Text style={styles.logoText}>Mukoko</Text>
+              <Text style={styles.flagEmoji}>🇿🇼</Text>
+            </TouchableOpacity>
           )}
+
+          {/* Spacer to push actions to right */}
+          <View style={styles.spacer} />
 
           {/* Actions */}
           <View style={styles.actions}>
+            {/* Trending/Insights Button */}
+            <IconButton
+              icon="chart-line"
+              iconColor={mukokoTheme.colors.onPrimary}
+              size={22}
+              onPress={handleInsightsPress}
+              accessible
+              accessibilityLabel="View trending news"
+              style={styles.iconButton}
+            />
+
             {/* Search Button */}
             <IconButton
               icon="magnify"
               iconColor={mukokoTheme.colors.onPrimary}
-              size={24}
+              size={22}
               onPress={handleSearchPress}
               accessible
               accessibilityLabel="Search news"
+              style={styles.iconButton}
             />
 
             {/* Profile/Auth Button */}
             <IconButton
-              icon={isAuthenticated ? 'account-circle' : 'login'}
+              icon={isAuthenticated ? 'account-circle' : 'account-circle-outline'}
               iconColor={mukokoTheme.colors.onPrimary}
-              size={24}
+              size={22}
               onPress={handleProfilePress}
               accessible
               accessibilityLabel={
                 isAuthenticated ? 'View profile' : 'Sign in'
               }
+              style={styles.iconButton}
             />
           </View>
         </Appbar.Header>
@@ -128,21 +159,44 @@ const styles = StyleSheet.create({
   header: {
     backgroundColor: mukokoTheme.colors.primary,
     elevation: 4,
+    paddingHorizontal: mukokoTheme.spacing.xs,
   },
   logoContainer: {
-    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: mukokoTheme.spacing.md,
+    paddingVertical: mukokoTheme.spacing.xs,
+    paddingHorizontal: mukokoTheme.spacing.sm,
+    gap: mukokoTheme.spacing.xs,
+  },
+  logoImage: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+  },
+  logoText: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 20,
+    fontWeight: '700',
+    color: mukokoTheme.colors.onPrimary,
+    letterSpacing: -0.3,
+  },
+  flagEmoji: {
+    fontSize: 16,
+    marginLeft: 2,
   },
   titleText: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
     fontWeight: mukokoTheme.fonts.serifBold.fontWeight,
     color: mukokoTheme.colors.onPrimary,
   },
+  spacer: {
+    flex: 1,
+  },
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: mukokoTheme.spacing.xs,
+  },
+  iconButton: {
+    margin: 0,
   },
 });
