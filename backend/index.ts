@@ -977,6 +977,65 @@ app.get("/api/article/by-source-slug", async (c) => {
   }
 });
 
+// Get single article by ID
+app.get("/api/article/:id", async (c) => {
+  const articleId = c.req.param("id");
+
+  if (!articleId) {
+    return c.json({ error: "Article ID is required" }, 400);
+  }
+
+  try {
+    const services = initializeServices(c.env);
+
+    // Fetch article by ID
+    const article = await c.env.DB.prepare(`
+      SELECT id, title, slug, description, content, content_snippet, author, source, source_id,
+             published_at, image_url, original_url, category_id, view_count,
+             like_count, bookmark_count
+      FROM articles
+      WHERE id = ? AND status = 'published'
+    `).bind(articleId).first();
+
+    if (!article) {
+      return c.json({ error: "Article not found" }, 404);
+    }
+
+    // Fetch keywords for the article
+    const keywordsResult = await c.env.DB.prepare(`
+      SELECT k.id, k.name, k.slug
+      FROM keywords k
+      INNER JOIN article_keyword_links akl ON k.id = akl.keyword_id
+      WHERE akl.article_id = ?
+      ORDER BY akl.relevance_score DESC
+      LIMIT 10
+    `).bind(article.id).all();
+
+    article.keywords = keywordsResult.results || [];
+
+    // Track article access analytics
+    await services.analyticsService.trackEvent('article_view', {
+      articleId: articleId,
+      source: article.source,
+      category: article.category_id,
+      from_mobile: true
+    });
+
+    // Update view count
+    await c.env.DB.prepare(`
+      UPDATE articles SET
+        view_count = view_count + 1,
+        last_viewed_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `).bind(articleId).run();
+
+    return c.json({ article });
+  } catch (error) {
+    console.error("Error fetching article by ID:", error);
+    return c.json({ error: "Failed to fetch article" }, 500);
+  }
+});
+
 // ===== PHASE 1: PUBLIC USER-FACING ENDPOINTS =====
 
 // News Bytes - Articles with images only (TikTok-like feed)

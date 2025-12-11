@@ -95,7 +95,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
       setIsLiked(!isLiked);
       setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
 
-      const result = await articlesAPI.like(article.id);
+      const result = await articlesAPI.toggleLike(article.id);
       if (result.error) {
         // Revert on error
         setIsLiked(isLiked);
@@ -121,7 +121,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
       // Optimistic update
       setIsSaved(!isSaved);
 
-      const result = await articlesAPI.save(article.id);
+      const result = await articlesAPI.toggleBookmark(article.id);
       if (result.error) {
         // Revert on error
         setIsSaved(isSaved);
