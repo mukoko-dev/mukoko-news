@@ -1,88 +1,83 @@
 /**
  * Mukoko News Custom Material Design Theme
- * Based on official Mukoko brand guidelines from assets.nyuchi.com
- * Nyuchi Brand System v5.0 - News Platform Configuration
+ * Updated brand colors - January 2025
  *
- * Brand Colors (Official from assets.nyuchi.com/api/v5/platform/news):
- * - Primary: Mukoko News Green (#729b63) - Growth, prosperity, nature
- * - Hover: #8fb47f - Interactive states
- * - Active: #5d804f - Pressed states
- * - Surface: #f1f5ef - Card backgrounds, containers
- * - Subtle: #f8faf7 - Subtle backgrounds
+ * Brand Colors:
+ * - Primary: #5e5772 - Sophisticated purple-gray
+ * - Accent: #d4634a - Warm terracotta/coral
+ * - Light: #f9f8f4 - Warm off-white
+ * - Dark: #1f1f1f - Near black
+ * - Gradient: Circular gradient from #779b63 to #1f1f1f
  *
  * Typography (Nyuchi Brand System):
  * - Display/Headings: Noto Serif - Elegant, authoritative
  * - Body: Noto Sans - Clean, modern, readable
  *
- * Additional Colors:
- * - Accent: Zimbabwe Yellow (#FDD116) - Energy, highlights
- * - Error: Zimbabwe Red (#EF3340) - Urgency, breaking news
- * - Roundness: 16px - Vibrant, modern mobile feel
+ * Note: Zimbabwe flag strip uses separate flag colors (zwGreen, zwYellow, zwRed, etc.)
  */
 
 export const mukokoTheme = {
-  // Roundness - clean modern feel (increased to 24px like reference app)
+  // Roundness - clean modern feel
   roundness: 24,
 
-  // Mukoko News official brand colors (from assets.nyuchi.com)
+  // Mukoko News brand colors
   colors: {
-    // Primary brand colors - Mukoko News Green (#729b63)
-    primary: '#729b63',          // Official Mukoko News green
-    primaryHover: '#8fb47f',     // Hover state from brand guidelines
-    primaryActive: '#5d804f',    // Active state from brand guidelines
-    primaryContainer: '#f1f5ef', // Surface color from brand guidelines
+    // Primary brand color - Sophisticated purple-gray
+    primary: '#5e5772',
+    primaryHover: '#6f6885',
+    primaryActive: '#4d475f',
+    primaryContainer: '#e8e6ec',
     onPrimary: '#FFFFFF',
-    onPrimaryContainer: '#1f2d1a',
+    onPrimaryContainer: '#2a2634',
 
-    // Accent color - Zimbabwe Yellow (kept for energy/highlights)
-    accent: '#FDD116',
-    accentContainer: '#fff9e5',
-    onAccent: '#000000',
-    onAccentContainer: '#4d3d00',
+    // Accent color - Warm terracotta/coral
+    accent: '#d4634a',
+    accentContainer: '#fce8e4',
+    onAccent: '#FFFFFF',
+    onAccentContainer: '#3d1a12',
 
-    // Secondary palette
-    secondary: '#5f5873',        // Nyuchi Lingo purple
-    secondaryContainer: '#e9e7ed',
+    // Secondary palette (same as primary for consistency)
+    secondary: '#5e5772',
+    secondaryContainer: '#e8e6ec',
     onSecondary: '#FFFFFF',
-    onSecondaryContainer: '#1f1a29',
+    onSecondaryContainer: '#2a2634',
 
-    // Surface colors (cleaner, lighter backgrounds like reference app)
+    // Surface colors - warm off-white theme
     surface: '#FFFFFF',
-    surfaceVariant: '#F5F5F5',   // Light gray background like reference app
-    surfaceSubtle: '#FAFAFA',    // Even lighter for subtle backgrounds
-    onSurface: '#1a1a1a',
-    onSurfaceVariant: '#666666',
+    surfaceVariant: '#f9f8f4',   // Warm off-white (Light color)
+    surfaceSubtle: '#fdfcfa',    // Even lighter warm white
+    onSurface: '#1f1f1f',        // Dark color
+    onSurfaceVariant: '#5a5a5a',
 
-    // Borders and dividers (more subtle)
-    outline: '#E0E0E0',
-    outlineVariant: '#F0F0F0',
+    // Borders and dividers
+    outline: '#e0dfdc',
+    outlineVariant: '#f0efec',
 
     // Semantic colors
-    error: '#EF3340',            // Zimbabwe Red (Official flag color)
-    errorContainer: '#fdecea',
+    error: '#d4634a',            // Using accent for errors (warm red)
+    errorContainer: '#fce8e4',
     onError: '#FFFFFF',
-    onErrorContainer: '#470c08',
+    onErrorContainer: '#3d1a12',
 
-    success: '#729b63',          // Mukoko News green for success states
-    successContainer: '#f1f5ef',
+    success: '#779b63',          // Gradient green for success
+    successContainer: '#e8f0e4',
     onSuccess: '#FFFFFF',
     onSuccessContainer: '#1f2d1a',
 
-    warning: '#ff9800',
-    warningContainer: '#fff3e0',
-    onWarning: '#000000',
-    onWarningContainer: '#4d2e00',
+    warning: '#e5a84d',
+    warningContainer: '#fcf3e4',
+    onWarning: '#1f1f1f',
+    onWarningContainer: '#3d2e12',
 
-    // Background (lighter, cleaner like reference app)
-    background: '#F5F5F5',       // Light gray background
-    onBackground: '#1a1a1a',
+    // Background - warm off-white
+    background: '#f9f8f4',       // Light color
+    onBackground: '#1f1f1f',     // Dark color
 
-    // Mukoko News brand colors (from assets.nyuchi.com)
-    mukokoGreen: '#729b63',      // Primary brand green
-    mukokoGreenHover: '#8fb47f', // Hover state
-    mukokoGreenActive: '#5d804f',// Active state
+    // Brand gradient colors
+    gradientStart: '#779b63',    // Green for gradient
+    gradientEnd: '#1f1f1f',      // Dark for gradient
 
-    // Zimbabwe flag colors (kept for Zimbabwe flag strip component)
+    // Zimbabwe flag colors (kept for Zimbabwe flag strip component ONLY)
     zwGreen: '#00A651',
     zwYellow: '#FDD116',
     zwRed: '#EF3340',
@@ -207,22 +202,22 @@ export const paperTheme = {
     outline: mukokoTheme.colors.outline,
     outlineVariant: mukokoTheme.colors.outlineVariant,
 
-    inverseSurface: '#2e2e2e',
-    inverseOnSurface: '#f4f4f4',
-    inversePrimary: '#a8d198',
+    inverseSurface: '#1f1f1f',    // Dark color
+    inverseOnSurface: '#f9f8f4',  // Light color
+    inversePrimary: '#8a819e',
 
     shadow: '#000000',
     scrim: '#000000',
 
-    backdrop: 'rgba(46, 49, 46, 0.4)',
+    backdrop: 'rgba(31, 31, 31, 0.4)',
 
     elevation: {
       level0: 'transparent',
-      level1: '#f5f7f5',
-      level2: '#eff3ed',
-      level3: '#e9efeb',
-      level4: '#e6ede8',
-      level5: '#e0e9e2',
+      level1: '#fdfcfa',
+      level2: '#f9f8f4',          // Light color
+      level3: '#f5f4f0',
+      level4: '#f2f1ed',
+      level5: '#eeedea',
     },
   },
 
@@ -342,42 +337,42 @@ export const paperThemeDark = {
 
   colors: {
     primary: mukokoTheme.colors.primary,
-    primaryContainer: '#003d20',
+    primaryContainer: '#3a3448',
 
     secondary: mukokoTheme.colors.secondary,
-    secondaryContainer: '#2a2536',
+    secondaryContainer: '#3a3448',
 
     tertiary: mukokoTheme.colors.accent,
-    tertiaryContainer: '#4d3d00',
+    tertiaryContainer: '#5d2e24',
 
-    surface: '#1a1a1a',
+    surface: '#1f1f1f',           // Dark color
     surfaceVariant: '#2a2a2a',
     surfaceDisabled: 'rgba(232, 232, 232, 0.12)',
 
-    background: '#0a0a0a',
+    background: '#1f1f1f',        // Dark color
 
     error: mukokoTheme.colors.error,
-    errorContainer: '#5d1a1c',
+    errorContainer: '#5d2e24',
 
     onPrimary: '#FFFFFF',
-    onPrimaryContainer: '#a8d198',
+    onPrimaryContainer: '#c4bfd4',
     onSecondary: '#FFFFFF',
-    onSecondaryContainer: '#d4cce0',
-    onTertiary: '#000000',
-    onTertiaryContainer: '#ffed99',
-    onSurface: '#e8e8e8',
+    onSecondaryContainer: '#c4bfd4',
+    onTertiary: '#FFFFFF',
+    onTertiaryContainer: '#f0c4bc',
+    onSurface: '#f9f8f4',         // Light color
     onSurfaceVariant: '#9ca3af',
     onSurfaceDisabled: 'rgba(232, 232, 232, 0.38)',
     onError: '#FFFFFF',
-    onErrorContainer: '#ffb3b3',
-    onBackground: '#e8e8e8',
+    onErrorContainer: '#f0c4bc',
+    onBackground: '#f9f8f4',      // Light color
 
     outline: '#3a3a3a',
     outlineVariant: '#2a2a2a',
 
-    inverseSurface: '#f4f4f4',
-    inverseOnSurface: '#2e2e2e',
-    inversePrimary: '#00663d',
+    inverseSurface: '#f9f8f4',    // Light color
+    inverseOnSurface: '#1f1f1f',  // Dark color
+    inversePrimary: '#8a819e',
 
     shadow: '#000000',
     scrim: '#000000',

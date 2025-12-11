@@ -5,15 +5,25 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import mukokoTheme from '../theme';
 import Logo from './Logo';
 
+// Check if running on web platform
+const isWeb = Platform.OS === 'web';
+
+// Log platform for debugging
+console.log('[AppHeader] Platform.OS:', Platform.OS, 'isWeb:', isWeb);
+
 export default function AppHeader() {
   const [menuVisible, setMenuVisible] = useState(false);
-  const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
+  // On web, always show header icons (no bottom tab bar on web)
+  // On native mobile, hide icons (use bottom tab bar) unless tablet/desktop (768px+)
+  // Default to true on web to ensure icons show immediately
+  const [showHeaderActions, setShowHeaderActions] = useState(true);
 
   useEffect(() => {
     const updateLayout = () => {
       const { width } = Dimensions.get('window');
-      // Tablet breakpoint: 768px, Desktop: 1024px
-      setIsTabletOrDesktop(width >= 768);
+      // On web: always show icons
+      // On native: show only if tablet/desktop width
+      setShowHeaderActions(isWeb || width >= 768);
     };
 
     updateLayout();
@@ -78,8 +88,8 @@ export default function AppHeader() {
     return (
       <>
         <View style={styles.header}>
-          {/* Hamburger Menu Button - Tablet/Desktop Only */}
-          {isTabletOrDesktop && (
+          {/* Hamburger Menu Button - Web/Tablet/Desktop Only */}
+          {showHeaderActions && (
             <IconButton
               icon="menu"
               onPress={() => setMenuVisible(!menuVisible)}
@@ -98,54 +108,56 @@ export default function AppHeader() {
             <Logo size="sm" showText={true} theme="dark" />
           </TouchableOpacity>
 
-          {/* Spacer for desktop layout */}
-          {isTabletOrDesktop && <View style={styles.spacer} />}
+          {/* Spacer - pushes logo to center on mobile, actions to right on desktop */}
+          <View style={styles.spacer} />
 
-          {/* Action buttons */}
-          <View style={styles.actions}>
-            {/* Trending/Insights Icon - highlighted in brand color */}
-            <IconButton
-              icon="chart-line"
-              onPress={handleTrendingPress}
-              iconColor={mukokoTheme.colors.primary}
-              size={22}
-              style={styles.actionButton}
-            />
+          {/* Action buttons - Show on Web/Tablet/Desktop (mobile uses bottom tab bar) */}
+          {showHeaderActions && (
+            <View style={styles.actions}>
+              {/* Trending/Insights Icon - highlighted in brand color */}
+              <IconButton
+                icon="chart-line"
+                onPress={handleTrendingPress}
+                iconColor={mukokoTheme.colors.primary}
+                size={22}
+                style={styles.actionButton}
+              />
 
-            {/* Search Icon */}
-            <IconButton
-              icon="magnify"
-              onPress={handleSearchPress}
-              iconColor={mukokoTheme.colors.onSurface}
-              size={22}
-              style={styles.actionButton}
-            />
+              {/* Search Icon */}
+              <IconButton
+                icon="magnify"
+                onPress={handleSearchPress}
+                iconColor={mukokoTheme.colors.onSurface}
+                size={22}
+                style={styles.actionButton}
+              />
 
-            {/* Theme Toggle (visual placeholder - future implementation) */}
-            <IconButton
-              icon="white-balance-sunny"
-              onPress={() => {
-                // Theme toggle will be implemented with ThemeContext
-                console.log('Theme toggle - feature coming soon');
-              }}
-              iconColor={mukokoTheme.colors.onSurfaceVariant}
-              size={22}
-              style={styles.actionButton}
-            />
+              {/* Theme Toggle (visual placeholder - future implementation) */}
+              <IconButton
+                icon="white-balance-sunny"
+                onPress={() => {
+                  // Theme toggle will be implemented with ThemeContext
+                  console.log('Theme toggle - feature coming soon');
+                }}
+                iconColor={mukokoTheme.colors.onSurfaceVariant}
+                size={22}
+                style={styles.actionButton}
+              />
 
-            {/* Profile/Login Icon */}
-            <IconButton
-              icon="account-circle-outline"
-              onPress={handleProfilePress}
-              iconColor={mukokoTheme.colors.onSurface}
-              size={22}
-              style={styles.actionButton}
-            />
-          </View>
+              {/* Profile/Login Icon */}
+              <IconButton
+                icon="account-circle-outline"
+                onPress={handleProfilePress}
+                iconColor={mukokoTheme.colors.onSurface}
+                size={22}
+                style={styles.actionButton}
+              />
+            </View>
+          )}
         </View>
 
-        {/* Dropdown Menu for Tablet/Desktop */}
-        {isTabletOrDesktop && (
+        {/* Dropdown Menu for Web/Tablet/Desktop */}
+        {showHeaderActions && (
           <Modal
             visible={menuVisible}
             transparent
