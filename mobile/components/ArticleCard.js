@@ -4,13 +4,14 @@
  * and responsive layout following 2025 news app best practices
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, memo } from 'react';
 import {
   View,
   StyleSheet,
   TouchableOpacity,
   Image,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { Text, Surface } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -46,6 +47,46 @@ const formatRelativeTime = (dateString) => {
 };
 
 /**
+ * Optimized Image component to prevent flickering
+ * Uses memo and stable key to prevent unnecessary re-renders
+ */
+const ArticleImage = memo(({ uri, style, onError }) => {
+  const [loaded, setLoaded] = useState(false);
+
+  const handleLoad = useCallback(() => {
+    setLoaded(true);
+  }, []);
+
+  return (
+    <View style={style}>
+      {/* Show placeholder until image loads */}
+      {!loaded && (
+        <View style={[StyleSheet.absoluteFill, styles.imagePlaceholder]}>
+          <MaterialCommunityIcons
+            name="image-outline"
+            size={32}
+            color={mukokoTheme.colors.outline}
+          />
+        </View>
+      )}
+      <Image
+        source={{
+          uri,
+          // Add cache headers for web
+          ...(Platform.OS === 'web' && { cache: 'force-cache' }),
+        }}
+        style={[StyleSheet.absoluteFill, { opacity: loaded ? 1 : 0 }]}
+        resizeMode="cover"
+        onLoad={handleLoad}
+        onError={onError}
+        // Prevent flickering with fade duration
+        fadeDuration={0}
+      />
+    </View>
+  );
+}, (prevProps, nextProps) => prevProps.uri === nextProps.uri);
+
+/**
  * ArticleCard - Main card component for displaying news articles
  *
  * @param {Object} article - Article data object
@@ -53,7 +94,7 @@ const formatRelativeTime = (dateString) => {
  * @param {string} variant - Card variant: 'default' | 'compact' | 'featured' | 'horizontal'
  * @param {number} width - Optional fixed width for the card
  */
-export default function ArticleCard({
+function ArticleCard({
   article,
   onPress,
   variant = 'default',
@@ -61,13 +102,19 @@ export default function ArticleCard({
   style,
 }) {
   const [imageError, setImageError] = useState(false);
-  const [imageLoading, setImageLoading] = useState(true);
 
   const imageUrl = article.imageUrl || article.image_url;
   const hasImage = imageUrl && !imageError;
 
+  const handleImageError = useCallback(() => {
+    setImageError(true);
+  }, []);
+
   // Calculate card width based on variant
   const cardWidth = width || (variant === 'horizontal' ? SCREEN_WIDTH - mukokoTheme.spacing.md * 2 : undefined);
+
+  // Stable key for the image to prevent re-mounting
+  const imageKey = `${article.id || article.slug}-image`;
 
   // Render different variants
   if (variant === 'horizontal') {
@@ -81,13 +128,11 @@ export default function ArticleCard({
           {/* Image Section */}
           <View style={styles.horizontalImageContainer}>
             {hasImage ? (
-              <Image
-                source={{ uri: imageUrl }}
+              <ArticleImage
+                key={imageKey}
+                uri={imageUrl}
                 style={styles.horizontalImage}
-                resizeMode="cover"
-                onError={() => setImageError(true)}
-                onLoadStart={() => setImageLoading(true)}
-                onLoadEnd={() => setImageLoading(false)}
+                onError={handleImageError}
               />
             ) : (
               <View style={styles.imagePlaceholder}>
@@ -96,11 +141,6 @@ export default function ArticleCard({
                   size={32}
                   color={mukokoTheme.colors.onSurfaceVariant}
                 />
-              </View>
-            )}
-            {imageLoading && hasImage && (
-              <View style={styles.imageLoadingOverlay}>
-                <View style={styles.shimmer} />
               </View>
             )}
           </View>
@@ -152,11 +192,11 @@ export default function ArticleCard({
             </View>
             {hasImage && (
               <View style={styles.compactImageContainer}>
-                <Image
-                  source={{ uri: imageUrl }}
+                <ArticleImage
+                  key={imageKey}
+                  uri={imageUrl}
                   style={styles.compactImage}
-                  resizeMode="cover"
-                  onError={() => setImageError(true)}
+                  onError={handleImageError}
                 />
               </View>
             )}
@@ -177,13 +217,11 @@ export default function ArticleCard({
           {/* Full-width Image */}
           <View style={styles.featuredImageContainer}>
             {hasImage ? (
-              <Image
-                source={{ uri: imageUrl }}
+              <ArticleImage
+                key={imageKey}
+                uri={imageUrl}
                 style={styles.featuredImage}
-                resizeMode="cover"
-                onError={() => setImageError(true)}
-                onLoadStart={() => setImageLoading(true)}
-                onLoadEnd={() => setImageLoading(false)}
+                onError={handleImageError}
               />
             ) : (
               <View style={[styles.imagePlaceholder, styles.featuredPlaceholder]}>
@@ -192,11 +230,6 @@ export default function ArticleCard({
                   size={48}
                   color={mukokoTheme.colors.onSurfaceVariant}
                 />
-              </View>
-            )}
-            {imageLoading && hasImage && (
-              <View style={styles.imageLoadingOverlay}>
-                <View style={styles.shimmer} />
               </View>
             )}
             {/* Gradient overlay for text readability */}
@@ -243,13 +276,11 @@ export default function ArticleCard({
         {/* Image Section */}
         <View style={styles.defaultImageContainer}>
           {hasImage ? (
-            <Image
-              source={{ uri: imageUrl }}
+            <ArticleImage
+              key={imageKey}
+              uri={imageUrl}
               style={styles.defaultImage}
-              resizeMode="cover"
-              onError={() => setImageError(true)}
-              onLoadStart={() => setImageLoading(true)}
-              onLoadEnd={() => setImageLoading(false)}
+              onError={handleImageError}
             />
           ) : (
             <View style={styles.imagePlaceholder}>
@@ -259,11 +290,6 @@ export default function ArticleCard({
                 color={mukokoTheme.colors.onSurfaceVariant}
               />
               <Text style={styles.placeholderText}>No image</Text>
-            </View>
-          )}
-          {imageLoading && hasImage && (
-            <View style={styles.imageLoadingOverlay}>
-              <View style={styles.shimmer} />
             </View>
           )}
         </View>
@@ -293,6 +319,15 @@ export default function ArticleCard({
     </TouchableOpacity>
   );
 }
+
+// Memoize the entire component to prevent unnecessary re-renders
+export default memo(ArticleCard, (prevProps, nextProps) => {
+  return (
+    prevProps.article?.id === nextProps.article?.id &&
+    prevProps.variant === nextProps.variant &&
+    prevProps.width === nextProps.width
+  );
+});
 
 const styles = StyleSheet.create({
   // ============ DEFAULT VARIANT ============
@@ -475,19 +510,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: mukokoTheme.colors.onSurfaceVariant,
     opacity: 0.7,
-  },
-  imageLoadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  shimmer: {
-    width: '60%',
-    height: 4,
-    backgroundColor: mukokoTheme.colors.outline,
-    borderRadius: 2,
-    opacity: 0.5,
   },
 
   // Category labels
