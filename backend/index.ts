@@ -16,15 +16,16 @@ import { NewsSourceManager } from "./services/NewsSourceManager.js";
 import { SimpleRSSService } from "./services/SimpleRSSService.js";
 import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
 import { OpenAuthService } from "./services/OpenAuthService.js";
+import { PasswordHashService } from "./services/PasswordHashService.js";
 // Additional enhancement services
 import { CategoryManager } from "./services/CategoryManager.js";
 import { ObservabilityService } from "./services/ObservabilityService.js";
 import { D1UserService } from "./services/D1UserService.js";
-// Durable Objects temporarily disabled - uncomment when needed
-// import { RealtimeAnalyticsDO } from "./durable-objects/RealtimeAnalyticsDO.js";
-// import { ArticleInteractionsDO } from "./durable-objects/ArticleInteractionsDO.js";
-// import { UserBehaviorDO } from "./durable-objects/UserBehaviorDO.js";
-// import { RealtimeCountersDO } from "./durable-objects/RealtimeCountersDO.js";
+// Durable Objects for real-time features
+import { RealtimeAnalyticsDO } from "./services/RealtimeAnalyticsDO.js";
+import { ArticleInteractionsDO } from "./services/ArticleInteractionsDO.js";
+import { UserBehaviorDO } from "./services/UserBehaviorDO.js";
+import { RealtimeCountersDO } from "./services/RealtimeCountersDO.js";
 
 // Import admin interface
 import { getAdminHTML, getLoginHTML } from "./admin/index.js";
@@ -33,26 +34,34 @@ import { getAdminHTML, getLoginHTML } from "./admin/index.js";
 type Bindings = {
   DB: D1Database;
   AUTH_STORAGE: KVNamespace;
-  // ARTICLE_INTERACTIONS: DurableObjectNamespace; // Temporarily disabled
-  // USER_BEHAVIOR: DurableObjectNamespace; // Temporarily disabled
-  // REALTIME_COUNTERS: DurableObjectNamespace; // Temporarily disabled  
-  // REALTIME_ANALYTICS: DurableObjectNamespace; // Temporarily disabled
+  CACHE_STORAGE: KVNamespace;
+  ARTICLE_INTERACTIONS: DurableObjectNamespace;
+  USER_BEHAVIOR: DurableObjectNamespace;
+  REALTIME_COUNTERS: DurableObjectNamespace;
+  REALTIME_ANALYTICS: DurableObjectNamespace;
   NEWS_ANALYTICS: AnalyticsEngineDataset;
   SEARCH_ANALYTICS: AnalyticsEngineDataset;
   CATEGORY_ANALYTICS: AnalyticsEngineDataset;
   USER_ANALYTICS: AnalyticsEngineDataset;
   PERFORMANCE_ANALYTICS: AnalyticsEngineDataset;
+  AI_INSIGHTS_ANALYTICS: AnalyticsEngineDataset;
   AI: Ai;
   VECTORIZE_INDEX: VectorizeIndex;
-  IMAGES?: any; // Cloudflare Images binding (optional)
+  IMAGES?: ImagesBinding;
   NODE_ENV: string;
   LOG_LEVEL: string;
   ROLES_ENABLED: string;
   DEFAULT_ROLE: string;
   ADMIN_ROLES: string;
   CREATOR_ROLES: string;
-  CLOUDFLARE_ACCOUNT_ID?: string; // Optional Cloudflare account ID for Images API
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  ADMIN_SESSION_SECRET: string; // Set via wrangler secret
+  AI_INSIGHTS_ENABLED: string;
+  AI_SEARCH_ENABLED: string;
 };
+
+// Export Durable Object classes for Cloudflare
+export { RealtimeAnalyticsDO, ArticleInteractionsDO, UserBehaviorDO, RealtimeCountersDO };
 
 const app = new Hono<{ Bindings: Bindings }>();
 
@@ -129,22 +138,34 @@ function initializeServices(env: Bindings) {
   };
 }
 
-// Simple session-based authentication (temporary until OpenAuth is fully implemented)
-const ADMIN_SESSION_SECRET = "harare-metro-admin-secret-2025"; // TODO: Move to environment variable
+// Session-based authentication using environment secret
+// ADMIN_SESSION_SECRET must be set via: wrangler secret put ADMIN_SESSION_SECRET
 
-// Helper function to hash password (simple implementation)
+// Helper function to get session secret from environment
+function getSessionSecret(env: Bindings): string {
+  const secret = env.ADMIN_SESSION_SECRET;
+  if (!secret) {
+    console.error('[AUTH] ADMIN_SESSION_SECRET not configured! Set via: wrangler secret put ADMIN_SESSION_SECRET');
+    throw new Error('Server configuration error: missing session secret');
+  }
+  return secret;
+}
+
+// Helper function to hash password using PasswordHashService (static methods)
 async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + ADMIN_SESSION_SECRET);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return await PasswordHashService.hashPassword(password);
+}
+
+// Helper function to verify password (static method)
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  return await PasswordHashService.verifyPassword(password, hash);
 }
 
 // Helper function to create session token
-async function createSessionToken(email: string): Promise<string> {
+async function createSessionToken(email: string, env: Bindings): Promise<string> {
+  const secret = getSessionSecret(env);
   const timestamp = Date.now();
-  const data = `${email}:${timestamp}:${ADMIN_SESSION_SECRET}`;
+  const data = `${email}:${timestamp}:${secret}`;
   const encoder = new TextEncoder();
   const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(data));
   const hashArray = Array.from(new Uint8Array(hashBuffer));
@@ -243,16 +264,19 @@ app.post("/api/admin/login", async (c) => {
       return c.json({ error: "Insufficient permissions - admin access required" }, 403);
     }
 
-    // Validate password (for now, using simple hash - TODO: use bcrypt)
-    const inputPasswordHash = await hashPassword(password);
+    // Validate password using scrypt-based verification
     const storedPasswordHash = user.password_hash;
+    if (!storedPasswordHash) {
+      return c.json({ error: "Invalid email or password" }, 401);
+    }
 
-    if (!storedPasswordHash || inputPasswordHash !== storedPasswordHash) {
+    const isPasswordValid = await verifyPassword(password, storedPasswordHash);
+    if (!isPasswordValid) {
       return c.json({ error: "Invalid email or password" }, 401);
     }
 
     // Create session token
-    const sessionToken = await createSessionToken(email);
+    const sessionToken = await createSessionToken(email, c.env);
 
     // Store session in KV (expires in 7 days)
     await c.env.AUTH_STORAGE.put(

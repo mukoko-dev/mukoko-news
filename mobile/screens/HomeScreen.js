@@ -1,54 +1,34 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * HomeScreen - Main news feed
+ * Displays articles in a clean, scannable layout following 2025 news app patterns
+ */
+
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
-  ScrollView,
   FlatList,
   StyleSheet,
   RefreshControl,
-  Image,
-  TouchableOpacity,
   Dimensions,
 } from 'react-native';
 import {
-  Appbar,
-  Card,
   Text,
-  Button,
-  Chip,
   ActivityIndicator,
-  Searchbar,
-  IconButton,
+  Button,
 } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { articles, categories as categoriesAPI } from '../api/client';
 import mukokoTheme from '../theme';
+import ArticleCard from '../components/ArticleCard';
+import CategoryChips from '../components/CategoryChips';
 
-// Helper function to format date safely
-const formatDate = (dateString) => {
-  try {
-    const date = new Date(dateString);
-    // Check if date is valid
-    if (isNaN(date.getTime())) {
-      return 'Recently';
-    }
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) {
-      return diffMins <= 1 ? 'Just now' : `${diffMins}m ago`;
-    } else if (diffHours < 24) {
-      return `${diffHours}h ago`;
-    } else if (diffDays < 7) {
-      return `${diffDays}d ago`;
-    } else {
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    }
-  } catch (error) {
-    return 'Recently';
-  }
+// Breakpoints for responsive layout
+const BREAKPOINTS = {
+  mobile: 600,
+  tablet: 900,
+  desktop: 1200,
 };
 
 export default function HomeScreen({ navigation }) {
@@ -57,27 +37,30 @@ export default function HomeScreen({ navigation }) {
   const [articlesList, setArticlesList] = useState([]);
   const [categoriesList, setCategoriesList] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [numColumns, setNumColumns] = useState(1);
+  const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
+
+  // Calculate responsive layout
+  const getLayoutConfig = useCallback((width) => {
+    if (width < BREAKPOINTS.mobile) {
+      return { numColumns: 1, showFeatured: true };
+    } else if (width < BREAKPOINTS.tablet) {
+      return { numColumns: 2, showFeatured: true };
+    } else {
+      return { numColumns: 3, showFeatured: false };
+    }
+  }, []);
+
+  const layoutConfig = getLayoutConfig(screenWidth);
 
   useEffect(() => {
     loadInitialData();
   }, []);
 
-  // Update number of columns based on screen width
+  // Handle screen resize
   useEffect(() => {
-    const updateLayout = () => {
-      const { width } = Dimensions.get('window');
-      if (width < 768) {
-        setNumColumns(1); // Mobile: 1 column
-      } else if (width < 1024) {
-        setNumColumns(2); // Tablet: 2 columns
-      } else {
-        setNumColumns(3); // Desktop: 3 columns
-      }
-    };
-
-    updateLayout();
-    const subscription = Dimensions.addEventListener('change', updateLayout);
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenWidth(window.width);
+    });
     return () => subscription?.remove();
   }, []);
 
@@ -98,7 +81,7 @@ export default function HomeScreen({ navigation }) {
 
   const loadArticles = async (category = null) => {
     const { data, error } = await articles.getFeed({
-      limit: 20,
+      limit: 30,
       offset: 0,
       category,
     });
@@ -119,13 +102,10 @@ export default function HomeScreen({ navigation }) {
   };
 
   const handleCategoryPress = async (categorySlug) => {
-    if (selectedCategory === categorySlug) {
-      setSelectedCategory(null);
-      await loadArticles(null);
-    } else {
-      setSelectedCategory(categorySlug);
-      await loadArticles(categorySlug);
-    }
+    // Toggle off if same category selected, or if "all" (null) is selected
+    const newCategory = selectedCategory === categorySlug ? null : categorySlug;
+    setSelectedCategory(newCategory);
+    await loadArticles(newCategory);
   };
 
   const handleArticlePress = (article) => {
@@ -136,50 +116,57 @@ export default function HomeScreen({ navigation }) {
     });
   };
 
-  const renderArticleCard = ({ item: article }) => (
-    <TouchableOpacity
-      activeOpacity={0.85}
-      onPress={() => handleArticlePress(article)}
-      style={styles.articleCardContainer}
-    >
-      <Card style={styles.articleCard}>
-        {article.imageUrl && (
-          <Card.Cover
-            source={{ uri: article.imageUrl }}
-            style={styles.articleImage}
-          />
-        )}
-        <Card.Content style={styles.articleContent}>
-          <Text variant="headlineSmall" style={styles.articleTitle} numberOfLines={3}>
-            {article.title}
-          </Text>
-          {article.description && (
-            <Text variant="bodyMedium" style={styles.articleDescription} numberOfLines={2}>
-              {article.description}
-            </Text>
-          )}
-          <View style={styles.articleMeta}>
-            <Text variant="bodySmall" style={styles.articleSource}>
-              {article.source}
-            </Text>
-            <Text variant="bodySmall" style={styles.articleDot}>•</Text>
-            <Text variant="bodySmall" style={styles.articleDate}>
-              {article.pubDate ? formatDate(article.pubDate) : 'Recently'}
-            </Text>
-          </View>
-        </Card.Content>
-      </Card>
-    </TouchableOpacity>
-  );
+  // Calculate card width for multi-column layouts
+  const getCardWidth = () => {
+    if (layoutConfig.numColumns === 1) return undefined;
+    const totalPadding = mukokoTheme.spacing.md * 2;
+    const gap = mukokoTheme.spacing.md * (layoutConfig.numColumns - 1);
+    return (screenWidth - totalPadding - gap) / layoutConfig.numColumns;
+  };
+
+  const cardWidth = getCardWidth();
+
+  const renderArticleItem = ({ item: article, index }) => {
+    // Show first article as featured on mobile
+    if (index === 0 && layoutConfig.showFeatured && layoutConfig.numColumns === 1) {
+      return (
+        <ArticleCard
+          article={article}
+          variant="featured"
+          onPress={() => handleArticlePress(article)}
+        />
+      );
+    }
+
+    // Show horizontal cards for items 1-4 on mobile (quick scan section)
+    if (index >= 1 && index <= 4 && layoutConfig.numColumns === 1) {
+      return (
+        <ArticleCard
+          article={article}
+          variant="horizontal"
+          onPress={() => handleArticlePress(article)}
+        />
+      );
+    }
+
+    // Default card for remaining items
+    return (
+      <ArticleCard
+        article={article}
+        variant="default"
+        width={cardWidth}
+        onPress={() => handleArticlePress(article)}
+        style={layoutConfig.numColumns > 1 ? styles.gridCard : undefined}
+      />
+    );
+  };
 
   if (loading) {
     return (
       <View style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={mukokoTheme.colors.primary} />
-          <Text variant="bodyLarge" style={styles.loadingText}>
-            Loading Mukoko News...
-          </Text>
+          <Text style={styles.loadingText}>Loading news...</Text>
         </View>
       </View>
     );
@@ -187,59 +174,60 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Categories */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.categoriesContainer}
-        contentContainerStyle={styles.categoriesContent}
-      >
-        {categoriesList.map((category) => (
-          <Chip
-            key={category.id || category.slug}
-            selected={selectedCategory === (category.id || category.slug)}
-            onPress={() => handleCategoryPress(category.id || category.slug)}
-            style={styles.categoryFilter}
-            textStyle={styles.categoryFilterText}
-          >
-            {category.name} {category.article_count ? `(${category.article_count})` : ''}
-          </Chip>
-        ))}
-      </ScrollView>
+      {/* Category Filter */}
+      <CategoryChips
+        categories={categoriesList}
+        selectedCategory={selectedCategory}
+        onCategoryPress={handleCategoryPress}
+        showAll={true}
+        showCounts={false}
+      />
 
       {/* Articles Feed */}
       <FlatList
-        key={numColumns} // Force re-render when columns change
+        key={`feed-${layoutConfig.numColumns}`}
         data={articlesList}
-        renderItem={renderArticleCard}
+        renderItem={renderArticleItem}
         keyExtractor={(item) => item.id.toString()}
-        numColumns={numColumns}
-        columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : null}
-        contentContainerStyle={styles.articlesContent}
+        numColumns={layoutConfig.numColumns > 1 ? layoutConfig.numColumns : 1}
+        contentContainerStyle={styles.listContent}
+        columnWrapperStyle={layoutConfig.numColumns > 1 ? styles.columnWrapper : undefined}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
             colors={[mukokoTheme.colors.primary]}
+            tintColor={mukokoTheme.colors.primary}
           />
         }
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text variant="titleLarge" style={styles.emptyTitle}>
-              No articles found
-            </Text>
-            <Text variant="bodyMedium" style={styles.emptyDescription}>
-              Try selecting a different category or refreshing the feed.
+          <View style={styles.emptyContainer}>
+            <MaterialCommunityIcons
+              name="newspaper-variant-outline"
+              size={64}
+              color={mukokoTheme.colors.onSurfaceVariant}
+            />
+            <Text style={styles.emptyTitle}>No articles found</Text>
+            <Text style={styles.emptyDescription}>
+              {selectedCategory
+                ? 'No articles in this category. Try selecting a different one.'
+                : 'Pull down to refresh and load the latest news.'}
             </Text>
             <Button
               mode="contained"
               onPress={onRefresh}
               style={styles.emptyButton}
+              icon="refresh"
             >
               Refresh Feed
             </Button>
           </View>
         }
+        // Performance optimizations
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        initialNumToRender={8}
       />
     </View>
   );
@@ -250,85 +238,20 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: mukokoTheme.colors.background,
   },
-  categoriesContainer: {
-    backgroundColor: mukokoTheme.colors.surface,
-    paddingVertical: 10,
-    zIndex: 10,
-    ...mukokoTheme.shadows.small,
-  },
-  categoriesContent: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    gap: 8,
-  },
-  categoryFilter: {
-    marginRight: 6,
-    borderRadius: 16,
-    height: 32,
-  },
-  categoryFilterText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  articlesContent: {
+  listContent: {
     padding: mukokoTheme.spacing.md,
-    paddingTop: mukokoTheme.spacing.md,
-    paddingBottom: 100,
+    paddingBottom: 100, // Space for tab bar
   },
   columnWrapper: {
-    justifyContent: 'space-between',
+    gap: mukokoTheme.spacing.md,
     marginBottom: mukokoTheme.spacing.md,
   },
-  articleCardContainer: {
+  gridCard: {
     flex: 1,
-    marginBottom: mukokoTheme.spacing.md,
-    marginHorizontal: 4,
+    marginBottom: 0,
   },
-  articleCard: {
-    borderRadius: mukokoTheme.roundness,
-    backgroundColor: mukokoTheme.colors.surface,
-    overflow: 'hidden',
-    ...mukokoTheme.shadows.small,
-  },
-  articleImage: {
-    borderTopLeftRadius: mukokoTheme.roundness,
-    borderTopRightRadius: mukokoTheme.roundness,
-  },
-  articleContent: {
-    paddingVertical: mukokoTheme.spacing.md,
-    paddingHorizontal: mukokoTheme.spacing.md,
-  },
-  articleTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 18,
-    lineHeight: 24,
-    marginBottom: mukokoTheme.spacing.sm,
-    color: mukokoTheme.colors.onSurface,
-  },
-  articleDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: mukokoTheme.colors.onSurfaceVariant,
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  articleMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: mukokoTheme.spacing.xs,
-  },
-  articleSource: {
-    color: mukokoTheme.colors.primary,
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  articleDot: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-    marginHorizontal: 6,
-    fontSize: 12,
-  },
-  articleDate: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-    fontSize: 12,
-  },
+
+  // Loading state
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -336,26 +259,34 @@ const styles = StyleSheet.create({
     gap: mukokoTheme.spacing.md,
   },
   loadingText: {
+    fontSize: 14,
     color: mukokoTheme.colors.onSurfaceVariant,
   },
-  emptyState: {
+
+  // Empty state
+  emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: mukokoTheme.spacing.xxl,
+    paddingHorizontal: mukokoTheme.spacing.xl,
     gap: mukokoTheme.spacing.md,
   },
   emptyTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 20,
     color: mukokoTheme.colors.onSurface,
+    textAlign: 'center',
   },
   emptyDescription: {
+    fontSize: 14,
     color: mukokoTheme.colors.onSurfaceVariant,
     textAlign: 'center',
-    paddingHorizontal: mukokoTheme.spacing.xl,
+    lineHeight: 20,
+    maxWidth: 280,
   },
   emptyButton: {
-    marginTop: mukokoTheme.spacing.md,
+    marginTop: mukokoTheme.spacing.sm,
     borderRadius: mukokoTheme.roundness,
   },
 });
