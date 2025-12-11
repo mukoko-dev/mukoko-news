@@ -1,7 +1,7 @@
 // OpenAuth library not needed - using simple D1-first auth
 // import { createAuthHandler } from '@openauthjs/openauth'
 import * as v from 'valibot'
-import { PasswordHashingService } from './PasswordHashingService.js'
+import { PasswordHashService } from './PasswordHashService.js'
 
 /**
  * OpenAuth Service for Harare Metro
@@ -225,13 +225,13 @@ export class OpenAuthService {
       }
 
       // Validate password strength
-      const passwordValidation = PasswordHashingService.validatePasswordStrength(password);
+      const passwordValidation = PasswordHashService.validatePasswordStrength(password);
       if (!passwordValidation.valid) {
         return { success: false, error: passwordValidation.error };
       }
 
       // Hash password with salt
-      const passwordHash = await PasswordHashingService.hashPassword(password);
+      const passwordHash = await PasswordHashService.hashPassword(password);
 
       // Generate username if not provided
       let username = metadata?.username;
@@ -317,7 +317,7 @@ export class OpenAuthService {
       }
 
       // Verify password
-      const isValid = await PasswordHashingService.verifyPassword(password, user.password_hash);
+      const isValid = await PasswordHashService.verifyPassword(password, user.password_hash);
 
       if (!isValid) {
         // Log failed login attempt
@@ -330,8 +330,8 @@ export class OpenAuthService {
       }
 
       // Check if password needs rehashing (legacy format)
-      if (PasswordHashingService.needsRehash(user.password_hash)) {
-        const newHash = await PasswordHashingService.hashPassword(password);
+      if (PasswordHashService.needsRehash(user.password_hash)) {
+        const newHash = await PasswordHashService.hashPassword(password);
         await this.db
           .prepare('UPDATE users SET password_hash = ? WHERE id = ?')
           .bind(newHash, user.id)

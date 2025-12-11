@@ -1,3 +1,8 @@
+/**
+ * NewsBytesScreen - TikTok-style vertical scrolling news
+ * Full-screen immersive news experience with responsive positioning
+ */
+
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
@@ -13,7 +18,7 @@ import {
   IconButton,
   ActivityIndicator,
 } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { newsBytes, articles as articlesAPI } from '../api/client';
@@ -21,18 +26,35 @@ import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
 import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
 
-const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
-
 export default function NewsBytesScreen({ navigation }) {
+  const insets = useSafeAreaInsets();
   const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [bytes, setBytes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [bytesState, setBytesState] = useState({});
+  const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
   const flatListRef = useRef(null);
+
+  // Calculate responsive values based on screen size and safe areas
+  const SCREEN_HEIGHT = screenDimensions.height;
+  const SCREEN_WIDTH = screenDimensions.width;
+
+  // Content positioning - responsive to screen size and safe areas
+  const CONTENT_BOTTOM_OFFSET = Math.max(insets.bottom + 100, 140); // Tab bar + padding
+  const ACTIONS_RIGHT_OFFSET = mukokoTheme.spacing.md;
+  const PROGRESS_TOP_OFFSET = insets.top + mukokoTheme.spacing.lg;
 
   useEffect(() => {
     loadNewsBytes();
+  }, []);
+
+  // Handle screen dimension changes
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenDimensions(window);
+    });
+    return () => subscription?.remove();
   }, []);
 
   const loadNewsBytes = async () => {
@@ -41,7 +63,6 @@ export default function NewsBytesScreen({ navigation }) {
       const { data, error } = await newsBytes.getFeed({ limit: 20 });
 
       if (data?.articles) {
-        // Transform articles into short-form bytes
         const transformedBytes = data.articles.map((article) => ({
           id: article.id,
           title: article.title,
@@ -58,7 +79,6 @@ export default function NewsBytesScreen({ navigation }) {
           isSaved: article.isSaved || false,
         }));
 
-        // Initialize state for each byte
         const initialState = {};
         transformedBytes.forEach(byte => {
           initialState[byte.id] = {
@@ -85,7 +105,6 @@ export default function NewsBytesScreen({ navigation }) {
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    // Optimistic update
     setBytesState(prev => ({
       ...prev,
       [byte.id]: {
@@ -100,7 +119,6 @@ export default function NewsBytesScreen({ navigation }) {
     try {
       const result = await articlesAPI.like(byte.id);
       if (result.error) {
-        // Revert on error
         setBytesState(prev => ({
           ...prev,
           [byte.id]: {
@@ -123,7 +141,6 @@ export default function NewsBytesScreen({ navigation }) {
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
-    // Optimistic update
     setBytesState(prev => ({
       ...prev,
       [byte.id]: {
@@ -135,7 +152,6 @@ export default function NewsBytesScreen({ navigation }) {
     try {
       const result = await articlesAPI.save(byte.id);
       if (result.error) {
-        // Revert on error
         setBytesState(prev => ({
           ...prev,
           [byte.id]: {
@@ -180,12 +196,22 @@ export default function NewsBytesScreen({ navigation }) {
     itemVisiblePercentThreshold: 50,
   }).current;
 
+  const formatDate = (dateString) => {
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Recently';
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch {
+      return 'Recently';
+    }
+  };
+
   const renderByte = ({ item, index }) => {
     const byteState = bytesState[item.id] || {};
 
     return (
       <TouchableOpacity
-        style={styles.byteContainer}
+        style={[styles.byteContainer, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}
         activeOpacity={1}
         onPress={() => handleViewArticle(item)}
       >
@@ -197,98 +223,96 @@ export default function NewsBytesScreen({ navigation }) {
             resizeMode="cover"
           />
         ) : (
-          <View style={[styles.backgroundImage, styles.placeholderBackground]} />
-        )}
-
-        {/* Gradient Overlay */}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.3)', 'rgba(0,0,0,0.9)']}
-          locations={[0, 0.5, 1]}
-          style={styles.gradientOverlay}
-        />
-
-      {/* Content */}
-      <View style={styles.contentContainer}>
-        {/* Category Badge */}
-        {item.category && (
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{item.category}</Text>
+          <View style={[styles.backgroundImage, styles.placeholderBackground]}>
+            <Text style={styles.placeholderIcon}>📰</Text>
           </View>
         )}
 
-        {/* Title */}
-        <Text variant="headlineMedium" style={styles.byteTitle}>
-          {item.title}
-        </Text>
+        {/* Gradient Overlay - Full height for better readability */}
+        <LinearGradient
+          colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']}
+          locations={[0, 0.4, 1]}
+          style={styles.gradientOverlay}
+        />
 
-        {/* Description */}
-        {item.description && (
-          <Text variant="bodyMedium" style={styles.byteDescription}>
-            {item.description.slice(0, 150)}...
-          </Text>
-        )}
+        {/* Content - Positioned from bottom with responsive offset */}
+        <View style={[
+          styles.contentContainer,
+          {
+            bottom: CONTENT_BOTTOM_OFFSET,
+            paddingRight: 72, // Space for action buttons
+          }
+        ]}>
+          {/* Category Badge */}
+          {item.category && (
+            <View style={styles.categoryBadge}>
+              <Text style={styles.categoryText}>{item.category}</Text>
+            </View>
+          )}
 
-        {/* Source */}
-        <View style={styles.metaContainer}>
-          <Text style={styles.sourceText}>{item.source}</Text>
-          <Text style={styles.dotSeparator}>•</Text>
-          <Text style={styles.dateText}>
-            {new Date(item.published_at).toLocaleDateString()}
+          {/* Title - Large, readable */}
+          <Text style={styles.byteTitle} numberOfLines={4}>
+            {item.title}
           </Text>
+
+          {/* Description - Two lines max */}
+          {item.description && (
+            <Text style={styles.byteDescription} numberOfLines={2}>
+              {item.description.slice(0, 120)}...
+            </Text>
+          )}
+
+          {/* Source & Date */}
+          <View style={styles.metaContainer}>
+            <Text style={styles.sourceText}>{item.source}</Text>
+            <Text style={styles.dotSeparator}>•</Text>
+            <Text style={styles.dateText}>{formatDate(item.published_at)}</Text>
+          </View>
+
+          {/* Read More Button */}
+          <TouchableOpacity
+            style={styles.readMoreButton}
+            onPress={() => handleViewArticle(item)}
+          >
+            <Text style={styles.readMoreText}>Read Full Article</Text>
+          </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Right Side Actions */}
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleLike(item)}
-        >
-          <IconButton
+        {/* Right Side Actions - Vertically centered */}
+        <View style={[
+          styles.actionsContainer,
+          {
+            right: ACTIONS_RIGHT_OFFSET,
+            bottom: CONTENT_BOTTOM_OFFSET + 40,
+          }
+        ]}>
+          <ActionButton
             icon={byteState.isLiked ? "heart" : "heart-outline"}
-            iconColor={byteState.isLiked ? mukokoTheme.colors.zwRed : mukokoTheme.colors.zwWhite}
-            size={32}
+            color={byteState.isLiked ? mukokoTheme.colors.zwRed : mukokoTheme.colors.zwWhite}
+            label={byteState.likesCount || 0}
+            onPress={() => handleLike(item)}
           />
-          <Text style={styles.actionText}>
-            {byteState.likesCount || 0}
-          </Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleViewArticle(item)}
-        >
-          <IconButton
+          <ActionButton
             icon="comment-outline"
-            iconColor={mukokoTheme.colors.zwWhite}
-            size={32}
+            color={mukokoTheme.colors.zwWhite}
+            label={item.commentsCount || 0}
+            onPress={() => handleViewArticle(item)}
           />
-          <Text style={styles.actionText}>{item.commentsCount || 0}</Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleShare(item)}
-        >
-          <IconButton
+          <ActionButton
             icon="share-variant-outline"
-            iconColor={mukokoTheme.colors.zwWhite}
-            size={32}
+            color={mukokoTheme.colors.zwWhite}
+            label="Share"
+            onPress={() => handleShare(item)}
           />
-          <Text style={styles.actionText}>Share</Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.actionButton}
-          onPress={() => handleSave(item)}
-        >
-          <IconButton
+          <ActionButton
             icon={byteState.isSaved ? "bookmark" : "bookmark-outline"}
-            iconColor={byteState.isSaved ? mukokoTheme.colors.zwYellow : mukokoTheme.colors.zwWhite}
-            size={32}
+            color={byteState.isSaved ? mukokoTheme.colors.accent : mukokoTheme.colors.zwWhite}
+            onPress={() => handleSave(item)}
           />
-        </TouchableOpacity>
-      </View>
+        </View>
       </TouchableOpacity>
     );
   };
@@ -305,9 +329,25 @@ export default function NewsBytesScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <View style={styles.container}>
       {/* Zimbabwe Flag Strip */}
       <ZimbabweFlagStrip />
+
+      {/* Progress Indicator - Responsive top position */}
+      <View style={[styles.progressContainer, { top: PROGRESS_TOP_OFFSET }]}>
+        {bytes.slice(0, 10).map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.progressDot,
+              index === currentIndex && styles.progressDotActive,
+            ]}
+          />
+        ))}
+        {bytes.length > 10 && (
+          <Text style={styles.progressMore}>+{bytes.length - 10}</Text>
+        )}
+      </View>
 
       {/* Vertical Scrolling Bytes */}
       <FlatList
@@ -327,21 +367,38 @@ export default function NewsBytesScreen({ navigation }) {
           offset: SCREEN_HEIGHT * index,
           index,
         })}
+        ListEmptyComponent={
+          <View style={[styles.emptyContainer, { height: SCREEN_HEIGHT }]}>
+            <Text style={styles.emptyIcon}>📰</Text>
+            <Text style={styles.emptyTitle}>No NewsBytes available</Text>
+            <Text style={styles.emptyDescription}>
+              Pull down to refresh or check back later
+            </Text>
+          </View>
+        }
       />
+    </View>
+  );
+}
 
-      {/* Progress Indicator */}
-      <View style={styles.progressContainer}>
-        {bytes.map((_, index) => (
-          <View
-            key={index}
-            style={[
-              styles.progressDot,
-              index === currentIndex && styles.progressDotActive,
-            ]}
-          />
-        ))}
+/**
+ * ActionButton Component - Reusable action button for the side panel
+ */
+function ActionButton({ icon, color, label, onPress }) {
+  return (
+    <TouchableOpacity style={styles.actionButton} onPress={onPress}>
+      <View style={styles.actionIconContainer}>
+        <IconButton
+          icon={icon}
+          iconColor={color}
+          size={28}
+          style={styles.actionIcon}
+        />
       </View>
-    </SafeAreaView>
+      {label !== undefined && (
+        <Text style={styles.actionText}>{label}</Text>
+      )}
+    </TouchableOpacity>
   );
 }
 
@@ -350,71 +407,64 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: mukokoTheme.colors.zwBlack,
   },
-  flagStrip: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: 8,
-    height: '100%',
-    zIndex: 1000,
-    backgroundColor: mukokoTheme.colors.zwGreen,
-    borderRightWidth: 2,
-    borderRightColor: mukokoTheme.colors.zwYellow,
-  },
   byteContainer: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
     position: 'relative',
     backgroundColor: mukokoTheme.colors.zwBlack,
   },
   backgroundImage: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: '#1a1a1a',
+  },
+  placeholderBackground: {
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#2a2a2a',
+  },
+  placeholderIcon: {
+    fontSize: 64,
+    opacity: 0.3,
   },
   gradientOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '50%',
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    ...StyleSheet.absoluteFillObject,
   },
+
+  // Content positioning
   contentContainer: {
     position: 'absolute',
-    bottom: 140,
     left: mukokoTheme.spacing.md,
-    right: 80,
+    right: mukokoTheme.spacing.md,
     gap: mukokoTheme.spacing.sm,
   },
   categoryBadge: {
     alignSelf: 'flex-start',
     backgroundColor: mukokoTheme.colors.accent,
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.xs,
-    borderRadius: mukokoTheme.roundness,
+    paddingHorizontal: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.xs - 2,
+    borderRadius: mukokoTheme.roundness / 2,
   },
   categoryText: {
     color: mukokoTheme.colors.zwBlack,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    fontSize: 12,
+    fontSize: 11,
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   byteTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 26,
+    lineHeight: 32,
     color: mukokoTheme.colors.zwWhite,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
+    letterSpacing: -0.3,
   },
   byteDescription: {
+    fontSize: 15,
+    lineHeight: 21,
     color: mukokoTheme.colors.zwWhite,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    opacity: 0.9,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
@@ -427,56 +477,97 @@ const styles = StyleSheet.create({
     color: mukokoTheme.colors.accent,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     fontSize: 13,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
   dotSeparator: {
     color: mukokoTheme.colors.zwWhite,
-    opacity: 0.7,
+    opacity: 0.6,
   },
   dateText: {
     color: mukokoTheme.colors.zwWhite,
     opacity: 0.8,
     fontSize: 13,
-  },
-  actionsContainer: {
-    position: 'absolute',
-    right: mukokoTheme.spacing.sm,
-    bottom: 160,
-    gap: mukokoTheme.spacing.sm,
-  },
-  actionButton: {
-    alignItems: 'center',
-    gap: 2,
-  },
-  actionText: {
-    color: mukokoTheme.colors.zwWhite,
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+  readMoreButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: mukokoTheme.spacing.md,
+    paddingVertical: mukokoTheme.spacing.sm,
+    borderRadius: mukokoTheme.roundness,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    marginTop: mukokoTheme.spacing.xs,
+  },
+  readMoreText: {
+    color: mukokoTheme.colors.zwWhite,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontSize: 13,
+  },
+
+  // Actions panel
+  actionsContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.md,
+  },
+  actionButton: {
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionIcon: {
+    margin: 0,
+  },
+  actionText: {
+    color: mukokoTheme.colors.zwWhite,
+    fontSize: 11,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+
+  // Progress indicator
   progressContainer: {
     position: 'absolute',
-    top: 100,
     left: 0,
     right: 0,
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: 4,
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.xs,
+    zIndex: 100,
   },
   progressDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   progressDotActive: {
     backgroundColor: mukokoTheme.colors.accent,
-    width: 20,
+    width: 18,
   },
+  progressMore: {
+    color: mukokoTheme.colors.zwWhite,
+    fontSize: 10,
+    opacity: 0.7,
+    marginLeft: mukokoTheme.spacing.xs,
+  },
+
+  // Loading state
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -486,5 +577,30 @@ const styles = StyleSheet.create({
   loadingText: {
     color: mukokoTheme.colors.zwWhite,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+
+  // Empty state
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: mukokoTheme.spacing.xl,
+    gap: mukokoTheme.spacing.md,
+  },
+  emptyIcon: {
+    fontSize: 64,
+    opacity: 0.5,
+  },
+  emptyTitle: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 22,
+    color: mukokoTheme.colors.zwWhite,
+    textAlign: 'center',
+  },
+  emptyDescription: {
+    fontSize: 14,
+    color: mukokoTheme.colors.zwWhite,
+    opacity: 0.7,
+    textAlign: 'center',
   },
 });

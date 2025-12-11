@@ -1,7 +1,7 @@
 {
-  "name": "harare-metro-backend",
-  "version": "1.0.0",
-  "description": "Backend API and Admin Interface for Harare Metro",
+  "name": "mukoko-news-backend",
+  "version": "2.0.0",
+  "description": "Backend API and Admin Interface for Mukoko News - Zimbabwe's Modern News Platform",
   "main": "index.ts",
   "scripts": {
     "dev": "wrangler dev",
@@ -13,11 +13,13 @@
     "validate": "npm run typecheck && npm run build",
     "clean": "rm -rf node_modules/.cache .wrangler dist build && npm cache clean --force",
     "install:clean": "npm run clean && npm install",
-    "db:migrate": "wrangler d1 execute hararemetro_articles --remote --file ./worker/database/schema.sql",
-    "db:local": "wrangler d1 execute hararemetro_articles --local --file ./worker/database/schema.sql",
-    "db:schema": "echo 'Database schema located at: ./worker/database/schema.sql'"
+    "db:migrate": "wrangler d1 execute hararemetro_articles --remote --file ../database/schema.sql",
+    "db:local": "wrangler d1 execute hararemetro_articles --local --file ../database/schema.sql",
+    "db:schema": "echo 'Database schema located at: ../database/schema.sql'",
+    "secret:set": "echo 'Run: wrangler secret put ADMIN_SESSION_SECRET'"
   },
   "dependencies": {
+    "@noble/hashes": "^1.4.0",
     "@openauthjs/openauth": "^0.4.3",
     "fast-xml-parser": "^4.4.1",
     "hono": "^4.9.7",

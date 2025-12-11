@@ -146,4 +146,41 @@ export class PasswordHashService {
     crypto.getRandomValues(bytes);
     return this.bytesToHex(bytes);
   }
+
+  /**
+   * Validate password strength
+   * Returns validation result with any issues found
+   */
+  static validatePasswordStrength(password: string): { valid: boolean; issues: string[] } {
+    const issues: string[] = [];
+
+    if (password.length < 8) {
+      issues.push('Password must be at least 8 characters long');
+    }
+    if (password.length > 128) {
+      issues.push('Password must not exceed 128 characters');
+    }
+    if (!/[a-z]/.test(password)) {
+      issues.push('Password must contain at least one lowercase letter');
+    }
+    if (!/[A-Z]/.test(password)) {
+      issues.push('Password must contain at least one uppercase letter');
+    }
+    if (!/[0-9]/.test(password)) {
+      issues.push('Password must contain at least one number');
+    }
+
+    return {
+      valid: issues.length === 0,
+      issues
+    };
+  }
+
+  /**
+   * Check if a password hash needs to be rehashed
+   * (e.g., if it's using legacy SHA-256 format)
+   */
+  static needsRehash(storedHash: string): boolean {
+    return this.isLegacyHash(storedHash);
+  }
 }

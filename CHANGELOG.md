@@ -17,6 +17,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.8.0] - 2025-12-11
+
+### Added - Mobile UI Improvements
+
+- **ArticleCard component** - New reusable article card with multiple variants
+  - `default` - Standard vertical card with image on top
+  - `horizontal` - Compact horizontal layout for quick scanning
+  - `compact` - Minimal card for dense lists
+  - `featured` - Large hero-style card for top stories
+  - Image error handling with automatic fallback placeholders
+  - Loading states for images
+  - Relative time formatting (e.g., "2h ago")
+
+- **CategoryChips component** - Horizontal scrollable category filters
+  - Pills-style selection with clear active states
+  - Optional icons and article counts
+  - "All" option for showing all categories
+  - Alternative CategoryPills wrapper layout
+
+- **Responsive HomeScreen** - Complete redesign following 2025 news app patterns
+  - Featured card for hero story on mobile
+  - Horizontal cards for quick-scan section (items 1-4)
+  - Responsive grid layout: 1 column (mobile), 2 columns (tablet), 3 columns (desktop)
+  - Breakpoints at 600px, 900px, 1200px
+  - Empty state with refresh button
+
+- **Responsive NewsBytesScreen** - Fixed layout and positioning issues
+  - Dynamic safe area positioning using useSafeAreaInsets
+  - Screen dimension listener for responsive updates
+  - ActionButton sub-component with proper styling
+  - "Read Full Article" button with navigation
+  - Better gradient overlay for text readability
+
+### Changed
+
+- **Backend wrangler.jsonc** - Updated for Cloudflare free plan compatibility
+  - Added CACHE_STORAGE KV namespace (id: a9c3fa88185949d5a3e81b1865fc16d7)
+  - Changed Durable Objects migrations from `new_classes` to `new_sqlite_classes`
+
+### Fixed
+
+- **Hardcoded pixel values** - Replaced with dynamic theme-based spacing
+- **Image loading errors** - Added onError handlers with placeholder fallbacks
+- **Component overlaps** - Fixed with proper safe area insets
+- **Typography inconsistencies** - Standardized to theme fonts throughout
+- **Responsive positioning** - Content now adapts to screen dimensions
+
+### Technical
+
+- Mobile app build verified successful (754 modules bundled)
+- All new components follow Material Design 3 patterns via React Native Paper
+- Theme values used consistently for spacing, colors, and typography
+
+---
+
 ## [0.7.0] - 2025-10-31
 
 ### Added
@@ -207,6 +262,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Date | Phase | Completion | Key Features |
 |---------|------|-------|------------|--------------|
+| 0.8.0 | 2025-12-11 | Phase 2 | 70% | Mobile UI improvements, responsive design |
+| 0.7.0 | 2025-10-31 | Phase 2 | 65% | Today count, PWA icons, auth routes |
 | 0.6.0 | 2025-10-29 | Phase 2 | 60% | Logging, backend deployed |
 | 0.5.0 | 2025-10-28 | Phase 2 | 40% | Migration 007, docs cleanup |
 | 0.4.0 | 2025-10-26 | Phase 2 | 30% | Cron logging, planning |
