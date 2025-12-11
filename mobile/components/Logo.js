@@ -29,9 +29,11 @@ export default function Logo({
 
   const { logoSize, fontSize, spacing } = sizes[size];
 
+  // theme refers to the background: 'dark' means dark text (for light backgrounds)
+  // 'light' means light text (for dark backgrounds)
   const textColor = theme === 'dark'
-    ? mukokoTheme.colors.onSurface
-    : mukokoTheme.colors.onPrimary;
+    ? mukokoTheme.colors.onSurface      // Dark text for light backgrounds
+    : mukokoTheme.colors.onPrimary;      // Light text for dark backgrounds
 
   // Text only variant
   if (variant === 'text') {
