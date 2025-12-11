@@ -158,6 +158,14 @@
   },
 
   /**
+   * Scheduled Triggers (Cron Jobs)
+   * - SEO batch update runs every 6 hours
+   */
+  "triggers": {
+    "crons": ["0 */6 * * *"]
+  },
+
+  /**
    * Deployment settings
    */
   "logpush": false,
