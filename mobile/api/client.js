@@ -197,6 +197,13 @@ export const articles = {
   },
 
   /**
+   * Get single article by ID
+   */
+  async getById(articleId) {
+    return apiRequest(`/api/article/${articleId}`);
+  },
+
+  /**
    * Like/unlike article
    */
   async toggleLike(articleId) {
