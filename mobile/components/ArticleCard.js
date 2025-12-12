@@ -125,28 +125,20 @@ function ArticleCard({
         style={[styles.horizontalCard, cardWidth && { width: cardWidth }, style]}
       >
         <Surface style={styles.horizontalSurface} elevation={1}>
-          {/* Image Section */}
-          <View style={styles.horizontalImageContainer}>
-            {hasImage ? (
+          {/* Image Section - only show if we have an image */}
+          {hasImage && (
+            <View style={styles.horizontalImageContainer}>
               <ArticleImage
                 key={imageKey}
                 uri={imageUrl}
                 style={styles.horizontalImage}
                 onError={handleImageError}
               />
-            ) : (
-              <View style={styles.imagePlaceholder}>
-                <MaterialCommunityIcons
-                  name="newspaper-variant-outline"
-                  size={32}
-                  color={mukokoTheme.colors.onSurfaceVariant}
-                />
-              </View>
-            )}
-          </View>
+            </View>
+          )}
 
           {/* Content Section */}
-          <View style={styles.horizontalContent}>
+          <View style={[styles.horizontalContent, !hasImage && styles.horizontalContentNoImage]}>
             {article.category && (
               <Text style={styles.categoryLabel}>{article.category}</Text>
             )}
@@ -214,36 +206,32 @@ function ArticleCard({
         style={[styles.featuredCard, cardWidth && { width: cardWidth }, style]}
       >
         <Surface style={styles.featuredSurface} elevation={2}>
-          {/* Full-width Image */}
-          <View style={styles.featuredImageContainer}>
-            {hasImage ? (
+          {/* Full-width Image - only show if we have an image */}
+          {hasImage && (
+            <View style={styles.featuredImageContainer}>
               <ArticleImage
                 key={imageKey}
                 uri={imageUrl}
                 style={styles.featuredImage}
                 onError={handleImageError}
               />
-            ) : (
-              <View style={[styles.imagePlaceholder, styles.featuredPlaceholder]}>
-                <MaterialCommunityIcons
-                  name="newspaper-variant-outline"
-                  size={48}
-                  color={mukokoTheme.colors.onSurfaceVariant}
-                />
-              </View>
-            )}
-            {/* Gradient overlay for text readability */}
-            <View style={styles.featuredGradient} />
-            {/* Category badge on image */}
-            {article.category && (
-              <View style={styles.featuredCategoryBadge}>
-                <Text style={styles.featuredCategoryText}>{article.category}</Text>
-              </View>
-            )}
-          </View>
+              {/* Gradient overlay for text readability */}
+              <View style={styles.featuredGradient} />
+              {/* Category badge on image */}
+              {article.category && (
+                <View style={styles.featuredCategoryBadge}>
+                  <Text style={styles.featuredCategoryText}>{article.category}</Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Content */}
           <View style={styles.featuredContent}>
+            {/* Show category in content when no image */}
+            {!hasImage && article.category && (
+              <Text style={styles.categoryLabel}>{article.category}</Text>
+            )}
             <Text style={styles.featuredTitle} numberOfLines={3}>
               {article.title}
             </Text>
@@ -273,26 +261,17 @@ function ArticleCard({
       style={[styles.defaultCard, cardWidth && { width: cardWidth }, style]}
     >
       <Surface style={styles.defaultSurface} elevation={1}>
-        {/* Image Section */}
-        <View style={styles.defaultImageContainer}>
-          {hasImage ? (
+        {/* Image Section - only show if we have an image */}
+        {hasImage && (
+          <View style={styles.defaultImageContainer}>
             <ArticleImage
               key={imageKey}
               uri={imageUrl}
               style={styles.defaultImage}
               onError={handleImageError}
             />
-          ) : (
-            <View style={styles.imagePlaceholder}>
-              <MaterialCommunityIcons
-                name="newspaper-variant-outline"
-                size={40}
-                color={mukokoTheme.colors.onSurfaceVariant}
-              />
-              <Text style={styles.placeholderText}>No image</Text>
-            </View>
-          )}
-        </View>
+          </View>
+        )}
 
         {/* Content Section */}
         <View style={styles.defaultContent}>
@@ -389,6 +368,9 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: mukokoTheme.spacing.sm,
     justifyContent: 'space-between',
+  },
+  horizontalContentNoImage: {
+    paddingVertical: mukokoTheme.spacing.md,
   },
   horizontalTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
