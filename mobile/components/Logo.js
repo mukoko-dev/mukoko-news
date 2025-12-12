@@ -51,7 +51,7 @@ export default function Logo({
       />
       {showText && (
         <Text style={[styles.logoText, { fontSize, color: textColor }]}>
-          Mukoko
+          Mukoko News
         </Text>
       )}
     </View>
