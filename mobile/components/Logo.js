@@ -9,9 +9,9 @@ const logoIcon = require('../assets/mukoko-logo-compact.png');
  * Logo Component
  * Displays the Mukoko News logo with different variants
  *
- * @param {string} variant - 'compact' | 'horizontal' | 'text'
+ * @param {string} variant - 'compact' | 'horizontal' | 'stacked'
  * @param {string} size - 'sm' | 'md' | 'lg'
- * @param {boolean} showText - Whether to show text next to logo (for compact variant)
+ * @param {boolean} showText - Whether to show text next to logo
  * @param {boolean} showFlag - Whether to show Zimbabwe flag emoji (default: false for cleaner headers)
  * @param {string} textStyle - 'light' | 'dark' - 'light' = white text (for dark backgrounds), 'dark' = black text (for light backgrounds)
  */
@@ -26,12 +26,12 @@ export default function Logo({
   style,
 }) {
   const sizes = {
-    sm: { logoSize: 28, fontSize: 16, spacing: 6 },
-    md: { logoSize: 36, fontSize: 20, spacing: 8 },
-    lg: { logoSize: 48, fontSize: 28, spacing: 10 },
+    sm: { logoSize: 32, mukokoSize: 10, newsSize: 16, spacing: 6 },
+    md: { logoSize: 40, mukokoSize: 12, newsSize: 20, spacing: 8 },
+    lg: { logoSize: 52, mukokoSize: 14, newsSize: 26, spacing: 10 },
   };
 
-  const { logoSize, fontSize, spacing } = sizes[size];
+  const { logoSize, mukokoSize, newsSize, spacing } = sizes[size];
 
   // Use theme prop if provided for backwards compatibility, otherwise use textStyle
   const effectiveStyle = theme || textStyle;
@@ -42,19 +42,7 @@ export default function Logo({
     ? mukokoTheme.colors.onSurface      // Dark text for light backgrounds
     : mukokoTheme.colors.onPrimary;      // Light/white text for dark backgrounds
 
-  // Text only variant
-  if (variant === 'text') {
-    return (
-      <View style={[styles.container, { gap: spacing }, style]}>
-        <Text style={[styles.text, { fontSize, color: textColor }]}>
-          Mukoko News
-        </Text>
-        {showFlag && <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>}
-      </View>
-    );
-  }
-
-  // Horizontal variant - icon with full "Mukoko News" text
+  // Horizontal variant - icon with inline "Mukoko News" text
   if (variant === 'horizontal') {
     return (
       <View style={[styles.container, { gap: spacing }, style]}>
@@ -67,15 +55,15 @@ export default function Logo({
           }}
           resizeMode="contain"
         />
-        <Text style={[styles.text, { fontSize, color: textColor }]}>
+        <Text style={[styles.text, { fontSize: newsSize, color: textColor }]}>
           Mukoko News
         </Text>
-        {showFlag && <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>}
+        {showFlag && <Text style={[styles.flag, { fontSize: newsSize * 0.8 }]}>🇿🇼</Text>}
       </View>
     );
   }
 
-  // Compact variant (default) - icon with short text
+  // Compact/Stacked variant (default) - icon with stacked "Mukoko" (small) and "News" (large)
   return (
     <View style={[styles.container, { gap: spacing }, style]}>
       <Image
@@ -88,11 +76,16 @@ export default function Logo({
         resizeMode="contain"
       />
       {showText && (
-        <Text style={[styles.text, { fontSize, color: textColor }]}>
-          Mukoko
-        </Text>
+        <View style={styles.stackedText}>
+          <Text style={[styles.mukokoText, { fontSize: mukokoSize, color: textColor }]}>
+            MUKOKO
+          </Text>
+          <Text style={[styles.newsText, { fontSize: newsSize, color: textColor }]}>
+            News
+          </Text>
+        </View>
       )}
-      {showFlag && <Text style={[styles.flag, { fontSize: fontSize * 0.8 }]}>🇿🇼</Text>}
+      {showFlag && <Text style={[styles.flag, { fontSize: newsSize * 0.8 }]}>🇿🇼</Text>}
     </View>
   );
 }
@@ -105,6 +98,23 @@ const styles = StyleSheet.create({
   text: {
     fontWeight: '700',
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+  },
+  stackedText: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  mukokoText: {
+    fontWeight: '600',
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    letterSpacing: 1.5,
+    lineHeight: 12,
+    marginBottom: -2,
+  },
+  newsText: {
+    fontWeight: '700',
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    lineHeight: 20,
   },
   flag: {
     lineHeight: 24,
