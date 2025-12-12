@@ -122,14 +122,14 @@ function MainTabs() {
         tabBarInactiveTintColor: mukokoTheme.colors.onSurfaceVariant,
         tabBarStyle: isTabletOrDesktop ? { display: 'none' } : {
           position: 'absolute',
-          bottom: 16,
-          left: 16,
-          right: 16,
+          bottom: 12,
+          left: 12,
+          right: 12,
           backgroundColor: mukokoTheme.colors.surface,
-          borderRadius: 20,
-          height: 60,
+          borderRadius: 24,
+          height: 64,
           paddingBottom: 0,
-          paddingTop: 0,
+          paddingTop: 4,
           borderWidth: 1,
           borderColor: mukokoTheme.colors.outlineVariant,
           elevation: 4,
@@ -139,13 +139,14 @@ function MainTabs() {
           shadowRadius: 8,
         },
         tabBarItemStyle: {
-          paddingVertical: 6,
+          paddingVertical: 4,
+          paddingHorizontal: 2,
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontFamily: mukokoTheme.fonts.medium.fontFamily,
-          marginTop: -2,
-          marginBottom: 4,
+          marginTop: 2,
+          marginBottom: 6,
         },
       }}
     >
@@ -158,24 +159,24 @@ function MainTabs() {
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
               name={focused ? 'home' : 'home-outline'}
-              size={22}
+              size={24}
               color={color}
             />
           ),
         }}
       />
 
-      {/* 2. Discover Tab */}
+      {/* 2. Discover Tab - Explore/Trending content */}
       <Tab.Screen
         name="Discover"
         component={DiscoverStack}
         options={{
-          tabBarLabel: 'Discover',
+          tabBarLabel: 'Explore',
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
-              name={focused ? 'compass' : 'compass-outline'}
-              size={22}
-              color={color}
+              name={focused ? 'fire' : 'fire'}
+              size={24}
+              color={focused ? mukokoTheme.colors.accent : color}
             />
           ),
         }}
@@ -189,8 +190,8 @@ function MainTabs() {
           tabBarLabel: 'Bytes',
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
-              name={focused ? 'play-circle' : 'play-circle-outline'}
-              size={focused ? 26 : 24}
+              name={focused ? 'lightning-bolt' : 'lightning-bolt-outline'}
+              size={26}
               color={focused ? mukokoTheme.colors.accent : color}
             />
           ),
@@ -203,10 +204,10 @@ function MainTabs() {
         component={SearchStack}
         options={{
           tabBarLabel: 'Search',
-          tabBarIcon: ({ color }) => (
+          tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
-              name="magnify"
-              size={22}
+              name={focused ? 'magnify' : 'magnify'}
+              size={24}
               color={color}
             />
           ),
@@ -218,11 +219,11 @@ function MainTabs() {
         name="Profile"
         component={ProfileStack}
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: 'Me',
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
-              name={focused ? 'account-circle' : 'account-circle-outline'}
-              size={22}
+              name={focused ? 'account' : 'account-outline'}
+              size={24}
               color={color}
             />
           ),
