@@ -180,13 +180,13 @@ export function CategoryPills({
 const styles = StyleSheet.create({
   // ============ CHIPS (Horizontal Scroll) ============
   container: {
-    backgroundColor: mukokoTheme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outlineVariant,
+    backgroundColor: 'transparent',
+    // No border - seamless with header and content
   },
   scrollContent: {
     paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.xs,
+    paddingBottom: mukokoTheme.spacing.sm,
     gap: mukokoTheme.spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
@@ -194,14 +194,13 @@ const styles = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: mukokoTheme.colors.surface,
+    // Glass effect - semi-transparent with subtle background
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm - 2,
-    borderRadius: mukokoTheme.roundness,
+    paddingVertical: mukokoTheme.spacing.sm,
+    borderRadius: 20,
     marginRight: mukokoTheme.spacing.xs,
-    // Soft border for unselected chips
-    borderWidth: 1.5,
-    borderColor: mukokoTheme.colors.outline,
+    // No border for cleaner look
     gap: mukokoTheme.spacing.xs,
   },
   chipFirst: {
@@ -209,13 +208,12 @@ const styles = StyleSheet.create({
   },
   chipSelected: {
     backgroundColor: mukokoTheme.colors.primary,
-    borderColor: mukokoTheme.colors.primary,
   },
   chipEmoji: {
     fontSize: 14,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
     color: mukokoTheme.colors.onSurface,
     letterSpacing: 0.1,
@@ -226,7 +224,7 @@ const styles = StyleSheet.create({
   },
   countBadge: {
     marginLeft: mukokoTheme.spacing.xs / 2,
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
     paddingHorizontal: mukokoTheme.spacing.xs,
     paddingVertical: 2,
     borderRadius: 10,
@@ -256,23 +254,21 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: mukokoTheme.colors.surface,
+    // Glass effect
+    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.sm,
-    borderRadius: mukokoTheme.roundness,
-    borderWidth: 1.5,
-    borderColor: mukokoTheme.colors.outline,
+    borderRadius: 20,
     gap: mukokoTheme.spacing.xs,
   },
   pillSelected: {
     backgroundColor: mukokoTheme.colors.primary,
-    borderColor: mukokoTheme.colors.primary,
   },
   pillEmoji: {
     fontSize: 14,
   },
   pillText: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
     color: mukokoTheme.colors.onSurface,
   },
