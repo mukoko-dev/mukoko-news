@@ -24,7 +24,6 @@ import * as Haptics from 'expo-haptics';
 import { newsBytes, articles as articlesAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
-import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
 
 export default function NewsBytesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -333,9 +332,6 @@ export default function NewsBytesScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Zimbabwe Flag Strip */}
-      <ZimbabweFlagStrip />
-
       {/* Progress Indicator - Responsive top position */}
       <View style={[styles.progressContainer, { top: PROGRESS_TOP_OFFSET }]}>
         {bytes.slice(0, 10).map((_, index) => (
