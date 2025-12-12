@@ -230,14 +230,13 @@ export default function AppHeader() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: mukokoTheme.colors.surface,
+    backgroundColor: mukokoTheme.colors.background,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 64,
+    height: 56,
     paddingHorizontal: mukokoTheme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
+    // No border - seamless design
   },
   hamburgerButton: {
     marginRight: mukokoTheme.spacing.sm,
@@ -253,10 +252,10 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
   },
   actionButton: {
-    padding: 8,
+    padding: 10,
     marginHorizontal: 2,
   },
   modalOverlay: {
@@ -268,22 +267,20 @@ const styles = StyleSheet.create({
     top: 56,
     left: 16,
     backgroundColor: mukokoTheme.colors.surface,
-    borderRadius: 12,
+    borderRadius: 16,
     minWidth: 200,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
     elevation: 8,
     overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.md,
     paddingHorizontal: mukokoTheme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
   },
   menuIcon: {
     marginRight: mukokoTheme.spacing.sm,
