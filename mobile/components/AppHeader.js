@@ -110,7 +110,7 @@ export default function AppHeader() {
             onPress={() => handleNavigate('Home')}
             activeOpacity={0.7}
           >
-            <Logo size="sm" showText={true} theme="dark" />
+            <Logo variant="horizontal" size="sm" theme="dark" />
           </TouchableOpacity>
 
           {/* Spacer - pushes logo to center on mobile, actions to right on desktop */}
