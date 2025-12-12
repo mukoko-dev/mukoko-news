@@ -10,8 +10,8 @@
  * - Gradient: Circular gradient from #779b63 to #1f1f1f
  *
  * Typography (Nyuchi Brand System):
- * - Display/Headings: Noto Serif - Elegant, authoritative
- * - Body: Noto Sans - Clean, modern, readable
+ * - Display/Headings/Logo: Noto Serif - Elegant, authoritative
+ * - Body: Plus Jakarta Sans - Clean, modern, readable
  *
  * Note: Zimbabwe flag strip uses separate flag colors (zwGreen, zwYellow, zwRed, etc.)
  */
@@ -85,18 +85,18 @@ export const mukokoTheme = {
     zwWhite: '#FFFFFF',
   },
 
-  // Typography - Noto Sans/Serif
+  // Typography - Plus Jakarta Sans (body) / Noto Serif (headings/logo)
   fonts: {
     regular: {
-      fontFamily: 'NotoSans-Regular',
+      fontFamily: 'PlusJakartaSans-Regular',
       fontWeight: '400'
     },
     medium: {
-      fontFamily: 'NotoSans-Medium',
+      fontFamily: 'PlusJakartaSans-Medium',
       fontWeight: '500'
     },
     bold: {
-      fontFamily: 'NotoSans-Bold',
+      fontFamily: 'PlusJakartaSans-Bold',
       fontWeight: '600'
     },
     serif: {

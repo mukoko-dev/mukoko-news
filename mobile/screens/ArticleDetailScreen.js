@@ -10,11 +10,9 @@ import {
   Share,
 } from 'react-native';
 import { Text, IconButton, Button, Divider } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
-import HeaderNavigation from '../components/HeaderNavigation';
-import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI } from '../api/client';
 
@@ -176,22 +174,34 @@ export default function ArticleDetailScreen({ route, navigation }) {
     });
   };
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Home');
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.container}>
-        {/* Zimbabwe Flag Strip */}
-        <ZimbabweFlagStrip />
+    <View style={styles.container}>
+      {/* Back Button Bar */}
+      <View style={styles.backBar}>
+        <TouchableOpacity
+          onPress={handleBack}
+          style={styles.backButton}
+          activeOpacity={0.7}
+        >
+          <MaterialCommunityIcons
+            name="arrow-left"
+            size={24}
+            color={mukokoTheme.colors.onSurface}
+          />
+          <Text style={styles.backText}>Back</Text>
+        </TouchableOpacity>
+      </View>
 
-        {/* Header */}
-        <HeaderNavigation
-          navigation={navigation}
-          currentRoute="ArticleDetail"
-          isAuthenticated={isAuthenticated}
-          showBack={true}
-        />
-
-        {/* Content */}
-        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      {/* Content */}
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
           {/* Loading State */}
           {loading && (
             <View style={styles.centerContainer}>
@@ -331,19 +341,32 @@ export default function ArticleDetailScreen({ route, navigation }) {
             </View>
           )}
         </ScrollView>
-      </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: mukokoTheme.colors.background,
-  },
   container: {
     flex: 1,
     backgroundColor: mukokoTheme.colors.background,
+  },
+  backBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.xs,
+    backgroundColor: mukokoTheme.colors.background,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: mukokoTheme.spacing.xs,
+    gap: mukokoTheme.spacing.xs,
+  },
+  backText: {
+    fontSize: 16,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    color: mukokoTheme.colors.onSurface,
   },
   scrollView: {
     flex: 1,

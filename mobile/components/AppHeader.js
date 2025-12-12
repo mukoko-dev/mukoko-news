@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text, Modal, Platform } from 'react-native';
-import { Appbar, IconButton, Divider } from 'react-native-paper';
+import { Divider } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import mukokoTheme from '../theme';
 import Logo from './Logo';
@@ -90,13 +91,17 @@ export default function AppHeader() {
         <View style={styles.header}>
           {/* Hamburger Menu Button - Web/Tablet/Desktop Only */}
           {showHeaderActions && (
-            <IconButton
-              icon="menu"
+            <TouchableOpacity
               onPress={() => setMenuVisible(!menuVisible)}
-              iconColor={mukokoTheme.colors.onSurface}
-              size={24}
               style={styles.hamburgerButton}
-            />
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name="menu"
+                size={24}
+                color={mukokoTheme.colors.onSurface}
+              />
+            </TouchableOpacity>
           )}
 
           {/* Logo - clickable to go home */}
@@ -105,7 +110,7 @@ export default function AppHeader() {
             onPress={() => handleNavigate('Home')}
             activeOpacity={0.7}
           >
-            <Logo size="sm" showText={true} theme="dark" />
+            <Logo size="sm" theme="dark" />
           </TouchableOpacity>
 
           {/* Spacer - pushes logo to center on mobile, actions to right on desktop */}
@@ -115,43 +120,59 @@ export default function AppHeader() {
           {showHeaderActions && (
             <View style={styles.actions}>
               {/* Trending/Insights Icon - highlighted in brand color */}
-              <IconButton
-                icon="chart-line"
+              <TouchableOpacity
                 onPress={handleTrendingPress}
-                iconColor={mukokoTheme.colors.primary}
-                size={22}
                 style={styles.actionButton}
-              />
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="chart-line"
+                  size={22}
+                  color={mukokoTheme.colors.primary}
+                />
+              </TouchableOpacity>
 
               {/* Search Icon */}
-              <IconButton
-                icon="magnify"
+              <TouchableOpacity
                 onPress={handleSearchPress}
-                iconColor={mukokoTheme.colors.onSurface}
-                size={22}
                 style={styles.actionButton}
-              />
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="magnify"
+                  size={22}
+                  color={mukokoTheme.colors.onSurface}
+                />
+              </TouchableOpacity>
 
               {/* Theme Toggle (visual placeholder - future implementation) */}
-              <IconButton
-                icon="white-balance-sunny"
+              <TouchableOpacity
                 onPress={() => {
                   // Theme toggle will be implemented with ThemeContext
                   console.log('Theme toggle - feature coming soon');
                 }}
-                iconColor={mukokoTheme.colors.onSurfaceVariant}
-                size={22}
                 style={styles.actionButton}
-              />
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="white-balance-sunny"
+                  size={22}
+                  color={mukokoTheme.colors.onSurfaceVariant}
+                />
+              </TouchableOpacity>
 
               {/* Profile/Login Icon */}
-              <IconButton
-                icon="account-circle-outline"
+              <TouchableOpacity
                 onPress={handleProfilePress}
-                iconColor={mukokoTheme.colors.onSurface}
-                size={22}
                 style={styles.actionButton}
-              />
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="account-circle-outline"
+                  size={22}
+                  color={mukokoTheme.colors.onSurface}
+                />
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -175,13 +196,15 @@ export default function AppHeader() {
                     <TouchableOpacity
                       style={styles.menuItem}
                       onPress={() => handleNavigate(item.screen)}
+                      activeOpacity={0.7}
                     >
-                      <IconButton
-                        icon={item.icon}
-                        iconColor={mukokoTheme.colors.primary}
-                        size={20}
-                        style={styles.menuIcon}
-                      />
+                      <View style={styles.menuIcon}>
+                        <MaterialCommunityIcons
+                          name={item.icon}
+                          size={20}
+                          color={mukokoTheme.colors.primary}
+                        />
+                      </View>
                       <Text style={styles.menuLabel}>{item.label}</Text>
                     </TouchableOpacity>
                     {index < menuItems.length - 1 && <Divider />}
@@ -207,17 +230,17 @@ export default function AppHeader() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: mukokoTheme.colors.surface,
+    backgroundColor: mukokoTheme.colors.background,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 64,
+    height: 56,
     paddingHorizontal: mukokoTheme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
+    // No border - seamless design
   },
   hamburgerButton: {
-    marginRight: mukokoTheme.spacing.xs,
+    marginRight: mukokoTheme.spacing.sm,
+    padding: 8,
   },
   logoContainer: {
     flexDirection: 'row',
@@ -229,10 +252,11 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 4,
   },
   actionButton: {
-    margin: 0,
+    padding: 10,
+    marginHorizontal: 2,
   },
   modalOverlay: {
     flex: 1,
@@ -243,26 +267,25 @@ const styles = StyleSheet.create({
     top: 56,
     left: 16,
     backgroundColor: mukokoTheme.colors.surface,
-    borderRadius: 12,
+    borderRadius: 16,
     minWidth: 200,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
     elevation: 8,
     overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.md,
     paddingHorizontal: mukokoTheme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
   },
   menuIcon: {
-    margin: 0,
     marginRight: mukokoTheme.spacing.sm,
+    width: 24,
+    alignItems: 'center',
   },
   menuLabel: {
     fontSize: 16,
