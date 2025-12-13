@@ -44,6 +44,26 @@ export default function AppHeader() {
     return null;
   }
 
+  // Screen title mapping
+  const getScreenTitle = (route) => {
+    const titles = {
+      Home: null, // Show logo instead
+      Discover: 'Discover',
+      Search: 'Search',
+      Profile: 'Profile',
+      ArticleDetail: 'Article',
+      Login: 'Sign In',
+      Register: 'Create Account',
+      ForgotPassword: 'Reset Password',
+      Settings: 'Settings',
+      UserProfile: 'Profile',
+    };
+    return titles[route] ?? null;
+  };
+
+  const screenTitle = getScreenTitle(routeName);
+  const showLogo = !screenTitle; // Show logo when no title (Home screen)
+
   const handleSearchPress = () => {
     if (navigation) {
       try {
@@ -115,13 +135,17 @@ export default function AppHeader() {
             </TouchableOpacity>
           )}
 
-          {/* Logo - clickable to go home */}
+          {/* Logo or Screen Title */}
           <TouchableOpacity
             style={styles.logoContainer}
             onPress={() => handleNavigate('Home')}
             activeOpacity={0.7}
           >
-            <Logo size="sm" theme="dark" />
+            {showLogo ? (
+              <Logo size="sm" theme="dark" />
+            ) : (
+              <Text style={styles.screenTitle}>{screenTitle}</Text>
+            )}
           </TouchableOpacity>
 
           {/* Spacer - pushes logo to center on mobile, actions to right on desktop */}
@@ -246,6 +270,12 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  screenTitle: {
+    fontSize: 18,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    color: mukokoTheme.colors.onSurface,
+    letterSpacing: -0.3,
   },
   spacer: {
     flex: 1,
