@@ -325,7 +325,7 @@ export const newsBytes = {
       offset: offset.toString(),
     });
 
-    return apiRequest(`/api/bytes?${params.toString()}`);
+    return apiRequest(`/api/news-bytes?${params.toString()}`);
   },
 };
 
