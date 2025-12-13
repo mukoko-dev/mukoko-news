@@ -92,8 +92,7 @@ self.addEventListener('fetch', (event) => {
   // Skip cross-origin requests except for API and images
   if (url.origin !== self.location.origin) {
     // Allow API requests to backend
-    if (url.hostname === 'news-worker.mukoko.com' ||
-        url.hostname === 'mukoko-news-backend.nyuchi.workers.dev') {
+    if (url.hostname === 'mukoko-news-backend.nyuchi.workers.dev') {
       event.respondWith(handleApiRequest(request));
       return;
     }
