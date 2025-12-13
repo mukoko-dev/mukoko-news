@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Text } from 'react-native';
+import { View, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { useTheme as usePaperTheme } from 'react-native-paper';
+import { useTheme } from '../contexts/ThemeContext';
 import mukokoTheme from '../theme';
 import AppHeader from '../components/AppHeader';
 import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
@@ -102,6 +104,8 @@ function ProfileStack() {
 // Pattern: Home, Discover, Bytes (Center/Featured), Search, Profile
 function MainTabs() {
   const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
+  const { isDark } = useTheme();
+  const paperTheme = usePaperTheme();
 
   useEffect(() => {
     const updateLayout = () => {
@@ -114,39 +118,49 @@ function MainTabs() {
     return () => subscription?.remove();
   }, []);
 
+  // Dynamic tab bar styles based on theme - using glass effect colors
+  const getTabBarStyle = () => {
+    if (isTabletOrDesktop) {
+      return { display: 'none' };
+    }
+
+    return {
+      position: 'absolute',
+      bottom: 12,
+      left: 12,
+      right: 12,
+      // Glass effect with purple tinge from theme
+      backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
+      borderRadius: 24,
+      height: 76,  // Increased from 64 to 76 for better text display
+      paddingBottom: 8,
+      paddingTop: 8,
+      borderWidth: 1,
+      borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 12,
+    };
+  };
+
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: mukokoTheme.colors.primary,
-        tabBarInactiveTintColor: mukokoTheme.colors.onSurfaceVariant,
-        tabBarStyle: isTabletOrDesktop ? { display: 'none' } : {
-          position: 'absolute',
-          bottom: 12,
-          left: 12,
-          right: 12,
-          backgroundColor: mukokoTheme.colors.surface,
-          borderRadius: 24,
-          height: 64,
-          paddingBottom: 0,
-          paddingTop: 4,
-          borderWidth: 1,
-          borderColor: mukokoTheme.colors.outlineVariant,
-          elevation: 4,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 8,
-        },
+        tabBarActiveTintColor: paperTheme.colors.primary,
+        tabBarInactiveTintColor: paperTheme.colors.onSurfaceVariant,
+        tabBarStyle: getTabBarStyle(),
         tabBarItemStyle: {
-          paddingVertical: 4,
+          paddingVertical: 6,
           paddingHorizontal: 2,
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontFamily: mukokoTheme.fonts.medium.fontFamily,
-          marginTop: 2,
-          marginBottom: 6,
+          marginTop: 4,
+          marginBottom: 4,
         },
       }}
     >
@@ -235,9 +249,17 @@ function MainTabs() {
 
 // Root Navigator with Global Header and Footer
 export default function AppNavigator() {
+  const paperTheme = usePaperTheme();
+
   return (
     <NavigationContainer>
-      <SafeAreaView style={styles.container} edges={['bottom']}>
+      <SafeAreaView
+        style={[
+          styles.container,
+          { backgroundColor: paperTheme.colors.background }
+        ]}
+        edges={['bottom']}
+      >
         <ZimbabweFlagStrip />
         <AppHeader />
         <View style={styles.content}>
@@ -251,7 +273,6 @@ export default function AppNavigator() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: mukokoTheme.colors.background,
   },
   content: {
     flex: 1,

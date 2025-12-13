@@ -13,7 +13,7 @@ import {
   Dimensions,
   Platform,
 } from 'react-native';
-import { Text, Surface } from 'react-native-paper';
+import { Text, Surface, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import mukokoTheme from '../theme';
 
@@ -86,6 +86,8 @@ const ArticleImage = memo(({ uri, style, onError }) => {
   );
 }, (prevProps, nextProps) => prevProps.uri === nextProps.uri);
 
+ArticleImage.displayName = 'ArticleImage';
+
 /**
  * ArticleCard - Main card component for displaying news articles
  *
@@ -102,6 +104,7 @@ function ArticleCard({
   style,
 }) {
   const [imageError, setImageError] = useState(false);
+  const paperTheme = usePaperTheme();
 
   const imageUrl = article.imageUrl || article.image_url;
   const hasImage = imageUrl && !imageError;
@@ -116,6 +119,33 @@ function ArticleCard({
   // Stable key for the image to prevent re-mounting
   const imageKey = `${article.id || article.slug}-image`;
 
+  // Dynamic glass styles based on theme
+  const glassStyles = {
+    surface: {
+      backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
+      borderWidth: 1,
+      borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+    },
+    title: {
+      color: paperTheme.colors.onSurface,
+    },
+    description: {
+      color: paperTheme.colors.onSurfaceVariant,
+    },
+    category: {
+      color: paperTheme.colors.primary,
+    },
+    source: {
+      color: paperTheme.colors.primary,
+    },
+    meta: {
+      color: paperTheme.colors.onSurfaceVariant,
+    },
+    placeholder: {
+      backgroundColor: paperTheme.colors.surfaceVariant,
+    },
+  };
+
   // Render different variants
   if (variant === 'horizontal') {
     return (
@@ -124,10 +154,10 @@ function ArticleCard({
         onPress={onPress}
         style={[styles.horizontalCard, cardWidth && { width: cardWidth }, style]}
       >
-        <Surface style={styles.horizontalSurface} elevation={1}>
+        <Surface style={[styles.horizontalSurface, glassStyles.surface]} elevation={1}>
           {/* Image Section - only show if we have an image */}
           {hasImage && (
-            <View style={styles.horizontalImageContainer}>
+            <View style={[styles.horizontalImageContainer, glassStyles.placeholder]}>
               <ArticleImage
                 key={imageKey}
                 uri={imageUrl}
@@ -140,15 +170,15 @@ function ArticleCard({
           {/* Content Section */}
           <View style={[styles.horizontalContent, !hasImage && styles.horizontalContentNoImage]}>
             {article.category && (
-              <Text style={styles.categoryLabel}>{article.category}</Text>
+              <Text style={[styles.categoryLabel, glassStyles.category]}>{article.category}</Text>
             )}
-            <Text style={styles.horizontalTitle} numberOfLines={2}>
+            <Text style={[styles.horizontalTitle, glassStyles.title]} numberOfLines={2}>
               {article.title}
             </Text>
             <View style={styles.metaRow}>
-              <Text style={styles.sourceText}>{article.source}</Text>
-              <Text style={styles.dotSeparator}>•</Text>
-              <Text style={styles.dateText}>
+              <Text style={[styles.sourceText, glassStyles.source]}>{article.source}</Text>
+              <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
+              <Text style={[styles.dateText, glassStyles.meta]}>
                 {formatRelativeTime(article.pubDate || article.published_at)}
               </Text>
             </View>
@@ -165,25 +195,25 @@ function ArticleCard({
         onPress={onPress}
         style={[styles.compactCard, style]}
       >
-        <Surface style={styles.compactSurface} elevation={1}>
+        <Surface style={[styles.compactSurface, glassStyles.surface]} elevation={1}>
           <View style={styles.compactContent}>
             <View style={styles.compactTextContent}>
               {article.category && (
-                <Text style={styles.categoryLabelSmall}>{article.category}</Text>
+                <Text style={[styles.categoryLabelSmall, glassStyles.category]}>{article.category}</Text>
               )}
-              <Text style={styles.compactTitle} numberOfLines={2}>
+              <Text style={[styles.compactTitle, glassStyles.title]} numberOfLines={2}>
                 {article.title}
               </Text>
               <View style={styles.metaRow}>
-                <Text style={styles.sourceTextSmall}>{article.source}</Text>
-                <Text style={styles.dotSeparator}>•</Text>
-                <Text style={styles.dateTextSmall}>
+                <Text style={[styles.sourceTextSmall, glassStyles.source]}>{article.source}</Text>
+                <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
+                <Text style={[styles.dateTextSmall, glassStyles.meta]}>
                   {formatRelativeTime(article.pubDate || article.published_at)}
                 </Text>
               </View>
             </View>
             {hasImage && (
-              <View style={styles.compactImageContainer}>
+              <View style={[styles.compactImageContainer, glassStyles.placeholder]}>
                 <ArticleImage
                   key={imageKey}
                   uri={imageUrl}
@@ -205,10 +235,10 @@ function ArticleCard({
         onPress={onPress}
         style={[styles.featuredCard, cardWidth && { width: cardWidth }, style]}
       >
-        <Surface style={styles.featuredSurface} elevation={2}>
+        <Surface style={[styles.featuredSurface, glassStyles.surface]} elevation={2}>
           {/* Full-width Image - only show if we have an image */}
           {hasImage && (
-            <View style={styles.featuredImageContainer}>
+            <View style={[styles.featuredImageContainer, glassStyles.placeholder]}>
               <ArticleImage
                 key={imageKey}
                 uri={imageUrl}
@@ -219,7 +249,7 @@ function ArticleCard({
               <View style={styles.featuredGradient} />
               {/* Category badge on image */}
               {article.category && (
-                <View style={styles.featuredCategoryBadge}>
+                <View style={[styles.featuredCategoryBadge, { backgroundColor: paperTheme.colors.primary }]}>
                   <Text style={styles.featuredCategoryText}>{article.category}</Text>
                 </View>
               )}
@@ -230,20 +260,20 @@ function ArticleCard({
           <View style={styles.featuredContent}>
             {/* Show category in content when no image */}
             {!hasImage && article.category && (
-              <Text style={styles.categoryLabel}>{article.category}</Text>
+              <Text style={[styles.categoryLabel, glassStyles.category]}>{article.category}</Text>
             )}
-            <Text style={styles.featuredTitle} numberOfLines={3}>
+            <Text style={[styles.featuredTitle, glassStyles.title]} numberOfLines={3}>
               {article.title}
             </Text>
             {article.description && (
-              <Text style={styles.featuredDescription} numberOfLines={2}>
+              <Text style={[styles.featuredDescription, glassStyles.description]} numberOfLines={2}>
                 {article.description}
               </Text>
             )}
             <View style={styles.metaRow}>
-              <Text style={styles.sourceText}>{article.source}</Text>
-              <Text style={styles.dotSeparator}>•</Text>
-              <Text style={styles.dateText}>
+              <Text style={[styles.sourceText, glassStyles.source]}>{article.source}</Text>
+              <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
+              <Text style={[styles.dateText, glassStyles.meta]}>
                 {formatRelativeTime(article.pubDate || article.published_at)}
               </Text>
             </View>
@@ -260,10 +290,10 @@ function ArticleCard({
       onPress={onPress}
       style={[styles.defaultCard, cardWidth && { width: cardWidth }, style]}
     >
-      <Surface style={styles.defaultSurface} elevation={1}>
+      <Surface style={[styles.defaultSurface, glassStyles.surface]} elevation={1}>
         {/* Image Section - only show if we have an image */}
         {hasImage && (
-          <View style={styles.defaultImageContainer}>
+          <View style={[styles.defaultImageContainer, glassStyles.placeholder]}>
             <ArticleImage
               key={imageKey}
               uri={imageUrl}
@@ -276,20 +306,20 @@ function ArticleCard({
         {/* Content Section */}
         <View style={styles.defaultContent}>
           {article.category && (
-            <Text style={styles.categoryLabel}>{article.category}</Text>
+            <Text style={[styles.categoryLabel, glassStyles.category]}>{article.category}</Text>
           )}
-          <Text style={styles.defaultTitle} numberOfLines={3}>
+          <Text style={[styles.defaultTitle, glassStyles.title]} numberOfLines={3}>
             {article.title}
           </Text>
           {article.description && (
-            <Text style={styles.defaultDescription} numberOfLines={2}>
+            <Text style={[styles.defaultDescription, glassStyles.description]} numberOfLines={2}>
               {article.description}
             </Text>
           )}
           <View style={styles.metaRow}>
-            <Text style={styles.sourceText}>{article.source}</Text>
-            <Text style={styles.dotSeparator}>•</Text>
-            <Text style={styles.dateText}>
+            <Text style={[styles.sourceText, glassStyles.source]}>{article.source}</Text>
+            <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
+            <Text style={[styles.dateText, glassStyles.meta]}>
               {formatRelativeTime(article.pubDate || article.published_at)}
             </Text>
           </View>

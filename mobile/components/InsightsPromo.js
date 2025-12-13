@@ -1,7 +1,7 @@
 /**
  * InsightsPromo Component
  * Showcases platform insights and real metrics
- * Can be placed on Home, Discover, or Profile screens
+ * Uses ACCENT color tint for unique insights identity
  */
 
 import React from 'react';
@@ -10,13 +10,14 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import mukokoTheme from '../theme';
 
 /**
  * InsightsPromo - Displays platform metrics and insights
+ * Uses ACCENT (terracotta) color for unique insights identity
  *
  * @param {string} variant - 'full' | 'compact' | 'minimal'
  * @param {Object} metrics - Real metrics data { articles, views, trending, sources }
@@ -29,6 +30,15 @@ export default function InsightsPromo({
   style,
 }) {
   const navigation = useNavigation();
+  const paperTheme = usePaperTheme();
+
+  // Accent-tinted glass colors for insights identity (terracotta)
+  const accentGlass = {
+    background: paperTheme.colors.glassAccentCard || paperTheme.colors.surface,
+    border: paperTheme.colors.glassAccentBorder || paperTheme.colors.outline,
+    chip: paperTheme.colors.glassAccent || 'rgba(212, 99, 74, 0.08)',
+    chipBorder: paperTheme.colors.glassAccentBorder || 'rgba(212, 99, 74, 0.15)',
+  };
 
   // Default metrics if not provided
   const defaultMetrics = {
@@ -62,22 +72,30 @@ export default function InsightsPromo({
   if (variant === 'minimal') {
     return (
       <TouchableOpacity
-        style={[styles.minimalContainer, style]}
+        style={[
+          styles.minimalContainer,
+          {
+            backgroundColor: accentGlass.chip,
+            borderWidth: 1,
+            borderColor: accentGlass.chipBorder,
+          },
+          style
+        ]}
         onPress={handlePress}
         activeOpacity={0.7}
       >
         <MaterialCommunityIcons
           name="chart-line"
           size={18}
-          color={mukokoTheme.colors.primary}
+          color={paperTheme.colors.tertiary}
         />
-        <Text style={styles.minimalText}>
+        <Text style={[styles.minimalText, { color: paperTheme.colors.onSurfaceVariant }]}>
           {formatNumber(defaultMetrics.articles)} articles from {defaultMetrics.sources} sources
         </Text>
         <MaterialCommunityIcons
           name="chevron-right"
           size={18}
-          color={mukokoTheme.colors.onSurfaceVariant}
+          color={paperTheme.colors.onSurfaceVariant}
         />
       </TouchableOpacity>
     );
@@ -86,36 +104,54 @@ export default function InsightsPromo({
   // Compact variant - horizontal stats row
   if (variant === 'compact') {
     return (
-      <View style={[styles.compactContainer, style]}>
+      <View style={[
+        styles.compactContainer,
+        {
+          backgroundColor: accentGlass.background,
+          borderWidth: 1,
+          borderColor: accentGlass.border,
+        },
+        style
+      ]}>
         <View style={styles.compactHeader}>
           <MaterialCommunityIcons
             name="chart-box"
             size={18}
-            color={mukokoTheme.colors.primary}
+            color={paperTheme.colors.tertiary}
           />
-          <Text style={styles.compactTitle}>Live Insights</Text>
-          <Text style={styles.compactUpdated}>{defaultMetrics.lastUpdated}</Text>
+          <Text style={[styles.compactTitle, { color: paperTheme.colors.onSurface }]}>
+            Live Insights
+          </Text>
+          <Text style={[styles.compactUpdated, { color: paperTheme.colors.onSurfaceVariant }]}>
+            {defaultMetrics.lastUpdated}
+          </Text>
         </View>
         <View style={styles.compactStats}>
           <View style={styles.compactStat}>
-            <Text style={styles.compactStatValue}>
+            <Text style={[styles.compactStatValue, { color: paperTheme.colors.onSurface }]}>
               {formatNumber(defaultMetrics.articles)}
             </Text>
-            <Text style={styles.compactStatLabel}>Articles</Text>
+            <Text style={[styles.compactStatLabel, { color: paperTheme.colors.onSurfaceVariant }]}>
+              Articles
+            </Text>
           </View>
-          <View style={styles.compactStatDivider} />
+          <View style={[styles.compactStatDivider, { backgroundColor: paperTheme.colors.outline }]} />
           <View style={styles.compactStat}>
-            <Text style={styles.compactStatValue}>
+            <Text style={[styles.compactStatValue, { color: paperTheme.colors.onSurface }]}>
               {formatNumber(defaultMetrics.sources)}
             </Text>
-            <Text style={styles.compactStatLabel}>Sources</Text>
+            <Text style={[styles.compactStatLabel, { color: paperTheme.colors.onSurfaceVariant }]}>
+              Sources
+            </Text>
           </View>
-          <View style={styles.compactStatDivider} />
+          <View style={[styles.compactStatDivider, { backgroundColor: paperTheme.colors.outline }]} />
           <View style={styles.compactStat}>
-            <Text style={styles.compactStatValue}>
+            <Text style={[styles.compactStatValue, { color: paperTheme.colors.onSurface }]}>
               {formatNumber(defaultMetrics.categories)}
             </Text>
-            <Text style={styles.compactStatLabel}>Categories</Text>
+            <Text style={[styles.compactStatLabel, { color: paperTheme.colors.onSurfaceVariant }]}>
+              Categories
+            </Text>
           </View>
         </View>
       </View>
@@ -124,63 +160,119 @@ export default function InsightsPromo({
 
   // Full variant - comprehensive insights card
   return (
-    <View style={[styles.container, style]}>
+    <View style={[
+      styles.container,
+      {
+        backgroundColor: accentGlass.background,
+        borderWidth: 1,
+        borderColor: accentGlass.border,
+      },
+      style
+    ]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.badge}>
+        <View style={[styles.badge, { backgroundColor: accentGlass.chip }]}>
           <MaterialCommunityIcons
             name="chart-timeline-variant"
             size={14}
-            color={mukokoTheme.colors.primary}
+            color={paperTheme.colors.tertiary}
           />
-          <Text style={styles.badgeText}>INSIGHTS</Text>
+          <Text style={[styles.badgeText, { color: paperTheme.colors.tertiary }]}>INSIGHTS</Text>
         </View>
-        <Text style={styles.updated}>Updated {defaultMetrics.lastUpdated}</Text>
+        <Text style={[styles.updated, { color: paperTheme.colors.onSurfaceVariant }]}>
+          Updated {defaultMetrics.lastUpdated}
+        </Text>
       </View>
 
       {/* Title */}
-      <Text style={styles.title}>Zimbabwe News at a Glance</Text>
-      <Text style={styles.subtitle}>
+      <Text style={[styles.title, { color: paperTheme.colors.onSurface }]}>
+        Zimbabwe News at a Glance
+      </Text>
+      <Text style={[styles.subtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
         Real-time coverage from trusted sources
       </Text>
 
       {/* Stats Grid */}
       <View style={styles.statsGrid}>
-        <View style={styles.statCard}>
+        <View style={[
+          styles.statCard,
+          {
+            backgroundColor: accentGlass.chip,
+            borderWidth: 1,
+            borderColor: accentGlass.chipBorder,
+          }
+        ]}>
           <MaterialCommunityIcons
             name="newspaper-variant-multiple"
             size={24}
-            color={mukokoTheme.colors.primary}
+            color={paperTheme.colors.tertiary}
           />
-          <Text style={styles.statValue}>{formatNumber(defaultMetrics.articles)}</Text>
-          <Text style={styles.statLabel}>Articles</Text>
+          <Text style={[styles.statValue, { color: paperTheme.colors.onSurface }]}>
+            {formatNumber(defaultMetrics.articles)}
+          </Text>
+          <Text style={[styles.statLabel, { color: paperTheme.colors.onSurfaceVariant }]}>
+            Articles
+          </Text>
         </View>
-        <View style={styles.statCard}>
+        <View style={[
+          styles.statCard,
+          {
+            backgroundColor: accentGlass.chip,
+            borderWidth: 1,
+            borderColor: accentGlass.chipBorder,
+          }
+        ]}>
           <MaterialCommunityIcons
             name="source-branch"
             size={24}
-            color={mukokoTheme.colors.accent}
+            color={paperTheme.colors.tertiary}
           />
-          <Text style={styles.statValue}>{formatNumber(defaultMetrics.sources)}</Text>
-          <Text style={styles.statLabel}>Sources</Text>
+          <Text style={[styles.statValue, { color: paperTheme.colors.onSurface }]}>
+            {formatNumber(defaultMetrics.sources)}
+          </Text>
+          <Text style={[styles.statLabel, { color: paperTheme.colors.onSurfaceVariant }]}>
+            Sources
+          </Text>
         </View>
-        <View style={styles.statCard}>
+        <View style={[
+          styles.statCard,
+          {
+            backgroundColor: accentGlass.chip,
+            borderWidth: 1,
+            borderColor: accentGlass.chipBorder,
+          }
+        ]}>
           <MaterialCommunityIcons
             name="folder-multiple"
             size={24}
-            color={mukokoTheme.colors.secondary}
+            color={paperTheme.colors.tertiary}
           />
-          <Text style={styles.statValue}>{formatNumber(defaultMetrics.categories)}</Text>
-          <Text style={styles.statLabel}>Categories</Text>
+          <Text style={[styles.statValue, { color: paperTheme.colors.onSurface }]}>
+            {formatNumber(defaultMetrics.categories)}
+          </Text>
+          <Text style={[styles.statLabel, { color: paperTheme.colors.onSurfaceVariant }]}>
+            Categories
+          </Text>
         </View>
-        <View style={styles.statCard}>
+        <View style={[
+          styles.statCard,
+          {
+            backgroundColor: accentGlass.chip,
+            borderWidth: 1,
+            borderColor: accentGlass.chipBorder,
+          }
+        ]}>
           <MaterialCommunityIcons
             name="eye"
             size={24}
-            color={mukokoTheme.colors.onSurfaceVariant}
+            color={paperTheme.colors.onSurfaceVariant}
           />
-          <Text style={styles.statValue}>{formatNumber(defaultMetrics.views)}</Text>
-          <Text style={styles.statLabel}>Views</Text>
+          <Text style={[styles.statValue, { color: paperTheme.colors.onSurface }]}>
+            {formatNumber(defaultMetrics.views)}
+          </Text>
+          <Text style={[styles.statLabel, { color: paperTheme.colors.onSurfaceVariant }]}>
+            Views
+          </Text>
         </View>
       </View>
 
@@ -191,31 +283,42 @@ export default function InsightsPromo({
             <MaterialCommunityIcons
               name="fire"
               size={16}
-              color={mukokoTheme.colors.accent}
+              color={paperTheme.colors.tertiary}
             />
-            <Text style={styles.trendingTitle}>Trending Now</Text>
+            <Text style={[styles.trendingTitle, { color: paperTheme.colors.onSurface }]}>
+              Trending Now
+            </Text>
           </View>
           <View style={styles.trendingChips}>
             {defaultMetrics.trending.slice(0, 4).map((topic, index) => (
-              <View key={index} style={styles.trendingChip}>
-                <Text style={styles.trendingChipText}>{topic}</Text>
+              <View key={index} style={[
+                styles.trendingChip,
+                {
+                  backgroundColor: accentGlass.chip,
+                  borderWidth: 1,
+                  borderColor: accentGlass.chipBorder,
+                }
+              ]}>
+                <Text style={[styles.trendingChipText, { color: paperTheme.colors.onSurface }]}>
+                  {topic}
+                </Text>
               </View>
             ))}
           </View>
         </View>
       )}
 
-      {/* CTA */}
+      {/* CTA - Uses accent color */}
       <TouchableOpacity
-        style={styles.ctaButton}
+        style={[styles.ctaButton, { backgroundColor: paperTheme.colors.tertiary }]}
         onPress={handlePress}
         activeOpacity={0.7}
       >
-        <Text style={styles.ctaText}>Explore More</Text>
+        <Text style={[styles.ctaText, { color: paperTheme.colors.onTertiary }]}>Explore More</Text>
         <MaterialCommunityIcons
           name="arrow-right"
           size={18}
-          color={mukokoTheme.colors.onPrimary}
+          color={paperTheme.colors.onTertiary}
         />
       </TouchableOpacity>
     </View>
@@ -225,7 +328,6 @@ export default function InsightsPromo({
 const styles = StyleSheet.create({
   // ============ FULL VARIANT ============
   container: {
-    backgroundColor: mukokoTheme.colors.surface,
     borderRadius: 16,
     padding: mukokoTheme.spacing.lg,
     marginHorizontal: mukokoTheme.spacing.md,
@@ -240,7 +342,6 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 166, 81, 0.1)',
     paddingHorizontal: mukokoTheme.spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
@@ -249,24 +350,20 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 11,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    color: mukokoTheme.colors.primary,
     letterSpacing: 0.5,
   },
   updated: {
     fontSize: 12,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
   },
   title: {
     fontSize: 22,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    color: mukokoTheme.colors.onSurface,
     marginBottom: mukokoTheme.spacing.xs,
   },
   subtitle: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
     marginBottom: mukokoTheme.spacing.md,
   },
   statsGrid: {
@@ -278,7 +375,6 @@ const styles = StyleSheet.create({
   statCard: {
     flex: 1,
     minWidth: '45%',
-    backgroundColor: 'rgba(0, 0, 0, 0.04)',
     borderRadius: 12,
     padding: mukokoTheme.spacing.md,
     alignItems: 'center',
@@ -287,12 +383,10 @@ const styles = StyleSheet.create({
   statValue: {
     fontSize: 24,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    color: mukokoTheme.colors.onSurface,
   },
   statLabel: {
     fontSize: 12,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
   },
   trendingSection: {
     marginBottom: mukokoTheme.spacing.md,
@@ -306,7 +400,6 @@ const styles = StyleSheet.create({
   trendingTitle: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    color: mukokoTheme.colors.onSurface,
   },
   trendingChips: {
     flexDirection: 'row',
@@ -314,7 +407,6 @@ const styles = StyleSheet.create({
     gap: mukokoTheme.spacing.xs,
   },
   trendingChip: {
-    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     paddingHorizontal: mukokoTheme.spacing.sm,
     paddingVertical: mukokoTheme.spacing.xs,
     borderRadius: 16,
@@ -322,13 +414,11 @@ const styles = StyleSheet.create({
   trendingChipText: {
     fontSize: 13,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurface,
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: mukokoTheme.colors.primary,
     paddingVertical: mukokoTheme.spacing.sm,
     paddingHorizontal: mukokoTheme.spacing.lg,
     borderRadius: 24,
@@ -338,12 +428,10 @@ const styles = StyleSheet.create({
   ctaText: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    color: mukokoTheme.colors.onPrimary,
   },
 
   // ============ COMPACT VARIANT ============
   compactContainer: {
-    backgroundColor: mukokoTheme.colors.surface,
     borderRadius: 12,
     padding: mukokoTheme.spacing.md,
     marginHorizontal: mukokoTheme.spacing.md,
@@ -358,13 +446,11 @@ const styles = StyleSheet.create({
   compactTitle: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    color: mukokoTheme.colors.onSurface,
     flex: 1,
   },
   compactUpdated: {
     fontSize: 11,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
   },
   compactStats: {
     flexDirection: 'row',
@@ -378,24 +464,20 @@ const styles = StyleSheet.create({
   compactStatValue: {
     fontSize: 20,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    color: mukokoTheme.colors.onSurface,
   },
   compactStatLabel: {
     fontSize: 11,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
   },
   compactStatDivider: {
     width: 1,
     height: 30,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
 
   // ============ MINIMAL VARIANT ============
   minimalContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.04)',
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.sm,
     borderRadius: 24,
@@ -406,6 +488,5 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
   },
 });
