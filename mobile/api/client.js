@@ -21,12 +21,12 @@ async function getAuthToken() {
 
 // Backend URLs - Mukoko News Architecture:
 // - news.mukoko.com → Expo Web frontend (Vercel)
-// - news-worker.mukoko.com → Mukoko News backend (Cloudflare Workers)
+// - mukoko-news-backend.nyuchi.workers.dev → Mukoko News backend (Cloudflare Workers)
 // - api.mukoko.com → Future unified API gateway (separate worker)
 const BASE_URL = __DEV__
   ? 'https://mukoko-news-backend.nyuchi.workers.dev'  // Deployed Cloudflare Workers for testing
   // ? 'http://localhost:3000'  // Local dev server (uncomment for local testing)
-  : 'https://news-worker.mukoko.com';  // Production backend (custom domain)
+  : 'https://mukoko-news-backend.nyuchi.workers.dev';  // Production backend
 
 // All APIs are on the same domain
 const API_BASE_URL = BASE_URL;
