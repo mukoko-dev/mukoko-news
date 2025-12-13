@@ -77,20 +77,33 @@ export default function DiscoverScreen({ navigation }) {
 
   const loadArticles = async (category = null) => {
     try {
-      // Fetch trending articles for the featured section
-      // Use 'trending' sort to get articles with highest engagement in last 7 days
-      const result = await articlesAPI.getFeed({
+      // First try to get trending articles (last 7 days with engagement)
+      let result = await articlesAPI.getFeed({
         limit: 30,
         offset: 0,
         category: category || undefined,
-        sort: 'trending', // Get trending articles instead of just latest
+        sort: 'trending',
       });
+
+      // If trending returns empty, fall back to latest articles
+      if (!result.data?.articles || result.data.articles.length === 0) {
+        console.log('[Discover] No trending articles, falling back to latest');
+        result = await articlesAPI.getFeed({
+          limit: 30,
+          offset: 0,
+          category: category || undefined,
+          sort: 'latest',
+        });
+      }
 
       if (result.data?.articles) {
         setArticles(result.data.articles);
+      } else {
+        setArticles([]);
       }
     } catch (err) {
       console.error('[Discover] Load articles error:', err);
+      setArticles([]);
     }
   };
 
@@ -162,74 +175,81 @@ export default function DiscoverScreen({ navigation }) {
         showEmojis={true}
       />
 
-      {/* Loading State */}
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={paperTheme.colors.primary} />
-          <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Discovering trending news...</Text>
-        </View>
-      )}
+      {/* Content - Always show ScrollView for pull-to-refresh */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          loading && styles.scrollContentCentered,
+          (!loading && articles.length === 0) && styles.scrollContentCentered,
+        ]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[paperTheme.colors.primary]}
+            tintColor={paperTheme.colors.primary}
+          />
+        }
+      >
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color={paperTheme.colors.primary} />
+            <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Discovering trending news...</Text>
+          </View>
+        )}
 
-      {/* Content */}
-      {!loading && articles.length > 0 && (
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[paperTheme.colors.primary]}
-              tintColor={paperTheme.colors.primary}
-            />
-          }
-        >
-          {/* Featured Article */}
-          {featuredArticle && (
-            <ArticleCard
-              article={featuredArticle}
-              onPress={() => handleArticlePress(featuredArticle)}
-              variant="featured"
-            />
-          )}
-
-          {/* Section Title */}
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
-              {selectedCategory ? `${selectedCategory}` : 'Latest Stories'}
+        {/* Empty State */}
+        {!loading && articles.length === 0 && (
+          <View style={styles.emptyContent}>
+            <Text style={styles.emptyEmoji}>🔍</Text>
+            <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>No Articles Found</Text>
+            <Text style={[styles.emptyMessage, dynamicStyles.emptyMessage]}>
+              Try selecting a different category or pull down to refresh.
             </Text>
           </View>
+        )}
 
-          {/* Grid Articles */}
-          <View style={styles.grid}>
-            {gridArticles.map((article) => (
+        {/* Articles Content */}
+        {!loading && articles.length > 0 && (
+          <>
+            {/* Featured Article */}
+            {featuredArticle && (
               <ArticleCard
-                key={article.id}
-                article={article}
-                onPress={() => handleArticlePress(article)}
-                width={cardWidth}
-                variant="default"
-                style={styles.gridCard}
+                article={featuredArticle}
+                onPress={() => handleArticlePress(featuredArticle)}
+                variant="featured"
               />
-            ))}
-          </View>
+            )}
 
-          {/* Bottom padding for tab bar */}
-          <View style={styles.bottomPadding} />
-        </ScrollView>
-      )}
+            {/* Section Title */}
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
+                {selectedCategory ? `${selectedCategory}` : 'Latest Stories'}
+              </Text>
+            </View>
 
-      {/* Empty State */}
-      {!loading && articles.length === 0 && (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyEmoji}>🔍</Text>
-          <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>No Articles Found</Text>
-          <Text style={[styles.emptyMessage, dynamicStyles.emptyMessage]}>
-            Try selecting a different category or pull to refresh.
-          </Text>
-        </View>
-      )}
+            {/* Grid Articles */}
+            <View style={styles.grid}>
+              {gridArticles.map((article) => (
+                <ArticleCard
+                  key={article.id}
+                  article={article}
+                  onPress={() => handleArticlePress(article)}
+                  width={cardWidth}
+                  variant="default"
+                  style={styles.gridCard}
+                />
+              ))}
+            </View>
+
+            {/* Bottom padding for tab bar */}
+            <View style={styles.bottomPadding} />
+          </>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -245,6 +265,11 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingTop: mukokoTheme.spacing.md,
+    flexGrow: 1,
+  },
+  scrollContentCentered: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // Section Header
@@ -269,11 +294,10 @@ const styles = StyleSheet.create({
   },
 
   // Loading
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  loadingContent: {
     alignItems: 'center',
     gap: mukokoTheme.spacing.md,
+    paddingVertical: mukokoTheme.spacing.xl,
   },
   loadingText: {
     fontSize: 14,
@@ -281,9 +305,7 @@ const styles = StyleSheet.create({
   },
 
   // Empty State
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  emptyContent: {
     alignItems: 'center',
     padding: mukokoTheme.spacing.xl,
   },
