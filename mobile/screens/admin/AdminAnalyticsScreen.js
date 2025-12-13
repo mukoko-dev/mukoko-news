@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
+import AdminScreenWrapper from '../../components/AdminScreenWrapper';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
@@ -133,10 +134,11 @@ export default function AdminAnalyticsScreen({ navigation }) {
     : 0;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <AdminHeader navigation={navigation} currentScreen="AdminAnalytics" />
-      <ScrollView
-        style={styles.scrollView}
+    <AdminScreenWrapper>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <AdminHeader navigation={navigation} currentScreen="AdminAnalytics" />
+        <ScrollView
+          style={styles.scrollView}
         contentContainerStyle={styles.content}
         refreshControl={
           <RefreshControl
@@ -284,8 +286,9 @@ export default function AdminAnalyticsScreen({ navigation }) {
           )}
         </Card.Content>
       </Card>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </AdminScreenWrapper>
   );
 }
 

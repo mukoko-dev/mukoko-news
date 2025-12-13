@@ -16,6 +16,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
+import AdminScreenWrapper from '../../components/AdminScreenWrapper';
 
 /**
  * Admin Sources Screen
@@ -159,12 +160,13 @@ export default function AdminSourcesScreen({ navigation }) {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <AdminHeader navigation={navigation} currentScreen="AdminSources" />
-      {/* Header */}
-      <View style={styles.header}>
-        <View>
-          <Text variant="headlineSmall" style={styles.title}>News Sources</Text>
+    <AdminScreenWrapper>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <AdminHeader navigation={navigation} currentScreen="AdminSources" />
+        {/* Header */}
+        <View style={styles.header}>
+          <View>
+            <Text variant="headlineSmall" style={styles.title}>News Sources</Text>
           <Text style={{ color: theme.colors.onSurfaceVariant }}>
             {enabledCount} active of {sources.length} sources
           </Text>
@@ -217,7 +219,8 @@ export default function AdminSourcesScreen({ navigation }) {
           }
         />
       )}
-    </View>
+      </View>
+    </AdminScreenWrapper>
   );
 }
 
