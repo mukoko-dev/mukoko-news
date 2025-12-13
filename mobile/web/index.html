@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Mukoko News</title>
+
+    <!-- CRITICAL: Service worker cleanup - runs BEFORE any other JS -->
+    <!-- This fixes blank page issues caused by stale cached service workers -->
+    <script>
+      (function() {
+        console.log('[Mukoko] Startup script running...');
+
+        // Force unregister ALL service workers immediately
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(registrations) {
+            console.log('[Mukoko] Found ' + registrations.length + ' service worker(s)');
+            for (var i = 0; i < registrations.length; i++) {
+              registrations[i].unregister().then(function() {
+                console.log('[Mukoko] Service worker unregistered');
+              });
+            }
+          }).catch(function(err) {
+            console.log('[Mukoko] SW unregister error:', err);
+          });
+        }
+
+        // Force clear ALL caches
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            console.log('[Mukoko] Found ' + names.length + ' cache(s)');
+            for (var i = 0; i < names.length; i++) {
+              caches.delete(names[i]);
+              console.log('[Mukoko] Deleted cache:', names[i]);
+            }
+          }).catch(function() {});
+        }
+
+        console.log('[Mukoko] Cleanup complete, loading app...');
+      })();
+    </script>
+
+    <!-- The `react-native-web` recommended style reset -->
+    <style id="expo-reset">
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        overflow: hidden;
+      }
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    </style>
+    <link rel="icon" href="/favicon.ico" />
+  </head>
+
+  <body>
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <div id="root"></div>
+  </body>
+</html>
