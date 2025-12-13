@@ -11,7 +11,7 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, useTheme as usePaperTheme } from 'react-native-paper';
 import mukokoTheme from '../theme';
 
 // Category emoji mapping - adds visual interest and quick recognition
@@ -57,6 +57,9 @@ export default function CategoryChips({
   showEmojis = true,
   style,
 }) {
+  const paperTheme = usePaperTheme();
+  const isDark = paperTheme.dark;
+
   const allCategories = showAll
     ? [{ id: 'all', name: 'All', slug: null }, ...categories]
     : categories;
@@ -69,6 +72,18 @@ export default function CategoryChips({
   const isSelected = (category) => {
     if (category.slug === null && selectedCategory === null) return true;
     return category.slug === selectedCategory || category.id === selectedCategory;
+  };
+
+  // Dynamic glass styles based on theme
+  const chipGlassStyle = {
+    backgroundColor: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.08)',
+    borderWidth: 1,
+    borderColor: paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
+  };
+
+  const chipSelectedStyle = {
+    backgroundColor: paperTheme.colors.primary,
+    borderColor: paperTheme.colors.primary,
   };
 
   return (
@@ -91,7 +106,8 @@ export default function CategoryChips({
               onPress={() => onCategoryPress(category.slug || category.id)}
               style={[
                 styles.chip,
-                selected && styles.chipSelected,
+                chipGlassStyle,
+                selected && chipSelectedStyle,
                 index === 0 && styles.chipFirst,
               ]}
             >
@@ -101,15 +117,24 @@ export default function CategoryChips({
               <Text
                 style={[
                   styles.chipText,
-                  selected && styles.chipTextSelected,
+                  { color: paperTheme.colors.onSurface },
+                  selected && { color: paperTheme.colors.onPrimary },
                 ]}
                 numberOfLines={1}
               >
                 {category.name}
               </Text>
               {showCounts && category.article_count > 0 && (
-                <View style={[styles.countBadge, selected && styles.countBadgeSelected]}>
-                  <Text style={[styles.countText, selected && styles.countTextSelected]}>
+                <View style={[
+                  styles.countBadge,
+                  { backgroundColor: paperTheme.colors.glass },
+                  selected && { backgroundColor: 'rgba(255,255,255,0.25)' }
+                ]}>
+                  <Text style={[
+                    styles.countText,
+                    { color: paperTheme.colors.onSurfaceVariant },
+                    selected && { color: paperTheme.colors.onPrimary }
+                  ]}>
                     {category.article_count > 99 ? '99+' : category.article_count}
                   </Text>
                 </View>
@@ -133,11 +158,25 @@ export function CategoryPills({
   showEmojis = true,
   style,
 }) {
+  const paperTheme = usePaperTheme();
+
   const isSelected = (categorySlug) => selectedCategories.includes(categorySlug);
 
   const getEmoji = (categoryName) => {
     const lowerName = categoryName.toLowerCase();
     return CATEGORY_EMOJIS[lowerName] || '📄';
+  };
+
+  // Dynamic glass styles based on theme
+  const pillGlassStyle = {
+    backgroundColor: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.08)',
+    borderWidth: 1,
+    borderColor: paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
+  };
+
+  const pillSelectedStyle = {
+    backgroundColor: paperTheme.colors.primary,
+    borderColor: paperTheme.colors.primary,
   };
 
   return (
@@ -153,7 +192,8 @@ export function CategoryPills({
             onPress={() => onCategoryToggle(category.slug || category.id)}
             style={[
               styles.pill,
-              selected && styles.pillSelected,
+              pillGlassStyle,
+              selected && pillSelectedStyle,
             ]}
           >
             {showEmojis && (
@@ -162,13 +202,14 @@ export function CategoryPills({
             <Text
               style={[
                 styles.pillText,
-                selected && styles.pillTextSelected,
+                { color: paperTheme.colors.onSurface },
+                selected && { color: paperTheme.colors.onPrimary },
               ]}
             >
               {category.name}
             </Text>
             {selected && (
-              <Text style={styles.pillCheck}>✓</Text>
+              <Text style={[styles.pillCheck, { color: paperTheme.colors.onPrimary }]}>✓</Text>
             )}
           </TouchableOpacity>
         );
