@@ -13,9 +13,10 @@
     "test": "cd backend && npm run test",
     "typecheck": "cd backend && npm run typecheck",
     "clean": "rm -rf backend/.wrangler backend/node_modules/.cache mobile/.expo mobile/dist mobile/node_modules/.cache",
-    "install:all": "npm run install:backend && npm run install:mobile",
+    "install:all": "npm run install:backend && npm run install:mobile && npm run install:admin",
     "install:backend": "cd backend && npm install",
     "install:mobile": "cd mobile && npm install",
+    "install:admin": "cd admin && npm install",
     "dev:backend": "cd backend && npm run dev",
     "deploy:backend": "cd backend && npm run deploy",
     "test:backend": "cd backend && npm run test",
@@ -24,7 +25,10 @@
     "mobile:ios": "cd mobile && npm run ios",
     "mobile:android": "cd mobile && npm run android",
     "mobile:install": "cd mobile && npm install",
-    "mobile:deploy": "cd mobile && npx vercel --prod"
+    "mobile:deploy": "cd mobile && npx vercel --prod",
+    "admin": "cd admin && npm run dev",
+    "admin:build": "cd admin && npm run build",
+    "admin:deploy": "cd admin && npx vercel --prod"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

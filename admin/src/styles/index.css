@@ -1,0 +1,375 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Mukoko News Admin Theme
+ * Matches the mobile app's Mukoko brand design system
+ *
+ * Brand Colors (from mobile/theme.js):
+ * - Primary: #5e5772 - Sophisticated purple-gray
+ * - Accent: #d4634a - Warm terracotta/coral
+ * - Success: #779b63 - Natural green (gradient start)
+ * - Light: #f9f8f4 - Warm off-white
+ * - Dark: #1f1f1f - Near black
+ *
+ * Design Features:
+ * - Glassmorphism effects with semi-transparent surfaces
+ * - Purple-tinted glass overlays
+ * - Thin borders for contrast
+ * - Warm, approachable feel
+ *
+ * Note: Zimbabwe flag colors are ONLY used for the flag strip component
+ */
+
+:root {
+  /* Primary brand colors - sophisticated purple-gray */
+  --color-primary: #5e5772;
+  --color-primary-hover: #6f6885;
+  --color-primary-active: #4d475f;
+  --color-primary-light: #e8e6ec;
+  --color-on-primary: #FFFFFF;
+
+  /* Accent colors - warm terracotta/coral */
+  --color-accent: #d4634a;
+  --color-accent-light: #fce8e4;
+  --color-on-accent: #FFFFFF;
+
+  /* Semantic colors */
+  --color-success: #779b63;
+  --color-success-light: #e8f0e4;
+  --color-warning: #e5a84d;
+  --color-warning-light: #fcf3e4;
+  --color-error: #d4634a;
+  --color-error-light: #fce8e4;
+
+  /* Surface colors - warm off-white theme */
+  --color-surface: #FFFFFF;
+  --color-surface-variant: #f9f8f4;
+  --color-surface-subtle: #fdfcfa;
+  --color-background: #f7f6f8;
+
+  /* Text colors */
+  --color-text: #1f1f1f;
+  --color-text-muted: #5a5a5a;
+  --color-text-subtle: #9ca3af;
+
+  /* Border colors - thin dark borders for contrast */
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-subtle: rgba(0, 0, 0, 0.04);
+
+  /* Glass effect colors - primary-tinted glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.92);
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-card: rgba(255, 255, 255, 0.88);
+  --glass-surface: rgba(253, 252, 250, 0.85);
+  --glass-overlay: rgba(94, 87, 114, 0.08);
+
+  /* Zimbabwe flag colors (for flag strip ONLY) */
+  --zw-green: #00A651;
+  --zw-yellow: #FDD116;
+  --zw-red: #EF3340;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-background);
+  color: var(--color-text);
+  min-height: 100vh;
+}
+
+/* Zimbabwe flag strip - matches mobile ZimbabweFlagStrip component */
+.zw-flag-strip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100vh;
+  z-index: 100;
+  background: linear-gradient(to bottom,
+    var(--zw-green) 0% 20%,
+    var(--zw-yellow) 20% 40%,
+    var(--zw-red) 40% 60%,
+    #000000 60% 80%,
+    #FFFFFF 80% 100%
+  );
+}
+
+/* Custom scrollbar with brand colors */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-variant);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary-light);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-primary);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Card component - glass effect */
+@layer components {
+  .card {
+    background: var(--glass-card);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid var(--glass-border);
+    padding: 1.5rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+
+  .card-header {
+    @apply flex items-center justify-between mb-4;
+  }
+
+  .card-title {
+    font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
+    @apply text-lg font-semibold text-gray-900;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-xl font-medium transition-all duration-200;
+  }
+
+  .btn-primary {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+
+  .btn-primary:hover {
+    background: var(--color-primary-hover);
+  }
+
+  .btn-primary:active {
+    background: var(--color-primary-active);
+  }
+
+  .btn-secondary {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+  }
+
+  .btn-secondary:hover {
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+
+  .btn-danger {
+    background: var(--color-error);
+    color: white;
+  }
+
+  .btn-danger:hover {
+    opacity: 0.9;
+  }
+
+  .btn-success {
+    background: var(--color-success);
+    color: white;
+  }
+
+  .btn-success:hover {
+    opacity: 0.9;
+  }
+
+  .input {
+    @apply w-full px-4 py-2 rounded-xl transition-all;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+  }
+
+  .input:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px var(--glass-overlay);
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-success {
+    background: var(--color-success-light);
+    color: var(--color-success);
+  }
+
+  .badge-warning {
+    background: var(--color-warning-light);
+    color: #92610b;
+  }
+
+  .badge-danger {
+    background: var(--color-error-light);
+    color: var(--color-error);
+  }
+
+  .badge-info {
+    background: var(--color-primary-light);
+    color: var(--color-primary);
+  }
+
+  .table-container {
+    @apply overflow-x-auto rounded-xl;
+    border: 1px solid var(--color-border);
+  }
+
+  .table {
+    @apply min-w-full divide-y;
+    border-color: var(--color-border);
+  }
+
+  .table th {
+    @apply px-6 py-3 text-left text-xs font-medium uppercase tracking-wider;
+    background: var(--color-surface-variant);
+    color: var(--color-text-muted);
+  }
+
+  .table td {
+    @apply px-6 py-4 whitespace-nowrap text-sm;
+    color: var(--color-text);
+  }
+
+  .table tbody tr {
+    @apply transition-colors;
+    background: var(--color-surface);
+  }
+
+  .table tbody tr:hover {
+    background: var(--color-surface-variant);
+  }
+}
+
+/* Stat card - glass effect */
+.stat-card {
+  background: var(--glass-card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  padding: 1.5rem;
+}
+
+.stat-card .stat-icon {
+  @apply w-12 h-12 rounded-xl flex items-center justify-center text-2xl;
+}
+
+.stat-card .stat-value {
+  font-family: 'Georgia', 'Cambria', 'Times New Roman', serif;
+  @apply text-3xl font-bold mt-4;
+  color: var(--color-text);
+}
+
+.stat-card .stat-label {
+  @apply text-sm mt-1;
+  color: var(--color-text-muted);
+}
+
+.stat-card .stat-change {
+  @apply text-xs font-medium mt-2;
+}
+
+/* Sidebar - glass effect */
+.sidebar {
+  position: fixed;
+  left: 6px; /* Account for flag strip */
+  top: 0;
+  height: 100%;
+  width: 256px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-right: 1px solid var(--glass-border);
+  z-index: 40;
+}
+
+.sidebar-nav-item {
+  @apply flex items-center gap-3 px-4 py-3 rounded-xl mx-2 transition-all;
+  color: var(--color-text-muted);
+}
+
+.sidebar-nav-item:hover {
+  background: var(--glass-overlay);
+  color: var(--color-primary);
+}
+
+.sidebar-nav-item.active {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+
+/* Loading spinner */
+.spinner {
+  @apply w-5 h-5 border-2 rounded-full animate-spin;
+  border-color: var(--color-primary-light);
+  border-top-color: var(--color-primary);
+}
+
+/* Toast notifications */
+.toast {
+  @apply fixed bottom-4 right-4 px-6 py-3 rounded-xl shadow-lg z-50 animate-slide-in;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.toast-success {
+  background: var(--color-success);
+  color: white;
+}
+
+.toast-error {
+  background: var(--color-error);
+  color: white;
+}
+
+.toast-warning {
+  background: var(--color-warning);
+  color: var(--color-text);
+}
+
+/* Header - glass effect */
+.header-glass {
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--glass-border);
+}
