@@ -47,6 +47,59 @@ const formatRelativeTime = (dateString) => {
 };
 
 /**
+ * Calculate word count from text
+ */
+const getWordCount = (text) => {
+  if (!text) return 0;
+  return text.trim().split(/\s+/).filter(word => word.length > 0).length;
+};
+
+/**
+ * Calculate read time in minutes (average 200 words per minute)
+ */
+const getReadTime = (text) => {
+  const words = getWordCount(text);
+  const minutes = Math.ceil(words / 200);
+  return minutes < 1 ? 1 : minutes;
+};
+
+/**
+ * Extract hashtags from article (category + keywords)
+ */
+const getHashtags = (article) => {
+  const tags = [];
+
+  // Add category as first tag if exists
+  if (article.category) {
+    tags.push(`#${article.category.toLowerCase().replace(/\s+/g, '')}`);
+  }
+
+  // Add keywords/tags if available
+  if (article.tags && Array.isArray(article.tags)) {
+    article.tags.slice(0, 3).forEach(tag => {
+      const formatted = `#${tag.toLowerCase().replace(/\s+/g, '')}`;
+      if (!tags.includes(formatted)) {
+        tags.push(formatted);
+      }
+    });
+  }
+
+  // Extract from title for Zimbabwe-specific content
+  const titleLower = (article.title || '').toLowerCase();
+  const zimbabweKeywords = ['zimbabwe', 'zim', 'harare', 'bulawayo'];
+  zimbabweKeywords.forEach(keyword => {
+    if (titleLower.includes(keyword) && tags.length < 4) {
+      const tag = `#${keyword}`;
+      if (!tags.includes(tag)) {
+        tags.push(tag);
+      }
+    }
+  });
+
+  return tags.slice(0, 4); // Max 4 tags
+};
+
+/**
  * Optimized Image component to prevent flickering
  * Uses memo and stable key to prevent unnecessary re-renders
  */
@@ -119,6 +172,12 @@ function ArticleCard({
   // Stable key for the image to prevent re-mounting
   const imageKey = `${article.id || article.slug}-image`;
 
+  // Calculate article stats
+  const contentText = article.description || article.content || article.title || '';
+  const wordCount = getWordCount(contentText);
+  const readTime = getReadTime(contentText);
+  const hashtags = getHashtags(article);
+
   // Dynamic glass styles based on theme
   const glassStyles = {
     surface: {
@@ -143,6 +202,18 @@ function ArticleCard({
     },
     placeholder: {
       backgroundColor: paperTheme.colors.surfaceVariant,
+    },
+    // Hashtag chip styling
+    tagChip: {
+      backgroundColor: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.10)',
+      borderWidth: 1,
+      borderColor: paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.18)',
+    },
+    tagText: {
+      color: paperTheme.colors.onSurfaceVariant,
+    },
+    statsText: {
+      color: paperTheme.colors.onSurfaceVariant,
     },
   };
 
@@ -305,22 +376,49 @@ function ArticleCard({
 
         {/* Content Section */}
         <View style={styles.defaultContent}>
-          {article.category && (
-            <Text style={[styles.categoryLabel, glassStyles.category]}>{article.category}</Text>
-          )}
+          {/* Source and Date Row */}
+          <View style={styles.sourceRow}>
+            <Text style={[styles.sourceText, glassStyles.source]}>{article.source}</Text>
+            <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
+            <Text style={[styles.dateText, glassStyles.meta]}>
+              {formatRelativeTime(article.pubDate || article.published_at)}
+            </Text>
+          </View>
+
+          {/* Title */}
           <Text style={[styles.defaultTitle, glassStyles.title]} numberOfLines={3}>
             {article.title}
           </Text>
+
+          {/* Description */}
           {article.description && (
             <Text style={[styles.defaultDescription, glassStyles.description]} numberOfLines={2}>
               {article.description}
             </Text>
           )}
-          <View style={styles.metaRow}>
-            <Text style={[styles.sourceText, glassStyles.source]}>{article.source}</Text>
+
+          {/* Hashtags Row */}
+          {hashtags.length > 0 && (
+            <View style={styles.hashtagsRow}>
+              {hashtags.map((tag, index) => (
+                <View key={index} style={[styles.hashtagChip, glassStyles.tagChip]}>
+                  <Text style={[styles.hashtagText, glassStyles.tagText]}>{tag}</Text>
+                </View>
+              ))}
+              {hashtags.length < 4 && (
+                <Text style={[styles.moreTagsText, glassStyles.meta]}>+{4 - hashtags.length} more</Text>
+              )}
+            </View>
+          )}
+
+          {/* Stats Row - Word count and Read time */}
+          <View style={styles.statsRow}>
+            <Text style={[styles.statsText, glassStyles.statsText]}>
+              {wordCount} words
+            </Text>
             <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
-            <Text style={[styles.dateText, glassStyles.meta]}>
-              {formatRelativeTime(article.pubDate || article.published_at)}
+            <Text style={[styles.statsText, glassStyles.statsText]}>
+              {readTime} min read
             </Text>
           </View>
         </View>
@@ -540,7 +638,14 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
 
-  // Meta row (source, date)
+  // Source row (at top of content)
+  sourceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: mukokoTheme.spacing.xs,
+  },
+
+  // Meta row (source, date) - for variants that use bottom placement
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -569,5 +674,43 @@ const styles = StyleSheet.create({
   dateTextSmall: {
     fontSize: 11,
     color: mukokoTheme.colors.onSurfaceVariant,
+  },
+
+  // Hashtags row
+  hashtagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    marginTop: mukokoTheme.spacing.sm,
+    gap: mukokoTheme.spacing.xs,
+  },
+  hashtagChip: {
+    paddingHorizontal: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.xs / 2,
+    borderRadius: 12,
+  },
+  hashtagText: {
+    fontSize: 11,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+  moreTagsText: {
+    fontSize: 11,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    marginLeft: mukokoTheme.spacing.xs,
+    opacity: 0.7,
+  },
+
+  // Stats row (word count, read time)
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: mukokoTheme.spacing.sm,
+    paddingTop: mukokoTheme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  statsText: {
+    fontSize: 11,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
 });
