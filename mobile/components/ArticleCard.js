@@ -16,6 +16,7 @@ import {
 import { Text, Surface, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import mukokoTheme from '../theme';
+import SourceIcon from './SourceIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -247,6 +248,7 @@ function ArticleCard({
               {article.title}
             </Text>
             <View style={styles.metaRow}>
+              <SourceIcon source={article.source} size={14} showBorder={false} />
               <Text style={[styles.sourceText, glassStyles.source]}>{article.source}</Text>
               <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
               <Text style={[styles.dateText, glassStyles.meta]}>
@@ -276,6 +278,7 @@ function ArticleCard({
                 {article.title}
               </Text>
               <View style={styles.metaRow}>
+                <SourceIcon source={article.source} size={12} showBorder={false} />
                 <Text style={[styles.sourceTextSmall, glassStyles.source]}>{article.source}</Text>
                 <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
                 <Text style={[styles.dateTextSmall, glassStyles.meta]}>
@@ -342,6 +345,7 @@ function ArticleCard({
               </Text>
             )}
             <View style={styles.metaRow}>
+              <SourceIcon source={article.source} size={16} showBorder={false} />
               <Text style={[styles.sourceText, glassStyles.source]}>{article.source}</Text>
               <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
               <Text style={[styles.dateText, glassStyles.meta]}>
@@ -378,6 +382,7 @@ function ArticleCard({
         <View style={styles.defaultContent}>
           {/* Source and Date Row */}
           <View style={styles.sourceRow}>
+            <SourceIcon source={article.source} size={16} showBorder={false} />
             <Text style={[styles.sourceText, glassStyles.source]}>{article.source}</Text>
             <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
             <Text style={[styles.dateText, glassStyles.meta]}>
@@ -643,6 +648,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: mukokoTheme.spacing.xs,
+    gap: 6,
   },
 
   // Meta row (source, date) - for variants that use bottom placement
@@ -650,6 +656,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: mukokoTheme.spacing.xs,
+    gap: 6,
   },
   sourceText: {
     fontSize: 12,

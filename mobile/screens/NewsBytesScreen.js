@@ -1,6 +1,7 @@
 /**
  * NewsBytesScreen - TikTok-style vertical scrolling news
  * Full-screen immersive news experience with responsive positioning
+ * Supports theme-aware accent colors while maintaining dark immersive UI
  */
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -17,6 +18,7 @@ import {
   Text,
   IconButton,
   ActivityIndicator,
+  useTheme as usePaperTheme,
 } from 'react-native-paper';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,9 +26,11 @@ import * as Haptics from 'expo-haptics';
 import { newsBytes, articles as articlesAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
+import SourceIcon from '../components/SourceIcon';
 
 export default function NewsBytesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const paperTheme = usePaperTheme();
   const { user, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(true);
   const [bytes, setBytes] = useState([]);
@@ -43,6 +47,25 @@ export default function NewsBytesScreen({ navigation }) {
   const CONTENT_BOTTOM_OFFSET = Math.max(insets.bottom + 100, 140); // Tab bar + padding
   const ACTIONS_RIGHT_OFFSET = mukokoTheme.spacing.md;
   const PROGRESS_TOP_OFFSET = insets.top + mukokoTheme.spacing.lg;
+
+  // Theme-aware colors for immersive dark UI
+  const colors = {
+    // Background is always dark for immersive experience
+    background: '#000000',
+    // Text colors
+    white: '#FFFFFF',
+    whiteTranslucent: 'rgba(255, 255, 255, 0.8)',
+    whiteFaded: 'rgba(255, 255, 255, 0.6)',
+    // Use theme accent color for highlights
+    accent: paperTheme.colors.tertiary || paperTheme.colors.accent || '#d4634a',
+    // Like color from theme
+    liked: paperTheme.colors.error || '#EF4444',
+    // Saved color from theme
+    saved: paperTheme.colors.tertiary || '#d4634a',
+    // Glass effects
+    glassBackground: 'rgba(0, 0, 0, 0.3)',
+    glassBorder: 'rgba(255, 255, 255, 0.15)',
+  };
 
   useEffect(() => {
     loadNewsBytes();
@@ -125,7 +148,7 @@ export default function NewsBytesScreen({ navigation }) {
     }));
 
     try {
-      const result = await articlesAPI.like(byte.id);
+      const result = await articlesAPI.toggleLike(byte.id);
       if (result.error) {
         setBytesState(prev => ({
           ...prev,
@@ -158,7 +181,7 @@ export default function NewsBytesScreen({ navigation }) {
     }));
 
     try {
-      const result = await articlesAPI.save(byte.id);
+      const result = await articlesAPI.toggleBookmark(byte.id);
       if (result.error) {
         setBytesState(prev => ({
           ...prev,
@@ -187,6 +210,7 @@ export default function NewsBytesScreen({ navigation }) {
   };
 
   const handleViewArticle = (byte) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.navigate('ArticleDetail', {
       articleId: byte.id,
       source: byte.source_id || byte.source,
@@ -219,7 +243,7 @@ export default function NewsBytesScreen({ navigation }) {
 
     return (
       <TouchableOpacity
-        style={[styles.byteContainer, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT }]}
+        style={[styles.byteContainer, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: colors.background }]}
         activeOpacity={1}
         onPress={() => handleViewArticle(item)}
       >
@@ -247,36 +271,37 @@ export default function NewsBytesScreen({ navigation }) {
         ]}>
           {/* Category Badge */}
           {item.category && (
-            <View style={styles.categoryBadge}>
-              <Text style={styles.categoryText}>{item.category}</Text>
+            <View style={[styles.categoryBadge, { backgroundColor: colors.accent }]}>
+              <Text style={[styles.categoryText, { color: colors.background }]}>{item.category}</Text>
             </View>
           )}
 
           {/* Title - Large, readable */}
-          <Text style={styles.byteTitle} numberOfLines={4}>
+          <Text style={[styles.byteTitle, { color: colors.white }]} numberOfLines={4}>
             {item.title}
           </Text>
 
           {/* Description - Two lines max */}
           {item.description && (
-            <Text style={styles.byteDescription} numberOfLines={2}>
+            <Text style={[styles.byteDescription, { color: colors.whiteTranslucent }]} numberOfLines={2}>
               {item.description.slice(0, 120)}...
             </Text>
           )}
 
           {/* Source & Date */}
           <View style={styles.metaContainer}>
-            <Text style={styles.sourceText}>{item.source}</Text>
-            <Text style={styles.dotSeparator}>•</Text>
-            <Text style={styles.dateText}>{formatDate(item.published_at)}</Text>
+            <SourceIcon source={item.source} size={18} showBorder={false} />
+            <Text style={[styles.sourceText, { color: colors.accent }]}>{item.source}</Text>
+            <Text style={[styles.dotSeparator, { color: colors.whiteFaded }]}>•</Text>
+            <Text style={[styles.dateText, { color: colors.whiteTranslucent }]}>{formatDate(item.published_at)}</Text>
           </View>
 
           {/* Read More Button */}
           <TouchableOpacity
-            style={styles.readMoreButton}
+            style={[styles.readMoreButton, { borderColor: colors.glassBorder, backgroundColor: colors.glassBackground }]}
             onPress={() => handleViewArticle(item)}
           >
-            <Text style={styles.readMoreText}>Read Full Article</Text>
+            <Text style={[styles.readMoreText, { color: colors.white }]}>Read Full Article</Text>
           </TouchableOpacity>
         </View>
 
@@ -290,29 +315,37 @@ export default function NewsBytesScreen({ navigation }) {
         ]}>
           <ActionButton
             icon={byteState.isLiked ? "heart" : "heart-outline"}
-            color={byteState.isLiked ? mukokoTheme.colors.zwRed : mukokoTheme.colors.zwWhite}
+            color={byteState.isLiked ? colors.liked : colors.white}
             label={byteState.likesCount || 0}
             onPress={() => handleLike(item)}
+            glassColor={colors.glassBackground}
+            textColor={colors.white}
           />
 
           <ActionButton
             icon="comment-outline"
-            color={mukokoTheme.colors.zwWhite}
+            color={colors.white}
             label={item.commentsCount || 0}
             onPress={() => handleViewArticle(item)}
+            glassColor={colors.glassBackground}
+            textColor={colors.white}
           />
 
           <ActionButton
             icon="share-variant-outline"
-            color={mukokoTheme.colors.zwWhite}
+            color={colors.white}
             label="Share"
             onPress={() => handleShare(item)}
+            glassColor={colors.glassBackground}
+            textColor={colors.white}
           />
 
           <ActionButton
             icon={byteState.isSaved ? "bookmark" : "bookmark-outline"}
-            color={byteState.isSaved ? mukokoTheme.colors.accent : mukokoTheme.colors.zwWhite}
+            color={byteState.isSaved ? colors.saved : colors.white}
             onPress={() => handleSave(item)}
+            glassColor={colors.glassBackground}
+            textColor={colors.white}
           />
         </View>
       </TouchableOpacity>
@@ -321,17 +354,17 @@ export default function NewsBytesScreen({ navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={mukokoTheme.colors.zwWhite} />
-          <Text style={styles.loadingText}>Loading NewsBytes...</Text>
+          <ActivityIndicator size="large" color={colors.accent} />
+          <Text style={[styles.loadingText, { color: colors.white }]}>Loading NewsBytes...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Progress Indicator - Responsive top position */}
       <View style={[styles.progressContainer, { top: PROGRESS_TOP_OFFSET }]}>
         {bytes.slice(0, 10).map((_, index) => (
@@ -339,12 +372,13 @@ export default function NewsBytesScreen({ navigation }) {
             key={index}
             style={[
               styles.progressDot,
-              index === currentIndex && styles.progressDotActive,
+              { backgroundColor: colors.whiteFaded },
+              index === currentIndex && [styles.progressDotActive, { backgroundColor: colors.accent }],
             ]}
           />
         ))}
         {bytes.length > 10 && (
-          <Text style={styles.progressMore}>+{bytes.length - 10}</Text>
+          <Text style={[styles.progressMore, { color: colors.white }]}>+{bytes.length - 10}</Text>
         )}
       </View>
 
@@ -367,10 +401,10 @@ export default function NewsBytesScreen({ navigation }) {
           index,
         })}
         ListEmptyComponent={
-          <View style={[styles.emptyContainer, { height: SCREEN_HEIGHT }]}>
+          <View style={[styles.emptyContainer, { height: SCREEN_HEIGHT, backgroundColor: colors.background }]}>
             <Text style={styles.emptyIcon}>📰</Text>
-            <Text style={styles.emptyTitle}>No NewsBytes available</Text>
-            <Text style={styles.emptyDescription}>
+            <Text style={[styles.emptyTitle, { color: colors.white }]}>No NewsBytes available</Text>
+            <Text style={[styles.emptyDescription, { color: colors.whiteTranslucent }]}>
               Pull down to refresh or check back later
             </Text>
           </View>
@@ -383,10 +417,10 @@ export default function NewsBytesScreen({ navigation }) {
 /**
  * ActionButton Component - Reusable action button for the side panel
  */
-function ActionButton({ icon, color, label, onPress }) {
+function ActionButton({ icon, color, label, onPress, glassColor, textColor }) {
   return (
     <TouchableOpacity style={styles.actionButton} onPress={onPress}>
-      <View style={styles.actionIconContainer}>
+      <View style={[styles.actionIconContainer, { backgroundColor: glassColor }]}>
         <IconButton
           icon={icon}
           iconColor={color}
@@ -395,7 +429,7 @@ function ActionButton({ icon, color, label, onPress }) {
         />
       </View>
       {label !== undefined && (
-        <Text style={styles.actionText}>{label}</Text>
+        <Text style={[styles.actionText, { color: textColor }]}>{label}</Text>
       )}
     </TouchableOpacity>
   );
@@ -404,11 +438,9 @@ function ActionButton({ icon, color, label, onPress }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: mukokoTheme.colors.zwBlack,
   },
   byteContainer: {
     position: 'relative',
-    backgroundColor: mukokoTheme.colors.zwBlack,
   },
   backgroundImage: {
     ...StyleSheet.absoluteFillObject,
@@ -427,13 +459,11 @@ const styles = StyleSheet.create({
   },
   categoryBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: mukokoTheme.colors.accent,
     paddingHorizontal: mukokoTheme.spacing.sm,
     paddingVertical: mukokoTheme.spacing.xs - 2,
     borderRadius: mukokoTheme.roundness / 2,
   },
   categoryText: {
-    color: mukokoTheme.colors.zwBlack,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     fontSize: 11,
     textTransform: 'uppercase',
@@ -443,7 +473,6 @@ const styles = StyleSheet.create({
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
     fontSize: 26,
     lineHeight: 32,
-    color: mukokoTheme.colors.zwWhite,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
@@ -452,8 +481,6 @@ const styles = StyleSheet.create({
   byteDescription: {
     fontSize: 15,
     lineHeight: 21,
-    color: mukokoTheme.colors.zwWhite,
-    opacity: 0.9,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -464,7 +491,6 @@ const styles = StyleSheet.create({
     gap: mukokoTheme.spacing.xs,
   },
   sourceText: {
-    color: mukokoTheme.colors.accent,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     fontSize: 13,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
@@ -472,12 +498,9 @@ const styles = StyleSheet.create({
     textShadowRadius: 3,
   },
   dotSeparator: {
-    color: mukokoTheme.colors.zwWhite,
     opacity: 0.6,
   },
   dateText: {
-    color: mukokoTheme.colors.zwWhite,
-    opacity: 0.8,
     fontSize: 13,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -485,16 +508,13 @@ const styles = StyleSheet.create({
   },
   readMoreButton: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.sm,
     borderRadius: mukokoTheme.roundness,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
     marginTop: mukokoTheme.spacing.xs,
   },
   readMoreText: {
-    color: mukokoTheme.colors.zwWhite,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
     fontSize: 13,
   },
@@ -513,7 +533,6 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -521,7 +540,6 @@ const styles = StyleSheet.create({
     margin: 0,
   },
   actionText: {
-    color: mukokoTheme.colors.zwWhite,
     fontSize: 11,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
@@ -544,14 +562,11 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   progressDotActive: {
-    backgroundColor: mukokoTheme.colors.accent,
     width: 18,
   },
   progressMore: {
-    color: mukokoTheme.colors.zwWhite,
     fontSize: 10,
     opacity: 0.7,
     marginLeft: mukokoTheme.spacing.xs,
@@ -565,7 +580,6 @@ const styles = StyleSheet.create({
     gap: mukokoTheme.spacing.md,
   },
   loadingText: {
-    color: mukokoTheme.colors.zwWhite,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 
@@ -584,13 +598,10 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
     fontSize: 22,
-    color: mukokoTheme.colors.zwWhite,
     textAlign: 'center',
   },
   emptyDescription: {
     fontSize: 14,
-    color: mukokoTheme.colors.zwWhite,
-    opacity: 0.7,
     textAlign: 'center',
   },
 });

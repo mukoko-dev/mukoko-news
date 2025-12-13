@@ -166,6 +166,33 @@ export const auth = {
     const result = await auth.getSession();
     return result.data && result.data.user !== null;
   },
+
+  /**
+   * Request password reset code
+   */
+  async forgotPassword(email) {
+    return apiRequest('/api/auth/forgot-password', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
+  /**
+   * Reset password with code
+   */
+  async resetPassword(email, code, newPassword) {
+    return apiRequest('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify({ email, code, newPassword }),
+    });
+  },
+
+  /**
+   * Check username availability
+   */
+  async checkUsername(username) {
+    return apiRequest(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
+  },
 };
 
 /**
@@ -192,6 +219,34 @@ export const articles = {
     }
 
     return apiRequest(`/api/feeds?${params.toString()}`);
+  },
+
+  /**
+   * Get personalized feed (For You)
+   * Uses user preferences, reading history, and follows to curate articles
+   * Falls back to trending for anonymous users
+   * @param {Object} options
+   * @param {number} options.limit - Number of articles to fetch
+   * @param {number} options.offset - Offset for pagination
+   * @param {boolean} options.excludeRead - Exclude already read articles
+   * @param {number} options.diversity - Diversity factor 0-1 (higher = more diverse categories)
+   */
+  async getPersonalizedFeed({ limit = 30, offset = 0, excludeRead = true, diversity = 0.3 } = {}) {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+      excludeRead: excludeRead.toString(),
+      diversity: diversity.toString(),
+    });
+
+    return apiRequest(`/api/feeds/personalized?${params.toString()}`);
+  },
+
+  /**
+   * Get explanation for why articles are recommended
+   */
+  async getFeedExplanation() {
+    return apiRequest('/api/feeds/personalized/explain');
   },
 
   /**
@@ -253,6 +308,64 @@ export const categories = {
  * User API
  */
 export const user = {
+  /**
+   * Get current user's profile
+   */
+  async getProfile() {
+    return apiRequest('/api/user/me/profile');
+  },
+
+  /**
+   * Update current user's profile
+   */
+  async updateProfile(profileData) {
+    return apiRequest('/api/user/me/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData),
+    });
+  },
+
+  /**
+   * Update username
+   */
+  async updateUsername(username) {
+    return apiRequest('/api/user/me/username', {
+      method: 'PUT',
+      body: JSON.stringify({ username }),
+    });
+  },
+
+  /**
+   * Get public user profile by username
+   */
+  async getPublicProfile(username) {
+    return apiRequest(`/api/user/${encodeURIComponent(username)}`);
+  },
+
+  /**
+   * Get public user stats by username
+   */
+  async getPublicStats(username) {
+    return apiRequest(`/api/user/${encodeURIComponent(username)}/stats`);
+  },
+
+  /**
+   * Get user's bookmarks/likes/history
+   */
+  async getActivity(username, type, limit = 20) {
+    return apiRequest(`/api/user/${encodeURIComponent(username)}/${type}?limit=${limit}`);
+  },
+
+  /**
+   * Add category interest during onboarding
+   */
+  async addCategoryInterest(categoryId, initialScore = 10) {
+    return apiRequest('/api/user/me/category-interest', {
+      method: 'POST',
+      body: JSON.stringify({ categoryId, initialScore }),
+    });
+  },
+
   /**
    * Get user preferences
    */

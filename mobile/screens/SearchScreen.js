@@ -21,7 +21,7 @@ import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import CategoryChips from '../components/CategoryChips';
 import { useAuth } from '../contexts/AuthContext';
-import { articles as articlesAPI, categories as categoriesAPI } from '../api/client';
+import { search as searchAPI, categories as categoriesAPI } from '../api/client';
 
 /**
  * Memoized Search Result Card
@@ -132,8 +132,7 @@ export default function SearchScreen({ navigation }) {
       setError(null);
       setActiveQuery(query);
 
-      const result = await articlesAPI.search({
-        q: query,
+      const result = await searchAPI.query(query, {
         category,
         limit: 50,
       });

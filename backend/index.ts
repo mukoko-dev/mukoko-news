@@ -21,6 +21,7 @@ import { PasswordHashService } from "./services/PasswordHashService.js";
 import { CategoryManager } from "./services/CategoryManager.js";
 import { ObservabilityService } from "./services/ObservabilityService.js";
 import { D1UserService } from "./services/D1UserService.js";
+import { PersonalizedFeedService } from "./services/PersonalizedFeedService.js";
 // Durable Objects for real-time features
 import { RealtimeAnalyticsDO } from "./services/RealtimeAnalyticsDO.js";
 import { ArticleInteractionsDO } from "./services/ArticleInteractionsDO.js";
@@ -517,6 +518,85 @@ app.get("/api/feeds", async (c) => {
   } catch (error) {
     console.error("Error fetching articles:", error);
     return c.json({ error: "Failed to fetch articles" }, 500);
+  }
+});
+
+// Personalized feed endpoint - uses user preferences, history, and follows
+app.get("/api/feeds/personalized", async (c) => {
+  try {
+    const limit = parseInt(c.req.query("limit") || "30");
+    const offset = parseInt(c.req.query("offset") || "0");
+    const excludeRead = c.req.query("excludeRead") !== "false";
+    const diversityFactor = parseFloat(c.req.query("diversity") || "0.3");
+
+    // Get user ID from header or session
+    const userId = c.req.header("x-user-id") || c.req.header("x-session-id") || null;
+
+    // Initialize personalized feed service
+    const feedService = new PersonalizedFeedService(c.env.DB);
+
+    // Get personalized feed
+    const result = await feedService.getPersonalizedFeed(userId, {
+      limit,
+      offset,
+      excludeRead,
+      diversityFactor,
+    });
+
+    // Fetch keywords for each article
+    for (const article of result.articles) {
+      const keywordsResult = await c.env.DB.prepare(`
+        SELECT k.id, k.name, k.slug
+        FROM keywords k
+        INNER JOIN article_keyword_links akl ON k.id = akl.keyword_id
+        WHERE akl.article_id = ?
+        ORDER BY akl.relevance_score DESC
+        LIMIT 8
+      `).bind(article.id).all();
+
+      (article as any).keywords = keywordsResult.results || [];
+    }
+
+    return c.json({
+      articles: result.articles,
+      total: result.total,
+      limit,
+      offset,
+      hasMore: offset + limit < result.total,
+      isPersonalized: result.isPersonalized,
+    });
+  } catch (error) {
+    console.error("Error fetching personalized feed:", error);
+    return c.json({ error: "Failed to fetch personalized feed" }, 500);
+  }
+});
+
+// Get feed explanation - why articles are recommended
+app.get("/api/feeds/personalized/explain", async (c) => {
+  try {
+    const userId = c.req.header("x-user-id") || c.req.header("x-session-id");
+
+    if (!userId) {
+      return c.json({
+        isPersonalized: false,
+        message: "Sign in to get personalized recommendations",
+        sources: [],
+        authors: [],
+        categories: [],
+        topInterests: [],
+      });
+    }
+
+    const feedService = new PersonalizedFeedService(c.env.DB);
+    const explanation = await feedService.getFeedExplanation(userId);
+
+    return c.json({
+      isPersonalized: true,
+      ...explanation,
+    });
+  } catch (error) {
+    console.error("Error getting feed explanation:", error);
+    return c.json({ error: "Failed to get feed explanation" }, 500);
   }
 });
 
