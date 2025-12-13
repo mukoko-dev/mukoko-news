@@ -226,16 +226,16 @@ export const paperTheme = {
     },
 
     // Glass effect colors - purple-tinted glassmorphism (primary)
-    glass: 'rgba(94, 87, 114, 0.06)',  // Light purple glass overlay
-    glassBorder: 'rgba(94, 87, 114, 0.12)',  // Glass border
-    glassCard: 'rgba(255, 255, 255, 0.75)',  // Card glass background
-    glassSurface: 'rgba(249, 248, 250, 0.85)',  // Surface glass
+    glass: 'rgba(94, 87, 114, 0.10)',  // Light purple glass overlay - increased intensity
+    glassBorder: 'rgba(94, 87, 114, 0.18)',  // Glass border - more visible
+    glassCard: 'rgba(255, 255, 255, 0.82)',  // Card glass background - more frosted
+    glassSurface: 'rgba(249, 248, 250, 0.88)',  // Surface glass
 
     // Glass effect colors - accent-tinted glassmorphism (terracotta)
-    glassAccent: 'rgba(212, 99, 74, 0.06)',  // Light terracotta glass overlay
-    glassAccentBorder: 'rgba(212, 99, 74, 0.15)',  // Terracotta glass border
-    glassAccentCard: 'rgba(255, 250, 248, 0.8)',  // Warm-tinted card glass
-    glassAccentSurface: 'rgba(252, 248, 244, 0.85)',  // Warm surface glass
+    glassAccent: 'rgba(212, 99, 74, 0.10)',  // Light terracotta glass overlay - increased
+    glassAccentBorder: 'rgba(212, 99, 74, 0.20)',  // Terracotta glass border - more visible
+    glassAccentCard: 'rgba(255, 250, 248, 0.85)',  // Warm-tinted card glass
+    glassAccentSurface: 'rgba(252, 248, 244, 0.88)',  // Warm surface glass
   },
 
   fonts: {
@@ -413,16 +413,16 @@ export const paperThemeDark = {
     },
 
     // Glass effect colors - purple-tinted glassmorphism for dark mode (primary)
-    glass: 'rgba(138, 127, 160, 0.12)',  // Purple glass overlay
-    glassBorder: 'rgba(138, 127, 160, 0.2)',  // Glass border with purple tint
-    glassCard: 'rgba(45, 42, 55, 0.85)',  // Card glass - purple-tinted dark
-    glassSurface: 'rgba(35, 32, 42, 0.9)',  // Surface glass - purple-tinted
+    glass: 'rgba(138, 127, 160, 0.18)',  // Purple glass overlay - more intense
+    glassBorder: 'rgba(138, 127, 160, 0.28)',  // Glass border with purple tint - more visible
+    glassCard: 'rgba(45, 42, 58, 0.92)',  // Card glass - purple-tinted dark, more frosted
+    glassSurface: 'rgba(35, 32, 45, 0.94)',  // Surface glass - purple-tinted
 
     // Glass effect colors - accent-tinted glassmorphism for dark mode (terracotta)
-    glassAccent: 'rgba(232, 138, 117, 0.12)',  // Terracotta glass overlay
-    glassAccentBorder: 'rgba(232, 138, 117, 0.2)',  // Terracotta glass border
-    glassAccentCard: 'rgba(55, 42, 40, 0.85)',  // Warm-tinted dark card glass
-    glassAccentSurface: 'rgba(45, 35, 32, 0.9)',  // Warm dark surface glass
+    glassAccent: 'rgba(232, 138, 117, 0.18)',  // Terracotta glass overlay - more intense
+    glassAccentBorder: 'rgba(232, 138, 117, 0.28)',  // Terracotta glass border - more visible
+    glassAccentCard: 'rgba(55, 42, 42, 0.92)',  // Warm-tinted dark card glass
+    glassAccentSurface: 'rgba(45, 35, 35, 0.94)',  // Warm dark surface glass
   },
 
   fonts: paperTheme.fonts, // Use same font configuration

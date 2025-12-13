@@ -53,7 +53,7 @@ export default function CategoryChips({
   selectedCategory = null,
   onCategoryPress,
   showAll = true,
-  showCounts = false,
+  showCounts = true,  // Default to true to show count badges like old Harare Metro
   showEmojis = true,
   style,
 }) {
@@ -123,18 +123,24 @@ export default function CategoryChips({
               >
                 {category.name}
               </Text>
-              {showCounts && category.article_count > 0 && (
+              {showCounts && (category.article_count > 0 || category.count > 0) && (
                 <View style={[
                   styles.countBadge,
-                  { backgroundColor: paperTheme.colors.glass },
-                  selected && { backgroundColor: 'rgba(255,255,255,0.25)' }
+                  {
+                    backgroundColor: selected
+                      ? 'rgba(255,255,255,0.25)'
+                      : paperTheme.colors.glass || 'rgba(94, 87, 114, 0.12)',
+                    borderWidth: 1,
+                    borderColor: selected
+                      ? 'rgba(255,255,255,0.15)'
+                      : paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.15)',
+                  }
                 ]}>
                   <Text style={[
                     styles.countText,
-                    { color: paperTheme.colors.onSurfaceVariant },
-                    selected && { color: paperTheme.colors.onPrimary }
+                    { color: selected ? paperTheme.colors.onPrimary : paperTheme.colors.onSurfaceVariant }
                   ]}>
-                    {category.article_count > 99 ? '99+' : category.article_count}
+                    {(category.article_count || category.count) > 99 ? '99+' : (category.article_count || category.count)}
                   </Text>
                 </View>
               )}
@@ -263,24 +269,18 @@ const styles = StyleSheet.create({
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
   countBadge: {
-    marginLeft: mukokoTheme.spacing.xs / 2,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    paddingHorizontal: mukokoTheme.spacing.xs,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
+    marginLeft: mukokoTheme.spacing.xs,
+    paddingHorizontal: mukokoTheme.spacing.sm,
+    paddingVertical: 3,
+    borderRadius: 12,
+    minWidth: 24,
     alignItems: 'center',
-  },
-  countBadgeSelected: {
-    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
   },
   countText: {
-    fontSize: 10,
+    fontSize: 11,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-  countTextSelected: {
-    color: mukokoTheme.colors.onPrimary,
+    textAlign: 'center',
   },
 
   // ============ PILLS (Wrap Layout) ============

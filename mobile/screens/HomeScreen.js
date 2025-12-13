@@ -198,7 +198,6 @@ export default function HomeScreen({ navigation }) {
         selectedCategory={selectedCategory}
         onCategoryPress={handleCategoryPress}
         showAll={true}
-        showCounts={false}
       />
 
       {/* Articles Feed */}
