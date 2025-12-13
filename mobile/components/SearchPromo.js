@@ -1,7 +1,7 @@
 /**
  * SearchPromo Component
  * Promotes the search functionality with suggested queries
- * Can be placed on Home, Discover, or other screens
+ * Uses PRIMARY color tint for unique search identity
  */
 
 import React from 'react';
@@ -11,7 +11,7 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { Text } from 'react-native-paper';
+import { Text, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import mukokoTheme from '../theme';
@@ -28,6 +28,7 @@ const SUGGESTED_QUERIES = [
 
 /**
  * SearchPromo - Promotes search functionality
+ * Uses PRIMARY (purple) color for unique search identity
  *
  * @param {string} variant - 'full' | 'compact' | 'minimal'
  * @param {Function} onSearchPress - Optional callback when search is pressed
@@ -40,6 +41,16 @@ export default function SearchPromo({
   style,
 }) {
   const navigation = useNavigation();
+  const paperTheme = usePaperTheme();
+  const isDark = paperTheme.dark;
+
+  // Primary-tinted glass colors for search identity (purple)
+  const primaryGlass = {
+    background: paperTheme.colors.glassCard || paperTheme.colors.surface,
+    border: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+    chip: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.08)',
+    chipBorder: paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
+  };
 
   const handleSearchPress = (query = '') => {
     if (onSearchPress) {
@@ -53,16 +64,26 @@ export default function SearchPromo({
   if (variant === 'minimal') {
     return (
       <TouchableOpacity
-        style={[styles.minimalContainer, style]}
+        style={[
+          styles.minimalContainer,
+          {
+            backgroundColor: primaryGlass.chip,
+            borderWidth: 1,
+            borderColor: primaryGlass.chipBorder,
+          },
+          style
+        ]}
         onPress={() => handleSearchPress()}
         activeOpacity={0.7}
       >
         <MaterialCommunityIcons
           name="magnify"
           size={20}
-          color={mukokoTheme.colors.onSurfaceVariant}
+          color={paperTheme.colors.primary}
         />
-        <Text style={styles.minimalText}>Search for news...</Text>
+        <Text style={[styles.minimalText, { color: paperTheme.colors.onSurfaceVariant }]}>
+          Search for news...
+        </Text>
       </TouchableOpacity>
     );
   }
@@ -72,16 +93,25 @@ export default function SearchPromo({
     return (
       <View style={[styles.compactContainer, style]}>
         <TouchableOpacity
-          style={styles.compactSearchBar}
+          style={[
+            styles.compactSearchBar,
+            {
+              backgroundColor: primaryGlass.chip,
+              borderWidth: 1,
+              borderColor: primaryGlass.chipBorder,
+            }
+          ]}
           onPress={() => handleSearchPress()}
           activeOpacity={0.7}
         >
           <MaterialCommunityIcons
             name="magnify"
             size={20}
-            color={mukokoTheme.colors.onSurfaceVariant}
+            color={paperTheme.colors.primary}
           />
-          <Text style={styles.compactSearchText}>Search news</Text>
+          <Text style={[styles.compactSearchText, { color: paperTheme.colors.onSurfaceVariant }]}>
+            Search news
+          </Text>
         </TouchableOpacity>
         <ScrollView
           horizontal
@@ -91,11 +121,20 @@ export default function SearchPromo({
           {queries.slice(0, 4).map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.compactChip}
+              style={[
+                styles.compactChip,
+                {
+                  backgroundColor: primaryGlass.chip,
+                  borderWidth: 1,
+                  borderColor: primaryGlass.chipBorder,
+                }
+              ]}
               onPress={() => handleSearchPress(item.query)}
               activeOpacity={0.7}
             >
-              <Text style={styles.compactChipText}>{item.query}</Text>
+              <Text style={[styles.compactChipText, { color: paperTheme.colors.onSurface }]}>
+                {item.query}
+              </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -105,22 +144,32 @@ export default function SearchPromo({
 
   // Full variant - promotional card with header and suggestions
   return (
-    <View style={[styles.container, style]}>
+    <View style={[
+      styles.container,
+      {
+        backgroundColor: primaryGlass.background,
+        borderWidth: 1,
+        borderColor: primaryGlass.border,
+      },
+      style
+    ]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.badge}>
+        <View style={[styles.badge, { backgroundColor: primaryGlass.chip }]}>
           <MaterialCommunityIcons
             name="star-four-points"
             size={14}
-            color={mukokoTheme.colors.accent}
+            color={paperTheme.colors.primary}
           />
-          <Text style={styles.badgeText}>DISCOVER</Text>
+          <Text style={[styles.badgeText, { color: paperTheme.colors.primary }]}>SEARCH</Text>
         </View>
       </View>
 
       {/* Title */}
-      <Text style={styles.title}>Find what matters to you</Text>
-      <Text style={styles.subtitle}>
+      <Text style={[styles.title, { color: paperTheme.colors.onSurface }]}>
+        Find what matters to you
+      </Text>
+      <Text style={[styles.subtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
         Search for topics, sources, or keywords
       </Text>
 
@@ -129,31 +178,40 @@ export default function SearchPromo({
         {queries.map((item, index) => (
           <TouchableOpacity
             key={index}
-            style={styles.suggestionChip}
+            style={[
+              styles.suggestionChip,
+              {
+                backgroundColor: primaryGlass.chip,
+                borderWidth: 1,
+                borderColor: primaryGlass.chipBorder,
+              }
+            ]}
             onPress={() => handleSearchPress(item.query)}
             activeOpacity={0.7}
           >
             <MaterialCommunityIcons
               name={item.icon}
               size={18}
-              color={mukokoTheme.colors.accent}
+              color={paperTheme.colors.primary}
             />
-            <Text style={styles.suggestionText}>{item.query}</Text>
+            <Text style={[styles.suggestionText, { color: paperTheme.colors.onSurface }]}>
+              {item.query}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* CTA */}
+      {/* CTA - Uses primary color */}
       <TouchableOpacity
-        style={styles.ctaButton}
+        style={[styles.ctaButton, { backgroundColor: paperTheme.colors.primary }]}
         onPress={() => handleSearchPress()}
         activeOpacity={0.7}
       >
-        <Text style={styles.ctaText}>Open Search</Text>
+        <Text style={[styles.ctaText, { color: paperTheme.colors.onPrimary }]}>Open Search</Text>
         <MaterialCommunityIcons
           name="arrow-right"
           size={18}
-          color={mukokoTheme.colors.onPrimary}
+          color={paperTheme.colors.onPrimary}
         />
       </TouchableOpacity>
     </View>
@@ -163,7 +221,6 @@ export default function SearchPromo({
 const styles = StyleSheet.create({
   // ============ FULL VARIANT ============
   container: {
-    backgroundColor: mukokoTheme.colors.surface,
     borderRadius: 16,
     padding: mukokoTheme.spacing.lg,
     marginHorizontal: mukokoTheme.spacing.md,
@@ -177,7 +234,6 @@ const styles = StyleSheet.create({
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(212, 99, 74, 0.1)',
     paddingHorizontal: mukokoTheme.spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
@@ -186,19 +242,16 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 11,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    color: mukokoTheme.colors.accent,
     letterSpacing: 0.5,
   },
   title: {
     fontSize: 22,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    color: mukokoTheme.colors.onSurface,
     marginBottom: mukokoTheme.spacing.xs,
   },
   subtitle: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
     marginBottom: mukokoTheme.spacing.md,
   },
   suggestionsGrid: {
@@ -210,7 +263,6 @@ const styles = StyleSheet.create({
   suggestionChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.sm,
     borderRadius: 20,
@@ -219,13 +271,11 @@ const styles = StyleSheet.create({
   suggestionText: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurface,
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: mukokoTheme.colors.primary,
     paddingVertical: mukokoTheme.spacing.sm,
     paddingHorizontal: mukokoTheme.spacing.lg,
     borderRadius: 24,
@@ -235,7 +285,6 @@ const styles = StyleSheet.create({
   ctaText: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    color: mukokoTheme.colors.onPrimary,
   },
 
   // ============ COMPACT VARIANT ============
@@ -247,7 +296,6 @@ const styles = StyleSheet.create({
   compactSearchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.sm,
     borderRadius: 24,
@@ -256,14 +304,12 @@ const styles = StyleSheet.create({
   compactSearchText: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
   },
   compactSuggestions: {
     flexDirection: 'row',
     gap: mukokoTheme.spacing.xs,
   },
   compactChip: {
-    backgroundColor: 'rgba(0, 0, 0, 0.04)',
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.xs,
     borderRadius: 16,
@@ -271,14 +317,12 @@ const styles = StyleSheet.create({
   compactChipText: {
     fontSize: 13,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
   },
 
   // ============ MINIMAL VARIANT ============
   minimalContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.06)',
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.sm,
     borderRadius: 24,
@@ -288,6 +332,5 @@ const styles = StyleSheet.create({
   minimalText: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    color: mukokoTheme.colors.onSurfaceVariant,
   },
 });
