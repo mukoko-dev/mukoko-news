@@ -10,9 +10,11 @@ import {
 import {
   Text,
   ActivityIndicator,
+  useTheme as usePaperTheme,
 } from 'react-native-paper';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import CategoryChips from '../components/CategoryChips';
 import ArticleCard from '../components/ArticleCard';
 import { useAuth } from '../contexts/AuthContext';
@@ -34,6 +36,8 @@ const getColumnCount = (screenWidth) => {
  */
 export default function DiscoverScreen({ navigation }) {
   const { isAuthenticated } = useAuth();
+  const { isDark } = useTheme();
+  const paperTheme = usePaperTheme();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -128,8 +132,27 @@ export default function DiscoverScreen({ navigation }) {
   const featuredArticle = articles[0];
   const gridArticles = articles.slice(1);
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: paperTheme.colors.background,
+    },
+    loadingText: {
+      color: paperTheme.colors.onSurfaceVariant,
+    },
+    sectionTitle: {
+      color: paperTheme.colors.onSurface,
+    },
+    emptyTitle: {
+      color: paperTheme.colors.onSurface,
+    },
+    emptyMessage: {
+      color: paperTheme.colors.onSurfaceVariant,
+    },
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       {/* Category Filter Bar */}
       <CategoryChips
         categories={categories}
@@ -142,8 +165,8 @@ export default function DiscoverScreen({ navigation }) {
       {/* Loading State */}
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={mukokoTheme.colors.primary} />
-          <Text style={styles.loadingText}>Discovering trending news...</Text>
+          <ActivityIndicator size="large" color={paperTheme.colors.primary} />
+          <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Discovering trending news...</Text>
         </View>
       )}
 
@@ -157,8 +180,8 @@ export default function DiscoverScreen({ navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[mukokoTheme.colors.primary]}
-              tintColor={mukokoTheme.colors.primary}
+              colors={[paperTheme.colors.primary]}
+              tintColor={paperTheme.colors.primary}
             />
           }
         >
@@ -173,7 +196,7 @@ export default function DiscoverScreen({ navigation }) {
 
           {/* Section Title */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>
+            <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
               {selectedCategory ? `${selectedCategory}` : 'Latest Stories'}
             </Text>
           </View>
@@ -201,8 +224,8 @@ export default function DiscoverScreen({ navigation }) {
       {!loading && articles.length === 0 && (
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyEmoji}>🔍</Text>
-          <Text style={styles.emptyTitle}>No Articles Found</Text>
-          <Text style={styles.emptyMessage}>
+          <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>No Articles Found</Text>
+          <Text style={[styles.emptyMessage, dynamicStyles.emptyMessage]}>
             Try selecting a different category or pull to refresh.
           </Text>
         </View>
