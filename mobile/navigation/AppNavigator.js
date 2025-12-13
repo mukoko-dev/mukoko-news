@@ -7,6 +7,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { useTheme as usePaperTheme } from 'react-native-paper';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
 import AppHeader from '../components/AppHeader';
 import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
@@ -24,6 +25,15 @@ import ArticleDetailScreen from '../screens/ArticleDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import InsightsScreen from '../screens/InsightsScreen';
+
+// Admin Screens
+import {
+  AdminDashboardScreen,
+  AdminUsersScreen,
+  AdminSourcesScreen,
+  AdminAnalyticsScreen,
+  AdminSystemScreen,
+} from '../screens/admin';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -103,12 +113,30 @@ function ProfileStack() {
   );
 }
 
-// Main Tab Navigator - 5 Tabs (Modern Mobile Pattern)
-// Pattern: Home, Discover, Bytes (Center/Featured), Search, Profile
+// Admin Stack (protected - only visible to admins)
+function AdminStack() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
+      <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+      <Stack.Screen name="AdminSources" component={AdminSourcesScreen} />
+      <Stack.Screen name="AdminAnalytics" component={AdminAnalyticsScreen} />
+      <Stack.Screen name="AdminSystem" component={AdminSystemScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// Main Tab Navigator - 5 Tabs (Modern Mobile Pattern) + Admin tab for admins
+// Pattern: Home, Discover, Bytes (Center/Featured), Search, Profile, [Admin]
 function MainTabs() {
   const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
   const { isDark } = useTheme();
   const paperTheme = usePaperTheme();
+  const { isAdmin } = useAuth();
 
   useEffect(() => {
     const updateLayout = () => {
@@ -246,6 +274,24 @@ function MainTabs() {
           ),
         }}
       />
+
+      {/* 6. Admin Tab (only for admins) */}
+      {isAdmin && (
+        <Tab.Screen
+          name="Admin"
+          component={AdminStack}
+          options={{
+            tabBarLabel: 'Admin',
+            tabBarIcon: ({ color, focused }) => (
+              <MaterialCommunityIcons
+                name={focused ? 'shield-crown' : 'shield-crown-outline'}
+                size={24}
+                color={focused ? mukokoTheme.colors.accent : color}
+              />
+            ),
+          }}
+        />
+      )}
     </Tab.Navigator>
   );
 }

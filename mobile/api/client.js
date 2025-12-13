@@ -573,6 +573,153 @@ export const search = {
   },
 };
 
+/**
+ * Admin API - Protected routes requiring admin role
+ */
+export const admin = {
+  /**
+   * Get admin dashboard stats
+   */
+  async getStats() {
+    return apiRequest('/api/admin/stats');
+  },
+
+  /**
+   * Get all users (paginated)
+   */
+  async getUsers({ search, role, status, limit = 20, offset = 0 } = {}) {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (role) params.append('role', role);
+    if (status) params.append('status', status);
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    return apiRequest(`/api/admin/users?${params.toString()}`);
+  },
+
+  /**
+   * Get user statistics
+   */
+  async getUserStats() {
+    return apiRequest('/api/admin/user-stats');
+  },
+
+  /**
+   * Update user role
+   */
+  async updateUserRole(userId, role) {
+    return apiRequest(`/api/admin/users/${userId}/role`, {
+      method: 'PUT',
+      body: JSON.stringify({ role }),
+    });
+  },
+
+  /**
+   * Update user status
+   */
+  async updateUserStatus(userId, status) {
+    return apiRequest(`/api/admin/users/${userId}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    });
+  },
+
+  /**
+   * Delete user
+   */
+  async deleteUser(userId) {
+    return apiRequest(`/api/admin/users/${userId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Get news sources
+   */
+  async getSources() {
+    return apiRequest('/api/admin/sources');
+  },
+
+  /**
+   * Update RSS source
+   */
+  async updateSource(sourceId, data) {
+    return apiRequest(`/api/admin/rss-source/${sourceId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * Add Zimbabwe news sources
+   */
+  async addZimbabweSources() {
+    return apiRequest('/api/admin/add-zimbabwe-sources', {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Refresh RSS feeds
+   */
+  async refreshRSS() {
+    return apiRequest('/api/refresh-rss', {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Bulk pull articles
+   */
+  async bulkPull() {
+    return apiRequest('/api/admin/bulk-pull', {
+      method: 'POST',
+    });
+  },
+
+  /**
+   * Get analytics
+   */
+  async getAnalytics() {
+    return apiRequest('/api/admin/analytics');
+  },
+
+  /**
+   * Get content quality metrics
+   */
+  async getContentQuality() {
+    return apiRequest('/api/admin/content-quality');
+  },
+
+  /**
+   * Get category insights
+   */
+  async getCategoryInsights(days = 7) {
+    return apiRequest(`/api/admin/category-insights?days=${days}`);
+  },
+
+  /**
+   * Get system health
+   */
+  async getSystemHealth() {
+    return apiRequest('/api/admin/observability/health');
+  },
+
+  /**
+   * Get cron logs
+   */
+  async getCronLogs() {
+    return apiRequest('/api/admin/cron-logs');
+  },
+
+  /**
+   * Get AI pipeline status
+   */
+  async getAIPipelineStatus() {
+    return apiRequest('/api/admin/ai-pipeline-status');
+  },
+};
+
 export default {
   auth,
   articles,
@@ -584,4 +731,5 @@ export default {
   health,
   insights,
   search,
+  admin,
 };
