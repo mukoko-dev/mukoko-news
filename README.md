@@ -11,7 +11,7 @@ A mobile-first news aggregation platform built for Zimbabweans, bringing togethe
 ## Live Deployment
 
 - **Mobile App (Web)**: [mukoko-news.vercel.app](https://mukoko-news.vercel.app)
-- **Backend API**: [news-worker.mukoko.com](https://news-worker.mukoko.com)
+- **Backend API**: [mukoko-news-backend.nyuchi.workers.dev](https://mukoko-news-backend.nyuchi.workers.dev)
 
 ## What's New (December 2025)
 
@@ -66,7 +66,7 @@ A mobile-first news aggregation platform built for Zimbabweans, bringing togethe
                       ↓
 ┌─────────────────────────────────────────────┐
 │      Backend Worker (Cloudflare)            │
-│        news-worker.mukoko.com               │
+│  mukoko-news-backend.nyuchi.workers.dev     │
 │  • RSS feed aggregation                     │
 │  • AI content processing                    │
 │  • User authentication                      │
