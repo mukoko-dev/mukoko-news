@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
 import { Text, Button, Surface, Avatar, SegmentedButtons, ActivityIndicator, Icon } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mukokoTheme } from '../theme';
-
-const AUTH_TOKEN_KEY = '@mukoko_auth_token';
+import { user as userAPI, auth } from '../api/client';
 
 export default function UserProfileScreen({ navigation, route }) {
   const { username } = route.params;
@@ -29,49 +27,25 @@ export default function UserProfileScreen({ navigation, route }) {
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-
       // Fetch user profile
-      const profileResponse = await fetch(
-        `https://admin.hararemetro.co.zw/api/user/${username}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
-      );
+      const profileResult = await userAPI.getPublicProfile(username);
 
-      if (!profileResponse.ok) {
+      if (profileResult.error) {
         throw new Error('User not found');
       }
 
-      const profileData = await profileResponse.json();
-      setProfile(profileData);
+      setProfile(profileResult.data);
 
       // Fetch user stats
-      const statsResponse = await fetch(
-        `https://admin.hararemetro.co.zw/api/user/${username}/stats`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
-      );
-
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setStats(statsData);
+      const statsResult = await userAPI.getPublicStats(username);
+      if (!statsResult.error) {
+        setStats(statsResult.data);
       }
 
       // Check if viewing own profile
-      if (token) {
-        const sessionResponse = await fetch(
-          'https://admin.hararemetro.co.zw/api/auth/session',
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        if (sessionResponse.ok) {
-          const { user } = await sessionResponse.json();
-          setIsOwnProfile(user && user.username === username);
-        }
+      const sessionResult = await auth.getSession();
+      if (!sessionResult.error && sessionResult.data?.user) {
+        setIsOwnProfile(sessionResult.data.user.username === username);
       }
     } catch (err) {
       console.error('Error loading profile:', err);
@@ -86,19 +60,10 @@ export default function UserProfileScreen({ navigation, route }) {
 
     setArticlesLoading(true);
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-      if (!token) return;
+      const result = await userAPI.getActivity(username, tab, 20);
 
-      const response = await fetch(
-        `https://admin.hararemetro.co.zw/api/user/${username}/${tab}?limit=20`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setArticles(data[tab] || data.history || []);
+      if (!result.error && result.data) {
+        setArticles(result.data[tab] || result.data.history || []);
       }
     } catch (err) {
       console.error('Error loading articles:', err);

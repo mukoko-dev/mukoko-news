@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, Surface, SegmentedButtons, Avatar, Icon, Switch, useTheme as usePaperTheme } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mukokoTheme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-
-const AUTH_TOKEN_KEY = '@mukoko_auth_token';
+import { user as userAPI } from '../api/client';
 
 export default function ProfileSettingsScreen({ navigation }) {
   const { isDark, toggleTheme } = useTheme();
@@ -31,28 +29,14 @@ export default function ProfileSettingsScreen({ navigation }) {
 
   const loadProfile = async () => {
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      const result = await userAPI.getProfile();
 
-      if (!token) {
+      if (result.error) {
         navigation.navigate('Login');
         return;
       }
 
-      const response = await fetch(
-        'https://admin.hararemetro.co.zw/api/user/me/profile',
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        navigation.navigate('Login');
-        return;
-      }
-
-      const profileData = await response.json();
+      const profileData = result.data;
       setProfile(profileData);
       setDisplayName(profileData.displayName || profileData.display_name || '');
       setBio(profileData.bio || '');
@@ -69,35 +53,17 @@ export default function ProfileSettingsScreen({ navigation }) {
     setSuccess('');
 
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      const result = await userAPI.updateProfile({
+        displayName: displayName || undefined,
+        bio: bio || undefined,
+        avatarUrl: avatarUrl || undefined,
+      });
 
-      if (!token) {
-        setError('Not authenticated');
-        return;
-      }
-
-      const response = await fetch(
-        'https://admin.hararemetro.co.zw/api/user/me/profile',
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            displayName: displayName || undefined,
-            bio: bio || undefined,
-            avatarUrl: avatarUrl || undefined,
-          }),
-        }
-      );
-
-      if (response.ok) {
+      if (result.error) {
+        setError(result.error);
+      } else {
         setSuccess('Profile updated successfully');
         await loadProfile();
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to update profile');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -117,33 +83,14 @@ export default function ProfileSettingsScreen({ navigation }) {
     setSuccess('');
 
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      const result = await userAPI.updateUsername(newUsername);
 
-      if (!token) {
-        setError('Not authenticated');
-        return;
-      }
-
-      const response = await fetch(
-        'https://admin.hararemetro.co.zw/api/user/me/username',
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ username: newUsername }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
+      if (result.error) {
+        setError(result.error);
+      } else {
         setSuccess('Username updated successfully');
         setNewUsername('');
         await loadProfile();
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to update username');
       }
     } catch (err) {
       setError('Network error. Please try again.');

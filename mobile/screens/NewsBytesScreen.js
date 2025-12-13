@@ -126,7 +126,7 @@ export default function NewsBytesScreen({ navigation }) {
     }));
 
     try {
-      const result = await articlesAPI.like(byte.id);
+      const result = await articlesAPI.toggleLike(byte.id);
       if (result.error) {
         setBytesState(prev => ({
           ...prev,
@@ -159,7 +159,7 @@ export default function NewsBytesScreen({ navigation }) {
     }));
 
     try {
-      const result = await articlesAPI.save(byte.id);
+      const result = await articlesAPI.toggleBookmark(byte.id);
       if (result.error) {
         setBytesState(prev => ({
           ...prev,
