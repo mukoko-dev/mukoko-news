@@ -17,6 +17,58 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.0] - 2025-12-13
+
+### Added - Admin Dashboard Frontend
+
+- **Complete Admin Web App** - New React + Vite + TypeScript admin interface
+  - Separate frontend app in `admin/` directory
+  - Deployed to Vercel (admin.mukoko.com)
+  - Uses existing backend API endpoints
+
+- **Authentication System**
+  - Login page with email/password authentication
+  - Session-based auth with localStorage token storage
+  - Protected routes with automatic redirect
+  - AuthContext for global auth state management
+
+- **Dashboard Pages**
+  - **Dashboard** - Overview stats, quick actions, system status
+  - **Articles** - Article listing with pagination, category filters, RSS refresh
+  - **Users** - User management with role/status updates, search, delete
+  - **News Sources** - RSS source toggle, add Zimbabwe sources
+  - **Categories** - Category listing with article distribution chart
+  - **Analytics** - Engagement metrics, content quality, category performance
+  - **System Health** - Service status, AI pipeline, cron logs, alerts
+
+- **UI Components**
+  - Layout with sidebar navigation
+  - ErrorBoundary for error handling
+  - Toast notifications for feedback
+  - Loading spinners and page loaders
+  - Responsive tables with pagination
+
+- **Styling**
+  - Tailwind CSS with custom Mukoko brand colors
+  - Zimbabwe flag strip accent
+  - Consistent design system
+
+### Changed
+- Updated root `package.json` with admin scripts:
+  - `npm run admin` - Start admin dev server
+  - `npm run admin:build` - Build admin for production
+  - `npm run admin:deploy` - Deploy to Vercel
+  - `npm run install:admin` - Install admin dependencies
+
+### Technical
+- Vite for fast development and optimized builds
+- React Router DOM for client-side routing
+- TypeScript for type safety
+- Lazy loading for code splitting
+- Recharts ready for chart components
+
+---
+
 ## [0.8.0] - 2025-12-11
 
 ### Added - Mobile UI Improvements
