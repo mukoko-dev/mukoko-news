@@ -24,6 +24,7 @@ import * as Haptics from 'expo-haptics';
 import { newsBytes, articles as articlesAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
+import SourceIcon from '../components/SourceIcon';
 
 export default function NewsBytesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -266,6 +267,7 @@ export default function NewsBytesScreen({ navigation }) {
 
           {/* Source & Date */}
           <View style={styles.metaContainer}>
+            <SourceIcon source={item.source} size={18} showBorder={false} />
             <Text style={styles.sourceText}>{item.source}</Text>
             <Text style={styles.dotSeparator}>•</Text>
             <Text style={styles.dateText}>{formatDate(item.published_at)}</Text>
