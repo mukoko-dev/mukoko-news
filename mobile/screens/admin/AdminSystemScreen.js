@@ -15,12 +15,13 @@ import {
 } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
+import AdminHeader from '../../components/AdminHeader';
 
 /**
  * Admin System Screen
  * Monitor system health and manage cron jobs
  */
-export default function AdminSystemScreen() {
+export default function AdminSystemScreen({ navigation }) {
   const theme = useTheme();
   const { isAdmin } = useAuth();
   const [systemHealth, setSystemHealth] = useState(null);
@@ -131,20 +132,22 @@ export default function AdminSystemScreen() {
   }
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={[theme.colors.primary]}
-        />
-      }
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text variant="headlineSmall" style={styles.title}>System</Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <AdminHeader navigation={navigation} currentScreen="AdminSystem" />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+          />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text variant="headlineSmall" style={styles.title}>System</Text>
         <Text style={{ color: theme.colors.onSurfaceVariant }}>
           Health monitoring and operations
         </Text>
@@ -375,12 +378,16 @@ export default function AdminSystemScreen() {
           </Card>
         </>
       )}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollView: {
     flex: 1,
   },
   content: {

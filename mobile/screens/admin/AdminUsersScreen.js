@@ -21,6 +21,7 @@ import {
 } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
+import AdminHeader from '../../components/AdminHeader';
 
 const ROLES = ['creator', 'business-creator', 'moderator', 'admin', 'super_admin'];
 const STATUSES = ['active', 'suspended', 'deleted'];
@@ -29,7 +30,7 @@ const STATUSES = ['active', 'suspended', 'deleted'];
  * Admin Users Screen
  * Manage users, roles, and status
  */
-export default function AdminUsersScreen() {
+export default function AdminUsersScreen({ navigation }) {
   const theme = useTheme();
   const { isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
@@ -251,6 +252,7 @@ export default function AdminUsersScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <AdminHeader navigation={navigation} currentScreen="AdminUsers" />
       {/* Header */}
       <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.title}>Users</Text>

@@ -18,6 +18,7 @@ import {
 } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
+import AdminHeader from '../../components/AdminHeader';
 
 /**
  * Admin Dashboard Screen
@@ -161,19 +162,21 @@ export default function AdminDashboardScreen({ navigation }) {
   );
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={[theme.colors.primary]}
-        />
-      }
-    >
-      {/* Header */}
-      <View style={styles.header}>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <AdminHeader navigation={navigation} currentScreen="AdminDashboard" />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+          />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.title}>
           Admin Dashboard
         </Text>
@@ -282,12 +285,16 @@ export default function AdminDashboardScreen({ navigation }) {
           </View>
         </Card.Content>
       </Card>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollView: {
     flex: 1,
   },
   centered: {

@@ -15,6 +15,7 @@ import {
 } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
+import AdminHeader from '../../components/AdminHeader';
 
 const { width } = Dimensions.get('window');
 const isTablet = width >= 768;
@@ -23,7 +24,7 @@ const isTablet = width >= 768;
  * Admin Analytics Screen
  * View platform analytics and metrics
  */
-export default function AdminAnalyticsScreen() {
+export default function AdminAnalyticsScreen({ navigation }) {
   const theme = useTheme();
   const { isAdmin } = useAuth();
   const [analytics, setAnalytics] = useState(null);
@@ -132,20 +133,22 @@ export default function AdminAnalyticsScreen() {
     : 0;
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-          colors={[theme.colors.primary]}
-        />
-      }
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <Text variant="headlineSmall" style={styles.title}>Analytics</Text>
+    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <AdminHeader navigation={navigation} currentScreen="AdminAnalytics" />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.colors.primary]}
+          />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Text variant="headlineSmall" style={styles.title}>Analytics</Text>
         <Text style={{ color: theme.colors.onSurfaceVariant }}>
           Platform metrics and insights
         </Text>
@@ -281,12 +284,16 @@ export default function AdminAnalyticsScreen() {
           )}
         </Card.Content>
       </Card>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  scrollView: {
     flex: 1,
   },
   content: {

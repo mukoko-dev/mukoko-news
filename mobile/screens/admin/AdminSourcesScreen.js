@@ -15,12 +15,13 @@ import {
 } from 'react-native-paper';
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
+import AdminHeader from '../../components/AdminHeader';
 
 /**
  * Admin Sources Screen
  * Manage RSS news sources
  */
-export default function AdminSourcesScreen() {
+export default function AdminSourcesScreen({ navigation }) {
   const theme = useTheme();
   const { isAdmin } = useAuth();
   const [sources, setSources] = useState([]);
@@ -159,6 +160,7 @@ export default function AdminSourcesScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <AdminHeader navigation={navigation} currentScreen="AdminSources" />
       {/* Header */}
       <View style={styles.header}>
         <View>
