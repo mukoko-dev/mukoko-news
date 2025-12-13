@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
+import AdminScreenWrapper from '../../components/AdminScreenWrapper';
 
 /**
  * Admin Dashboard Screen
@@ -162,9 +163,10 @@ export default function AdminDashboardScreen({ navigation }) {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <AdminHeader navigation={navigation} currentScreen="AdminDashboard" />
-      <ScrollView
+    <AdminScreenWrapper>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <AdminHeader navigation={navigation} currentScreen="AdminDashboard" />
+        <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
         refreshControl={
@@ -285,8 +287,9 @@ export default function AdminDashboardScreen({ navigation }) {
           </View>
         </Card.Content>
       </Card>
-      </ScrollView>
-    </View>
+        </ScrollView>
+      </View>
+    </AdminScreenWrapper>
   );
 }
 

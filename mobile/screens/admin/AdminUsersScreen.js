@@ -22,6 +22,7 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
+import AdminScreenWrapper from '../../components/AdminScreenWrapper';
 
 const ROLES = ['creator', 'business-creator', 'moderator', 'admin', 'super_admin'];
 const STATUSES = ['active', 'suspended', 'deleted'];
@@ -251,9 +252,10 @@ export default function AdminUsersScreen({ navigation }) {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-      <AdminHeader navigation={navigation} currentScreen="AdminUsers" />
-      {/* Header */}
+    <AdminScreenWrapper>
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <AdminHeader navigation={navigation} currentScreen="AdminUsers" />
+        {/* Header */}
       <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.title}>Users</Text>
         <Text style={{ color: theme.colors.onSurfaceVariant }}>
@@ -345,7 +347,8 @@ export default function AdminUsersScreen({ navigation }) {
           }
         />
       )}
-    </View>
+      </View>
+    </AdminScreenWrapper>
   );
 }
 
