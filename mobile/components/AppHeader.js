@@ -6,24 +6,31 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import mukokoTheme from '../theme';
 import Logo from './Logo';
 
-// Check if running on web platform
-const isWeb = Platform.OS === 'web';
-
-// Log platform for debugging
-console.log('[AppHeader] Platform.OS:', Platform.OS, 'isWeb:', isWeb);
-
 export default function AppHeader() {
   const [menuVisible, setMenuVisible] = useState(false);
   // On web, always show header icons (no bottom tab bar on web)
   // On native mobile, hide icons (use bottom tab bar) unless tablet/desktop (768px+)
-  // Default to true on web to ensure icons show immediately
-  const [showHeaderActions, setShowHeaderActions] = useState(true);
+  // Default to showing icons - web users need them, native will update via effect
+  const [showHeaderActions, setShowHeaderActions] = useState(Platform.OS === 'web');
+
+  // Get navigation - may be undefined if outside navigation context
+  let navigation = null;
+  let routeName = null;
+
+  try {
+    navigation = useNavigation();
+    const route = useRoute();
+    routeName = route?.name;
+  } catch (e) {
+    // Navigation context not available - that's ok, we can still render
+  }
 
   useEffect(() => {
     const updateLayout = () => {
       const { width } = Dimensions.get('window');
-      // On web: always show icons
-      // On native: show only if tablet/desktop width
+      // On web: always show icons (no bottom tab bar)
+      // On native: show only if tablet/desktop width (768px+)
+      const isWeb = Platform.OS === 'web';
       setShowHeaderActions(isWeb || width >= 768);
     };
 
@@ -32,34 +39,55 @@ export default function AppHeader() {
     return () => subscription?.remove();
   }, []);
 
-  try {
-    const navigation = useNavigation();
-    const route = useRoute();
+  // Don't show header on NewsBytes screen (full-screen experience)
+  if (routeName === 'BytesFeed' || routeName === 'Bytes') {
+    return null;
+  }
 
-    // Don't show header on NewsBytes screen (full-screen experience)
-    if (route.name === 'BytesFeed' || route.name === 'Bytes') {
-      return null;
-    }
+  // Screen title mapping
+  const getScreenTitle = (route) => {
+    const titles = {
+      Home: null, // Show logo instead
+      Discover: 'Discover',
+      Search: 'Search',
+      Profile: 'Profile',
+      ArticleDetail: 'Article',
+      Login: 'Sign In',
+      Register: 'Create Account',
+      ForgotPassword: 'Reset Password',
+      Settings: 'Settings',
+      UserProfile: 'Profile',
+    };
+    return titles[route] ?? null;
+  };
 
-    const handleSearchPress = () => {
+  const screenTitle = getScreenTitle(routeName);
+  const showLogo = !screenTitle; // Show logo when no title (Home screen)
+
+  const handleSearchPress = () => {
+    if (navigation) {
       try {
         navigation.navigate('Search');
         setMenuVisible(false);
       } catch (e) {
         console.log('Navigation to Search not available');
       }
-    };
+    }
+  };
 
-    const handleProfilePress = () => {
+  const handleProfilePress = () => {
+    if (navigation) {
       try {
         navigation.navigate('Profile');
         setMenuVisible(false);
       } catch (e) {
         console.log('Navigation to Profile not available');
       }
-    };
+    }
+  };
 
-    const handleTrendingPress = () => {
+  const handleTrendingPress = () => {
+    if (navigation) {
       try {
         // Navigate to Discover screen which shows trending content
         navigation.navigate('Discover');
@@ -67,26 +95,29 @@ export default function AppHeader() {
       } catch (e) {
         console.log('Navigation to Discover not available');
       }
-    };
+    }
+  };
 
-    const handleNavigate = (screenName) => {
+  const handleNavigate = (screenName) => {
+    if (navigation) {
       try {
         navigation.navigate(screenName);
         setMenuVisible(false);
       } catch (e) {
         console.log(`Navigation to ${screenName} not available`);
       }
-    };
+    }
+  };
 
-    const menuItems = [
-      { label: 'Home', icon: 'home', screen: 'Home' },
-      { label: 'Discover', icon: 'compass', screen: 'Discover' },
-      { label: 'NewsBytes', icon: 'play-circle', screen: 'Bytes' },
-      { label: 'Search', icon: 'magnify', screen: 'Search' },
-      { label: 'Profile', icon: 'account-circle', screen: 'Profile' },
-    ];
+  const menuItems = [
+    { label: 'Home', icon: 'home', screen: 'Home' },
+    { label: 'Discover', icon: 'compass', screen: 'Discover' },
+    { label: 'NewsBytes', icon: 'play-circle', screen: 'Bytes' },
+    { label: 'Search', icon: 'magnify', screen: 'Search' },
+    { label: 'Profile', icon: 'account-circle', screen: 'Profile' },
+  ];
 
-    return (
+  return (
       <>
         <View style={styles.header}>
           {/* Hamburger Menu Button - Web/Tablet/Desktop Only */}
@@ -104,13 +135,17 @@ export default function AppHeader() {
             </TouchableOpacity>
           )}
 
-          {/* Logo - clickable to go home */}
+          {/* Logo or Screen Title */}
           <TouchableOpacity
             style={styles.logoContainer}
             onPress={() => handleNavigate('Home')}
             activeOpacity={0.7}
           >
-            <Logo size="sm" theme="dark" />
+            {showLogo ? (
+              <Logo size="sm" theme="dark" />
+            ) : (
+              <Text style={styles.screenTitle}>{screenTitle}</Text>
+            )}
           </TouchableOpacity>
 
           {/* Spacer - pushes logo to center on mobile, actions to right on desktop */}
@@ -214,18 +249,8 @@ export default function AppHeader() {
             </TouchableOpacity>
           </Modal>
         )}
-      </>
-    );
-  } catch (error) {
-    // If navigation context is not available, return a simple header
-    return (
-      <View style={styles.header}>
-        <View style={styles.logoContainer}>
-          <Logo size="sm" />
-        </View>
-      </View>
-    );
-  }
+    </>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -245,6 +270,12 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  screenTitle: {
+    fontSize: 18,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    color: mukokoTheme.colors.onSurface,
+    letterSpacing: -0.3,
   },
   spacer: {
     flex: 1,

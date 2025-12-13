@@ -174,11 +174,17 @@ export const auth = {
 export const articles = {
   /**
    * Get article feed
+   * @param {Object} options
+   * @param {number} options.limit - Number of articles to fetch
+   * @param {number} options.offset - Offset for pagination
+   * @param {string|null} options.category - Category filter
+   * @param {string} options.sort - Sort order: 'latest', 'trending', 'popular'
    */
-  async getFeed({ limit = 20, offset = 0, category = null } = {}) {
+  async getFeed({ limit = 20, offset = 0, category = null, sort = 'latest' } = {}) {
     const params = new URLSearchParams({
       limit: limit.toString(),
       offset: offset.toString(),
+      sort: sort,
     });
 
     if (category) {
