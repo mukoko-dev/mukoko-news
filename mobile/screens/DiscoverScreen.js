@@ -17,6 +17,7 @@ import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import CategoryChips from '../components/CategoryChips';
 import ArticleCard from '../components/ArticleCard';
+import InsightsPromo from '../components/InsightsPromo';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI, categories as categoriesAPI } from '../api/client';
 
@@ -224,6 +225,18 @@ export default function DiscoverScreen({ navigation }) {
               />
             )}
 
+            {/* Insights Promo */}
+            <InsightsPromo
+              variant="compact"
+              metrics={{
+                articles: articles.length,
+                sources: categories.length,
+                categories: categories.length,
+                lastUpdated: 'Just now',
+              }}
+              style={styles.insightsPromo}
+            />
+
             {/* Section Title */}
             <View style={styles.sectionHeader}>
               <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
@@ -270,6 +283,12 @@ const styles = StyleSheet.create({
   scrollContentCentered: {
     justifyContent: 'center',
     alignItems: 'center',
+  },
+
+  // Insights Promo
+  insightsPromo: {
+    marginVertical: mukokoTheme.spacing.md,
+    marginHorizontal: 0,
   },
 
   // Section Header

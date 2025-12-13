@@ -178,13 +178,13 @@ export const paperTheme = {
     tertiary: mukokoTheme.colors.accent,
     tertiaryContainer: mukokoTheme.colors.accentContainer,
 
-    // Glass surfaces with subtle purple tinge
-    surface: 'rgba(255, 255, 255, 0.85)',  // Glass white
-    surfaceVariant: 'rgba(249, 248, 244, 0.9)',  // Glass warm white
+    // Solid light surfaces (no transparency for light theme)
+    surface: '#FFFFFF',  // Pure white surface
+    surfaceVariant: '#f9f8f4',  // Warm off-white
     surfaceDisabled: 'rgba(26, 26, 26, 0.08)',
 
-    // Background with very subtle purple tinge
-    background: '#f7f6f8',  // Slight purple-tinted off-white
+    // Background - warm off-white
+    background: '#f7f6f8',  // Light purple-tinted off-white
 
     error: mukokoTheme.colors.error,
     errorContainer: mukokoTheme.colors.errorContainer,
@@ -202,9 +202,9 @@ export const paperTheme = {
     onErrorContainer: mukokoTheme.colors.onErrorContainer,
     onBackground: mukokoTheme.colors.onBackground,
 
-    // Borders with subtle purple tinge for glass effect
-    outline: 'rgba(94, 87, 114, 0.15)',  // Purple-tinted border
-    outlineVariant: 'rgba(94, 87, 114, 0.08)',
+    // Borders - subtle but visible
+    outline: '#e0dfdc',  // Solid light border
+    outlineVariant: '#f0efec',
 
     inverseSurface: '#1f1f1f',
     inverseOnSurface: '#f9f8f4',
@@ -213,29 +213,29 @@ export const paperTheme = {
     shadow: '#000000',
     scrim: '#000000',
 
-    backdrop: 'rgba(94, 87, 114, 0.3)',  // Purple-tinted backdrop
+    backdrop: 'rgba(94, 87, 114, 0.3)',
 
-    // Elevation levels with glass effect
+    // Elevation levels - solid colors for light theme
     elevation: {
       level0: 'transparent',
-      level1: 'rgba(253, 252, 250, 0.95)',
-      level2: 'rgba(249, 248, 244, 0.92)',
-      level3: 'rgba(245, 244, 240, 0.90)',
-      level4: 'rgba(242, 241, 237, 0.88)',
-      level5: 'rgba(238, 237, 234, 0.85)',
+      level1: '#FFFFFF',
+      level2: '#fdfcfa',
+      level3: '#fbfaf8',
+      level4: '#f9f8f6',
+      level5: '#f7f6f4',
     },
 
-    // Glass effect colors - purple-tinted glassmorphism (primary)
-    glass: 'rgba(94, 87, 114, 0.10)',  // Light purple glass overlay - increased intensity
-    glassBorder: 'rgba(94, 87, 114, 0.18)',  // Glass border - more visible
-    glassCard: 'rgba(255, 255, 255, 0.82)',  // Card glass background - more frosted
-    glassSurface: 'rgba(249, 248, 250, 0.88)',  // Surface glass
+    // Glass effect colors - subtle tints on solid backgrounds
+    glass: 'rgba(94, 87, 114, 0.06)',  // Very subtle purple tint
+    glassBorder: 'rgba(94, 87, 114, 0.12)',  // Subtle border
+    glassCard: '#FFFFFF',  // Solid white card (no transparency)
+    glassSurface: '#fdfcfa',  // Solid warm white surface
 
-    // Glass effect colors - accent-tinted glassmorphism (terracotta)
-    glassAccent: 'rgba(212, 99, 74, 0.10)',  // Light terracotta glass overlay - increased
-    glassAccentBorder: 'rgba(212, 99, 74, 0.20)',  // Terracotta glass border - more visible
-    glassAccentCard: 'rgba(255, 250, 248, 0.85)',  // Warm-tinted card glass
-    glassAccentSurface: 'rgba(252, 248, 244, 0.88)',  // Warm surface glass
+    // Glass effect colors - accent-tinted (terracotta)
+    glassAccent: 'rgba(212, 99, 74, 0.06)',  // Subtle terracotta tint
+    glassAccentBorder: 'rgba(212, 99, 74, 0.12)',  // Subtle border
+    glassAccentCard: '#fffaf8',  // Solid warm-tinted white
+    glassAccentSurface: '#fcf8f4',  // Solid warm surface
   },
 
   fonts: {

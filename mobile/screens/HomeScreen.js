@@ -22,6 +22,7 @@ import { articles, categories as categoriesAPI } from '../api/client';
 import mukokoTheme from '../theme';
 import ArticleCard from '../components/ArticleCard';
 import CategoryChips from '../components/CategoryChips';
+import SearchPromo from '../components/SearchPromo';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -209,6 +210,12 @@ export default function HomeScreen({ navigation }) {
         numColumns={layoutConfig.numColumns > 1 ? layoutConfig.numColumns : 1}
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={layoutConfig.numColumns > 1 ? styles.columnWrapper : undefined}
+        ListHeaderComponent={
+          <SearchPromo
+            variant="compact"
+            style={styles.searchPromo}
+          />
+        }
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -266,6 +273,11 @@ const styles = StyleSheet.create({
   gridCard: {
     flex: 1,
     marginBottom: 0,
+  },
+
+  // Search promo
+  searchPromo: {
+    marginBottom: mukokoTheme.spacing.md,
   },
 
   // Loading state
