@@ -363,6 +363,103 @@ export const health = {
   },
 };
 
+/**
+ * Insights & Analytics API
+ */
+export const insights = {
+  /**
+   * Get trending categories
+   */
+  async getTrendingCategories(limit = 5) {
+    return apiRequest(`/api/trending-categories?limit=${limit}`);
+  },
+
+  /**
+   * Get trending authors
+   */
+  async getTrendingAuthors(limit = 5) {
+    return apiRequest(`/api/trending-authors?limit=${limit}`);
+  },
+
+  /**
+   * Get platform statistics
+   */
+  async getStats() {
+    return apiRequest('/api/admin/stats');
+  },
+
+  /**
+   * Get category insights with trends
+   */
+  async getCategoryInsights(days = 7) {
+    return apiRequest(`/api/admin/category-insights?days=${days}`);
+  },
+
+  /**
+   * Get personalized category recommendations for user
+   */
+  async getPersonalizedCategories(userId) {
+    return apiRequest(`/api/user/personalized-categories?userId=${userId}`);
+  },
+
+  /**
+   * Get user statistics
+   */
+  async getUserStats(userId) {
+    return apiRequest(`/api/user/stats?userId=${userId}`);
+  },
+};
+
+/**
+ * Search API
+ */
+export const search = {
+  /**
+   * Search articles, keywords, categories, authors
+   */
+  async query(searchQuery, { limit = 20, offset = 0, category } = {}) {
+    const params = new URLSearchParams({
+      q: searchQuery,
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+    if (category) {
+      params.append('category', category);
+    }
+    return apiRequest(`/api/search?${params.toString()}`);
+  },
+
+  /**
+   * Search by keyword
+   */
+  async byKeyword(keyword, { limit = 20, offset = 0 } = {}) {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+    return apiRequest(`/api/search/by-keyword/${encodeURIComponent(keyword)}?${params.toString()}`);
+  },
+
+  /**
+   * Search by author
+   */
+  async byAuthor(author, { limit = 20, offset = 0 } = {}) {
+    const params = new URLSearchParams({
+      author,
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+    return apiRequest(`/api/search/by-author?${params.toString()}`);
+  },
+
+  /**
+   * Search authors
+   */
+  async authors(query, limit = 10) {
+    return apiRequest(`/api/search/authors?q=${encodeURIComponent(query)}&limit=${limit}`);
+  },
+};
+
 export default {
   auth,
   articles,
@@ -372,4 +469,6 @@ export default {
   newsBytes,
   pulse,
   health,
+  insights,
+  search,
 };
