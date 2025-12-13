@@ -3,11 +3,14 @@ import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { paperTheme } from './theme';
 import AppNavigator from './navigation/AppNavigator';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 
-export default function App() {
+// Inner component that uses theme context
+function AppContent() {
+  const { theme, isDark } = useTheme();
+
   // Register service worker on web platform for offline-first experience
   useEffect(() => {
     if (Platform.OS === 'web' && 'serviceWorker' in navigator) {
@@ -21,15 +24,22 @@ export default function App() {
     }
   }, []);
 
-  // Always use light theme for clean aesthetic
+  return (
+    <PaperProvider theme={theme}>
+      <AuthProvider>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <AppNavigator />
+      </AuthProvider>
+    </PaperProvider>
+  );
+}
+
+export default function App() {
   return (
     <SafeAreaProvider>
-      <PaperProvider theme={paperTheme}>
-        <AuthProvider>
-          <StatusBar style="dark" />
-          <AppNavigator />
-        </AuthProvider>
-      </PaperProvider>
+      <ThemeProvider>
+        <AppContent />
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

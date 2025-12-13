@@ -15,6 +15,7 @@ import {
   Text,
   ActivityIndicator,
   Button,
+  useTheme as usePaperTheme,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { articles, categories as categoriesAPI } from '../api/client';
@@ -38,6 +39,7 @@ export default function HomeScreen({ navigation }) {
   const [categoriesList, setCategoriesList] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
+  const paperTheme = usePaperTheme();
 
   // Calculate responsive layout
   const getLayoutConfig = useCallback((width) => {
@@ -161,19 +163,35 @@ export default function HomeScreen({ navigation }) {
     );
   };
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: paperTheme.colors.background,
+    },
+    loadingText: {
+      color: paperTheme.colors.onSurfaceVariant,
+    },
+    emptyTitle: {
+      color: paperTheme.colors.onSurface,
+    },
+    emptyDescription: {
+      color: paperTheme.colors.onSurfaceVariant,
+    },
+  };
+
   if (loading) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, dynamicStyles.container]}>
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={mukokoTheme.colors.primary} />
-          <Text style={styles.loadingText}>Loading news...</Text>
+          <ActivityIndicator size="large" color={paperTheme.colors.primary} />
+          <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Loading news...</Text>
         </View>
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       {/* Category Filter */}
       <CategoryChips
         categories={categoriesList}
@@ -205,10 +223,10 @@ export default function HomeScreen({ navigation }) {
             <MaterialCommunityIcons
               name="newspaper-variant-outline"
               size={64}
-              color={mukokoTheme.colors.onSurfaceVariant}
+              color={paperTheme.colors.onSurfaceVariant}
             />
-            <Text style={styles.emptyTitle}>No articles found</Text>
-            <Text style={styles.emptyDescription}>
+            <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>No articles found</Text>
+            <Text style={[styles.emptyDescription, dynamicStyles.emptyDescription]}>
               {selectedCategory
                 ? 'No articles in this category. Try selecting a different one.'
                 : 'Pull down to refresh and load the latest news.'}

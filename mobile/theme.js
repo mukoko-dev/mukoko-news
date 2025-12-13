@@ -162,6 +162,7 @@ export const mukokoTheme = {
 /**
  * React Native Paper theme configuration
  * Converts our custom theme to Paper's format
+ * Features glassmorphism with subtle purple tinge
  */
 export const paperTheme = {
   dark: false,
@@ -177,11 +178,13 @@ export const paperTheme = {
     tertiary: mukokoTheme.colors.accent,
     tertiaryContainer: mukokoTheme.colors.accentContainer,
 
-    surface: mukokoTheme.colors.surface,
-    surfaceVariant: mukokoTheme.colors.surfaceVariant,
-    surfaceDisabled: 'rgba(26, 26, 26, 0.12)',
+    // Glass surfaces with subtle purple tinge
+    surface: 'rgba(255, 255, 255, 0.85)',  // Glass white
+    surfaceVariant: 'rgba(249, 248, 244, 0.9)',  // Glass warm white
+    surfaceDisabled: 'rgba(26, 26, 26, 0.08)',
 
-    background: mukokoTheme.colors.background,
+    // Background with very subtle purple tinge
+    background: '#f7f6f8',  // Slight purple-tinted off-white
 
     error: mukokoTheme.colors.error,
     errorContainer: mukokoTheme.colors.errorContainer,
@@ -199,26 +202,40 @@ export const paperTheme = {
     onErrorContainer: mukokoTheme.colors.onErrorContainer,
     onBackground: mukokoTheme.colors.onBackground,
 
-    outline: mukokoTheme.colors.outline,
-    outlineVariant: mukokoTheme.colors.outlineVariant,
+    // Borders with subtle purple tinge for glass effect
+    outline: 'rgba(94, 87, 114, 0.15)',  // Purple-tinted border
+    outlineVariant: 'rgba(94, 87, 114, 0.08)',
 
-    inverseSurface: '#1f1f1f',    // Dark color
-    inverseOnSurface: '#f9f8f4',  // Light color
+    inverseSurface: '#1f1f1f',
+    inverseOnSurface: '#f9f8f4',
     inversePrimary: '#8a819e',
 
     shadow: '#000000',
     scrim: '#000000',
 
-    backdrop: 'rgba(31, 31, 31, 0.4)',
+    backdrop: 'rgba(94, 87, 114, 0.3)',  // Purple-tinted backdrop
 
+    // Elevation levels with glass effect
     elevation: {
       level0: 'transparent',
-      level1: '#fdfcfa',
-      level2: '#f9f8f4',          // Light color
-      level3: '#f5f4f0',
-      level4: '#f2f1ed',
-      level5: '#eeedea',
+      level1: 'rgba(253, 252, 250, 0.95)',
+      level2: 'rgba(249, 248, 244, 0.92)',
+      level3: 'rgba(245, 244, 240, 0.90)',
+      level4: 'rgba(242, 241, 237, 0.88)',
+      level5: 'rgba(238, 237, 234, 0.85)',
     },
+
+    // Glass effect colors - purple-tinted glassmorphism (primary)
+    glass: 'rgba(94, 87, 114, 0.06)',  // Light purple glass overlay
+    glassBorder: 'rgba(94, 87, 114, 0.12)',  // Glass border
+    glassCard: 'rgba(255, 255, 255, 0.75)',  // Card glass background
+    glassSurface: 'rgba(249, 248, 250, 0.85)',  // Surface glass
+
+    // Glass effect colors - accent-tinted glassmorphism (terracotta)
+    glassAccent: 'rgba(212, 99, 74, 0.06)',  // Light terracotta glass overlay
+    glassAccentBorder: 'rgba(212, 99, 74, 0.15)',  // Terracotta glass border
+    glassAccentCard: 'rgba(255, 250, 248, 0.8)',  // Warm-tinted card glass
+    glassAccentSurface: 'rgba(252, 248, 244, 0.85)',  // Warm surface glass
   },
 
   fonts: {
@@ -330,63 +347,82 @@ export const paperTheme = {
 
 /**
  * Dark theme variant for React Native Paper
+ * Features glassmorphism effects with semi-transparent surfaces
  */
 export const paperThemeDark = {
   dark: true,
   roundness: mukokoTheme.roundness,
 
   colors: {
-    primary: mukokoTheme.colors.primary,
-    primaryContainer: '#3a3448',
+    // Primary - lighter for dark mode visibility
+    primary: '#8a7fa0',  // Lighter purple for dark mode
+    primaryContainer: 'rgba(94, 87, 114, 0.3)',  // Glass effect
 
-    secondary: mukokoTheme.colors.secondary,
-    secondaryContainer: '#3a3448',
+    secondary: '#8a7fa0',
+    secondaryContainer: 'rgba(94, 87, 114, 0.3)',
 
-    tertiary: mukokoTheme.colors.accent,
-    tertiaryContainer: '#5d2e24',
+    tertiary: '#e88a75',  // Lighter terracotta for dark mode
+    tertiaryContainer: 'rgba(212, 99, 74, 0.25)',
 
-    surface: '#1f1f1f',           // Dark color
-    surfaceVariant: '#2a2a2a',
-    surfaceDisabled: 'rgba(232, 232, 232, 0.12)',
+    // Glass effect surfaces - purple-tinted glassmorphism
+    surface: 'rgba(38, 35, 48, 0.88)',  // Purple-tinted dark glass
+    surfaceVariant: 'rgba(48, 44, 58, 0.82)',  // Lighter purple glass surface
+    surfaceDisabled: 'rgba(255, 255, 255, 0.08)',
 
-    background: '#1f1f1f',        // Dark color
+    // Background - dark with subtle purple undertone
+    background: '#161418',  // Purple-tinted dark base
 
-    error: mukokoTheme.colors.error,
-    errorContainer: '#5d2e24',
+    error: '#ff8a7a',  // Lighter red for dark mode
+    errorContainer: 'rgba(212, 99, 74, 0.25)',
 
+    // Text colors - high contrast for readability
     onPrimary: '#FFFFFF',
-    onPrimaryContainer: '#c4bfd4',
+    onPrimaryContainer: '#e0dce8',
     onSecondary: '#FFFFFF',
-    onSecondaryContainer: '#c4bfd4',
+    onSecondaryContainer: '#e0dce8',
     onTertiary: '#FFFFFF',
-    onTertiaryContainer: '#f0c4bc',
-    onSurface: '#f9f8f4',         // Light color
-    onSurfaceVariant: '#9ca3af',
-    onSurfaceDisabled: 'rgba(232, 232, 232, 0.38)',
+    onTertiaryContainer: '#fce8e4',
+    onSurface: '#f5f4f0',  // Warm white for readability
+    onSurfaceVariant: '#a8a8b0',  // Muted but visible
+    onSurfaceDisabled: 'rgba(255, 255, 255, 0.38)',
     onError: '#FFFFFF',
-    onErrorContainer: '#f0c4bc',
-    onBackground: '#f9f8f4',      // Light color
+    onErrorContainer: '#fce8e4',
+    onBackground: '#f5f4f0',
 
-    outline: '#3a3a3a',
-    outlineVariant: '#2a2a2a',
+    // Borders - visible but subtle
+    outline: 'rgba(255, 255, 255, 0.15)',  // Glass border
+    outlineVariant: 'rgba(255, 255, 255, 0.08)',
 
-    inverseSurface: '#f9f8f4',    // Light color
-    inverseOnSurface: '#1f1f1f',  // Dark color
-    inversePrimary: '#8a819e',
+    inverseSurface: '#f5f4f0',
+    inverseOnSurface: '#1a1a1c',
+    inversePrimary: '#5e5772',
 
     shadow: '#000000',
-    scrim: '#000000',
+    scrim: 'rgba(0, 0, 0, 0.6)',
 
-    backdrop: 'rgba(0, 0, 0, 0.5)',
+    backdrop: 'rgba(0, 0, 0, 0.6)',
 
+    // Elevation levels with glass effect - purple-tinted
     elevation: {
       level0: 'transparent',
-      level1: '#1f1f1f',
-      level2: '#242424',
-      level3: '#292929',
-      level4: '#2b2b2b',
-      level5: '#303030',
+      level1: 'rgba(35, 32, 42, 0.92)',  // Purple-tinted dark glass
+      level2: 'rgba(42, 38, 52, 0.90)',
+      level3: 'rgba(50, 45, 60, 0.88)',
+      level4: 'rgba(55, 50, 65, 0.86)',
+      level5: 'rgba(60, 55, 72, 0.85)',
     },
+
+    // Glass effect colors - purple-tinted glassmorphism for dark mode (primary)
+    glass: 'rgba(138, 127, 160, 0.12)',  // Purple glass overlay
+    glassBorder: 'rgba(138, 127, 160, 0.2)',  // Glass border with purple tint
+    glassCard: 'rgba(45, 42, 55, 0.85)',  // Card glass - purple-tinted dark
+    glassSurface: 'rgba(35, 32, 42, 0.9)',  // Surface glass - purple-tinted
+
+    // Glass effect colors - accent-tinted glassmorphism for dark mode (terracotta)
+    glassAccent: 'rgba(232, 138, 117, 0.12)',  // Terracotta glass overlay
+    glassAccentBorder: 'rgba(232, 138, 117, 0.2)',  // Terracotta glass border
+    glassAccentCard: 'rgba(55, 42, 40, 0.85)',  // Warm-tinted dark card glass
+    glassAccentSurface: 'rgba(45, 35, 32, 0.9)',  // Warm dark surface glass
   },
 
   fonts: paperTheme.fonts, // Use same font configuration
