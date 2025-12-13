@@ -3,6 +3,43 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": null,
+  "headers": [
+    {
+      "source": "/",
+      "headers": [
+        {
+          "key": "Clear-Site-Data",
+          "value": "\"cache\", \"storage\""
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Clear-Site-Data",
+          "value": "\"cache\", \"storage\""
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/service-worker.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
   "routes": [
     {
       "src": "/assets/(.*)",
@@ -29,6 +66,10 @@
     {
       "src": "/metadata.json",
       "dest": "/metadata.json"
+    },
+    {
+      "src": "/service-worker.js",
+      "dest": "/service-worker.js"
     },
     {
       "handle": "filesystem"
