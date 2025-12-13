@@ -31,6 +31,14 @@
       "dest": "/metadata.json"
     },
     {
+      "src": "/manifest.json",
+      "dest": "/manifest.json"
+    },
+    {
+      "src": "/service-worker.js",
+      "dest": "/service-worker.js"
+    },
+    {
       "handle": "filesystem"
     },
     {
