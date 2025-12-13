@@ -15,9 +15,13 @@ import { auth as authAPI } from '../api/client';
  * - checkAuth: Check authentication status
  */
 
+// Admin roles that have access to admin features
+const ADMIN_ROLES = ['admin', 'super_admin', 'moderator'];
+
 const AuthContext = createContext({
   user: null,
   isAuthenticated: false,
+  isAdmin: false,
   isLoading: true,
   login: async () => {},
   register: async () => {},
@@ -153,9 +157,13 @@ export function AuthProvider({ children }) {
     await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, USER_DATA_KEY]);
   };
 
+  // Check if user has admin role
+  const isAdmin = user && ADMIN_ROLES.includes(user.role);
+
   const value = {
     user,
     isAuthenticated: !!user,
+    isAdmin,
     isLoading,
     login,
     register,
