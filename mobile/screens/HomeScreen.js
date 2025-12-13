@@ -213,8 +213,8 @@ export default function HomeScreen({ navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[mukokoTheme.colors.primary]}
-            tintColor={mukokoTheme.colors.primary}
+            colors={[paperTheme.colors.primary]}
+            tintColor={paperTheme.colors.primary}
           />
         }
         ListEmptyComponent={
