@@ -8,46 +8,46 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
 
-// Startup diagnostics - helps debug blank screen issues
+// Startup diagnostics
 const logStartup = (stage, details = {}) => {
   const timestamp = new Date().toISOString();
   console.log(`[Mukoko] ${timestamp} - ${stage}`, details);
 };
 
-// Force clear old service workers on web (runs immediately when module loads)
-if (Platform.OS === 'web' && typeof window !== 'undefined') {
-  logStartup('Web platform detected, checking service workers...');
+logStartup('App module loaded');
 
-  // Clear any cached service workers immediately
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then((registrations) => {
-      if (registrations.length > 0) {
-        logStartup(`Found ${registrations.length} service worker(s), unregistering...`);
-        registrations.forEach((reg) => {
-          reg.unregister().then(() => {
-            logStartup('Service worker unregistered');
-          });
-        });
-      } else {
-        logStartup('No service workers registered');
-      }
-    }).catch((err) => {
-      logStartup('Service worker check error', { error: err.message });
-    });
+/**
+ * Register service worker for offline-first experience
+ * Strategy: HTML=network-only, API=stale-while-revalidate, Assets=cache-first
+ */
+async function registerServiceWorker() {
+  if (Platform.OS !== 'web' || !('serviceWorker' in navigator)) {
+    return;
   }
 
-  // Clear caches immediately
-  if ('caches' in window) {
-    caches.keys().then((names) => {
-      if (names.length > 0) {
-        logStartup(`Found ${names.length} cache(s), clearing...`);
-        names.forEach((name) => caches.delete(name));
-      }
-    }).catch(() => {});
+  try {
+    const registration = await navigator.serviceWorker.register('/service-worker.js', {
+      scope: '/',
+    });
+
+    logStartup('Service worker registered', { scope: registration.scope });
+
+    // Handle updates
+    registration.addEventListener('updatefound', () => {
+      const newWorker = registration.installing;
+      logStartup('Service worker update found');
+
+      newWorker.addEventListener('statechange', () => {
+        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+          logStartup('New service worker ready, will activate on next visit');
+          // Optionally: prompt user to refresh for new version
+        }
+      });
+    });
+  } catch (error) {
+    logStartup('Service worker registration failed', { error: error.message });
   }
 }
-
-logStartup('App module loaded');
 
 // Inner component that uses theme context
 function AppContent() {
@@ -55,7 +55,13 @@ function AppContent() {
 
   useEffect(() => {
     logStartup('AppContent mounted', { isDark });
-  }, [isDark]);
+
+    // Register service worker after app mounts (web only)
+    if (Platform.OS === 'web') {
+      // Small delay to ensure cleanup script in HTML has run first
+      setTimeout(registerServiceWorker, 1000);
+    }
+  }, []);
 
   return (
     <PaperProvider theme={theme}>
