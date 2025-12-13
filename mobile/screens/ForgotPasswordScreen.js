@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
 import { Text, TextInput, Button, Surface, HelperText, Icon } from 'react-native-paper';
 import { mukokoTheme } from '../theme';
+import { auth } from '../api/client';
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [step, setStep] = useState('request'); // 'request' or 'reset'
@@ -22,20 +23,13 @@ export default function ForgotPasswordScreen({ navigation }) {
     setError('');
 
     try {
-      const response = await fetch(
-        'https://admin.hararemetro.co.zw/api/auth/forgot-password',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email }),
-        }
-      );
+      const result = await auth.forgotPassword(email);
 
-      if (response.ok) {
+      if (result.error) {
+        setError(result.error);
+      } else {
         setSuccess(true);
         setStep('reset');
-      } else {
-        setError('Failed to send reset code');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -59,21 +53,13 @@ export default function ForgotPasswordScreen({ navigation }) {
     setError('');
 
     try {
-      const response = await fetch(
-        'https://admin.hararemetro.co.zw/api/auth/reset-password',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, code, newPassword }),
-        }
-      );
+      const result = await auth.resetPassword(email, code, newPassword);
 
-      if (response.ok) {
+      if (result.error) {
+        setError(result.error);
+      } else {
         // Navigate to login with success message
         navigation.navigate('Login', { resetSuccess: true });
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Invalid or expired code');
       }
     } catch (err) {
       setError('Network error. Please try again.');
@@ -221,7 +207,7 @@ export default function ForgotPasswordScreen({ navigation }) {
           {/* Back to Login */}
           <Button
             mode="text"
-            onPress={() => navigation.navigate('Auth')}
+            onPress={() => navigation.navigate('Login')}
             style={styles.linkButton}
           >
             Back to Login

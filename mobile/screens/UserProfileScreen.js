@@ -1,13 +1,42 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
-import { Text, Button, Surface, Avatar, SegmentedButtons, ActivityIndicator, Icon } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { mukokoTheme } from '../theme';
+/**
+ * UserProfileScreen - TikTok-inspired profile design
+ * Clean, professional layout with stats and content tabs
+ */
 
-const AUTH_TOKEN_KEY = '@mukoko_auth_token';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  FlatList,
+  Dimensions,
+  Image,
+  Animated,
+} from 'react-native';
+import {
+  Text,
+  ActivityIndicator,
+  useTheme as usePaperTheme,
+} from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
+import { mukokoTheme } from '../theme';
+import { user as userAPI, auth } from '../api/client';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const AVATAR_SIZE = 100;
+const GRID_GAP = 2;
+const GRID_COLUMNS = 3;
+const GRID_ITEM_SIZE = (SCREEN_WIDTH - GRID_GAP * (GRID_COLUMNS + 1)) / GRID_COLUMNS;
 
 export default function UserProfileScreen({ navigation, route }) {
   const { username } = route.params;
+  const insets = useSafeAreaInsets();
+  const paperTheme = usePaperTheme();
+
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
@@ -29,49 +58,16 @@ export default function UserProfileScreen({ navigation, route }) {
   const loadProfile = async () => {
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+      const profileResult = await userAPI.getPublicProfile(username);
+      if (profileResult.error) throw new Error('User not found');
+      setProfile(profileResult.data);
 
-      // Fetch user profile
-      const profileResponse = await fetch(
-        `https://admin.hararemetro.co.zw/api/user/${username}`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
-      );
+      const statsResult = await userAPI.getPublicStats(username);
+      if (!statsResult.error) setStats(statsResult.data);
 
-      if (!profileResponse.ok) {
-        throw new Error('User not found');
-      }
-
-      const profileData = await profileResponse.json();
-      setProfile(profileData);
-
-      // Fetch user stats
-      const statsResponse = await fetch(
-        `https://admin.hararemetro.co.zw/api/user/${username}/stats`,
-        {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        }
-      );
-
-      if (statsResponse.ok) {
-        const statsData = await statsResponse.json();
-        setStats(statsData);
-      }
-
-      // Check if viewing own profile
-      if (token) {
-        const sessionResponse = await fetch(
-          'https://admin.hararemetro.co.zw/api/auth/session',
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-
-        if (sessionResponse.ok) {
-          const { user } = await sessionResponse.json();
-          setIsOwnProfile(user && user.username === username);
-        }
+      const sessionResult = await auth.getSession();
+      if (!sessionResult.error && sessionResult.data?.user) {
+        setIsOwnProfile(sessionResult.data.user.username === username);
       }
     } catch (err) {
       console.error('Error loading profile:', err);
@@ -83,22 +79,11 @@ export default function UserProfileScreen({ navigation, route }) {
 
   const loadArticles = async (tab) => {
     if (!isOwnProfile) return;
-
     setArticlesLoading(true);
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-      if (!token) return;
-
-      const response = await fetch(
-        `https://admin.hararemetro.co.zw/api/user/${username}/${tab}?limit=20`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setArticles(data[tab] || data.history || []);
+      const result = await userAPI.getActivity(username, tab, 30);
+      if (!result.error && result.data) {
+        setArticles(result.data[tab] || result.data.history || []);
       }
     } catch (err) {
       console.error('Error loading articles:', err);
@@ -107,242 +92,332 @@ export default function UserProfileScreen({ navigation, route }) {
     }
   };
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+  const handleTabPress = useCallback((tab) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setActiveTab(tab);
+  }, []);
+
+  const formatNumber = (num) => {
+    if (!num) return '0';
+    if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+    if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+    return num.toString();
   };
 
-  const readingTimeHours = stats?.total_reading_time
-    ? Math.round(stats.total_reading_time / 3600)
-    : 0;
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.charAt(0).toUpperCase();
+  };
+
+  // Dynamic styles
+  const dynamicStyles = {
+    container: { backgroundColor: paperTheme.colors.background },
+    headerBg: { backgroundColor: paperTheme.colors.surface },
+    text: { color: paperTheme.colors.onSurface },
+    textMuted: { color: paperTheme.colors.onSurfaceVariant },
+    tabActive: { borderBottomColor: paperTheme.colors.primary },
+    glass: {
+      backgroundColor: paperTheme.colors.glassCard || 'rgba(255,255,255,0.9)',
+      borderColor: paperTheme.colors.glassBorder || 'rgba(0,0,0,0.06)',
+    },
+  };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={mukokoTheme.colors.primary} />
+      <View style={[styles.loadingContainer, dynamicStyles.container]}>
+        <ActivityIndicator size="large" color={paperTheme.colors.primary} />
       </View>
     );
   }
 
   if (!profile) {
     return (
-      <View style={styles.errorContainer}>
-        <Text>User not found</Text>
+      <View style={[styles.errorContainer, dynamicStyles.container]}>
+        <MaterialCommunityIcons
+          name="account-off"
+          size={48}
+          color={paperTheme.colors.onSurfaceVariant}
+        />
+        <Text style={[styles.errorText, dynamicStyles.textMuted]}>
+          User not found
+        </Text>
       </View>
     );
   }
 
-  const renderArticleItem = ({ item }) => (
+  const displayName = profile.display_name || profile.displayName || profile.username;
+  const avatarUrl = profile.avatar_url || profile.avatarUrl;
+
+  const renderArticleGrid = ({ item }) => (
     <TouchableOpacity
-      onPress={() => navigation.navigate('ArticleDetail', {
-        source: item.source,
-        slug: item.slug
-      })}
+      style={styles.gridItem}
+      activeOpacity={0.8}
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        navigation.navigate('ArticleDetail', {
+          source: item.source,
+          slug: item.slug,
+        });
+      }}
     >
-      <Surface style={styles.articleCard} elevation={1}>
-        <View style={styles.articleContent}>
-          {item.image_url && (
-            <Avatar.Image
-              size={80}
-              source={{ uri: item.image_url }}
-              style={styles.articleImage}
-            />
-          )}
-          <View style={styles.articleText}>
-            <Text variant="titleMedium" numberOfLines={2} style={styles.articleTitle}>
-              {item.title}
-            </Text>
-            {item.description && (
-              <Text variant="bodySmall" numberOfLines={2} style={styles.articleDescription}>
-                {item.description}
-              </Text>
-            )}
-            <View style={styles.articleMeta}>
-              <Text variant="labelSmall" style={styles.articleMetaText}>
-                {item.source}
-              </Text>
-              <Text variant="labelSmall" style={styles.articleMetaText}>•</Text>
-              <Text variant="labelSmall" style={styles.articleMetaText}>
-                {formatDate(item.published_at || item.created_at)}
-              </Text>
-            </View>
-          </View>
+      {item.image_url ? (
+        <Image
+          source={{ uri: item.image_url }}
+          style={styles.gridImage}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={[styles.gridPlaceholder, { backgroundColor: paperTheme.colors.surfaceVariant }]}>
+          <MaterialCommunityIcons
+            name="newspaper"
+            size={24}
+            color={paperTheme.colors.onSurfaceVariant}
+          />
         </View>
-      </Surface>
+      )}
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.7)']}
+        style={styles.gridOverlay}
+      >
+        <Text style={styles.gridTitle} numberOfLines={2}>
+          {item.title}
+        </Text>
+      </LinearGradient>
     </TouchableOpacity>
   );
 
+  const tabs = [
+    { id: 'bookmarks', icon: 'bookmark', label: 'Saved' },
+    { id: 'likes', icon: 'heart', label: 'Liked' },
+    { id: 'history', icon: 'history', label: 'History' },
+  ];
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       {/* Header */}
-      <Surface style={styles.header} elevation={1}>
-        <Button
-          mode="text"
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={styles.headerButton}
           onPress={() => navigation.goBack()}
-          icon={() => <Icon source="arrow-left" size={24} color={mukokoTheme.colors.onSurface} />}
-          style={styles.backButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          Back
-        </Button>
-      </Surface>
-
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Profile Header */}
-        <View style={styles.profileHeader}>
-          {/* Avatar */}
-          <Avatar.Text
-            size={96}
-            label={(profile.display_name || profile.displayName || profile.username)[0].toUpperCase()}
-            style={styles.avatar}
-            color={mukokoTheme.colors.onPrimary}
-            labelStyle={styles.avatarLabel}
+          <MaterialCommunityIcons
+            name="arrow-left"
+            size={24}
+            color={paperTheme.colors.onSurface}
           />
+        </TouchableOpacity>
 
-          {/* Info */}
-          <Text variant="headlineMedium" style={styles.displayName}>
-            {profile.display_name || profile.displayName || profile.username}
-          </Text>
-          <Text variant="bodyMedium" style={styles.username}>
-            @{profile.username}
-          </Text>
+        <Text style={[styles.headerUsername, dynamicStyles.text]}>
+          @{profile.username}
+        </Text>
 
+        {isOwnProfile ? (
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => navigation.navigate('ProfileSettings')}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MaterialCommunityIcons
+              name="cog-outline"
+              size={24}
+              color={paperTheme.colors.onSurface}
+            />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerButton} />
+        )}
+      </View>
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Section */}
+        <View style={styles.profileSection}>
+          {/* Avatar */}
+          <View style={styles.avatarContainer}>
+            <LinearGradient
+              colors={[paperTheme.colors.primary, paperTheme.colors.tertiary]}
+              style={styles.avatarRing}
+            >
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatarPlaceholder, { backgroundColor: paperTheme.colors.primaryContainer }]}>
+                  <Text style={[styles.avatarInitials, { color: paperTheme.colors.primary }]}>
+                    {getInitials(displayName)}
+                  </Text>
+                </View>
+              )}
+            </LinearGradient>
+          </View>
+
+          {/* Name */}
+          <Text style={[styles.displayName, dynamicStyles.text]}>
+            {displayName}
+          </Text>
           {profile.bio && (
-            <Text variant="bodyMedium" style={styles.bio}>
+            <Text style={[styles.bio, dynamicStyles.textMuted]}>
               {profile.bio}
             </Text>
           )}
 
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            <View style={styles.statItem}>
-              <Text variant="headlineSmall" style={styles.statValue}>
-                {stats?.bookmarks || 0}
+          {/* Stats Row */}
+          <View style={styles.statsRow}>
+            <TouchableOpacity style={styles.statItem} activeOpacity={0.7}>
+              <Text style={[styles.statValue, dynamicStyles.text]}>
+                {formatNumber(stats?.bookmarks || 0)}
               </Text>
-              <Text variant="bodySmall" style={styles.statLabel}>
-                Bookmarks
+              <Text style={[styles.statLabel, dynamicStyles.textMuted]}>
+                Saved
               </Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text variant="headlineSmall" style={[styles.statValue, { color: mukokoTheme.colors.error }]}>
-                {stats?.likes || 0}
+            </TouchableOpacity>
+
+            <View style={[styles.statDivider, { backgroundColor: paperTheme.colors.outline }]} />
+
+            <TouchableOpacity style={styles.statItem} activeOpacity={0.7}>
+              <Text style={[styles.statValue, dynamicStyles.text]}>
+                {formatNumber(stats?.likes || 0)}
               </Text>
-              <Text variant="bodySmall" style={styles.statLabel}>
+              <Text style={[styles.statLabel, dynamicStyles.textMuted]}>
                 Likes
               </Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text variant="headlineSmall" style={[styles.statValue, { color: mukokoTheme.colors.accent }]}>
-                {stats?.articles_read || 0}
+            </TouchableOpacity>
+
+            <View style={[styles.statDivider, { backgroundColor: paperTheme.colors.outline }]} />
+
+            <TouchableOpacity style={styles.statItem} activeOpacity={0.7}>
+              <Text style={[styles.statValue, dynamicStyles.text]}>
+                {formatNumber(stats?.articles_read || 0)}
               </Text>
-              <Text variant="bodySmall" style={styles.statLabel}>
+              <Text style={[styles.statLabel, dynamicStyles.textMuted]}>
                 Read
               </Text>
-            </View>
+            </TouchableOpacity>
           </View>
 
-          {/* Member Since */}
-          <View style={styles.metaRow}>
-            <Icon source="calendar" size={16} color={mukokoTheme.colors.onSurfaceVariant} />
-            <Text variant="bodySmall" style={styles.metaText}>
-              Member since {formatDate(stats?.member_since || profile.created_at || Date.now())}
-            </Text>
-          </View>
-
-          {readingTimeHours > 0 && (
-            <View style={styles.metaRow}>
-              <Icon source="clock-outline" size={16} color={mukokoTheme.colors.onSurfaceVariant} />
-              <Text variant="bodySmall" style={styles.metaText}>
-                {readingTimeHours} hours reading time
-              </Text>
-            </View>
-          )}
-
-          {/* Edit Profile Button (Own Profile Only) */}
-          {isOwnProfile && (
-            <Button
-              mode="contained"
+          {/* Action Buttons */}
+          {isOwnProfile ? (
+            <TouchableOpacity
+              style={[styles.editButton, { backgroundColor: paperTheme.colors.surfaceVariant }]}
               onPress={() => navigation.navigate('ProfileSettings')}
-              style={styles.editButton}
+              activeOpacity={0.8}
             >
-              Edit Profile
-            </Button>
+              <Text style={[styles.editButtonText, dynamicStyles.text]}>
+                Edit Profile
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.actionButtons}>
+              <TouchableOpacity
+                style={[styles.followButton, { backgroundColor: paperTheme.colors.primary }]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.followButtonText, { color: paperTheme.colors.onPrimary }]}>
+                  Follow
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.shareButton, { backgroundColor: paperTheme.colors.surfaceVariant }]}
+                activeOpacity={0.8}
+              >
+                <MaterialCommunityIcons
+                  name="share-outline"
+                  size={20}
+                  color={paperTheme.colors.onSurface}
+                />
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 
-        {/* Tabs (Own Profile Only) */}
+        {/* Tabs */}
         {isOwnProfile && (
           <>
-            <SegmentedButtons
-              value={activeTab}
-              onValueChange={setActiveTab}
-              buttons={[
-                {
-                  value: 'bookmarks',
-                  label: 'Bookmarks',
-                  icon: () => <Icon source="bookmark" size={20} color={mukokoTheme.colors.primary} />,
-                },
-                {
-                  value: 'likes',
-                  label: 'Likes',
-                  icon: () => <Icon source="heart" size={20} color={mukokoTheme.colors.error} />,
-                },
-                {
-                  value: 'history',
-                  label: 'History',
-                  icon: () => <Icon source="clock-outline" size={20} color={mukokoTheme.colors.accent} />,
-                },
-              ]}
-              style={styles.segmentedButtons}
-            />
+            <View style={[styles.tabBar, { borderBottomColor: paperTheme.colors.outline }]}>
+              {tabs.map((tab) => (
+                <TouchableOpacity
+                  key={tab.id}
+                  style={[
+                    styles.tab,
+                    activeTab === tab.id && [styles.tabActive, dynamicStyles.tabActive],
+                  ]}
+                  onPress={() => handleTabPress(tab.id)}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons
+                    name={tab.icon}
+                    size={22}
+                    color={
+                      activeTab === tab.id
+                        ? paperTheme.colors.primary
+                        : paperTheme.colors.onSurfaceVariant
+                    }
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
 
-            {/* Articles List */}
+            {/* Content Grid */}
             {articlesLoading ? (
-              <View style={styles.loadingArticles}>
-                <ActivityIndicator size="small" color={mukokoTheme.colors.primary} />
+              <View style={styles.gridLoading}>
+                <ActivityIndicator size="small" color={paperTheme.colors.primary} />
               </View>
             ) : articles.length > 0 ? (
               <FlatList
                 data={articles}
-                renderItem={renderArticleItem}
-                keyExtractor={(item) => item.id}
+                renderItem={renderArticleGrid}
+                keyExtractor={(item) => item.id?.toString() || item.slug}
+                numColumns={GRID_COLUMNS}
                 scrollEnabled={false}
-                contentContainerStyle={styles.articlesList}
+                contentContainerStyle={styles.gridContainer}
+                columnWrapperStyle={styles.gridRow}
               />
             ) : (
               <View style={styles.emptyState}>
-                <Text variant="bodyMedium" style={styles.emptyStateText}>
-                  {activeTab === 'bookmarks' && 'No bookmarks yet'}
-                  {activeTab === 'likes' && 'No liked articles yet'}
-                  {activeTab === 'history' && 'No reading history yet'}
+                <MaterialCommunityIcons
+                  name={activeTab === 'bookmarks' ? 'bookmark-outline' : activeTab === 'likes' ? 'heart-outline' : 'clock-outline'}
+                  size={48}
+                  color={paperTheme.colors.onSurfaceVariant}
+                />
+                <Text style={[styles.emptyTitle, dynamicStyles.textMuted]}>
+                  {activeTab === 'bookmarks' && 'No saved articles'}
+                  {activeTab === 'likes' && 'No liked articles'}
+                  {activeTab === 'history' && 'No reading history'}
                 </Text>
-                <Button
-                  mode="text"
+                <Text style={[styles.emptySubtitle, dynamicStyles.textMuted]}>
+                  Start exploring to fill this up
+                </Text>
+                <TouchableOpacity
+                  style={[styles.exploreButton, { backgroundColor: paperTheme.colors.primary }]}
                   onPress={() => navigation.navigate('Home')}
-                  style={styles.exploreButton}
+                  activeOpacity={0.8}
                 >
-                  Explore articles
-                </Button>
+                  <Text style={[styles.exploreButtonText, { color: paperTheme.colors.onPrimary }]}>
+                    Explore Articles
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
           </>
         )}
 
-        {/* Not Own Profile */}
+        {/* Private Profile Message */}
         {!isOwnProfile && (
           <View style={styles.privateProfile}>
-            <Text variant="bodyMedium" style={styles.privateProfileText}>
-              This profile is private. Only {profile.username} can see their activity.
+            <MaterialCommunityIcons
+              name="lock-outline"
+              size={48}
+              color={paperTheme.colors.onSurfaceVariant}
+            />
+            <Text style={[styles.privateTitle, dynamicStyles.textMuted]}>
+              Private Activity
             </Text>
-            <Button
-              mode="text"
-              onPress={() => navigation.navigate('Home')}
-              style={styles.exploreButton}
-            >
-              Back to Home
-            </Button>
+            <Text style={[styles.privateSubtitle, dynamicStyles.textMuted]}>
+              Only {profile.username} can see their saved and liked articles
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -353,144 +428,256 @@ export default function UserProfileScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: mukokoTheme.colors.background,
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: mukokoTheme.colors.background,
   },
   errorContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: mukokoTheme.colors.background,
+    gap: 12,
   },
+  errorText: {
+    fontSize: 16,
+  },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: mukokoTheme.spacing.md,
-    backgroundColor: mukokoTheme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  backButton: {
-    marginRight: mukokoTheme.spacing.sm,
-  },
-  scrollContent: {
-    padding: mukokoTheme.spacing.lg,
-  },
-  profileHeader: {
+  headerButton: {
+    width: 40,
+    height: 40,
     alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.xl,
+    justifyContent: 'center',
   },
-  avatar: {
-    backgroundColor: mukokoTheme.colors.primary,
-    marginBottom: mukokoTheme.spacing.md,
+  headerUsername: {
+    fontSize: 16,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
-  avatarLabel: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 40,
-  },
-  displayName: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  username: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  bio: {
-    textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.lg,
-  },
-  statsContainer: {
-    flexDirection: 'row',
-    gap: mukokoTheme.spacing.xl,
-    marginBottom: mukokoTheme.spacing.lg,
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statValue: {
-    fontWeight: '700',
-    color: mukokoTheme.colors.primary,
-  },
-  statLabel: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.xs,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  metaText: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-  editButton: {
-    marginTop: mukokoTheme.spacing.lg,
-  },
-  segmentedButtons: {
-    marginBottom: mukokoTheme.spacing.lg,
-  },
-  loadingArticles: {
-    padding: mukokoTheme.spacing.xl,
-    alignItems: 'center',
-  },
-  articlesList: {
-    gap: mukokoTheme.spacing.md,
-  },
-  articleCard: {
-    padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness * 2,
-    backgroundColor: mukokoTheme.colors.surface,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  articleContent: {
-    flexDirection: 'row',
-    gap: mukokoTheme.spacing.md,
-  },
-  articleImage: {
-    borderRadius: mukokoTheme.roundness,
-  },
-  articleText: {
+
+  scrollView: {
     flex: 1,
   },
-  articleTitle: {
+  scrollContent: {
+    paddingBottom: 100,
+  },
+
+  // Profile Section
+  profileSection: {
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
+  },
+  avatarContainer: {
+    marginBottom: 16,
+  },
+  avatarRing: {
+    width: AVATAR_SIZE + 6,
+    height: AVATAR_SIZE + 6,
+    borderRadius: (AVATAR_SIZE + 6) / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatar: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    borderWidth: 3,
+    borderColor: '#fff',
+  },
+  avatarPlaceholder: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    borderWidth: 3,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    fontSize: 40,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    marginBottom: mukokoTheme.spacing.xs,
   },
-  articleDescription: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-    marginBottom: mukokoTheme.spacing.xs,
+  displayName: {
+    fontSize: 20,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    marginBottom: 4,
   },
-  articleMeta: {
+  bio: {
+    fontSize: 14,
+    textAlign: 'center',
+    paddingHorizontal: 40,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+
+  // Stats
+  statsRow: {
     flexDirection: 'row',
-    gap: mukokoTheme.spacing.xs,
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingHorizontal: 20,
   },
-  articleMetaText: {
-    color: mukokoTheme.colors.onSurfaceVariant,
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
   },
-  emptyState: {
-    padding: mukokoTheme.spacing.xxl,
+  statValue: {
+    fontSize: 18,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+  statLabel: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 30,
+  },
+
+  // Action Buttons
+  editButton: {
+    paddingHorizontal: 80,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  editButtonText: {
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  followButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    minWidth: 120,
+  },
+  followButtonText: {
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+  shareButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Tabs
+  tabBar: {
+    flexDirection: 'row',
+    borderBottomWidth: 1,
+  },
+  tab: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomWidth: 2,
+  },
+
+  // Grid
+  gridLoading: {
+    padding: 40,
     alignItems: 'center',
   },
-  emptyStateText: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-    marginBottom: mukokoTheme.spacing.md,
+  gridContainer: {
+    padding: GRID_GAP,
+  },
+  gridRow: {
+    gap: GRID_GAP,
+  },
+  gridItem: {
+    width: GRID_ITEM_SIZE,
+    height: GRID_ITEM_SIZE * 1.2,
+    marginBottom: GRID_GAP,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  gridImage: {
+    width: '100%',
+    height: '100%',
+  },
+  gridPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  gridOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: 8,
+    paddingTop: 24,
+  },
+  gridTitle: {
+    fontSize: 11,
+    color: '#fff',
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    lineHeight: 14,
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    marginTop: 8,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
   },
   exploreButton: {
-    marginTop: mukokoTheme.spacing.sm,
+    marginTop: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 10,
+    borderRadius: 20,
   },
+  exploreButtonText: {
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+
+  // Private Profile
   privateProfile: {
-    padding: mukokoTheme.spacing.xxl,
     alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+    gap: 8,
   },
-  privateProfileText: {
-    color: mukokoTheme.colors.onSurfaceVariant,
+  privateTitle: {
+    fontSize: 16,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    marginTop: 8,
+  },
+  privateSubtitle: {
+    fontSize: 14,
     textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.md,
   },
 });

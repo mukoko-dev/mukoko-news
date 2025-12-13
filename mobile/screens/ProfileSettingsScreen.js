@@ -1,29 +1,55 @@
+/**
+ * ProfileSettingsScreen - Modern settings design
+ * Clean, grouped settings with profile card header
+ */
+
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, TextInput, Button, Surface, SegmentedButtons, Avatar, Icon, Switch, useTheme as usePaperTheme } from 'react-native-paper';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+} from 'react-native';
+import {
+  Text,
+  TextInput,
+  Switch,
+  ActivityIndicator,
+  useTheme as usePaperTheme,
+} from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { mukokoTheme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { user as userAPI } from '../api/client';
 
-const AUTH_TOKEN_KEY = '@mukoko_auth_token';
+const AVATAR_SIZE = 80;
 
 export default function ProfileSettingsScreen({ navigation }) {
-  const { isDark, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const paperTheme = usePaperTheme();
+  const { isDark, toggleTheme } = useTheme();
+  const { signOut } = useAuth();
 
-  const [activeSection, setActiveSection] = useState('profile');
   const [profile, setProfile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ type: '', text: '' });
 
-  // Profile form fields
+  // Form fields
   const [displayName, setDisplayName] = useState('');
   const [bio, setBio] = useState('');
-  const [avatarUrl, setAvatarUrl] = useState('');
-
-  // Username form field
   const [newUsername, setNewUsername] = useState('');
+
+  // Edit mode states
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [editingUsername, setEditingUsername] = useState(false);
 
   useEffect(() => {
     loadProfile();
@@ -31,408 +57,469 @@ export default function ProfileSettingsScreen({ navigation }) {
 
   const loadProfile = async () => {
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-
-      if (!token) {
+      const result = await userAPI.getProfile();
+      if (result.error) {
         navigation.navigate('Login');
         return;
       }
-
-      const response = await fetch(
-        'https://admin.hararemetro.co.zw/api/user/me/profile',
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        navigation.navigate('Login');
-        return;
-      }
-
-      const profileData = await response.json();
-      setProfile(profileData);
-      setDisplayName(profileData.displayName || profileData.display_name || '');
-      setBio(profileData.bio || '');
-      setAvatarUrl(profileData.avatarUrl || profileData.avatar_url || '');
+      const data = result.data;
+      setProfile(data);
+      setDisplayName(data.displayName || data.display_name || '');
+      setBio(data.bio || '');
     } catch (err) {
       console.error('Error loading profile:', err);
       navigation.navigate('Login');
+    } finally {
+      setLoading(false);
     }
   };
 
+  const showMessage = (type, text) => {
+    setMessage({ type, text });
+    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+  };
+
   const handleUpdateProfile = async () => {
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
+    setSaving(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-
-      if (!token) {
-        setError('Not authenticated');
-        return;
-      }
-
-      const response = await fetch(
-        'https://admin.hararemetro.co.zw/api/user/me/profile',
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            displayName: displayName || undefined,
-            bio: bio || undefined,
-            avatarUrl: avatarUrl || undefined,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        setSuccess('Profile updated successfully');
-        await loadProfile();
+      const result = await userAPI.updateProfile({
+        displayName: displayName || undefined,
+        bio: bio || undefined,
+      });
+      if (result.error) {
+        showMessage('error', result.error);
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to update profile');
+        showMessage('success', 'Profile updated');
+        setEditingProfile(false);
+        await loadProfile();
       }
     } catch (err) {
-      setError('Network error. Please try again.');
+      showMessage('error', 'Failed to update profile');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   const handleUpdateUsername = async () => {
     if (!newUsername || !/^[a-zA-Z0-9_-]{3,30}$/.test(newUsername)) {
-      setError('Username must be 3-30 characters and contain only letters, numbers, underscores, and hyphens');
+      showMessage('error', 'Username must be 3-30 characters (letters, numbers, _ -)');
       return;
     }
-
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
+    setSaving(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-
-      if (!token) {
-        setError('Not authenticated');
-        return;
-      }
-
-      const response = await fetch(
-        'https://admin.hararemetro.co.zw/api/user/me/username',
-        {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ username: newUsername }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setSuccess('Username updated successfully');
+      const result = await userAPI.updateUsername(newUsername);
+      if (result.error) {
+        showMessage('error', result.error);
+      } else {
+        showMessage('success', 'Username updated');
+        setEditingUsername(false);
         setNewUsername('');
         await loadProfile();
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to update username');
       }
     } catch (err) {
-      setError('Network error. Please try again.');
+      showMessage('error', 'Failed to update username');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  // Dynamic styles based on theme
+  const handleThemeToggle = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    toggleTheme();
+  };
+
+  const handleSignOut = async () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await signOut();
+    navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] });
+  };
+
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name.charAt(0).toUpperCase();
+  };
+
+  // Dynamic styles
   const dynamicStyles = {
-    container: {
-      backgroundColor: paperTheme.colors.background,
-    },
-    header: {
+    container: { backgroundColor: paperTheme.colors.background },
+    text: { color: paperTheme.colors.onSurface },
+    textMuted: { color: paperTheme.colors.onSurfaceVariant },
+    card: {
       backgroundColor: paperTheme.colors.surface,
-      borderBottomColor: paperTheme.colors.outline,
+      borderColor: paperTheme.colors.outline,
+    },
+    input: {
+      backgroundColor: paperTheme.colors.surfaceVariant,
+      color: paperTheme.colors.onSurface,
     },
   };
 
-  if (!profile) {
+  if (loading) {
     return (
       <View style={[styles.loadingContainer, dynamicStyles.container]}>
-        <Text style={{ color: paperTheme.colors.onSurface }}>Loading...</Text>
+        <ActivityIndicator size="large" color={paperTheme.colors.primary} />
       </View>
     );
   }
 
+  const displayNameValue = profile?.display_name || profile?.displayName || profile?.username || '';
+  const avatarUrl = profile?.avatar_url || profile?.avatarUrl;
+
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={[styles.container, dynamicStyles.container]}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Header */}
-      <Surface style={[styles.header, dynamicStyles.header]} elevation={1}>
-        <Button
-          mode="text"
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={styles.headerButton}
           onPress={() => navigation.goBack()}
-          icon={() => <Icon source="arrow-left" size={24} color={paperTheme.colors.onSurface} />}
-          style={styles.backButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          Back
-        </Button>
-        <Text variant="titleLarge" style={[styles.headerTitle, { color: paperTheme.colors.onSurface }]}>
-          Profile Settings
-        </Text>
-      </Surface>
+          <MaterialCommunityIcons
+            name="arrow-left"
+            size={24}
+            color={paperTheme.colors.onSurface}
+          />
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, dynamicStyles.text]}>Settings</Text>
+        <View style={styles.headerButton} />
+      </View>
+
+      {/* Toast Message */}
+      {message.text !== '' && (
+        <View
+          style={[
+            styles.toast,
+            message.type === 'success'
+              ? { backgroundColor: mukokoTheme.colors.success }
+              : { backgroundColor: mukokoTheme.colors.error },
+          ]}
+        >
+          <MaterialCommunityIcons
+            name={message.type === 'success' ? 'check-circle' : 'alert-circle'}
+            size={18}
+            color="#fff"
+          />
+          <Text style={styles.toastText}>{message.text}</Text>
+        </View>
+      )}
 
       <ScrollView
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Success/Error Messages */}
-        {success && (
-          <Surface style={styles.successBanner} elevation={0}>
-            <Icon source="check" size={20} color={mukokoTheme.colors.success} />
-            <Text style={styles.successText}>{success}</Text>
-          </Surface>
-        )}
-
-        {error && (
-          <Surface style={styles.errorBanner} elevation={0}>
-            <Icon source="alert-circle" size={20} color={mukokoTheme.colors.error} />
-            <Text style={styles.errorText}>{error}</Text>
-          </Surface>
-        )}
-
-        {/* Section Tabs */}
-        <SegmentedButtons
-          value={activeSection}
-          onValueChange={setActiveSection}
-          buttons={[
-            { value: 'profile', label: 'Profile' },
-            { value: 'username', label: 'Username' },
-            { value: 'appearance', label: 'Theme' },
-          ]}
-          style={styles.segmentedButtons}
-        />
-
-        {/* Profile Info Section */}
-        {activeSection === 'profile' && (
-          <Surface style={styles.card} elevation={2}>
-            <Text variant="headlineSmall" style={styles.sectionTitle}>
-              Update Profile Information
-            </Text>
-
-            {/* Display Name */}
-            <TextInput
-              mode="outlined"
-              label="Display Name"
-              value={displayName}
-              onChangeText={setDisplayName}
-              left={<TextInput.Icon icon={() => <Icon source="account" size={20} color={mukokoTheme.colors.onSurfaceVariant} />} />}
-              style={styles.input}
-              outlineColor={mukokoTheme.colors.outline}
-              activeOutlineColor={mukokoTheme.colors.primary}
-            />
-            <Text style={styles.helperText}>
-              Your display name appears on your profile and with your activity
-            </Text>
-
-            {/* Bio */}
-            <TextInput
-              mode="outlined"
-              label="Bio"
-              value={bio}
-              onChangeText={setBio}
-              multiline
-              numberOfLines={4}
-              maxLength={160}
-              left={<TextInput.Icon icon={() => <Icon source="file-document" size={20} color={mukokoTheme.colors.onSurfaceVariant} />} />}
-              style={styles.input}
-              outlineColor={mukokoTheme.colors.outline}
-              activeOutlineColor={mukokoTheme.colors.primary}
-            />
-            <Text style={styles.helperText}>
-              Maximum 160 characters
-            </Text>
-
-            {/* Avatar URL */}
-            <TextInput
-              mode="outlined"
-              label="Avatar URL"
-              value={avatarUrl}
-              onChangeText={setAvatarUrl}
-              keyboardType="url"
-              autoCapitalize="none"
-              left={<TextInput.Icon icon={() => <Icon source="image" size={20} color={mukokoTheme.colors.onSurfaceVariant} />} />}
-              style={styles.input}
-              outlineColor={mukokoTheme.colors.outline}
-              activeOutlineColor={mukokoTheme.colors.primary}
-            />
-            <Text style={styles.helperText}>
-              Provide a URL to an image for your profile picture
-            </Text>
-
-            {/* Avatar Preview */}
-            {avatarUrl && (
-              <Surface style={styles.previewCard} elevation={0}>
-                <Text variant="bodySmall" style={styles.previewLabel}>
-                  Current Avatar:
-                </Text>
-                <View style={styles.avatarPreview}>
-                  <Avatar.Image
-                    size={64}
-                    source={{ uri: avatarUrl }}
-                    style={styles.avatar}
-                  />
-                  <View>
-                    <Text variant="bodyLarge" style={styles.previewName}>
-                      {displayName || profile.username}
-                    </Text>
-                    <Text variant="bodySmall" style={styles.previewUsername}>
-                      @{profile.username}
+        {/* Profile Card */}
+        <View style={[styles.profileCard, dynamicStyles.card]}>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarContainer}>
+              <LinearGradient
+                colors={[paperTheme.colors.primary, paperTheme.colors.tertiary]}
+                style={styles.avatarRing}
+              >
+                {avatarUrl ? (
+                  <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatarPlaceholder, { backgroundColor: paperTheme.colors.primaryContainer }]}>
+                    <Text style={[styles.avatarInitials, { color: paperTheme.colors.primary }]}>
+                      {getInitials(displayNameValue)}
                     </Text>
                   </View>
-                </View>
-              </Surface>
-            )}
-
-            {/* Submit Button */}
-            <Button
-              mode="contained"
-              onPress={handleUpdateProfile}
-              loading={loading}
-              disabled={loading}
-              style={styles.button}
-              contentStyle={styles.buttonContent}
-              icon={() => <Icon source="check" size={20} color={mukokoTheme.colors.onPrimary} />}
-            >
-              {loading ? 'Saving changes...' : 'Save Profile'}
-            </Button>
-          </Surface>
-        )}
-
-        {/* Username Section */}
-        {activeSection === 'username' && (
-          <Surface style={styles.card} elevation={2}>
-            <Text variant="headlineSmall" style={styles.sectionTitle}>
-              Change Username
-            </Text>
-            <Text variant="bodySmall" style={styles.sectionSubtitle}>
-              Your username is used in your profile URL: @{profile.username}
-            </Text>
-
-            {/* Warning */}
-            <Surface style={styles.warningBanner} elevation={0}>
-              <Text style={styles.warningText}>
-                <Text style={styles.warningTextBold}>Warning:</Text> Changing your username will update your profile URL.
-                Old links to your profile may no longer work.
+                )}
+              </LinearGradient>
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileName, dynamicStyles.text]}>
+                {displayNameValue}
               </Text>
-            </Surface>
+              <Text style={[styles.profileUsername, dynamicStyles.textMuted]}>
+                @{profile?.username}
+              </Text>
+            </View>
+          </View>
+        </View>
 
-            {/* Current Username */}
-            <Text variant="labelMedium" style={styles.label}>
-              Current Username
-            </Text>
-            <Surface style={styles.currentUsername} elevation={0}>
-              <Text style={styles.currentUsernameText}>@{profile.username}</Text>
-            </Surface>
+        {/* Account Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.textMuted]}>ACCOUNT</Text>
 
-            {/* New Username */}
-            <TextInput
-              mode="outlined"
-              label="New Username"
-              value={newUsername}
-              onChangeText={setNewUsername}
-              autoCapitalize="none"
-              left={<TextInput.Icon icon={() => <Icon source="at" size={20} color={mukokoTheme.colors.onSurfaceVariant} />} />}
-              style={styles.input}
-              outlineColor={mukokoTheme.colors.outline}
-              activeOutlineColor={mukokoTheme.colors.primary}
-            />
-            <Text style={styles.helperText}>
-              3-30 characters. Letters, numbers, underscores, and hyphens only.
-            </Text>
-
-            {/* Submit Button */}
-            <Button
-              mode="contained"
-              onPress={handleUpdateUsername}
-              loading={loading}
-              disabled={loading || !newUsername}
-              style={styles.button}
-              contentStyle={styles.buttonContent}
-              icon={() => <Icon source="check" size={20} color={mukokoTheme.colors.onPrimary} />}
-            >
-              {loading ? 'Updating username...' : 'Update Username'}
-            </Button>
-          </Surface>
-        )}
-
-        {/* Appearance Section */}
-        {activeSection === 'appearance' && (
-          <Surface style={[styles.card, { backgroundColor: paperTheme.colors.surface }]} elevation={2}>
-            <Text variant="headlineSmall" style={[styles.sectionTitle, { color: paperTheme.colors.onSurface }]}>
-              Theme Settings
-            </Text>
-            <Text variant="bodySmall" style={[styles.sectionSubtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
-              Customize the appearance of the app
-            </Text>
-
-            {/* Dark Mode Toggle */}
-            <Surface style={[styles.settingRow, { backgroundColor: paperTheme.colors.surfaceVariant }]} elevation={0}>
-              <View style={styles.settingInfo}>
-                <Icon source={isDark ? 'moon-waning-crescent' : 'white-balance-sunny'} size={24} color={paperTheme.colors.primary} />
-                <View style={styles.settingText}>
-                  <Text variant="bodyLarge" style={{ color: paperTheme.colors.onSurface }}>
-                    Dark Mode
-                  </Text>
-                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
-                    {isDark ? 'Currently using dark theme' : 'Currently using light theme'}
-                  </Text>
-                </View>
-              </View>
-              <Switch
-                value={isDark}
-                onValueChange={toggleTheme}
+          {/* Edit Profile */}
+          <TouchableOpacity
+            style={[styles.settingItem, dynamicStyles.card]}
+            onPress={() => setEditingProfile(!editingProfile)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingIcon}>
+              <MaterialCommunityIcons
+                name="account-edit-outline"
+                size={22}
                 color={paperTheme.colors.primary}
               />
-            </Surface>
-
-            {/* Theme Preview */}
-            <Surface style={[styles.themePreview, { backgroundColor: paperTheme.colors.background }]} elevation={0}>
-              <Text variant="labelMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>
-                Preview
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingLabel, dynamicStyles.text]}>Edit Profile</Text>
+              <Text style={[styles.settingValue, dynamicStyles.textMuted]}>
+                Name and bio
               </Text>
-              <View style={styles.previewCards}>
-                <Surface style={[styles.previewCard, { backgroundColor: paperTheme.colors.primary }]} elevation={1}>
-                  <Text style={{ color: paperTheme.colors.onPrimary, fontSize: 12 }}>Primary</Text>
-                </Surface>
-                <Surface style={[styles.previewCard, { backgroundColor: paperTheme.colors.surface }]} elevation={1}>
-                  <Text style={{ color: paperTheme.colors.onSurface, fontSize: 12 }}>Surface</Text>
-                </Surface>
-                <Surface style={[styles.previewCard, { backgroundColor: paperTheme.colors.surfaceVariant }]} elevation={1}>
-                  <Text style={{ color: paperTheme.colors.onSurfaceVariant, fontSize: 12 }}>Variant</Text>
-                </Surface>
-              </View>
-            </Surface>
-          </Surface>
-        )}
+            </View>
+            <MaterialCommunityIcons
+              name={editingProfile ? 'chevron-up' : 'chevron-right'}
+              size={24}
+              color={paperTheme.colors.onSurfaceVariant}
+            />
+          </TouchableOpacity>
 
-        {/* Back to Home */}
-        <Button
-          mode="text"
-          onPress={() => navigation.navigate('Home')}
-          style={styles.homeButton}
+          {/* Profile Edit Form */}
+          {editingProfile && (
+            <View style={[styles.editForm, dynamicStyles.card]}>
+              <TextInput
+                mode="flat"
+                label="Display Name"
+                value={displayName}
+                onChangeText={setDisplayName}
+                style={[styles.input, dynamicStyles.input]}
+                underlineColor="transparent"
+                activeUnderlineColor={paperTheme.colors.primary}
+              />
+              <TextInput
+                mode="flat"
+                label="Bio"
+                value={bio}
+                onChangeText={setBio}
+                multiline
+                numberOfLines={3}
+                maxLength={160}
+                style={[styles.input, styles.bioInput, dynamicStyles.input]}
+                underlineColor="transparent"
+                activeUnderlineColor={paperTheme.colors.primary}
+              />
+              <Text style={[styles.charCount, dynamicStyles.textMuted]}>
+                {bio.length}/160
+              </Text>
+              <TouchableOpacity
+                style={[styles.saveButton, { backgroundColor: paperTheme.colors.primary }]}
+                onPress={handleUpdateProfile}
+                disabled={saving}
+                activeOpacity={0.8}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Change Username */}
+          <TouchableOpacity
+            style={[styles.settingItem, dynamicStyles.card]}
+            onPress={() => setEditingUsername(!editingUsername)}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingIcon}>
+              <MaterialCommunityIcons
+                name="at"
+                size={22}
+                color={paperTheme.colors.tertiary}
+              />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingLabel, dynamicStyles.text]}>Username</Text>
+              <Text style={[styles.settingValue, dynamicStyles.textMuted]}>
+                @{profile?.username}
+              </Text>
+            </View>
+            <MaterialCommunityIcons
+              name={editingUsername ? 'chevron-up' : 'chevron-right'}
+              size={24}
+              color={paperTheme.colors.onSurfaceVariant}
+            />
+          </TouchableOpacity>
+
+          {/* Username Edit Form */}
+          {editingUsername && (
+            <View style={[styles.editForm, dynamicStyles.card]}>
+              <View style={[styles.warningBox, { backgroundColor: `${mukokoTheme.colors.warning}15` }]}>
+                <MaterialCommunityIcons
+                  name="alert-outline"
+                  size={18}
+                  color={mukokoTheme.colors.warning}
+                />
+                <Text style={[styles.warningText, { color: mukokoTheme.colors.warning }]}>
+                  Changing username will update your profile URL
+                </Text>
+              </View>
+              <TextInput
+                mode="flat"
+                label="New Username"
+                value={newUsername}
+                onChangeText={setNewUsername}
+                autoCapitalize="none"
+                style={[styles.input, dynamicStyles.input]}
+                underlineColor="transparent"
+                activeUnderlineColor={paperTheme.colors.primary}
+                left={<TextInput.Affix text="@" />}
+              />
+              <TouchableOpacity
+                style={[styles.saveButton, { backgroundColor: paperTheme.colors.primary }]}
+                onPress={handleUpdateUsername}
+                disabled={saving || !newUsername}
+                activeOpacity={0.8}
+              >
+                {saving ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>Update Username</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* Preferences Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.textMuted]}>PREFERENCES</Text>
+
+          {/* Dark Mode */}
+          <View style={[styles.settingItem, dynamicStyles.card]}>
+            <View style={styles.settingIcon}>
+              <MaterialCommunityIcons
+                name={isDark ? 'moon-waning-crescent' : 'white-balance-sunny'}
+                size={22}
+                color={isDark ? '#7C83FD' : '#FFB74D'}
+              />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingLabel, dynamicStyles.text]}>Dark Mode</Text>
+              <Text style={[styles.settingValue, dynamicStyles.textMuted]}>
+                {isDark ? 'On' : 'Off'}
+              </Text>
+            </View>
+            <Switch
+              value={isDark}
+              onValueChange={handleThemeToggle}
+              color={paperTheme.colors.primary}
+            />
+          </View>
+
+          {/* Notifications - Placeholder */}
+          <TouchableOpacity
+            style={[styles.settingItem, dynamicStyles.card]}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingIcon}>
+              <MaterialCommunityIcons
+                name="bell-outline"
+                size={22}
+                color={paperTheme.colors.primary}
+              />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingLabel, dynamicStyles.text]}>Notifications</Text>
+              <Text style={[styles.settingValue, dynamicStyles.textMuted]}>
+                Coming soon
+              </Text>
+            </View>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={paperTheme.colors.onSurfaceVariant}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* About Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, dynamicStyles.textMuted]}>ABOUT</Text>
+
+          <TouchableOpacity
+            style={[styles.settingItem, dynamicStyles.card]}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingIcon}>
+              <MaterialCommunityIcons
+                name="shield-check-outline"
+                size={22}
+                color={paperTheme.colors.primary}
+              />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingLabel, dynamicStyles.text]}>Privacy Policy</Text>
+            </View>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={paperTheme.colors.onSurfaceVariant}
+            />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.settingItem, dynamicStyles.card]}
+            activeOpacity={0.7}
+          >
+            <View style={styles.settingIcon}>
+              <MaterialCommunityIcons
+                name="file-document-outline"
+                size={22}
+                color={paperTheme.colors.primary}
+              />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingLabel, dynamicStyles.text]}>Terms of Service</Text>
+            </View>
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={24}
+              color={paperTheme.colors.onSurfaceVariant}
+            />
+          </TouchableOpacity>
+
+          <View style={[styles.settingItem, dynamicStyles.card]}>
+            <View style={styles.settingIcon}>
+              <MaterialCommunityIcons
+                name="information-outline"
+                size={22}
+                color={paperTheme.colors.onSurfaceVariant}
+              />
+            </View>
+            <View style={styles.settingContent}>
+              <Text style={[styles.settingLabel, dynamicStyles.text]}>Version</Text>
+              <Text style={[styles.settingValue, dynamicStyles.textMuted]}>1.0.0</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Sign Out */}
+        <TouchableOpacity
+          style={[styles.signOutButton, { borderColor: mukokoTheme.colors.error }]}
+          onPress={handleSignOut}
+          activeOpacity={0.7}
         >
-          Back to Home
-        </Button>
+          <MaterialCommunityIcons
+            name="logout"
+            size={20}
+            color={mukokoTheme.colors.error}
+          />
+          <Text style={[styles.signOutText, { color: mukokoTheme.colors.error }]}>
+            Sign Out
+          </Text>
+        </TouchableOpacity>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, dynamicStyles.textMuted]}>
+            Mukoko News
+          </Text>
+          <Text style={[styles.footerSubtext, dynamicStyles.textMuted]}>
+            Zimbabwe's News Platform
+          </Text>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -441,178 +528,226 @@ export default function ProfileSettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: mukokoTheme.colors.background,
   },
   loadingContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: mukokoTheme.colors.background,
   },
+
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: mukokoTheme.spacing.md,
-    backgroundColor: mukokoTheme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outline,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
   },
-  backButton: {
-    marginRight: mukokoTheme.spacing.sm,
+  headerButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   headerTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 18,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+
+  // Toast
+  toast: {
+    position: 'absolute',
+    top: 100,
+    left: 20,
+    right: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    zIndex: 1000,
+  },
+  toastText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+
+  scrollView: {
+    flex: 1,
   },
   scrollContent: {
-    padding: mukokoTheme.spacing.lg,
+    padding: 16,
+    paddingBottom: 100,
   },
-  successBanner: {
+
+  // Profile Card
+  profileCard: {
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+  },
+  profileHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
-    padding: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    backgroundColor: `${mukokoTheme.colors.success}15`,
-    borderWidth: 1,
-    borderColor: `${mukokoTheme.colors.success}30`,
+    gap: 16,
   },
-  successText: {
-    color: mukokoTheme.colors.success,
-    flex: 1,
-  },
-  errorBanner: {
-    flexDirection: 'row',
+  avatarContainer: {},
+  avatarRing: {
+    width: AVATAR_SIZE + 4,
+    height: AVATAR_SIZE + 4,
+    borderRadius: (AVATAR_SIZE + 4) / 2,
     alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
-    padding: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    backgroundColor: `${mukokoTheme.colors.error}15`,
-    borderWidth: 1,
-    borderColor: `${mukokoTheme.colors.error}30`,
-  },
-  errorText: {
-    color: mukokoTheme.colors.error,
-    flex: 1,
-  },
-  segmentedButtons: {
-    marginBottom: mukokoTheme.spacing.lg,
-  },
-  card: {
-    padding: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness * 2,
-    backgroundColor: mukokoTheme.colors.surface,
-  },
-  sectionTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  sectionSubtitle: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-    marginBottom: mukokoTheme.spacing.lg,
-  },
-  warningBanner: {
-    padding: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    backgroundColor: `${mukokoTheme.colors.warning}15`,
-    borderWidth: 1,
-    borderColor: `${mukokoTheme.colors.warning}30`,
-  },
-  warningText: {
-    color: mukokoTheme.colors.warning,
-  },
-  warningTextBold: {
-    fontWeight: '700',
-  },
-  label: {
-    marginBottom: mukokoTheme.spacing.xs,
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-  currentUsername: {
-    padding: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
-  },
-  currentUsernameText: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-  input: {
-    marginBottom: mukokoTheme.spacing.xs,
-    backgroundColor: mukokoTheme.colors.surface,
-  },
-  helperText: {
-    fontSize: 12,
-    color: mukokoTheme.colors.onSurfaceVariant,
-    marginBottom: mukokoTheme.spacing.lg,
-  },
-  previewCard: {
-    padding: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
-  },
-  previewLabel: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  avatarPreview: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.md,
+    justifyContent: 'center',
   },
   avatar: {
-    backgroundColor: mukokoTheme.colors.primary,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    borderWidth: 2,
+    borderColor: '#fff',
   },
-  previewName: {
-    fontWeight: '600',
-  },
-  previewUsername: {
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-  button: {
-    marginTop: mukokoTheme.spacing.md,
-  },
-  buttonContent: {
-    paddingVertical: mukokoTheme.spacing.sm,
-  },
-  homeButton: {
-    marginTop: mukokoTheme.spacing.lg,
-    alignSelf: 'center',
-  },
-  // Appearance section styles
-  settingRow: {
-    flexDirection: 'row',
+  avatarPlaceholder: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
+    borderWidth: 2,
+    borderColor: '#fff',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness,
-    marginBottom: mukokoTheme.spacing.md,
+    justifyContent: 'center',
   },
-  settingInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.md,
+  avatarInitials: {
+    fontSize: 32,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+  },
+  profileInfo: {
     flex: 1,
   },
-  settingText: {
-    flex: 1,
+  profileName: {
+    fontSize: 20,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    marginBottom: 2,
   },
-  themePreview: {
-    padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness,
-    marginTop: mukokoTheme.spacing.sm,
+  profileUsername: {
+    fontSize: 14,
   },
-  previewCards: {
+
+  // Sections
+  section: {
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+
+  // Setting Items
+  settingItem: {
     flexDirection: 'row',
-    gap: mukokoTheme.spacing.sm,
-  },
-  previewCard: {
-    flex: 1,
-    padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness / 2,
     alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+  },
+  settingIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  settingContent: {
+    flex: 1,
+  },
+  settingLabel: {
+    fontSize: 16,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+  settingValue: {
+    fontSize: 13,
+    marginTop: 2,
+  },
+
+  // Edit Form
+  editForm: {
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    marginTop: -4,
+    borderWidth: 1,
+  },
+  input: {
+    marginBottom: 12,
+    borderRadius: 8,
+    fontSize: 16,
+  },
+  bioInput: {
+    minHeight: 80,
+    textAlignVertical: 'top',
+  },
+  charCount: {
+    fontSize: 12,
+    textAlign: 'right',
+    marginTop: -8,
+    marginBottom: 12,
+  },
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+  },
+  saveButton: {
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+
+  // Sign Out
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 24,
+  },
+  signOutText: {
+    fontSize: 16,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+
+  // Footer
+  footer: {
+    alignItems: 'center',
+    paddingVertical: 16,
+  },
+  footerText: {
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+  footerSubtext: {
+    fontSize: 12,
+    marginTop: 4,
   },
 });

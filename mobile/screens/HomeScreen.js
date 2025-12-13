@@ -22,6 +22,9 @@ import { articles, categories as categoriesAPI } from '../api/client';
 import mukokoTheme from '../theme';
 import ArticleCard from '../components/ArticleCard';
 import CategoryChips from '../components/CategoryChips';
+import SearchPromo from '../components/SearchPromo';
+import LoginPromo from '../components/LoginPromo';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -40,6 +43,7 @@ export default function HomeScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
   const paperTheme = usePaperTheme();
+  const { isAuthenticated } = useAuth();
 
   // Calculate responsive layout
   const getLayoutConfig = useCallback((width) => {
@@ -57,6 +61,13 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     loadInitialData();
   }, []);
+
+  // Reload feed when authentication state changes (personalized vs regular feed)
+  useEffect(() => {
+    if (!loading) {
+      loadArticles(selectedCategory);
+    }
+  }, [isAuthenticated]);
 
   // Handle screen resize
   useEffect(() => {
@@ -82,11 +93,28 @@ export default function HomeScreen({ navigation }) {
   };
 
   const loadArticles = async (category = null) => {
-    const { data, error } = await articles.getFeed({
-      limit: 30,
-      offset: 0,
-      category,
-    });
+    let data, error;
+
+    // Use personalized feed for authenticated users (no category filter)
+    // Fall back to regular feed for guests or when filtering by category
+    if (isAuthenticated && !category) {
+      const result = await articles.getPersonalizedFeed({
+        limit: 30,
+        offset: 0,
+        excludeRead: true,
+        diversity: 0.3,
+      });
+      data = result.data;
+      error = result.error;
+    } else {
+      const result = await articles.getFeed({
+        limit: 30,
+        offset: 0,
+        category,
+      });
+      data = result.data;
+      error = result.error;
+    }
 
     if (data?.articles) {
       setArticlesList(data.articles);
@@ -209,6 +237,12 @@ export default function HomeScreen({ navigation }) {
         numColumns={layoutConfig.numColumns > 1 ? layoutConfig.numColumns : 1}
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={layoutConfig.numColumns > 1 ? styles.columnWrapper : undefined}
+        ListHeaderComponent={
+          <SearchPromo
+            variant="compact"
+            style={styles.searchPromo}
+          />
+        }
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -216,6 +250,15 @@ export default function HomeScreen({ navigation }) {
             colors={[paperTheme.colors.primary]}
             tintColor={paperTheme.colors.primary}
           />
+        }
+        ListFooterComponent={
+          !isAuthenticated && articlesList.length > 0 ? (
+            <LoginPromo
+              variant="compact"
+              articleLimit={20}
+              style={styles.loginPromo}
+            />
+          ) : null
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -266,6 +309,17 @@ const styles = StyleSheet.create({
   gridCard: {
     flex: 1,
     marginBottom: 0,
+  },
+
+  // Search promo
+  searchPromo: {
+    marginBottom: mukokoTheme.spacing.md,
+  },
+
+  // Login promo
+  loginPromo: {
+    marginTop: mukokoTheme.spacing.lg,
+    marginBottom: mukokoTheme.spacing.xxl,
   },
 
   // Loading state

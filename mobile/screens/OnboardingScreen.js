@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Text, TextInput, Button, Surface, Chip, Icon } from 'react-native-paper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mukokoTheme } from '../theme';
-import { categories as categoriesAPI } from '../api/client';
+import { categories as categoriesAPI, user as userAPI } from '../api/client';
+
+const AUTH_TOKEN_KEY = '@mukoko_auth_token';
 
 const { width } = Dimensions.get('window');
 
@@ -47,15 +50,11 @@ export default function OnboardingScreen({ navigation }) {
 
     setCheckingUsername(true);
     try {
-      // Note: check-username endpoint not in centralized client yet
-      // TODO: Add to API client if backend supports it
-      const response = await fetch(
-        `https://mukoko-news-backend.nyuchi.workers.dev/api/auth/check-username?username=${encodeURIComponent(value)}`
-      );
-      const data = await response.json();
+      const { auth } = require('../api/client');
+      const result = await auth.checkUsername(value);
 
-      if (!data.available) {
-        setUsernameError(data.error || 'Username is already taken');
+      if (result.error || !result.data?.available) {
+        setUsernameError(result.data?.error || result.error || 'Username is already taken');
         return false;
       }
 
@@ -116,48 +115,17 @@ export default function OnboardingScreen({ navigation }) {
     setError('');
 
     try {
-      const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
-
-      if (!token) {
-        setError('Not authenticated');
-        return;
-      }
-
       // Update username
-      const usernameResponse = await fetch(
-        'https://admin.hararemetro.co.zw/api/user/me/profile',
-        {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ username }),
-        }
-      );
+      const usernameResult = await userAPI.updateProfile({ username });
 
-      if (!usernameResponse.ok) {
-        const errorData = await usernameResponse.json();
-        setError(errorData.error || 'Failed to update username');
+      if (usernameResult.error) {
+        setError(usernameResult.error || 'Failed to update username');
         return;
       }
 
       // Update category interests
       for (const categoryId of selectedCategories) {
-        await fetch(
-          'https://admin.hararemetro.co.zw/api/user/me/category-interest',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
-            },
-            body: JSON.stringify({
-              categoryId,
-              initialScore: 10,
-            }),
-          }
-        );
+        await userAPI.addCategoryInterest(categoryId, 10);
       }
 
       // Navigate to home

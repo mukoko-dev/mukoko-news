@@ -104,15 +104,19 @@ export default function InsightsPromo({
   // Compact variant - horizontal stats row
   if (variant === 'compact') {
     return (
-      <View style={[
-        styles.compactContainer,
-        {
-          backgroundColor: accentGlass.background,
-          borderWidth: 1,
-          borderColor: accentGlass.border,
-        },
-        style
-      ]}>
+      <TouchableOpacity
+        style={[
+          styles.compactContainer,
+          {
+            backgroundColor: accentGlass.background,
+            borderWidth: 1,
+            borderColor: accentGlass.border,
+          },
+          style
+        ]}
+        onPress={handlePress}
+        activeOpacity={0.7}
+      >
         <View style={styles.compactHeader}>
           <MaterialCommunityIcons
             name="chart-box"
@@ -122,9 +126,11 @@ export default function InsightsPromo({
           <Text style={[styles.compactTitle, { color: paperTheme.colors.onSurface }]}>
             Live Insights
           </Text>
-          <Text style={[styles.compactUpdated, { color: paperTheme.colors.onSurfaceVariant }]}>
-            {defaultMetrics.lastUpdated}
-          </Text>
+          <MaterialCommunityIcons
+            name="chevron-right"
+            size={18}
+            color={paperTheme.colors.onSurfaceVariant}
+          />
         </View>
         <View style={styles.compactStats}>
           <View style={styles.compactStat}>
@@ -154,7 +160,7 @@ export default function InsightsPromo({
             </Text>
           </View>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   }
 
