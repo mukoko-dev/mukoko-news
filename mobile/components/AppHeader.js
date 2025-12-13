@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text, Modal, Platform } from 'react-native';
 import { Divider, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useNavigationState } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 import mukokoTheme from '../theme';
 import Logo from './Logo';
@@ -15,10 +15,21 @@ export default function AppHeader() {
   // Show header icons on web (tablet/desktop) - mobile uses compact icons
   const [isDesktop, setIsDesktop] = useState(Platform.OS === 'web');
 
-  // Get navigation - hooks must be called unconditionally
+  // Get navigation - useNavigation works at NavigationContainer level
   const navigation = useNavigation();
-  const route = useRoute();
-  const routeName = route?.name;
+
+  // Get current route name from navigation state (works outside screen context)
+  // This is safer than useRoute() which requires being inside a screen
+  const routeName = useNavigationState((state) => {
+    if (!state || !state.routes || state.routes.length === 0) return 'Home';
+    const currentRoute = state.routes[state.index];
+    // For nested navigators, get the deepest route name
+    if (currentRoute.state && currentRoute.state.routes) {
+      const nestedRoute = currentRoute.state.routes[currentRoute.state.index];
+      return nestedRoute?.name || currentRoute.name;
+    }
+    return currentRoute.name;
+  });
 
   useEffect(() => {
     const updateLayout = () => {
