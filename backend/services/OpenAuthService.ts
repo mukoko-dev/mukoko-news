@@ -4,7 +4,7 @@ import * as v from 'valibot'
 import { PasswordHashService } from './PasswordHashService.js'
 
 /**
- * OpenAuth Service for Harare Metro
+ * OpenAuth Service for Mukoko News
  * D1-First authentication architecture - all auth data in database
  * KV only used for temporary verification codes and rate limiting
  * Supports: creator, business-creator, moderator, admin, super_admin roles

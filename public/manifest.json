@@ -1,7 +1,7 @@
 {
-  "name": "Harare Metro - Zimbabwe News",
-  "short_name": "Harare Metro",
-  "description": "Zimbabwe's premier news aggregation platform featuring politics, economy, sports, technology, and local news from trusted sources.",
+  "name": "Mukoko News - Zimbabwe News",
+  "short_name": "Mukoko News",
+  "description": "Zimbabwe's modern news platform featuring politics, economy, sports, technology, and local news from trusted sources.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#00A651",
@@ -40,7 +40,7 @@
   "lang": "en-ZW",
   "dir": "ltr",
   "scope": "/",
-  "id": "harare-metro-zw",
+  "id": "mukoko-news-zw",
   "related_applications": [],
   "prefer_related_applications": false,
   "shortcuts": [
