@@ -62,6 +62,13 @@ export default function HomeScreen({ navigation }) {
     loadInitialData();
   }, []);
 
+  // Reload feed when authentication state changes (personalized vs regular feed)
+  useEffect(() => {
+    if (!loading) {
+      loadArticles(selectedCategory);
+    }
+  }, [isAuthenticated]);
+
   // Handle screen resize
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -86,11 +93,28 @@ export default function HomeScreen({ navigation }) {
   };
 
   const loadArticles = async (category = null) => {
-    const { data, error } = await articles.getFeed({
-      limit: 30,
-      offset: 0,
-      category,
-    });
+    let data, error;
+
+    // Use personalized feed for authenticated users (no category filter)
+    // Fall back to regular feed for guests or when filtering by category
+    if (isAuthenticated && !category) {
+      const result = await articles.getPersonalizedFeed({
+        limit: 30,
+        offset: 0,
+        excludeRead: true,
+        diversity: 0.3,
+      });
+      data = result.data;
+      error = result.error;
+    } else {
+      const result = await articles.getFeed({
+        limit: 30,
+        offset: 0,
+        category,
+      });
+      data = result.data;
+      error = result.error;
+    }
 
     if (data?.articles) {
       setArticlesList(data.articles);

@@ -195,6 +195,34 @@ export const articles = {
   },
 
   /**
+   * Get personalized feed (For You)
+   * Uses user preferences, reading history, and follows to curate articles
+   * Falls back to trending for anonymous users
+   * @param {Object} options
+   * @param {number} options.limit - Number of articles to fetch
+   * @param {number} options.offset - Offset for pagination
+   * @param {boolean} options.excludeRead - Exclude already read articles
+   * @param {number} options.diversity - Diversity factor 0-1 (higher = more diverse categories)
+   */
+  async getPersonalizedFeed({ limit = 30, offset = 0, excludeRead = true, diversity = 0.3 } = {}) {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+      excludeRead: excludeRead.toString(),
+      diversity: diversity.toString(),
+    });
+
+    return apiRequest(`/api/feeds/personalized?${params.toString()}`);
+  },
+
+  /**
+   * Get explanation for why articles are recommended
+   */
+  async getFeedExplanation() {
+    return apiRequest('/api/feeds/personalized/explain');
+  },
+
+  /**
    * Get single article by source and slug
    */
   async getBySourceSlug(source, slug) {
