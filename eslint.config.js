@@ -37,6 +37,24 @@ export default [
         localStorage: 'readonly',
         sessionStorage: 'readonly',
         fetch: 'readonly',
+        // React Native / Expo globals
+        __DEV__: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        URLSearchParams: 'readonly',
+        URL: 'readonly',
+        FormData: 'readonly',
+        Blob: 'readonly',
+        alert: 'readonly',
+        requestAnimationFrame: 'readonly',
+        cancelAnimationFrame: 'readonly',
+        setTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearTimeout: 'readonly',
+        clearInterval: 'readonly',
+        setImmediate: 'readonly',
+        clearImmediate: 'readonly',
       },
     },
     settings: {
@@ -97,6 +115,26 @@ export default [
     },
   },
   
+  // Service Worker config
+  {
+    files: ['**/service-worker.js', '**/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        Response: 'readonly',
+        Request: 'readonly',
+        Headers: 'readonly',
+        fetch: 'readonly',
+        clients: 'readonly',
+        skipWaiting: 'readonly',
+        registration: 'readonly',
+        addEventListener: 'readonly',
+        importScripts: 'readonly',
+      },
+    },
+  },
+
   // Test files config
   {
     files: ['**/*.test.{js,jsx}', '**/*.spec.{js,jsx}'],

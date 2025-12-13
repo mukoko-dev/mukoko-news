@@ -86,6 +86,8 @@ const ArticleImage = memo(({ uri, style, onError }) => {
   );
 }, (prevProps, nextProps) => prevProps.uri === nextProps.uri);
 
+ArticleImage.displayName = 'ArticleImage';
+
 /**
  * ArticleCard - Main card component for displaying news articles
  *
@@ -103,7 +105,6 @@ function ArticleCard({
 }) {
   const [imageError, setImageError] = useState(false);
   const paperTheme = usePaperTheme();
-  const isDark = paperTheme.dark;
 
   const imageUrl = article.imageUrl || article.image_url;
   const hasImage = imageUrl && !imageError;

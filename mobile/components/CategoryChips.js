@@ -58,7 +58,6 @@ export default function CategoryChips({
   style,
 }) {
   const paperTheme = usePaperTheme();
-  const isDark = paperTheme.dark;
 
   const allCategories = showAll
     ? [{ id: 'all', name: 'All', slug: null }, ...categories]
