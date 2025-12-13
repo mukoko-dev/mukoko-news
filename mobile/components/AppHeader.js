@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text, Modal, Platform } from 'react-native';
 import { Divider, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useNavigationState } from '@react-navigation/native';
+import { NavigationContext } from '@react-navigation/native';
 import { useTheme } from '../contexts/ThemeContext';
 import mukokoTheme from '../theme';
 import Logo from './Logo';
@@ -15,21 +15,8 @@ export default function AppHeader() {
   // Show header icons on web (tablet/desktop) - mobile uses compact icons
   const [isDesktop, setIsDesktop] = useState(Platform.OS === 'web');
 
-  // Get navigation - useNavigation works at NavigationContainer level
-  const navigation = useNavigation();
-
-  // Get current route name from navigation state (works outside screen context)
-  // This is safer than useRoute() which requires being inside a screen
-  const routeName = useNavigationState((state) => {
-    if (!state || !state.routes || state.routes.length === 0) return 'Home';
-    const currentRoute = state.routes[state.index];
-    // For nested navigators, get the deepest route name
-    if (currentRoute.state && currentRoute.state.routes) {
-      const nestedRoute = currentRoute.state.routes[currentRoute.state.index];
-      return nestedRoute?.name || currentRoute.name;
-    }
-    return currentRoute.name;
-  });
+  // Get navigation context directly - may be undefined if outside navigator
+  const navigation = useContext(NavigationContext);
 
   useEffect(() => {
     const updateLayout = () => {
@@ -44,67 +31,24 @@ export default function AppHeader() {
     return () => subscription?.remove();
   }, []);
 
-  // Don't show header on NewsBytes screen (full-screen experience)
-  if (routeName === 'BytesFeed' || routeName === 'Bytes') {
-    return null;
-  }
+  // Always show logo in header (route-independent for stability)
 
-  // Screen title mapping
-  const getScreenTitle = (route) => {
-    const titles = {
-      Home: null, // Show logo instead
-      Discover: 'Discover',
-      Search: 'Search',
-      Profile: 'Profile',
-      ArticleDetail: 'Article',
-      Login: 'Sign In',
-      Register: 'Create Account',
-      ForgotPassword: 'Reset Password',
-      Settings: 'Settings',
-      UserProfile: 'Profile',
-    };
-    return titles[route] ?? null;
-  };
-
-  const screenTitle = getScreenTitle(routeName);
-  const showLogo = !screenTitle; // Show logo when no title (Home screen)
-
-  const handleSearchPress = () => {
-    try {
-      navigation.navigate('Search');
-      setMenuVisible(false);
-    } catch {
-      // Navigation not available
+  // Safe navigation helper - handles case when navigation context is unavailable
+  const safeNavigate = (screenName) => {
+    if (navigation?.navigate) {
+      try {
+        navigation.navigate(screenName);
+        setMenuVisible(false);
+      } catch {
+        // Navigation failed silently
+      }
     }
   };
 
-  const handleProfilePress = () => {
-    try {
-      navigation.navigate('Profile');
-      setMenuVisible(false);
-    } catch {
-      // Navigation not available
-    }
-  };
-
-  const handleTrendingPress = () => {
-    try {
-      // Navigate to Discover screen which shows trending content
-      navigation.navigate('Discover');
-      setMenuVisible(false);
-    } catch {
-      // Navigation not available
-    }
-  };
-
-  const handleNavigate = (screenName) => {
-    try {
-      navigation.navigate(screenName);
-      setMenuVisible(false);
-    } catch {
-      // Navigation not available
-    }
-  };
+  const handleSearchPress = () => safeNavigate('Search');
+  const handleProfilePress = () => safeNavigate('Profile');
+  const handleTrendingPress = () => safeNavigate('Discover');
+  const handleNavigate = (screenName) => safeNavigate(screenName);
 
   const menuItems = [
     { label: 'Home', icon: 'home', screen: 'Home' },
@@ -118,9 +62,6 @@ export default function AppHeader() {
   const dynamicStyles = {
     header: {
       backgroundColor: isDark ? theme.colors.background : paperTheme.colors.background,
-    },
-    screenTitle: {
-      color: paperTheme.colors.onSurface,
     },
     menuContainer: {
       backgroundColor: isDark ? 'rgba(45, 45, 52, 0.95)' : paperTheme.colors.surface,
@@ -150,17 +91,13 @@ export default function AppHeader() {
             </TouchableOpacity>
           )}
 
-          {/* Logo or Screen Title */}
+          {/* Logo - Always visible for consistent branding */}
           <TouchableOpacity
             style={styles.logoContainer}
             onPress={() => handleNavigate('Home')}
             activeOpacity={0.7}
           >
-            {showLogo ? (
-              <Logo size="sm" theme={isDark ? 'light' : 'dark'} />
-            ) : (
-              <Text style={[styles.screenTitle, dynamicStyles.screenTitle]}>{screenTitle}</Text>
-            )}
+            <Logo size="sm" theme={isDark ? 'light' : 'dark'} />
           </TouchableOpacity>
 
           {/* Spacer - pushes logo to center on mobile, actions to right on desktop */}
@@ -280,12 +217,6 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  screenTitle: {
-    fontSize: 18,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    color: mukokoTheme.colors.onSurface,
-    letterSpacing: -0.3,
   },
   spacer: {
     flex: 1,
