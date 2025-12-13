@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
-import { Text, TextInput, Button, Surface, SegmentedButtons, Avatar, Icon } from 'react-native-paper';
+import { Text, TextInput, Button, Surface, SegmentedButtons, Avatar, Icon, Switch, useTheme as usePaperTheme } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mukokoTheme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 const AUTH_TOKEN_KEY = '@mukoko_auth_token';
 
 export default function ProfileSettingsScreen({ navigation }) {
+  const { isDark, toggleTheme } = useTheme();
+  const paperTheme = usePaperTheme();
+
   const [activeSection, setActiveSection] = useState('profile');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -148,10 +152,21 @@ export default function ProfileSettingsScreen({ navigation }) {
     }
   };
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: paperTheme.colors.background,
+    },
+    header: {
+      backgroundColor: paperTheme.colors.surface,
+      borderBottomColor: paperTheme.colors.outline,
+    },
+  };
+
   if (!profile) {
     return (
-      <View style={styles.loadingContainer}>
-        <Text>Loading...</Text>
+      <View style={[styles.loadingContainer, dynamicStyles.container]}>
+        <Text style={{ color: paperTheme.colors.onSurface }}>Loading...</Text>
       </View>
     );
   }
@@ -159,19 +174,19 @@ export default function ProfileSettingsScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, dynamicStyles.container]}
     >
       {/* Header */}
-      <Surface style={styles.header} elevation={1}>
+      <Surface style={[styles.header, dynamicStyles.header]} elevation={1}>
         <Button
           mode="text"
           onPress={() => navigation.goBack()}
-          icon={() => <Icon source="arrow-left" size={24} color={mukokoTheme.colors.onSurface} />}
+          icon={() => <Icon source="arrow-left" size={24} color={paperTheme.colors.onSurface} />}
           style={styles.backButton}
         >
           Back
         </Button>
-        <Text variant="titleLarge" style={styles.headerTitle}>
+        <Text variant="titleLarge" style={[styles.headerTitle, { color: paperTheme.colors.onSurface }]}>
           Profile Settings
         </Text>
       </Surface>
@@ -200,8 +215,9 @@ export default function ProfileSettingsScreen({ navigation }) {
           value={activeSection}
           onValueChange={setActiveSection}
           buttons={[
-            { value: 'profile', label: 'Profile Info' },
+            { value: 'profile', label: 'Profile' },
             { value: 'username', label: 'Username' },
+            { value: 'appearance', label: 'Theme' },
           ]}
           style={styles.segmentedButtons}
         />
@@ -356,6 +372,56 @@ export default function ProfileSettingsScreen({ navigation }) {
             >
               {loading ? 'Updating username...' : 'Update Username'}
             </Button>
+          </Surface>
+        )}
+
+        {/* Appearance Section */}
+        {activeSection === 'appearance' && (
+          <Surface style={[styles.card, { backgroundColor: paperTheme.colors.surface }]} elevation={2}>
+            <Text variant="headlineSmall" style={[styles.sectionTitle, { color: paperTheme.colors.onSurface }]}>
+              Theme Settings
+            </Text>
+            <Text variant="bodySmall" style={[styles.sectionSubtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
+              Customize the appearance of the app
+            </Text>
+
+            {/* Dark Mode Toggle */}
+            <Surface style={[styles.settingRow, { backgroundColor: paperTheme.colors.surfaceVariant }]} elevation={0}>
+              <View style={styles.settingInfo}>
+                <Icon source={isDark ? 'moon-waning-crescent' : 'white-balance-sunny'} size={24} color={paperTheme.colors.primary} />
+                <View style={styles.settingText}>
+                  <Text variant="bodyLarge" style={{ color: paperTheme.colors.onSurface }}>
+                    Dark Mode
+                  </Text>
+                  <Text variant="bodySmall" style={{ color: paperTheme.colors.onSurfaceVariant }}>
+                    {isDark ? 'Currently using dark theme' : 'Currently using light theme'}
+                  </Text>
+                </View>
+              </View>
+              <Switch
+                value={isDark}
+                onValueChange={toggleTheme}
+                color={paperTheme.colors.primary}
+              />
+            </Surface>
+
+            {/* Theme Preview */}
+            <Surface style={[styles.themePreview, { backgroundColor: paperTheme.colors.background }]} elevation={0}>
+              <Text variant="labelMedium" style={{ color: paperTheme.colors.onSurfaceVariant, marginBottom: 8 }}>
+                Preview
+              </Text>
+              <View style={styles.previewCards}>
+                <Surface style={[styles.previewCard, { backgroundColor: paperTheme.colors.primary }]} elevation={1}>
+                  <Text style={{ color: paperTheme.colors.onPrimary, fontSize: 12 }}>Primary</Text>
+                </Surface>
+                <Surface style={[styles.previewCard, { backgroundColor: paperTheme.colors.surface }]} elevation={1}>
+                  <Text style={{ color: paperTheme.colors.onSurface, fontSize: 12 }}>Surface</Text>
+                </Surface>
+                <Surface style={[styles.previewCard, { backgroundColor: paperTheme.colors.surfaceVariant }]} elevation={1}>
+                  <Text style={{ color: paperTheme.colors.onSurfaceVariant, fontSize: 12 }}>Variant</Text>
+                </Surface>
+              </View>
+            </Surface>
           </Surface>
         )}
 
@@ -515,5 +581,38 @@ const styles = StyleSheet.create({
   homeButton: {
     marginTop: mukokoTheme.spacing.lg,
     alignSelf: 'center',
+  },
+  // Appearance section styles
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: mukokoTheme.spacing.md,
+    borderRadius: mukokoTheme.roundness,
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  settingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.md,
+    flex: 1,
+  },
+  settingText: {
+    flex: 1,
+  },
+  themePreview: {
+    padding: mukokoTheme.spacing.md,
+    borderRadius: mukokoTheme.roundness,
+    marginTop: mukokoTheme.spacing.sm,
+  },
+  previewCards: {
+    flexDirection: 'row',
+    gap: mukokoTheme.spacing.sm,
+  },
+  previewCard: {
+    flex: 1,
+    padding: mukokoTheme.spacing.md,
+    borderRadius: mukokoTheme.roundness / 2,
+    alignItems: 'center',
   },
 });
