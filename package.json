@@ -5,6 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "cd backend && npm run build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "lint:mobile": "eslint mobile/",
