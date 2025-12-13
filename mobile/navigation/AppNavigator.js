@@ -23,6 +23,7 @@ import UserProfileScreen from '../screens/UserProfileScreen';
 import ArticleDetailScreen from '../screens/ArticleDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
+import InsightsScreen from '../screens/InsightsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -68,7 +69,7 @@ function SearchStack() {
   );
 }
 
-// Discover Stack (trending/featured)
+// Discover Stack (trending/featured/insights)
 function DiscoverStack() {
   return (
     <Stack.Navigator
@@ -76,8 +77,10 @@ function DiscoverStack() {
         headerShown: false,
       }}
     >
+      <Stack.Screen name="InsightsFeed" component={InsightsScreen} />
       <Stack.Screen name="DiscoverFeed" component={DiscoverScreen} />
       <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+      <Stack.Screen name="SearchFeed" component={SearchScreen} />
     </Stack.Navigator>
   );
 }
@@ -180,15 +183,15 @@ function MainTabs() {
         }}
       />
 
-      {/* 2. Discover Tab - Explore/Trending content */}
+      {/* 2. Insights Tab - Analytics/Trending content */}
       <Tab.Screen
         name="Discover"
         component={DiscoverStack}
         options={{
-          tabBarLabel: 'Explore',
+          tabBarLabel: 'Insights',
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
-              name={focused ? 'fire' : 'fire'}
+              name={focused ? 'chart-line' : 'chart-line-variant'}
               size={24}
               color={focused ? mukokoTheme.colors.accent : color}
             />
