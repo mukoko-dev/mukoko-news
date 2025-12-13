@@ -42,7 +42,6 @@ export default function SearchPromo({
 }) {
   const navigation = useNavigation();
   const paperTheme = usePaperTheme();
-  const isDark = paperTheme.dark;
 
   // Primary-tinted glass colors for search identity (purple)
   const primaryGlass = {

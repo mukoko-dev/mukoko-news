@@ -14,20 +14,11 @@ export default function AppHeader() {
 
   // Show header icons on web (tablet/desktop) - mobile uses compact icons
   const [isDesktop, setIsDesktop] = useState(Platform.OS === 'web');
-  // Always show compact action icons on mobile
-  const [showMobileActions, setShowMobileActions] = useState(true);
 
-  // Get navigation - may be undefined if outside navigation context
-  let navigation = null;
-  let routeName = null;
-
-  try {
-    navigation = useNavigation();
-    const route = useRoute();
-    routeName = route?.name;
-  } catch (e) {
-    // Navigation context not available - that's ok, we can still render
-  }
+  // Get navigation - hooks must be called unconditionally
+  const navigation = useNavigation();
+  const route = useRoute();
+  const routeName = route?.name;
 
   useEffect(() => {
     const updateLayout = () => {
@@ -68,47 +59,39 @@ export default function AppHeader() {
   const showLogo = !screenTitle; // Show logo when no title (Home screen)
 
   const handleSearchPress = () => {
-    if (navigation) {
-      try {
-        navigation.navigate('Search');
-        setMenuVisible(false);
-      } catch (e) {
-        console.log('Navigation to Search not available');
-      }
+    try {
+      navigation.navigate('Search');
+      setMenuVisible(false);
+    } catch {
+      // Navigation not available
     }
   };
 
   const handleProfilePress = () => {
-    if (navigation) {
-      try {
-        navigation.navigate('Profile');
-        setMenuVisible(false);
-      } catch (e) {
-        console.log('Navigation to Profile not available');
-      }
+    try {
+      navigation.navigate('Profile');
+      setMenuVisible(false);
+    } catch {
+      // Navigation not available
     }
   };
 
   const handleTrendingPress = () => {
-    if (navigation) {
-      try {
-        // Navigate to Discover screen which shows trending content
-        navigation.navigate('Discover');
-        setMenuVisible(false);
-      } catch (e) {
-        console.log('Navigation to Discover not available');
-      }
+    try {
+      // Navigate to Discover screen which shows trending content
+      navigation.navigate('Discover');
+      setMenuVisible(false);
+    } catch {
+      // Navigation not available
     }
   };
 
   const handleNavigate = (screenName) => {
-    if (navigation) {
-      try {
-        navigation.navigate(screenName);
-        setMenuVisible(false);
-      } catch (e) {
-        console.log(`Navigation to ${screenName} not available`);
-      }
+    try {
+      navigation.navigate(screenName);
+      setMenuVisible(false);
+    } catch {
+      // Navigation not available
     }
   };
 

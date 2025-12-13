@@ -31,7 +31,6 @@ export default function InsightsPromo({
 }) {
   const navigation = useNavigation();
   const paperTheme = usePaperTheme();
-  const isDark = paperTheme.dark;
 
   // Accent-tinted glass colors for insights identity (terracotta)
   const accentGlass = {

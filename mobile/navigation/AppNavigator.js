@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, Text } from 'react-native';
+import { View, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -249,7 +249,6 @@ function MainTabs() {
 
 // Root Navigator with Global Header and Footer
 export default function AppNavigator() {
-  const { isDark } = useTheme();
   const paperTheme = usePaperTheme();
 
   return (

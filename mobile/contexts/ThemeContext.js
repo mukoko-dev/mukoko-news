@@ -3,8 +3,8 @@
  * Provides paperTheme (light) or paperThemeDark based on system preference
  */
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
-import { useColorScheme, Platform } from 'react-native';
+import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import { useColorScheme } from 'react-native';
 import { paperTheme, paperThemeDark, mukokoTheme } from '../theme';
 
 const ThemeContext = createContext({
@@ -35,21 +35,21 @@ export function ThemeProvider({ children }) {
   }, [isDark]);
 
   // Toggle between light and dark
-  const toggleTheme = () => {
+  const toggleTheme = useCallback(() => {
     setManualTheme((prev) => {
       if (prev === null) {
-        // Currently following system, switch to opposite
-        return isDark ? 'light' : 'dark';
+        // Currently following system, switch to opposite of current
+        return systemColorScheme === 'dark' ? 'light' : 'dark';
       }
       // Toggle manual setting
       return prev === 'dark' ? 'light' : 'dark';
     });
-  };
+  }, [systemColorScheme]);
 
   // Reset to system preference
-  const resetToSystem = () => {
+  const resetToSystem = useCallback(() => {
     setManualTheme(null);
-  };
+  }, []);
 
   const value = useMemo(() => ({
     theme,
@@ -57,7 +57,7 @@ export function ThemeProvider({ children }) {
     toggleTheme,
     resetToSystem,
     mukokoTheme,
-  }), [theme, isDark]);
+  }), [theme, isDark, toggleTheme, resetToSystem]);
 
   return (
     <ThemeContext.Provider value={value}>

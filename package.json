@@ -5,6 +5,9 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "lint:mobile": "eslint mobile/",
     "deploy": "cd backend && npm run deploy",
     "dev": "cd backend && npm run dev",
     "test": "cd backend && npm run test",
@@ -22,5 +25,13 @@
     "mobile:android": "cd mobile && npm run android",
     "mobile:install": "cd mobile && npm install",
     "mobile:deploy": "cd mobile && npx vercel --prod"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24"
   }
 }
