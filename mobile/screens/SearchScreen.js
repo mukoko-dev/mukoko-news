@@ -14,9 +14,11 @@ import {
   Button,
   ActivityIndicator,
   Surface,
+  useTheme as usePaperTheme,
 } from 'react-native-paper';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 import CategoryChips from '../components/CategoryChips';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI, categories as categoriesAPI } from '../api/client';
@@ -89,6 +91,8 @@ const SearchResultCard = memo(({ article, onPress }) => {
  */
 export default function SearchScreen({ navigation }) {
   const { isAuthenticated } = useAuth();
+  const { isDark } = useTheme();
+  const paperTheme = usePaperTheme();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
@@ -209,18 +213,63 @@ export default function SearchScreen({ navigation }) {
     performSearch(categoryName.toLowerCase());
   };
 
+  // Dynamic styles based on theme
+  const dynamicStyles = {
+    container: {
+      backgroundColor: paperTheme.colors.background,
+    },
+    searchContainer: {
+      backgroundColor: paperTheme.colors.surface,
+      borderBottomColor: paperTheme.colors.outlineVariant,
+    },
+    searchbar: {
+      backgroundColor: paperTheme.colors.surfaceVariant,
+    },
+    resultsInfo: {
+      backgroundColor: paperTheme.colors.surface,
+      borderBottomColor: paperTheme.colors.outlineVariant,
+    },
+    resultsInfoText: {
+      color: paperTheme.colors.onSurfaceVariant,
+    },
+    errorContainer: {
+      backgroundColor: paperTheme.colors.errorContainer,
+    },
+    errorText: {
+      color: paperTheme.colors.onErrorContainer,
+    },
+    emptyStateCard: {
+      backgroundColor: paperTheme.colors.surface,
+    },
+    emptyTitle: {
+      color: paperTheme.colors.onSurface,
+    },
+    emptyMessage: {
+      color: paperTheme.colors.onSurfaceVariant,
+    },
+    suggestionsTitle: {
+      color: paperTheme.colors.onSurface,
+    },
+    suggestionChip: {
+      backgroundColor: paperTheme.colors.surfaceVariant,
+    },
+    loadingText: {
+      color: paperTheme.colors.onSurfaceVariant,
+    },
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, dynamicStyles.container]}>
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, dynamicStyles.searchContainer]}>
         <Searchbar
           placeholder="Search Zimbabwe news..."
           value={searchQuery}
           onChangeText={handleSearchChange}
           onSubmitEditing={handleSearchSubmit}
-          style={styles.searchbar}
+          style={[styles.searchbar, dynamicStyles.searchbar]}
           inputStyle={styles.searchInput}
-          iconColor={mukokoTheme.colors.primary}
+          iconColor={paperTheme.colors.primary}
           loading={loading}
         />
       </View>
@@ -238,8 +287,8 @@ export default function SearchScreen({ navigation }) {
 
       {/* Search Results Info */}
       {activeQuery && !loading && (
-        <View style={styles.resultsInfo}>
-          <Text style={styles.resultsInfoText}>
+        <View style={[styles.resultsInfo, dynamicStyles.resultsInfo]}>
+          <Text style={[styles.resultsInfoText, dynamicStyles.resultsInfoText]}>
             {total} result{total !== 1 ? 's' : ''} for "{activeQuery}"
           </Text>
         </View>
@@ -247,30 +296,30 @@ export default function SearchScreen({ navigation }) {
 
       {/* Error State */}
       {error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
+        <View style={[styles.errorContainer, dynamicStyles.errorContainer]}>
+          <Text style={[styles.errorText, dynamicStyles.errorText]}>{error}</Text>
         </View>
       )}
 
       {/* Empty State - No Query */}
       {!activeQuery && !loading && (
         <View style={styles.emptyStateContainer}>
-          <View style={styles.emptyStateCard}>
+          <View style={[styles.emptyStateCard, dynamicStyles.emptyStateCard]}>
             <Text style={styles.emptyEmoji}>🔍</Text>
-            <Text style={styles.emptyTitle}>Search Zimbabwe News</Text>
-            <Text style={styles.emptyMessage}>
+            <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>Search Zimbabwe News</Text>
+            <Text style={[styles.emptyMessage, dynamicStyles.emptyMessage]}>
               Find articles from trusted Zimbabwe news sources
             </Text>
 
             {categories.length > 0 && (
               <View style={styles.suggestionsContainer}>
-                <Text style={styles.suggestionsTitle}>Popular Topics</Text>
+                <Text style={[styles.suggestionsTitle, dynamicStyles.suggestionsTitle]}>Popular Topics</Text>
                 <View style={styles.suggestionsGrid}>
                   {categories.slice(0, 6).map((category) => (
                     <Chip
                       key={category.id}
                       onPress={() => handleSuggestionPress(category.name)}
-                      style={styles.suggestionChip}
+                      style={[styles.suggestionChip, dynamicStyles.suggestionChip]}
                       textStyle={styles.suggestionChipText}
                     >
                       {category.emoji} {category.name}
@@ -286,17 +335,17 @@ export default function SearchScreen({ navigation }) {
       {/* No Results State */}
       {activeQuery && results.length === 0 && !loading && !error && (
         <View style={styles.emptyStateContainer}>
-          <View style={styles.emptyStateCard}>
+          <View style={[styles.emptyStateCard, dynamicStyles.emptyStateCard]}>
             <Text style={styles.emptyEmoji}>📭</Text>
-            <Text style={styles.emptyTitle}>No Results</Text>
-            <Text style={styles.emptyMessage}>
+            <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>No Results</Text>
+            <Text style={[styles.emptyMessage, dynamicStyles.emptyMessage]}>
               No articles found for "{activeQuery}"
             </Text>
             <Button
               mode="contained"
               onPress={() => navigation.navigate('Home')}
               style={styles.browseButton}
-              buttonColor={mukokoTheme.colors.primary}
+              buttonColor={paperTheme.colors.primary}
             >
               Browse All News
             </Button>
@@ -327,8 +376,8 @@ export default function SearchScreen({ navigation }) {
       {/* Loading State */}
       {loading && (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={mukokoTheme.colors.primary} />
-          <Text style={styles.loadingText}>Searching...</Text>
+          <ActivityIndicator size="large" color={paperTheme.colors.primary} />
+          <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Searching...</Text>
         </View>
       )}
     </View>
