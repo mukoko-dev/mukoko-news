@@ -23,6 +23,8 @@ import mukokoTheme from '../theme';
 import ArticleCard from '../components/ArticleCard';
 import CategoryChips from '../components/CategoryChips';
 import SearchPromo from '../components/SearchPromo';
+import LoginPromo from '../components/LoginPromo';
+import { useAuth } from '../contexts/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -41,6 +43,7 @@ export default function HomeScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
   const paperTheme = usePaperTheme();
+  const { isAuthenticated } = useAuth();
 
   // Calculate responsive layout
   const getLayoutConfig = useCallback((width) => {
@@ -224,6 +227,15 @@ export default function HomeScreen({ navigation }) {
             tintColor={paperTheme.colors.primary}
           />
         }
+        ListFooterComponent={
+          !isAuthenticated && articlesList.length > 0 ? (
+            <LoginPromo
+              variant="compact"
+              articleLimit={20}
+              style={styles.loginPromo}
+            />
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <MaterialCommunityIcons
@@ -278,6 +290,12 @@ const styles = StyleSheet.create({
   // Search promo
   searchPromo: {
     marginBottom: mukokoTheme.spacing.md,
+  },
+
+  // Login promo
+  loginPromo: {
+    marginTop: mukokoTheme.spacing.lg,
+    marginBottom: mukokoTheme.spacing.xxl,
   },
 
   // Loading state
