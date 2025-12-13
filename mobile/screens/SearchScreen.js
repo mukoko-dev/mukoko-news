@@ -46,6 +46,8 @@ const SearchResultCard = memo(({ article, onPress }) => {
     });
   };
 
+  const hasImage = article.image_url && !imageError;
+
   return (
     <TouchableOpacity
       activeOpacity={0.8}
@@ -54,9 +56,9 @@ const SearchResultCard = memo(({ article, onPress }) => {
     >
       <Surface style={styles.card} elevation={1}>
         <View style={styles.cardRow}>
-          {/* Image */}
-          <View style={styles.cardImageContainer}>
-            {article.image_url && !imageError ? (
+          {/* Image - only show if available */}
+          {hasImage && (
+            <View style={styles.cardImageContainer}>
               <Image
                 source={{ uri: article.image_url }}
                 style={styles.cardImage}
@@ -64,15 +66,11 @@ const SearchResultCard = memo(({ article, onPress }) => {
                 onError={() => setImageError(true)}
                 fadeDuration={0}
               />
-            ) : (
-              <View style={[styles.cardImage, styles.imagePlaceholder]}>
-                <Text style={styles.placeholderText}>📰</Text>
-              </View>
-            )}
-          </View>
+            </View>
+          )}
 
           {/* Content */}
-          <View style={styles.cardContent}>
+          <View style={[styles.cardContent, !hasImage && styles.cardContentNoImage]}>
             <Text style={styles.cardSource}>{article.source || 'News'}</Text>
             <Text style={styles.cardTitle} numberOfLines={2}>
               {article.title}
@@ -474,18 +472,13 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  imagePlaceholder: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    fontSize: 24,
-    opacity: 0.5,
-  },
   cardContent: {
     flex: 1,
     marginLeft: mukokoTheme.spacing.sm,
     justifyContent: 'center',
+  },
+  cardContentNoImage: {
+    marginLeft: 0,
   },
   cardSource: {
     fontSize: 11,

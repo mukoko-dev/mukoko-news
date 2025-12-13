@@ -442,6 +442,7 @@ app.get("/api/feeds", async (c) => {
     const limit = parseInt(c.req.query("limit") || "50");
     const offset = parseInt(c.req.query("offset") || "0");
     const category = c.req.query("category");
+    const sort = c.req.query("sort") || "latest"; // latest, trending, popular
 
     // Get articles directly from database
     let articlesQuery = `
@@ -459,7 +460,26 @@ app.get("/api/feeds", async (c) => {
       countQuery += ` AND category_id = ?`;
     }
 
-    articlesQuery += ` ORDER BY published_at DESC LIMIT ? OFFSET ?`;
+    // Apply sorting based on sort parameter
+    let orderClause: string;
+    switch (sort) {
+      case 'trending':
+        // Trending: recent articles with high engagement (weighted by recency)
+        // Articles from last 7 days, sorted by (views + likes*3 + bookmarks*2) / age_in_hours
+        articlesQuery += ` AND published_at > datetime('now', '-7 days')`;
+        orderClause = `ORDER BY (view_count + like_count * 3 + bookmark_count * 2) DESC, published_at DESC`;
+        break;
+      case 'popular':
+        // Popular: highest engagement regardless of date
+        orderClause = `ORDER BY (view_count + like_count * 3 + bookmark_count * 2) DESC`;
+        break;
+      case 'latest':
+      default:
+        orderClause = `ORDER BY published_at DESC`;
+        break;
+    }
+
+    articlesQuery += ` ${orderClause} LIMIT ? OFFSET ?`;
 
     // Execute queries
     const articlesResult = category && category !== 'all' ?
