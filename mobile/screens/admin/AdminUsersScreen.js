@@ -273,6 +273,8 @@ export default function AdminUsersScreen({ navigation }) {
           }}
           value={searchQuery}
           style={styles.searchbar}
+          selectionColor={theme.colors.primary}
+          cursorColor={theme.colors.primary}
         />
       </View>
 

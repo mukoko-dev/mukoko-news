@@ -101,6 +101,8 @@ export default function LoginScreen({ navigation, route }) {
             style={styles.input}
             outlineColor={mukokoTheme.colors.outline}
             activeOutlineColor={mukokoTheme.colors.primary}
+            selectionColor={mukokoTheme.colors.primary}
+            cursorColor={mukokoTheme.colors.primary}
             error={!!error}
           />
 
@@ -115,6 +117,8 @@ export default function LoginScreen({ navigation, route }) {
             style={styles.input}
             outlineColor={mukokoTheme.colors.outline}
             activeOutlineColor={mukokoTheme.colors.primary}
+            selectionColor={mukokoTheme.colors.primary}
+            cursorColor={mukokoTheme.colors.primary}
             error={!!error}
           />
 
