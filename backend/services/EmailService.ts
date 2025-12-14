@@ -321,13 +321,31 @@ Visit https://news.mukoko.com to start reading!
 
   /**
    * Convert HTML to plain text (basic)
+   * Uses iterative replacement to handle edge cases securely
    */
   private htmlToText(html: string): string {
-    return html
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-      .replace(/<[^>]+>/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
+    let text = html;
+
+    // Iteratively remove style tags (handles whitespace variations)
+    let prevLength = 0;
+    while (text.length !== prevLength) {
+      prevLength = text.length;
+      text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style\s*>/gi, '');
+    }
+
+    // Iteratively remove script tags (handles whitespace variations)
+    prevLength = 0;
+    while (text.length !== prevLength) {
+      prevLength = text.length;
+      text = text.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\s*>/gi, '');
+    }
+
+    // Remove all remaining HTML tags
+    text = text.replace(/<[^>]+>/g, ' ');
+
+    // Normalize whitespace
+    text = text.replace(/\s+/g, ' ').trim();
+
+    return text;
   }
 }
