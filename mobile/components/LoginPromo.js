@@ -1,7 +1,7 @@
 /**
  * LoginPromo Component
  * Encourages users to sign up/login to access unlimited articles
- * Uses PRIMARY color tint for brand consistency
+ * Uses ACCENT color (terracotta) for promo identity
  */
 
 import React from 'react';
@@ -17,7 +17,7 @@ import mukokoTheme from '../theme';
 
 /**
  * LoginPromo - Encourages user registration/login
- * Uses PRIMARY (purple) color for brand consistency
+ * Uses ACCENT (terracotta) color for unique promo identity
  *
  * @param {string} variant - 'full' | 'compact' | 'minimal' | 'banner'
  * @param {Function} onLoginPress - Optional callback when login is pressed
@@ -34,19 +34,23 @@ export default function LoginPromo({
   const navigation = useNavigation();
   const paperTheme = usePaperTheme();
 
-  // Primary-tinted glass colors
-  const primaryGlass = {
-    background: paperTheme.colors.glassCard || paperTheme.colors.surface,
-    border: paperTheme.colors.glassBorder || paperTheme.colors.outline,
-    chip: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.08)',
-    chipBorder: paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
+  // Accent-tinted glass colors (terracotta) for promo identity
+  const accentGlass = {
+    background: paperTheme.colors.glassAccentCard || paperTheme.colors.surface,
+    border: paperTheme.colors.glassAccentBorder || paperTheme.colors.outline,
+    chip: paperTheme.colors.glassAccent || 'rgba(212, 99, 74, 0.08)',
+    chipBorder: paperTheme.colors.glassAccentBorder || 'rgba(212, 99, 74, 0.15)',
   };
+
+  // Use accent/tertiary color for buttons
+  const accentColor = paperTheme.colors.tertiary || paperTheme.colors.accent;
 
   const handleLogin = () => {
     if (onLoginPress) {
       onLoginPress();
     } else {
-      navigation.navigate('Login');
+      // Navigate to Profile tab, then Login screen (nested navigation)
+      navigation.navigate('Profile', { screen: 'Login' });
     }
   };
 
@@ -54,7 +58,8 @@ export default function LoginPromo({
     if (onSignUpPress) {
       onSignUpPress();
     } else {
-      navigation.navigate('Register');
+      // Navigate to Profile tab, then Register screen (nested navigation)
+      navigation.navigate('Profile', { screen: 'Register' });
     }
   };
 
@@ -64,7 +69,7 @@ export default function LoginPromo({
       <View style={[
         styles.bannerContainer,
         {
-          backgroundColor: paperTheme.colors.primary,
+          backgroundColor: accentColor,
         },
         style
       ]}>
@@ -72,18 +77,18 @@ export default function LoginPromo({
           <MaterialCommunityIcons
             name="lock-open-outline"
             size={20}
-            color={paperTheme.colors.onPrimary}
+            color={paperTheme.colors.onTertiary}
           />
-          <Text style={[styles.bannerText, { color: paperTheme.colors.onPrimary }]}>
+          <Text style={[styles.bannerText, { color: paperTheme.colors.onTertiary }]}>
             Sign up for unlimited access
           </Text>
         </View>
         <TouchableOpacity
-          style={[styles.bannerButton, { backgroundColor: 'rgba(255,255,255,0.2)' }]}
+          style={[styles.bannerButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}
           onPress={handleSignUp}
           activeOpacity={0.7}
         >
-          <Text style={[styles.bannerButtonText, { color: paperTheme.colors.onPrimary }]}>
+          <Text style={[styles.bannerButtonText, { color: paperTheme.colors.onTertiary }]}>
             Join Free
           </Text>
         </TouchableOpacity>
@@ -98,9 +103,9 @@ export default function LoginPromo({
         style={[
           styles.minimalContainer,
           {
-            backgroundColor: primaryGlass.chip,
+            backgroundColor: accentGlass.chip,
             borderWidth: 1,
-            borderColor: primaryGlass.chipBorder,
+            borderColor: accentGlass.chipBorder,
           },
           style
         ]}
@@ -109,15 +114,15 @@ export default function LoginPromo({
       >
         <MaterialCommunityIcons
           name="account-plus"
-          size={18}
-          color={paperTheme.colors.primary}
+          size={20}
+          color={accentColor}
         />
         <Text style={[styles.minimalText, { color: paperTheme.colors.onSurfaceVariant }]}>
           Create account for unlimited articles
         </Text>
         <MaterialCommunityIcons
           name="chevron-right"
-          size={18}
+          size={20}
           color={paperTheme.colors.onSurfaceVariant}
         />
       </TouchableOpacity>
@@ -130,17 +135,17 @@ export default function LoginPromo({
       <View style={[
         styles.compactContainer,
         {
-          backgroundColor: primaryGlass.background,
+          backgroundColor: accentGlass.background,
           borderWidth: 1,
-          borderColor: primaryGlass.border,
+          borderColor: accentGlass.border,
         },
         style
       ]}>
         <View style={styles.compactHeader}>
           <MaterialCommunityIcons
             name="newspaper-variant-multiple"
-            size={24}
-            color={paperTheme.colors.primary}
+            size={28}
+            color={accentColor}
           />
           <View style={styles.compactHeaderText}>
             <Text style={[styles.compactTitle, { color: paperTheme.colors.onSurface }]}>
@@ -153,20 +158,20 @@ export default function LoginPromo({
         </View>
         <View style={styles.compactButtons}>
           <TouchableOpacity
-            style={[styles.compactButtonPrimary, { backgroundColor: paperTheme.colors.primary }]}
+            style={[styles.compactButtonPrimary, { backgroundColor: accentColor }]}
             onPress={handleSignUp}
             activeOpacity={0.7}
           >
-            <Text style={[styles.compactButtonText, { color: paperTheme.colors.onPrimary }]}>
+            <Text style={[styles.compactButtonText, { color: paperTheme.colors.onTertiary }]}>
               Sign Up Free
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.compactButtonSecondary, { borderColor: paperTheme.colors.primary }]}
+            style={[styles.compactButtonSecondary, { borderColor: accentColor }]}
             onPress={handleLogin}
             activeOpacity={0.7}
           >
-            <Text style={[styles.compactButtonTextSecondary, { color: paperTheme.colors.primary }]}>
+            <Text style={[styles.compactButtonTextSecondary, { color: accentColor }]}>
               Log In
             </Text>
           </TouchableOpacity>
@@ -180,30 +185,30 @@ export default function LoginPromo({
     <View style={[
       styles.container,
       {
-        backgroundColor: primaryGlass.background,
+        backgroundColor: accentGlass.background,
         borderWidth: 1,
-        borderColor: primaryGlass.border,
+        borderColor: accentGlass.border,
       },
       style
     ]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={[styles.badge, { backgroundColor: primaryGlass.chip }]}>
+        <View style={[styles.badge, { backgroundColor: accentGlass.chip }]}>
           <MaterialCommunityIcons
             name="gift-outline"
-            size={14}
-            color={paperTheme.colors.primary}
+            size={16}
+            color={accentColor}
           />
-          <Text style={[styles.badgeText, { color: paperTheme.colors.primary }]}>FREE ACCOUNT</Text>
+          <Text style={[styles.badgeText, { color: accentColor }]}>FREE ACCOUNT</Text>
         </View>
       </View>
 
       {/* Icon */}
-      <View style={[styles.iconContainer, { backgroundColor: primaryGlass.chip }]}>
+      <View style={[styles.iconContainer, { backgroundColor: accentGlass.chip }]}>
         <MaterialCommunityIcons
           name="newspaper-variant-multiple-outline"
           size={48}
-          color={paperTheme.colors.primary}
+          color={accentColor}
         />
       </View>
 
@@ -226,8 +231,8 @@ export default function LoginPromo({
           <View key={index} style={styles.benefitRow}>
             <MaterialCommunityIcons
               name={benefit.icon}
-              size={18}
-              color={paperTheme.colors.primary}
+              size={20}
+              color={accentColor}
             />
             <Text style={[styles.benefitText, { color: paperTheme.colors.onSurface }]}>
               {benefit.text}
@@ -239,16 +244,16 @@ export default function LoginPromo({
       {/* CTA Buttons */}
       <View style={styles.buttons}>
         <TouchableOpacity
-          style={[styles.primaryButton, { backgroundColor: paperTheme.colors.primary }]}
+          style={[styles.primaryButton, { backgroundColor: accentColor }]}
           onPress={handleSignUp}
           activeOpacity={0.7}
         >
           <MaterialCommunityIcons
             name="account-plus"
-            size={20}
-            color={paperTheme.colors.onPrimary}
+            size={22}
+            color={paperTheme.colors.onTertiary}
           />
-          <Text style={[styles.primaryButtonText, { color: paperTheme.colors.onPrimary }]}>
+          <Text style={[styles.primaryButtonText, { color: paperTheme.colors.onTertiary }]}>
             Create Free Account
           </Text>
         </TouchableOpacity>
@@ -257,7 +262,7 @@ export default function LoginPromo({
           onPress={handleLogin}
           activeOpacity={0.7}
         >
-          <Text style={[styles.secondaryButtonText, { color: paperTheme.colors.primary }]}>
+          <Text style={[styles.secondaryButtonText, { color: accentColor }]}>
             Already have an account? Log In
           </Text>
         </TouchableOpacity>
@@ -325,26 +330,30 @@ const styles = StyleSheet.create({
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
   buttons: {
-    gap: mukokoTheme.spacing.sm,
+    gap: mukokoTheme.spacing.md,
   },
   primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 52,  // Accessibility: minimum 48px touch target
     paddingVertical: mukokoTheme.spacing.md,
-    borderRadius: 24,
+    paddingHorizontal: mukokoTheme.spacing.xl,
+    borderRadius: 26,
     gap: mukokoTheme.spacing.sm,
   },
   primaryButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
   secondaryButton: {
     alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.sm,
+    minHeight: 48,  // Accessibility: minimum touch target
+    justifyContent: 'center',
+    paddingVertical: mukokoTheme.spacing.md,
   },
   secondaryButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 
@@ -374,27 +383,33 @@ const styles = StyleSheet.create({
   },
   compactButtons: {
     flexDirection: 'row',
-    gap: mukokoTheme.spacing.sm,
+    gap: mukokoTheme.spacing.md,
   },
   compactButtonPrimary: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.sm,
-    borderRadius: 20,
+    justifyContent: 'center',
+    minHeight: 48,  // Accessibility: minimum touch target
+    paddingVertical: mukokoTheme.spacing.md,
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    borderRadius: 24,
   },
   compactButtonSecondary: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.sm,
-    borderRadius: 20,
-    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 48,  // Accessibility: minimum touch target
+    paddingVertical: mukokoTheme.spacing.md,
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    borderRadius: 24,
+    borderWidth: 2,
   },
   compactButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
   compactButtonTextSecondary: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
 
@@ -403,11 +418,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
+    minHeight: 56,  // Accessibility: comfortable touch target
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    paddingVertical: mukokoTheme.spacing.md,
     marginHorizontal: mukokoTheme.spacing.md,
     marginVertical: mukokoTheme.spacing.sm,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   bannerContent: {
     flexDirection: 'row',
@@ -416,16 +432,18 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bannerText: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
   bannerButton: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.xs,
-    borderRadius: 16,
+    minHeight: 40,
+    justifyContent: 'center',
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    paddingVertical: mukokoTheme.spacing.sm,
+    borderRadius: 20,
   },
   bannerButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
 
@@ -433,15 +451,16 @@ const styles = StyleSheet.create({
   minimalContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-    borderRadius: 24,
+    minHeight: 52,  // Accessibility: comfortable touch target
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    paddingVertical: mukokoTheme.spacing.md,
+    borderRadius: 26,
     marginHorizontal: mukokoTheme.spacing.md,
-    gap: mukokoTheme.spacing.sm,
+    gap: mukokoTheme.spacing.md,
   },
   minimalText: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 });
