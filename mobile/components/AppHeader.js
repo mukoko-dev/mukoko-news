@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, TouchableOpacity, Text, Modal, Platform } from 'react-native';
+import { View, StyleSheet, Dimensions, TouchableOpacity, Text, Modal, Platform, Linking } from 'react-native';
 import { Divider, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { navigate } from '../navigation/navigationRef';
@@ -40,12 +40,24 @@ export default function AppHeader() {
   };
 
   const menuItems = [
-    { label: 'Home', icon: 'home', screen: 'Home' },
-    { label: 'Discover', icon: 'compass', screen: 'Discover' },
-    { label: 'NewsBytes', icon: 'play-circle', screen: 'Bytes' },
-    { label: 'Search', icon: 'magnify', screen: 'Search' },
-    { label: 'Profile', icon: 'account-circle', screen: 'Profile' },
+    { label: 'Home', icon: 'home-outline', screen: 'Home', path: '/' },
+    { label: 'Insights', icon: 'chart-line', screen: 'Discover', path: '/insights' },
+    { label: 'NewsBytes', icon: 'lightning-bolt-outline', screen: 'Bytes', path: '/bytes' },
+    { label: 'Search', icon: 'magnify', screen: 'Search', path: '/search' },
+    { label: 'Profile', icon: 'account-circle-outline', screen: 'Profile', path: '/profile' },
   ];
+
+  // Handle navigation with proper URL updates on web
+  const handleMenuNavigate = (item) => {
+    setMenuVisible(false);
+
+    // On web, update the URL
+    if (Platform.OS === 'web' && item.path) {
+      window.history.pushState({}, '', item.path);
+    }
+
+    navigate(item.screen);
+  };
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -71,6 +83,9 @@ export default function AppHeader() {
               onPress={() => setMenuVisible(!menuVisible)}
               style={styles.hamburgerButton}
               activeOpacity={0.7}
+              accessibilityLabel={menuVisible ? 'Close navigation menu' : 'Open navigation menu'}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: menuVisible }}
             >
               <MaterialCommunityIcons
                 name="menu"
@@ -99,6 +114,9 @@ export default function AppHeader() {
               onPress={handleTrendingPress}
               style={styles.actionButton}
               activeOpacity={0.7}
+              accessibilityLabel="View insights and trending news"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to the insights screen"
             >
               <MaterialCommunityIcons
                 name="chart-line"
@@ -112,6 +130,9 @@ export default function AppHeader() {
               onPress={handleSearchPress}
               style={styles.actionButton}
               activeOpacity={0.7}
+              accessibilityLabel="Search articles"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to search screen"
             >
               <MaterialCommunityIcons
                 name="magnify"
@@ -125,6 +146,9 @@ export default function AppHeader() {
               onPress={toggleTheme}
               style={styles.actionButton}
               activeOpacity={0.7}
+              accessibilityLabel={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+              accessibilityRole="button"
+              accessibilityHint="Toggles between light and dark color themes"
             >
               <MaterialCommunityIcons
                 name={isDark ? 'weather-sunny' : 'weather-night'}
@@ -138,6 +162,9 @@ export default function AppHeader() {
               onPress={handleProfilePress}
               style={styles.actionButton}
               activeOpacity={0.7}
+              accessibilityLabel="View profile"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to your profile and account settings"
             >
               <MaterialCommunityIcons
                 name="account-circle-outline"
@@ -166,8 +193,11 @@ export default function AppHeader() {
                   <React.Fragment key={item.screen}>
                     <TouchableOpacity
                       style={styles.menuItem}
-                      onPress={() => handleNavigate(item.screen)}
+                      onPress={() => handleMenuNavigate(item)}
                       activeOpacity={0.7}
+                      accessibilityLabel={`Navigate to ${item.label}`}
+                      accessibilityRole="link"
+                      accessibilityHint={`Opens the ${item.label.toLowerCase()} page`}
                     >
                       <View style={styles.menuIcon}>
                         <MaterialCommunityIcons
@@ -201,7 +231,11 @@ const styles = StyleSheet.create({
   },
   hamburgerButton: {
     marginRight: mukokoTheme.spacing.sm,
-    padding: 8,
+    padding: 10,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoContainer: {
     flexDirection: 'row',
@@ -216,8 +250,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   actionButton: {
-    padding: 10,
-    marginHorizontal: 2,
+    padding: 12,
+    marginHorizontal: 0,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOverlay: {
     flex: 1,
@@ -242,6 +280,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: mukokoTheme.spacing.md,
     paddingHorizontal: mukokoTheme.spacing.md,
+    minHeight: 44, // WCAG touch target minimum
   },
   menuIcon: {
     marginRight: mukokoTheme.spacing.sm,

@@ -225,6 +225,9 @@ function ArticleCard({
         activeOpacity={0.85}
         onPress={onPress}
         style={[styles.horizontalCard, cardWidth && { width: cardWidth }, style]}
+        accessibilityLabel={`${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}`}
+        accessibilityRole="button"
+        accessibilityHint="Opens article for reading"
       >
         <Surface style={[styles.horizontalSurface, glassStyles.surface]} elevation={1}>
           {/* Image Section - only show if we have an image */}
@@ -267,6 +270,9 @@ function ArticleCard({
         activeOpacity={0.85}
         onPress={onPress}
         style={[styles.compactCard, style]}
+        accessibilityLabel={`${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}`}
+        accessibilityRole="button"
+        accessibilityHint="Opens article for reading"
       >
         <Surface style={[styles.compactSurface, glassStyles.surface]} elevation={1}>
           <View style={styles.compactContent}>
@@ -308,6 +314,9 @@ function ArticleCard({
         activeOpacity={0.85}
         onPress={onPress}
         style={[styles.featuredCard, cardWidth && { width: cardWidth }, style]}
+        accessibilityLabel={`Featured article: ${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}. ${readTime} minute read`}
+        accessibilityRole="button"
+        accessibilityHint="Opens featured article for reading"
       >
         <Surface style={[styles.featuredSurface, glassStyles.surface]} elevation={2}>
           {/* Full-width Image - only show if we have an image */}
@@ -364,6 +373,9 @@ function ArticleCard({
       activeOpacity={0.85}
       onPress={onPress}
       style={[styles.defaultCard, cardWidth && { width: cardWidth }, style]}
+      accessibilityLabel={`${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}. ${readTime} minute read`}
+      accessibilityRole="button"
+      accessibilityHint="Opens article for reading"
     >
       <Surface style={[styles.defaultSurface, glassStyles.surface]} elevation={1}>
         {/* Image Section - only show if we have an image */}
@@ -629,14 +641,14 @@ const styles = StyleSheet.create({
 
   // Category labels
   categoryLabel: {
-    fontSize: 11,
+    fontSize: 12, // Increased from 11 for WCAG readability
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     color: mukokoTheme.colors.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   categoryLabelSmall: {
-    fontSize: 10,
+    fontSize: 11, // Increased from 10 for WCAG readability
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     color: mukokoTheme.colors.primary,
     textTransform: 'uppercase',
@@ -697,14 +709,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   hashtagText: {
-    fontSize: 11,
+    fontSize: 12, // Increased from 11 for WCAG readability
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
   moreTagsText: {
-    fontSize: 11,
+    fontSize: 12, // Increased from 11 for WCAG readability
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
     marginLeft: mukokoTheme.spacing.xs,
-    opacity: 0.7,
+    opacity: 0.8, // Increased from 0.7 for better contrast
   },
 
   // Stats row (word count, read time)
@@ -717,7 +729,7 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(0, 0, 0, 0.06)',
   },
   statsText: {
-    fontSize: 11,
+    fontSize: 12, // Increased from 11 for WCAG readability
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
 });

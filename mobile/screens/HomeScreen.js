@@ -24,6 +24,7 @@ import ArticleCard from '../components/ArticleCard';
 import CategoryChips from '../components/CategoryChips';
 import SearchPromo from '../components/SearchPromo';
 import LoginPromo from '../components/LoginPromo';
+import SplashScreen from '../components/SplashScreen';
 import { useAuth } from '../contexts/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -209,12 +210,11 @@ export default function HomeScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, dynamicStyles.container]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={paperTheme.colors.primary} />
-          <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Loading news...</Text>
-        </View>
-      </View>
+      <SplashScreen
+        isLoading={true}
+        loadingMessage="Fetching the latest news..."
+        showFeatures={true}
+      />
     );
   }
 
@@ -267,7 +267,10 @@ export default function HomeScreen({ navigation }) {
               size={64}
               color={paperTheme.colors.onSurfaceVariant}
             />
-            <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>No articles found</Text>
+            <Text
+              style={[styles.emptyTitle, dynamicStyles.emptyTitle]}
+              accessibilityRole="header"
+            >No articles found</Text>
             <Text style={[styles.emptyDescription, dynamicStyles.emptyDescription]}>
               {selectedCategory
                 ? 'No articles in this category. Try selecting a different one.'

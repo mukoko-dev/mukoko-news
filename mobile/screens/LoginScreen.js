@@ -66,7 +66,11 @@ export default function LoginScreen({ navigation, route }) {
         {/* Header */}
         <View style={styles.header}>
           <Image source={MukokoLogo} style={styles.logo} resizeMode="contain" />
-          <Text variant="bodyMedium" style={styles.subtitle}>
+          <Text
+            variant="bodyMedium"
+            style={styles.subtitle}
+            accessibilityRole="header"
+          >
             Sign in to your account
           </Text>
         </View>
