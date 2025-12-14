@@ -82,8 +82,17 @@ export default function ForgotPasswordScreen({ navigation }) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Image source={MukokoLogo} style={styles.logo} resizeMode="contain" />
-          <Text variant="bodyMedium" style={styles.subtitle}>
+          <Image
+            source={MukokoLogo}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityLabel="Mukoko News logo"
+          />
+          <Text
+            variant="bodyMedium"
+            style={styles.subtitle}
+            accessibilityRole="header"
+          >
             {step === 'request' ? 'Forgot your password?' : 'Reset your password'}
           </Text>
         </View>
@@ -141,6 +150,8 @@ export default function ForgotPasswordScreen({ navigation }) {
                 style={styles.button}
                 contentStyle={styles.buttonContent}
                 icon={() => <Icon source="email" size={20} color={mukokoTheme.colors.onPrimary} />}
+                accessibilityLabel={loading ? 'Sending reset code' : 'Send reset code to email'}
+                accessibilityHint="Sends a 6-digit code to your email address"
               >
                 {loading ? 'Sending code...' : 'Send Reset Code'}
               </Button>
@@ -205,6 +216,8 @@ export default function ForgotPasswordScreen({ navigation }) {
                 style={styles.button}
                 contentStyle={styles.buttonContent}
                 icon={() => <Icon source="key" size={20} color={mukokoTheme.colors.onPrimary} />}
+                accessibilityLabel={loading ? 'Resetting password' : 'Reset password'}
+                accessibilityHint="Updates your password with the new one"
               >
                 {loading ? 'Resetting password...' : 'Reset Password'}
               </Button>
@@ -216,6 +229,8 @@ export default function ForgotPasswordScreen({ navigation }) {
             mode="text"
             onPress={() => navigation.navigate('Login')}
             style={styles.linkButton}
+            accessibilityLabel="Go back to login"
+            accessibilityHint="Navigate to the login screen"
           >
             Back to Login
           </Button>
@@ -226,6 +241,8 @@ export default function ForgotPasswordScreen({ navigation }) {
           mode="text"
           onPress={() => navigation.navigate('Home')}
           style={styles.homeButton}
+          accessibilityLabel="Go back to home"
+          accessibilityHint="Navigate to the home screen"
         >
           Back to Home
         </Button>

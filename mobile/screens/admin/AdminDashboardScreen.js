@@ -113,9 +113,13 @@ export default function AdminDashboardScreen({ navigation }) {
   }
 
   const StatCard = ({ icon, label, value, color }) => (
-    <Card style={[styles.statCard, { backgroundColor: theme.colors.surface }]}>
+    <Card
+      style={[styles.statCard, { backgroundColor: theme.colors.surface }]}
+      accessibilityLabel={`${label}: ${typeof value === 'number' ? value.toLocaleString() : value}`}
+      accessibilityRole="text"
+    >
       <Card.Content style={styles.statCardContent}>
-        <Text style={[styles.statIcon, { backgroundColor: color + '20', color }]}>
+        <Text style={[styles.statIcon, { backgroundColor: color + '20', color }]} accessibilityElementsHidden>
           {icon}
         </Text>
         <Text variant="headlineMedium" style={styles.statValue}>
@@ -136,11 +140,15 @@ export default function AdminDashboardScreen({ navigation }) {
         styles.quickAction,
         { backgroundColor: theme.colors.surfaceVariant },
       ]}
+      accessibilityLabel={`${title}. ${subtitle}`}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: isLoading }}
+      accessibilityHint={`Activates ${title.toLowerCase()}`}
     >
       {isLoading ? (
         <ActivityIndicator size="small" color={theme.colors.primary} />
       ) : (
-        <Text style={styles.quickActionIcon}>{icon}</Text>
+        <Text style={styles.quickActionIcon} accessibilityElementsHidden>{icon}</Text>
       )}
       <View style={{ flex: 1 }}>
         <Text variant="titleSmall">{title}</Text>
@@ -155,10 +163,13 @@ export default function AdminDashboardScreen({ navigation }) {
     <TouchableOpacity
       onPress={() => navigation.navigate(screen)}
       style={[styles.navItem, { borderColor: theme.colors.outline }]}
+      accessibilityLabel={`${title} management`}
+      accessibilityRole="button"
+      accessibilityHint={`Navigate to ${title.toLowerCase()} screen`}
     >
-      <Text style={styles.navIcon}>{icon}</Text>
+      <Text style={styles.navIcon} accessibilityElementsHidden>{icon}</Text>
       <Text variant="titleSmall">{title}</Text>
-      <Text style={{ color: theme.colors.onSurfaceVariant }}>→</Text>
+      <Text style={{ color: theme.colors.onSurfaceVariant }} accessibilityElementsHidden>→</Text>
     </TouchableOpacity>
   );
 
@@ -179,7 +190,11 @@ export default function AdminDashboardScreen({ navigation }) {
       >
         {/* Header */}
         <View style={styles.header}>
-        <Text variant="headlineSmall" style={styles.title}>
+        <Text
+          variant="headlineSmall"
+          style={styles.title}
+          accessibilityRole="header"
+        >
           Admin Dashboard
         </Text>
         <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
@@ -368,6 +383,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     gap: 12,
+    minHeight: 44, // WCAG touch target minimum
   },
   quickActionIcon: {
     fontSize: 24,
@@ -382,6 +398,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     gap: 12,
+    minHeight: 44, // WCAG touch target minimum
   },
   navIcon: {
     fontSize: 20,

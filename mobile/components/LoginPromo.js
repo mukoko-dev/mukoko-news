@@ -87,6 +87,9 @@ export default function LoginPromo({
           style={[styles.bannerButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}
           onPress={handleSignUp}
           activeOpacity={0.7}
+          accessibilityLabel="Join for free"
+          accessibilityRole="button"
+          accessibilityHint="Create a free account for unlimited access"
         >
           <Text style={[styles.bannerButtonText, { color: paperTheme.colors.onTertiary }]}>
             Join Free
@@ -111,6 +114,9 @@ export default function LoginPromo({
         ]}
         onPress={handleSignUp}
         activeOpacity={0.7}
+        accessibilityLabel="Create account for unlimited articles"
+        accessibilityRole="button"
+        accessibilityHint="Sign up to access unlimited news articles"
       >
         <MaterialCommunityIcons
           name="account-plus"
@@ -161,6 +167,9 @@ export default function LoginPromo({
             style={[styles.compactButtonPrimary, { backgroundColor: accentColor }]}
             onPress={handleSignUp}
             activeOpacity={0.7}
+            accessibilityLabel="Sign up for free"
+            accessibilityRole="button"
+            accessibilityHint="Create a free account to access unlimited articles"
           >
             <Text style={[styles.compactButtonText, { color: paperTheme.colors.onTertiary }]}>
               Sign Up Free
@@ -170,6 +179,9 @@ export default function LoginPromo({
             style={[styles.compactButtonSecondary, { borderColor: accentColor }]}
             onPress={handleLogin}
             activeOpacity={0.7}
+            accessibilityLabel="Log in to your account"
+            accessibilityRole="button"
+            accessibilityHint="Sign in to your existing account"
           >
             <Text style={[styles.compactButtonTextSecondary, { color: accentColor }]}>
               Log In
@@ -213,7 +225,10 @@ export default function LoginPromo({
       </View>
 
       {/* Title */}
-      <Text style={[styles.title, { color: paperTheme.colors.onSurface }]}>
+      <Text
+        style={[styles.title, { color: paperTheme.colors.onSurface }]}
+        accessibilityRole="header"
+      >
         Unlock Unlimited News
       </Text>
       <Text style={[styles.subtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
@@ -247,6 +262,9 @@ export default function LoginPromo({
           style={[styles.primaryButton, { backgroundColor: accentColor }]}
           onPress={handleSignUp}
           activeOpacity={0.7}
+          accessibilityLabel="Create free account"
+          accessibilityRole="button"
+          accessibilityHint="Sign up for unlimited access to news articles"
         >
           <MaterialCommunityIcons
             name="account-plus"
@@ -261,6 +279,9 @@ export default function LoginPromo({
           style={styles.secondaryButton}
           onPress={handleLogin}
           activeOpacity={0.7}
+          accessibilityLabel="Log in to existing account"
+          accessibilityRole="button"
+          accessibilityHint="Sign in if you already have an account"
         >
           <Text style={[styles.secondaryButtonText, { color: accentColor }]}>
             Already have an account? Log In
@@ -293,7 +314,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   badgeText: {
-    fontSize: 11,
+    fontSize: 12, // Increased from 11 for WCAG readability
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     letterSpacing: 0.5,
   },

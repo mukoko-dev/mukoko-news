@@ -403,7 +403,10 @@ export default function NewsBytesScreen({ navigation }) {
         ListEmptyComponent={
           <View style={[styles.emptyContainer, { height: SCREEN_HEIGHT, backgroundColor: colors.background }]}>
             <Text style={styles.emptyIcon}>📰</Text>
-            <Text style={[styles.emptyTitle, { color: colors.white }]}>No NewsBytes available</Text>
+            <Text
+              style={[styles.emptyTitle, { color: colors.white }]}
+              accessibilityRole="header"
+            >No NewsBytes available</Text>
             <Text style={[styles.emptyDescription, { color: colors.whiteTranslucent }]}>
               Pull down to refresh or check back later
             </Text>
@@ -465,7 +468,7 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    fontSize: 11,
+    fontSize: 12, // Increased from 11 for WCAG readability
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -540,7 +543,7 @@ const styles = StyleSheet.create({
     margin: 0,
   },
   actionText: {
-    fontSize: 11,
+    fontSize: 12, // Increased from 11 for WCAG readability
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -567,8 +570,8 @@ const styles = StyleSheet.create({
     width: 18,
   },
   progressMore: {
-    fontSize: 10,
-    opacity: 0.7,
+    fontSize: 11, // Increased from 10 for WCAG readability
+    opacity: 0.8, // Increased from 0.7 for better contrast
     marginLeft: mukokoTheme.spacing.xs,
   },
 
