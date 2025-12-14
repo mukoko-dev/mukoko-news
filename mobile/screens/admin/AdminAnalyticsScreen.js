@@ -5,6 +5,7 @@ import {
   StyleSheet,
   RefreshControl,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import {
   Text,
@@ -34,8 +35,10 @@ export default function AdminAnalyticsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [timeRange, setTimeRange] = useState('7');
+  const [error, setError] = useState(null);
 
   const loadData = useCallback(async () => {
+    setError(null);
     try {
       const [analyticsRes, qualityRes, categoryRes] = await Promise.all([
         admin.getAnalytics(),
@@ -46,8 +49,9 @@ export default function AdminAnalyticsScreen({ navigation }) {
       if (analyticsRes.data) setAnalytics(analyticsRes.data);
       if (qualityRes.data) setContentQuality(qualityRes.data);
       if (categoryRes.data) setCategoryInsights(categoryRes.data);
-    } catch (error) {
-      console.error('[Admin] Load analytics error:', error);
+    } catch (err) {
+      console.error('[Admin] Load analytics error:', err);
+      setError('Failed to load analytics. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -82,6 +86,24 @@ export default function AdminAnalyticsScreen({ navigation }) {
       </View>
     );
   }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.errorContainer}>
+          <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
+          <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+            onPress={loadData}
+          >
+            <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
 
   const MetricCard = ({ title, value, subtitle, icon }) => (
     <Card style={[styles.metricCard, { backgroundColor: theme.colors.surface }]}>
@@ -413,5 +435,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  retryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
 });

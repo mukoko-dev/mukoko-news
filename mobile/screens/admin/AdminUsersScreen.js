@@ -6,6 +6,7 @@ import {
   RefreshControl,
   Alert,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
 import {
   Text,
@@ -43,10 +44,12 @@ export default function AdminUsersScreen({ navigation }) {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [page, setPage] = useState(0);
   const [menuVisible, setMenuVisible] = useState(null);
+  const [error, setError] = useState(null);
 
   const LIMIT = 20;
 
   const loadUsers = useCallback(async () => {
+    setError(null);
     try {
       const result = await admin.getUsers({
         search: searchQuery || undefined,
@@ -60,8 +63,9 @@ export default function AdminUsersScreen({ navigation }) {
         setUsers(result.data.users || []);
         setTotal(result.data.total || 0);
       }
-    } catch (error) {
-      console.error('[Admin] Load users error:', error);
+    } catch (err) {
+      console.error('[Admin] Load users error:', err);
+      setError('Failed to load users. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -150,6 +154,23 @@ export default function AdminUsersScreen({ navigation }) {
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={styles.errorContainer}>
           <Text variant="headlineSmall">Access Denied</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.errorContainer}>
+          <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
+          <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+            onPress={loadUsers}
+          >
+            <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -464,5 +485,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  retryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
 });
