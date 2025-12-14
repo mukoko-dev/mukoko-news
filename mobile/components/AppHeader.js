@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Dimensions, TouchableOpacity, Text, Modal, Platform } from 'react-native';
 import { Divider, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { NavigationContext } from '@react-navigation/native';
+import { navigate } from '../navigation/navigationRef';
 import { useTheme } from '../contexts/ThemeContext';
 import mukokoTheme from '../theme';
 import Logo from './Logo';
@@ -14,9 +14,6 @@ export default function AppHeader() {
 
   // Show header icons on web (tablet/desktop) - mobile uses compact icons
   const [isDesktop, setIsDesktop] = useState(Platform.OS === 'web');
-
-  // Get navigation context directly - may be undefined if outside navigator
-  const navigation = useContext(NavigationContext);
 
   useEffect(() => {
     const updateLayout = () => {
@@ -33,22 +30,14 @@ export default function AppHeader() {
 
   // Always show logo in header (route-independent for stability)
 
-  // Safe navigation helper - handles case when navigation context is unavailable
-  const safeNavigate = (screenName) => {
-    if (navigation?.navigate) {
-      try {
-        navigation.navigate(screenName);
-        setMenuVisible(false);
-      } catch {
-        // Navigation failed silently
-      }
-    }
+  // Navigation handlers using ref-based navigation
+  const handleSearchPress = () => navigate('Search');
+  const handleProfilePress = () => navigate('Profile');
+  const handleTrendingPress = () => navigate('Discover');
+  const handleNavigate = (screenName) => {
+    navigate(screenName);
+    setMenuVisible(false);
   };
-
-  const handleSearchPress = () => safeNavigate('Search');
-  const handleProfilePress = () => safeNavigate('Profile');
-  const handleTrendingPress = () => safeNavigate('Discover');
-  const handleNavigate = (screenName) => safeNavigate(screenName);
 
   const menuItems = [
     { label: 'Home', icon: 'home', screen: 'Home' },
