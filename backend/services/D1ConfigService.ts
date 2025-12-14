@@ -14,7 +14,7 @@ export class D1ConfigService {
     return {
       // System settings with mobile-optimized defaults
       system: {
-        siteName: 'Harare Metro',
+        siteName: 'Mukoko News',
         maxTotalArticles: 40000,
         maxArticlesPerSource: 500,
         articleContentLimit: 1000000,

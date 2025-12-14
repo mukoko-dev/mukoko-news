@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Text, TextInput, Button, Surface, HelperText, Icon } from 'react-native-paper';
 import { mukokoTheme } from '../theme';
 import { auth } from '../api/client';
+
+// Logo asset
+const MukokoLogo = require('../assets/mukoko-logo-compact.png');
 
 export default function ForgotPasswordScreen({ navigation }) {
   const [step, setStep] = useState('request'); // 'request' or 'reset'
@@ -79,9 +82,7 @@ export default function ForgotPasswordScreen({ navigation }) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text variant="displaySmall" style={styles.title}>
-            Harare <Text style={styles.titleAccent}>Metro</Text>
-          </Text>
+          <Image source={MukokoLogo} style={styles.logo} resizeMode="contain" />
           <Text variant="bodyMedium" style={styles.subtitle}>
             {step === 'request' ? 'Forgot your password?' : 'Reset your password'}
           </Text>
@@ -241,14 +242,10 @@ const styles = StyleSheet.create({
     marginBottom: mukokoTheme.spacing.xl,
     alignItems: 'center',
   },
-  title: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.sm,
-    color: mukokoTheme.colors.onBackground,
-  },
-  titleAccent: {
-    color: mukokoTheme.colors.primary,
+  logo: {
+    width: 80,
+    height: 80,
+    marginBottom: mukokoTheme.spacing.md,
   },
   subtitle: {
     textAlign: 'center',

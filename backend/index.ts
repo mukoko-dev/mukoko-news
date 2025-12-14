@@ -17,6 +17,7 @@ import { SimpleRSSService } from "./services/SimpleRSSService.js";
 import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
 import { OpenAuthService } from "./services/OpenAuthService.js";
 import { PasswordHashService } from "./services/PasswordHashService.js";
+import { EmailService } from "./services/EmailService.js";
 // Additional enhancement services
 import { CategoryManager } from "./services/CategoryManager.js";
 import { ObservabilityService } from "./services/ObservabilityService.js";
@@ -59,6 +60,8 @@ type Bindings = {
   ADMIN_SESSION_SECRET: string; // Set via wrangler secret
   AI_INSIGHTS_ENABLED: string;
   AI_SEARCH_ENABLED: string;
+  RESEND_API_KEY?: string; // Set via wrangler secret for email
+  EMAIL_FROM?: string; // Default sender email address
 };
 
 // Export Durable Object classes for Cloudflare
@@ -2320,9 +2323,9 @@ app.get("/api/manifest.json", async (c) => {
       }));
 
     const manifest = {
-      name: "Harare Metro",
-      short_name: "Harare Metro", 
-      description: "Zimbabwe's Premier News Aggregation Platform",
+      name: "Mukoko News",
+      short_name: "Mukoko News",
+      description: "Zimbabwe's Modern News Platform",
       start_url: "/",
       display: "standalone",
       background_color: "#ffffff",
@@ -3106,7 +3109,7 @@ app.post("/api/auth/forgot-password", async (c) => {
     const user = await authService.getUserByEmail(email);
     if (!user) {
       // Don't reveal if email exists (security best practice)
-      return c.json({ message: "If the email exists, a reset link has been sent" });
+      return c.json({ message: "If the email exists, a reset code has been sent" });
     }
 
     // Generate reset token (6-digit code)
@@ -3115,11 +3118,26 @@ app.post("/api/auth/forgot-password", async (c) => {
     // Store reset code in KV with 15-minute expiry
     await c.env.AUTH_STORAGE.put(`reset:${email}`, resetCode, { expirationTtl: 900 });
 
-    // TODO: Send email with reset code
-    // For now, log to console (development only)
-    console.log(`[AUTH] Password reset code for ${email}: ${resetCode}`);
+    // Send email with reset code
+    const emailService = new EmailService({
+      RESEND_API_KEY: c.env.RESEND_API_KEY,
+      EMAIL_FROM: c.env.EMAIL_FROM,
+    });
 
-    return c.json({ message: "If the email exists, a reset link has been sent" });
+    if (emailService.isConfigured()) {
+      const emailResult = await emailService.sendPasswordResetCode(email, resetCode);
+      if (!emailResult.success) {
+        console.error("[AUTH] Failed to send reset email:", emailResult.error);
+        // Still return success to user (don't reveal email issues)
+      } else {
+        console.log(`[AUTH] Password reset email sent to ${email}`);
+      }
+    } else {
+      // Fallback for development - log to console
+      console.log(`[AUTH] Password reset code for ${email}: ${resetCode} (email service not configured)`);
+    }
+
+    return c.json({ message: "If the email exists, a reset code has been sent" });
   } catch (error: any) {
     console.error("[AUTH] Forgot password error:", error);
     return c.json({ error: "Failed to process request" }, 500);

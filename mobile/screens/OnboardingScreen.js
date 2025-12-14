@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image } from 'react-native';
 import { Text, TextInput, Button, Surface, Chip, Icon } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mukokoTheme } from '../theme';
 import { categories as categoriesAPI, user as userAPI } from '../api/client';
+
+// Logo asset
+const MukokoLogo = require('../assets/mukoko-logo-compact.png');
 
 const AUTH_TOKEN_KEY = '@mukoko_auth_token';
 
@@ -161,11 +164,9 @@ export default function OnboardingScreen({ navigation }) {
 
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.iconContainer}>
-            <Icon source="sparkles" size={32} color={mukokoTheme.colors.primary} />
-          </View>
+          <Image source={MukokoLogo} style={styles.logo} resizeMode="contain" />
           <Text variant="headlineLarge" style={styles.title}>
-            Welcome to Harare <Text style={styles.titleAccent}>Metro</Text>
+            Welcome!
           </Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
             {step === 1 ? "Let's personalize your experience" : "Choose topics you care about"}
@@ -188,7 +189,7 @@ export default function OnboardingScreen({ navigation }) {
                 Choose Your Username
               </Text>
               <Text variant="bodyMedium" style={styles.stepSubtitle}>
-                This is how others will see you on Harare Metro
+                This is how others will see you on Mukoko News
               </Text>
             </View>
 
@@ -355,13 +356,9 @@ const styles = StyleSheet.create({
     marginBottom: mukokoTheme.spacing.xl,
     alignItems: 'center',
   },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: `${mukokoTheme.colors.primary}20`,
-    alignItems: 'center',
-    justifyContent: 'center',
+  logo: {
+    width: 80,
+    height: 80,
     marginBottom: mukokoTheme.spacing.md,
   },
   title: {
@@ -369,9 +366,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: mukokoTheme.spacing.sm,
     color: mukokoTheme.colors.onBackground,
-  },
-  titleAccent: {
-    color: mukokoTheme.colors.primary,
   },
   subtitle: {
     textAlign: 'center',
