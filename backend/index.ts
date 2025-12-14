@@ -71,7 +71,14 @@ const app = new Hono<{ Bindings: Bindings }>();
 
 // Add CORS middleware - allow credentials from frontend
 app.use("*", cors({
-  origin: ['https://news.mukoko.com', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: [
+    'https://news.mukoko.com',
+    'https://mukoko-news.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:8081',
+    'http://localhost:19006',
+  ],
   credentials: true,
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
