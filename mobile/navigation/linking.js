@@ -37,17 +37,17 @@ const prefixes = Platform.select({
  * Screen configuration mapping URLs to screens
  *
  * URL Structure:
- * /                     -> Home tab
- * /insights             -> Insights/Discover tab
- * /bytes                -> NewsBytes tab
- * /search               -> Search tab
- * /search?q=query       -> Search with query
- * /profile              -> Profile tab
- * /login                -> Login screen
- * /register             -> Register screen
- * /article/:source/:slug -> Article detail
- * /category/:slug       -> Category filtered home
- * /admin                -> Admin dashboard (protected)
+ * /                        -> Home tab
+ * /discover                -> Discover tab (browse trending content)
+ * /discover/insights       -> AI-powered Insights screen
+ * /bytes                   -> NewsBytes tab
+ * /search                  -> Search tab
+ * /search?q=query          -> Search with query
+ * /profile                 -> Profile tab
+ * /profile/login           -> Login screen
+ * /profile/register        -> Register screen
+ * /article/:source/:slug   -> Article detail
+ * /admin                   -> Admin dashboard (protected)
  */
 const config = {
   screens: {
@@ -70,10 +70,10 @@ const config = {
       },
     },
     Discover: {
-      path: 'insights',
+      path: 'discover',
       screens: {
-        InsightsFeed: '',
-        DiscoverFeed: 'discover',
+        DiscoverFeed: '',
+        InsightsFeed: 'insights',
         ArticleDetail: {
           path: 'article/:source/:slug',
           parse: {

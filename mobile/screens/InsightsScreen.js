@@ -1,6 +1,7 @@
 /**
- * InsightsScreen - Analytics and Trends Dashboard
- * Shows trending topics, categories, authors, and personalized insights
+ * InsightsScreen - AI-Powered Analytics Dashboard
+ * Community-focused analytics with open access to data
+ * Core Mukoko belief: Everyone gets access to insights, not just admins
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -11,6 +12,7 @@ import {
   RefreshControl,
   TouchableOpacity,
   Dimensions,
+  Animated,
 } from 'react-native';
 import {
   Text,
@@ -19,6 +21,7 @@ import {
   Icon,
   useTheme as usePaperTheme,
   ProgressBar,
+  Chip,
 } from 'react-native-paper';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -48,11 +51,32 @@ const CATEGORY_EMOJIS = {
   tourism: '✈️',
   finance: '💰',
   culture: '🎭',
+  general: '📰',
 };
 
 const getEmoji = (categoryName) => {
   const lowerName = (categoryName || '').toLowerCase();
   return CATEGORY_EMOJIS[lowerName] || '📰';
+};
+
+// Animated counter component
+const AnimatedCounter = ({ value, duration = 1000, suffix = '' }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+
+  useEffect(() => {
+    let startTime;
+    const animate = (timestamp) => {
+      if (!startTime) startTime = timestamp;
+      const progress = Math.min((timestamp - startTime) / duration, 1);
+      setDisplayValue(Math.floor(progress * value));
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+  }, [value, duration]);
+
+  return <Text>{displayValue.toLocaleString()}{suffix}</Text>;
 };
 
 export default function InsightsScreen({ navigation }) {
@@ -66,28 +90,35 @@ export default function InsightsScreen({ navigation }) {
   const [trendingAuthors, setTrendingAuthors] = useState([]);
   const [platformStats, setPlatformStats] = useState(null);
   const [categoryInsights, setCategoryInsights] = useState(null);
+  const [engagementStats, setEngagementStats] = useState(null);
+  const [contentQuality, setContentQuality] = useState(null);
   const [error, setError] = useState(null);
+  const [expandedSection, setExpandedSection] = useState(null);
+  const [timeRange, setTimeRange] = useState(7);
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [timeRange]);
 
   const loadData = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // Load all data in parallel
       const [
         trendingCatsResult,
         trendingAuthorsResult,
         statsResult,
         insightsResult,
+        analyticsResult,
+        qualityResult,
       ] = await Promise.all([
-        insightsAPI.getTrendingCategories(8),
-        insightsAPI.getTrendingAuthors(6),
+        insightsAPI.getTrendingCategories(12),
+        insightsAPI.getTrendingAuthors(10),
         insightsAPI.getStats(),
-        insightsAPI.getCategoryInsights(7),
+        insightsAPI.getCategoryInsights(timeRange),
+        insightsAPI.getAnalytics(),
+        insightsAPI.getContentQuality(),
       ]);
 
       if (trendingCatsResult.data?.trending) {
@@ -104,6 +135,14 @@ export default function InsightsScreen({ navigation }) {
 
       if (insightsResult.data?.insights) {
         setCategoryInsights(insightsResult.data.insights);
+      }
+
+      if (analyticsResult.data) {
+        setEngagementStats(analyticsResult.data);
+      }
+
+      if (qualityResult.data) {
+        setContentQuality(qualityResult.data);
       }
     } catch (err) {
       console.error('[Insights] Load error:', err);
@@ -127,6 +166,10 @@ export default function InsightsScreen({ navigation }) {
     navigation.navigate('SearchFeed', { searchQuery: author.name });
   };
 
+  const toggleSection = (section) => {
+    setExpandedSection(expandedSection === section ? null : section);
+  };
+
   // Dynamic styles based on theme
   const dynamicStyles = {
     container: {
@@ -145,13 +188,23 @@ export default function InsightsScreen({ navigation }) {
     statValue: {
       color: paperTheme.colors.primary,
     },
+    aiGlow: {
+      backgroundColor: isDark ? 'rgba(212, 99, 74, 0.15)' : 'rgba(212, 99, 74, 0.08)',
+    },
   };
 
   if (loading) {
     return (
       <View style={[styles.container, dynamicStyles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={paperTheme.colors.primary} />
-        <Text style={[styles.loadingText, dynamicStyles.subtitle]}>Loading insights...</Text>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={paperTheme.colors.primary} />
+          <Text style={[styles.loadingText, dynamicStyles.subtitle]}>
+            Analyzing trends with AI...
+          </Text>
+          <View style={styles.loadingDotsContainer}>
+            <Icon source="robot" size={20} color={mukokoTheme.colors.accent} />
+          </View>
+        </View>
       </View>
     );
   }
@@ -171,61 +224,329 @@ export default function InsightsScreen({ navigation }) {
           />
         }
       >
-        {/* Header */}
+        {/* Header with AI Badge */}
         <View style={styles.header}>
-          <Text style={[styles.headerTitle, dynamicStyles.title]}>Insights</Text>
+          <View style={styles.headerRow}>
+            <Text style={[styles.headerTitle, dynamicStyles.title]}>Insights</Text>
+            <Chip
+              mode="flat"
+              style={[styles.aiBadge, dynamicStyles.aiGlow]}
+              textStyle={styles.aiBadgeText}
+              icon={() => <Icon source="robot" size={14} color={mukokoTheme.colors.accent} />}
+            >
+              AI Powered
+            </Chip>
+          </View>
           <Text style={[styles.headerSubtitle, dynamicStyles.subtitle]}>
-            Discover trends and analytics
+            Community analytics - open to everyone
           </Text>
+        </View>
+
+        {/* Time Range Selector */}
+        <View style={styles.timeRangeContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {[7, 14, 30].map((days) => (
+              <Chip
+                key={days}
+                mode={timeRange === days ? 'flat' : 'outlined'}
+                selected={timeRange === days}
+                onPress={() => setTimeRange(days)}
+                style={[
+                  styles.timeChip,
+                  timeRange === days && { backgroundColor: paperTheme.colors.primary },
+                ]}
+                textStyle={timeRange === days ? { color: '#FFFFFF' } : {}}
+              >
+                {days} Days
+              </Chip>
+            ))}
+          </ScrollView>
         </View>
 
         {/* Error State */}
         {error && (
-          <Surface style={[styles.errorCard, { backgroundColor: paperTheme.colors.errorContainer }]} elevation={0}>
+          <TouchableOpacity
+            style={[styles.errorCard, { backgroundColor: paperTheme.colors.errorContainer }]}
+            onPress={onRefresh}
+            activeOpacity={0.7}
+          >
             <Icon source="alert-circle" size={20} color={paperTheme.colors.error} />
             <Text style={{ color: paperTheme.colors.error, flex: 1 }}>{error}</Text>
-          </Surface>
+            <Icon source="refresh" size={20} color={paperTheme.colors.error} />
+          </TouchableOpacity>
         )}
 
-        {/* Platform Stats */}
+        {/* Platform Stats - Live Counter Style */}
         {platformStats && (
-          <Surface style={[styles.card, dynamicStyles.card]} elevation={1}>
+          <TouchableOpacity
+            style={[styles.card, dynamicStyles.card]}
+            onPress={() => toggleSection('stats')}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Platform statistics"
+          >
             <View style={styles.cardHeader}>
-              <Icon source="chart-bar" size={20} color={paperTheme.colors.primary} />
-              <Text style={[styles.cardTitle, dynamicStyles.title]}>Platform Overview</Text>
+              <View style={styles.cardTitleRow}>
+                <Icon source="chart-bar" size={20} color={paperTheme.colors.primary} />
+                <Text style={[styles.cardTitle, dynamicStyles.title]}>Live Platform Stats</Text>
+              </View>
+              <View style={[styles.liveBadge, { backgroundColor: mukokoTheme.colors.zwGreen }]}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>LIVE</Text>
+              </View>
             </View>
             <View style={styles.statsGrid}>
-              <View style={styles.statItem}>
+              <TouchableOpacity
+                style={styles.statItem}
+                onPress={() => navigation.navigate('DiscoverFeed')}
+                accessibilityRole="button"
+                accessibilityLabel={`${platformStats.total_articles} articles, tap to browse`}
+              >
                 <Text style={[styles.statValue, dynamicStyles.statValue]}>
-                  {platformStats.total_articles?.toLocaleString() || '0'}
+                  <AnimatedCounter value={platformStats.total_articles || 0} />
                 </Text>
                 <Text style={[styles.statLabel, dynamicStyles.subtitle]}>Articles</Text>
-              </View>
+                <Icon source="chevron-right" size={16} color={paperTheme.colors.onSurfaceVariant} />
+              </TouchableOpacity>
+              <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, dynamicStyles.statValue]}>
-                  {platformStats.active_sources || '0'}
+                  <AnimatedCounter value={platformStats.active_sources || 0} />
                 </Text>
                 <Text style={[styles.statLabel, dynamicStyles.subtitle]}>Sources</Text>
               </View>
+              <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={[styles.statValue, dynamicStyles.statValue]}>
-                  {platformStats.categories || '0'}
+                  <AnimatedCounter value={platformStats.categories || 0} />
                 </Text>
                 <Text style={[styles.statLabel, dynamicStyles.subtitle]}>Categories</Text>
               </View>
             </View>
-          </Surface>
+            {expandedSection === 'stats' && (
+              <View style={styles.expandedContent}>
+                <Text style={[styles.expandedText, dynamicStyles.subtitle]}>
+                  Updated in real-time from Zimbabwe's top news sources
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Engagement Metrics */}
+        {engagementStats && (
+          <TouchableOpacity
+            style={[styles.card, dynamicStyles.card]}
+            onPress={() => toggleSection('engagement')}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Engagement metrics"
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleRow}>
+                <Icon source="heart-pulse" size={20} color={mukokoTheme.colors.zwRed} />
+                <Text style={[styles.cardTitle, dynamicStyles.title]}>Community Engagement</Text>
+              </View>
+              <Icon
+                source={expandedSection === 'engagement' ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={paperTheme.colors.onSurfaceVariant}
+              />
+            </View>
+            <View style={styles.engagementGrid}>
+              <View style={styles.engagementItem}>
+                <Icon source="eye" size={24} color={paperTheme.colors.primary} />
+                <Text style={[styles.engagementValue, dynamicStyles.statValue]}>
+                  <AnimatedCounter value={engagementStats.total_views || 0} />
+                </Text>
+                <Text style={[styles.engagementLabel, dynamicStyles.subtitle]}>Views</Text>
+              </View>
+              <View style={styles.engagementItem}>
+                <Icon source="heart" size={24} color={mukokoTheme.colors.zwRed} />
+                <Text style={[styles.engagementValue, dynamicStyles.statValue]}>
+                  <AnimatedCounter value={engagementStats.total_likes || 0} />
+                </Text>
+                <Text style={[styles.engagementLabel, dynamicStyles.subtitle]}>Likes</Text>
+              </View>
+              <View style={styles.engagementItem}>
+                <Icon source="bookmark" size={24} color={mukokoTheme.colors.zwYellow} />
+                <Text style={[styles.engagementValue, dynamicStyles.statValue]}>
+                  <AnimatedCounter value={engagementStats.total_saves || 0} />
+                </Text>
+                <Text style={[styles.engagementLabel, dynamicStyles.subtitle]}>Saves</Text>
+              </View>
+              <View style={styles.engagementItem}>
+                <Icon source="percent" size={24} color={mukokoTheme.colors.zwGreen} />
+                <Text style={[styles.engagementValue, dynamicStyles.statValue]}>
+                  {(engagementStats.avg_engagement_rate || 0).toFixed(1)}%
+                </Text>
+                <Text style={[styles.engagementLabel, dynamicStyles.subtitle]}>Avg Rate</Text>
+              </View>
+            </View>
+            {expandedSection === 'engagement' && engagementStats.top_articles && (
+              <View style={styles.topArticlesSection}>
+                <Text style={[styles.topArticlesTitle, dynamicStyles.title]}>Top Performing</Text>
+                {engagementStats.top_articles.slice(0, 3).map((article, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.topArticleItem, { backgroundColor: paperTheme.colors.surface }]}
+                    onPress={() => navigation.navigate('ArticleDetail', { articleId: article.id })}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.topArticleRank, { color: paperTheme.colors.primary }]}>
+                      {index + 1}
+                    </Text>
+                    <View style={styles.topArticleInfo}>
+                      <Text style={[styles.topArticleTitle, dynamicStyles.title]} numberOfLines={2}>
+                        {article.title}
+                      </Text>
+                      <View style={styles.topArticleStats}>
+                        <Text style={dynamicStyles.subtitle}>👁️ {article.view_count || 0}</Text>
+                        <Text style={dynamicStyles.subtitle}>❤️ {article.like_count || 0}</Text>
+                      </View>
+                    </View>
+                    <Icon source="chevron-right" size={20} color={paperTheme.colors.onSurfaceVariant} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* Content Quality Metrics */}
+        {contentQuality && (
+          <TouchableOpacity
+            style={[styles.card, dynamicStyles.card]}
+            onPress={() => toggleSection('quality')}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Content quality metrics"
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleRow}>
+                <Icon source="star-check" size={20} color={mukokoTheme.colors.zwYellow} />
+                <Text style={[styles.cardTitle, dynamicStyles.title]}>Content Quality</Text>
+              </View>
+              <Icon
+                source={expandedSection === 'quality' ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={paperTheme.colors.onSurfaceVariant}
+              />
+            </View>
+            <View style={styles.qualityGrid}>
+              <View style={styles.qualityItem}>
+                <Text style={[styles.qualityValue, dynamicStyles.statValue]}>
+                  {(contentQuality.avg_word_count || 0).toFixed(0)}
+                </Text>
+                <Text style={[styles.qualityLabel, dynamicStyles.subtitle]}>Avg Words</Text>
+              </View>
+              <View style={styles.qualityItem}>
+                <Text style={[styles.qualityValue, dynamicStyles.statValue]}>
+                  {(contentQuality.with_images_percent || 0).toFixed(0)}%
+                </Text>
+                <Text style={[styles.qualityLabel, dynamicStyles.subtitle]}>With Images</Text>
+              </View>
+              <View style={styles.qualityItem}>
+                <Text style={[styles.qualityValue, dynamicStyles.statValue]}>
+                  {(contentQuality.ai_enhanced_percent || 0).toFixed(0)}%
+                </Text>
+                <Text style={[styles.qualityLabel, dynamicStyles.subtitle]}>AI Enhanced</Text>
+              </View>
+              <View style={styles.qualityItem}>
+                <Text style={[styles.qualityValue, dynamicStyles.statValue]}>
+                  {(contentQuality.avg_read_time || 0).toFixed(1)}m
+                </Text>
+                <Text style={[styles.qualityLabel, dynamicStyles.subtitle]}>Read Time</Text>
+              </View>
+            </View>
+            {expandedSection === 'quality' && (
+              <View style={styles.expandedContent}>
+                <Text style={[styles.expandedText, dynamicStyles.subtitle]}>
+                  Our AI enhances articles with summaries, keywords, and improved readability
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
+
+        {/* AI Insights Section */}
+        {categoryInsights && (
+          <TouchableOpacity
+            style={[styles.card, styles.aiCard, dynamicStyles.card, dynamicStyles.aiGlow]}
+            onPress={() => toggleSection('ai')}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="AI-generated insights"
+          >
+            <View style={styles.cardHeader}>
+              <View style={styles.cardTitleRow}>
+                <Icon source="lightbulb-on" size={20} color={mukokoTheme.colors.zwYellow} />
+                <Text style={[styles.cardTitle, dynamicStyles.title]}>AI Analysis</Text>
+              </View>
+              <Icon
+                source={expandedSection === 'ai' ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={paperTheme.colors.onSurfaceVariant}
+              />
+            </View>
+
+            {/* AI Summary */}
+            {categoryInsights.summary && (
+              <View style={[styles.aiSummaryBox, { backgroundColor: paperTheme.colors.surface }]}>
+                <Icon source="robot" size={16} color={mukokoTheme.colors.accent} style={styles.aiIcon} />
+                <Text style={[styles.aiSummaryText, dynamicStyles.title]}>
+                  "{categoryInsights.summary}"
+                </Text>
+              </View>
+            )}
+
+            {/* AI Recommendations */}
+            {expandedSection === 'ai' && categoryInsights.recommendations && (
+              <View style={styles.recommendationsList}>
+                {categoryInsights.recommendations.slice(0, 5).map((rec, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={[styles.recommendationItem, { backgroundColor: paperTheme.colors.surface }]}
+                    onPress={() => {
+                      // Extract topic from recommendation and search
+                      const topic = rec.split(' ').slice(0, 3).join(' ');
+                      navigation.navigate('SearchFeed', { searchQuery: topic });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Icon source="lightbulb" size={16} color={mukokoTheme.colors.zwYellow} />
+                    <Text style={[styles.recommendationText, dynamicStyles.subtitle]} numberOfLines={2}>
+                      {rec}
+                    </Text>
+                    <Icon source="arrow-right" size={16} color={paperTheme.colors.primary} />
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </TouchableOpacity>
         )}
 
         {/* Trending Categories */}
         {trendingCategories.length > 0 && (
-          <Surface style={[styles.card, dynamicStyles.card]} elevation={1}>
-            <View style={styles.cardHeader}>
-              <Icon source="fire" size={20} color={mukokoTheme.colors.accent} />
-              <Text style={[styles.cardTitle, dynamicStyles.title]}>Trending Categories</Text>
-            </View>
+          <View style={[styles.card, dynamicStyles.card]}>
+            <TouchableOpacity
+              style={styles.cardHeader}
+              onPress={() => toggleSection('categories')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.cardTitleRow}>
+                <Icon source="fire" size={20} color={mukokoTheme.colors.accent} />
+                <Text style={[styles.cardTitle, dynamicStyles.title]}>Trending Topics</Text>
+              </View>
+              <Icon
+                source={expandedSection === 'categories' ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={paperTheme.colors.onSurfaceVariant}
+              />
+            </TouchableOpacity>
+
             <View style={styles.categoriesGrid}>
-              {trendingCategories.map((category, index) => (
+              {trendingCategories.slice(0, expandedSection === 'categories' ? 12 : 6).map((category, index) => (
                 <TouchableOpacity
                   key={category.id || index}
                   style={[
@@ -237,6 +558,8 @@ export default function InsightsScreen({ navigation }) {
                   ]}
                   onPress={() => handleCategoryPress(category)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${category.name || category.category_name}, ${category.article_count} articles`}
                 >
                   <Text style={styles.categoryEmoji}>
                     {getEmoji(category.name || category.category_name)}
@@ -263,6 +586,7 @@ export default function InsightsScreen({ navigation }) {
                       />
                       <Text style={{
                         fontSize: 10,
+                        fontFamily: mukokoTheme.fonts.medium.fontFamily,
                         color: category.growth_rate >= 0 ? mukokoTheme.colors.zwGreen : mukokoTheme.colors.zwRed,
                       }}>
                         {Math.abs(category.growth_rate || 0).toFixed(0)}%
@@ -272,31 +596,62 @@ export default function InsightsScreen({ navigation }) {
                 </TouchableOpacity>
               ))}
             </View>
-          </Surface>
+
+            {trendingCategories.length > 6 && (
+              <TouchableOpacity
+                style={styles.showMoreButton}
+                onPress={() => toggleSection('categories')}
+              >
+                <Text style={[styles.showMoreText, { color: paperTheme.colors.primary }]}>
+                  {expandedSection === 'categories' ? 'Show Less' : `Show ${trendingCategories.length - 6} More`}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
 
-        {/* Trending Authors */}
+        {/* Top Journalists */}
         {trendingAuthors.length > 0 && (
-          <Surface style={[styles.card, dynamicStyles.card]} elevation={1}>
-            <View style={styles.cardHeader}>
-              <Icon source="account-star" size={20} color={paperTheme.colors.primary} />
-              <Text style={[styles.cardTitle, dynamicStyles.title]}>Top Authors</Text>
-            </View>
+          <View style={[styles.card, dynamicStyles.card]}>
+            <TouchableOpacity
+              style={styles.cardHeader}
+              onPress={() => toggleSection('authors')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.cardTitleRow}>
+                <Icon source="account-star" size={20} color={paperTheme.colors.primary} />
+                <Text style={[styles.cardTitle, dynamicStyles.title]}>Top Journalists</Text>
+              </View>
+              <Icon
+                source={expandedSection === 'authors' ? 'chevron-up' : 'chevron-down'}
+                size={20}
+                color={paperTheme.colors.onSurfaceVariant}
+              />
+            </TouchableOpacity>
+
             <View style={styles.authorsList}>
-              {trendingAuthors.map((author, index) => (
+              {trendingAuthors.slice(0, expandedSection === 'authors' ? 10 : 5).map((author, index) => (
                 <TouchableOpacity
                   key={author.id || index}
                   style={[
                     styles.authorItem,
                     {
                       backgroundColor: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.05)',
-                      borderBottomColor: paperTheme.colors.outlineVariant,
                     }
                   ]}
                   onPress={() => handleAuthorPress(author)}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${author.name}, ${author.article_count} articles`}
                 >
-                  <View style={[styles.authorRank, { backgroundColor: paperTheme.colors.primary }]}>
+                  <View style={[
+                    styles.authorRank,
+                    {
+                      backgroundColor: index === 0 ? '#FFD700' :
+                        index === 1 ? '#C0C0C0' :
+                        index === 2 ? '#CD7F32' : paperTheme.colors.primary
+                    }
+                  ]}>
                     <Text style={styles.authorRankText}>{index + 1}</Text>
                   </View>
                   <View style={styles.authorInfo}>
@@ -312,54 +667,48 @@ export default function InsightsScreen({ navigation }) {
                 </TouchableOpacity>
               ))}
             </View>
-          </Surface>
-        )}
 
-        {/* Category Insights */}
-        {categoryInsights && (
-          <Surface style={[styles.card, dynamicStyles.card]} elevation={1}>
-            <View style={styles.cardHeader}>
-              <Icon source="lightbulb-on" size={20} color={mukokoTheme.colors.zwYellow} />
-              <Text style={[styles.cardTitle, dynamicStyles.title]}>AI Insights</Text>
-            </View>
-
-            {categoryInsights.recommendations && categoryInsights.recommendations.length > 0 && (
-              <View style={styles.insightsList}>
-                {categoryInsights.recommendations.slice(0, 3).map((rec, index) => (
-                  <View
-                    key={index}
-                    style={[
-                      styles.insightItem,
-                      { backgroundColor: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.05)' }
-                    ]}
-                  >
-                    <Icon source="lightbulb" size={16} color={mukokoTheme.colors.zwYellow} />
-                    <Text style={[styles.insightText, dynamicStyles.subtitle]}>{rec}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            {categoryInsights.summary && (
-              <View style={[styles.summaryBox, { backgroundColor: paperTheme.colors.glass }]}>
-                <Text style={[styles.summaryText, dynamicStyles.subtitle]}>
-                  {categoryInsights.summary}
+            {trendingAuthors.length > 5 && (
+              <TouchableOpacity
+                style={styles.showMoreButton}
+                onPress={() => toggleSection('authors')}
+              >
+                <Text style={[styles.showMoreText, { color: paperTheme.colors.primary }]}>
+                  {expandedSection === 'authors' ? 'Show Less' : `Show ${trendingAuthors.length - 5} More`}
                 </Text>
-              </View>
+              </TouchableOpacity>
             )}
-          </Surface>
+          </View>
         )}
+
+        {/* Community Message */}
+        <View style={[styles.communityCard, dynamicStyles.card]}>
+          <Icon source="account-group" size={24} color={paperTheme.colors.primary} />
+          <View style={styles.communityContent}>
+            <Text style={[styles.communityTitle, dynamicStyles.title]}>
+              Open Analytics
+            </Text>
+            <Text style={[styles.communityText, dynamicStyles.subtitle]}>
+              At Mukoko, we believe everyone should have access to news insights.
+              This data helps you understand what Zimbabwe is reading and talking about.
+            </Text>
+          </View>
+        </View>
 
         {/* Quick Actions */}
-        <Surface style={[styles.card, dynamicStyles.card]} elevation={1}>
+        <View style={[styles.card, dynamicStyles.card]}>
           <View style={styles.cardHeader}>
-            <Icon source="rocket-launch" size={20} color={paperTheme.colors.primary} />
-            <Text style={[styles.cardTitle, dynamicStyles.title]}>Quick Actions</Text>
+            <View style={styles.cardTitleRow}>
+              <Icon source="rocket-launch" size={20} color={paperTheme.colors.primary} />
+              <Text style={[styles.cardTitle, dynamicStyles.title]}>Explore More</Text>
+            </View>
           </View>
           <View style={styles.actionsGrid}>
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: paperTheme.colors.primaryContainer }]}
-              onPress={() => navigation.navigate('Discover')}
+              onPress={() => navigation.navigate('DiscoverFeed')}
+              accessibilityRole="button"
+              accessibilityLabel="Browse trending articles"
             >
               <Icon source="fire" size={24} color={paperTheme.colors.primary} />
               <Text style={[styles.actionLabel, { color: paperTheme.colors.onPrimaryContainer }]}>
@@ -369,6 +718,8 @@ export default function InsightsScreen({ navigation }) {
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: paperTheme.colors.secondaryContainer }]}
               onPress={() => navigation.navigate('Search')}
+              accessibilityRole="button"
+              accessibilityLabel="Search articles"
             >
               <Icon source="magnify" size={24} color={paperTheme.colors.secondary} />
               <Text style={[styles.actionLabel, { color: paperTheme.colors.onSecondaryContainer }]}>
@@ -378,6 +729,8 @@ export default function InsightsScreen({ navigation }) {
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: paperTheme.colors.tertiaryContainer }]}
               onPress={() => navigation.navigate('Bytes')}
+              accessibilityRole="button"
+              accessibilityLabel="View NewsBytes"
             >
               <Icon source="lightning-bolt" size={24} color={paperTheme.colors.tertiary} />
               <Text style={[styles.actionLabel, { color: paperTheme.colors.onTertiaryContainer }]}>
@@ -385,7 +738,7 @@ export default function InsightsScreen({ navigation }) {
               </Text>
             </TouchableOpacity>
           </View>
-        </Surface>
+        </View>
 
         {/* Bottom padding for tab bar */}
         <View style={styles.bottomPadding} />
@@ -408,22 +761,51 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: mukokoTheme.spacing.md,
   },
+
+  // Loading
+  loadingContainer: {
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.md,
+  },
   loadingText: {
-    marginTop: mukokoTheme.spacing.md,
     fontSize: 14,
+  },
+  loadingDotsContainer: {
+    marginTop: mukokoTheme.spacing.sm,
+  },
+
+  // Time Range
+  timeRangeContainer: {
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  timeChip: {
+    marginRight: mukokoTheme.spacing.sm,
   },
 
   // Header
   header: {
-    marginBottom: mukokoTheme.spacing.lg,
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: mukokoTheme.spacing.xs,
   },
   headerTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
     fontSize: 28,
-    marginBottom: mukokoTheme.spacing.xs,
   },
   headerSubtitle: {
     fontSize: 14,
+  },
+  aiBadge: {
+    height: 28,
+  },
+  aiBadgeText: {
+    fontSize: 11,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    color: mukokoTheme.colors.accent,
   },
 
   // Cards
@@ -433,15 +815,45 @@ const styles = StyleSheet.create({
     marginBottom: mukokoTheme.spacing.md,
     borderWidth: 1,
   },
+  aiCard: {
+    borderWidth: 2,
+    borderColor: mukokoTheme.colors.accent + '40',
+  },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
+    justifyContent: 'space-between',
     marginBottom: mukokoTheme.spacing.md,
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.sm,
   },
   cardTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
     fontSize: 16,
+  },
+
+  // Live Badge
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+  },
+  liveText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
 
   // Error
@@ -458,9 +870,16 @@ const styles = StyleSheet.create({
   statsGrid: {
     flexDirection: 'row',
     justifyContent: 'space-around',
+    alignItems: 'center',
   },
   statItem: {
     alignItems: 'center',
+    flex: 1,
+  },
+  statDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: 'rgba(0,0,0,0.1)',
   },
   statValue: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
@@ -469,6 +888,125 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: 12,
     marginTop: mukokoTheme.spacing.xs,
+  },
+  expandedContent: {
+    marginTop: mukokoTheme.spacing.md,
+    paddingTop: mukokoTheme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  expandedText: {
+    fontSize: 13,
+    fontStyle: 'italic',
+  },
+
+  // Engagement Grid
+  engagementGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  engagementItem: {
+    alignItems: 'center',
+    flex: 1,
+    gap: mukokoTheme.spacing.xs,
+  },
+  engagementValue: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 20,
+  },
+  engagementLabel: {
+    fontSize: 11,
+  },
+
+  // Top Articles
+  topArticlesSection: {
+    marginTop: mukokoTheme.spacing.md,
+    paddingTop: mukokoTheme.spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.1)',
+  },
+  topArticlesTitle: {
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    marginBottom: mukokoTheme.spacing.sm,
+  },
+  topArticleItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: mukokoTheme.spacing.sm,
+    borderRadius: mukokoTheme.roundness / 2,
+    marginBottom: mukokoTheme.spacing.sm,
+    gap: mukokoTheme.spacing.sm,
+  },
+  topArticleRank: {
+    fontSize: 18,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    width: 24,
+  },
+  topArticleInfo: {
+    flex: 1,
+  },
+  topArticleTitle: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  topArticleStats: {
+    flexDirection: 'row',
+    gap: mukokoTheme.spacing.md,
+    marginTop: 4,
+  },
+
+  // Quality Grid
+  qualityGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  qualityItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  qualityValue: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 20,
+    marginBottom: mukokoTheme.spacing.xs,
+  },
+  qualityLabel: {
+    fontSize: 11,
+    textAlign: 'center',
+  },
+
+  // AI Section
+  aiSummaryBox: {
+    flexDirection: 'row',
+    padding: mukokoTheme.spacing.md,
+    borderRadius: mukokoTheme.roundness / 2,
+    marginBottom: mukokoTheme.spacing.sm,
+    gap: mukokoTheme.spacing.sm,
+  },
+  aiIcon: {
+    marginTop: 2,
+  },
+  aiSummaryText: {
+    flex: 1,
+    fontSize: 14,
+    fontStyle: 'italic',
+    lineHeight: 20,
+  },
+  recommendationsList: {
+    gap: mukokoTheme.spacing.sm,
+    marginTop: mukokoTheme.spacing.sm,
+  },
+  recommendationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: mukokoTheme.spacing.sm,
+    borderRadius: mukokoTheme.roundness / 2,
+    gap: mukokoTheme.spacing.sm,
+  },
+  recommendationText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 18,
   },
 
   // Categories
@@ -519,6 +1057,7 @@ const styles = StyleSheet.create({
     padding: mukokoTheme.spacing.sm,
     borderRadius: mukokoTheme.roundness / 2,
     gap: mukokoTheme.spacing.sm,
+    minHeight: 48,
   },
   authorRank: {
     width: 24,
@@ -543,31 +1082,40 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
 
-  // Insights
-  insightsList: {
-    gap: mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.md,
+  // Show More
+  showMoreButton: {
+    alignItems: 'center',
+    paddingTop: mukokoTheme.spacing.md,
+    marginTop: mukokoTheme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
   },
-  insightItem: {
+  showMoreText: {
+    fontSize: 13,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+
+  // Community Card
+  communityCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: mukokoTheme.spacing.sm,
-    borderRadius: mukokoTheme.roundness / 2,
-    gap: mukokoTheme.spacing.sm,
-  },
-  insightText: {
-    flex: 1,
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  summaryBox: {
+    gap: mukokoTheme.spacing.md,
     padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness / 2,
+    borderRadius: mukokoTheme.roundness,
+    borderWidth: 1,
+    marginBottom: mukokoTheme.spacing.md,
   },
-  summaryText: {
-    fontSize: 13,
-    lineHeight: 20,
-    fontStyle: 'italic',
+  communityContent: {
+    flex: 1,
+  },
+  communityTitle: {
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    marginBottom: mukokoTheme.spacing.xs,
+  },
+  communityText: {
+    fontSize: 12,
+    lineHeight: 18,
   },
 
   // Actions
@@ -582,6 +1130,7 @@ const styles = StyleSheet.create({
     padding: mukokoTheme.spacing.md,
     borderRadius: mukokoTheme.roundness,
     gap: mukokoTheme.spacing.xs,
+    minHeight: 80,
   },
   actionLabel: {
     fontSize: 12,
