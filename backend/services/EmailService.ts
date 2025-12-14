@@ -321,30 +321,17 @@ Visit https://news.mukoko.com to start reading!
 
   /**
    * Convert HTML to plain text (basic)
-   * Uses iterative replacement to handle edge cases securely
+   * Since we always provide explicit text versions for our emails,
+   * this is only a fallback. We strip all tags safely.
    */
   private htmlToText(html: string): string {
-    let text = html;
-
-    // Iteratively remove style tags (handles whitespace variations)
-    let prevLength = 0;
-    while (text.length !== prevLength) {
-      prevLength = text.length;
-      text = text.replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style\s*>/gi, '');
-    }
-
-    // Iteratively remove script tags (handles whitespace variations)
-    prevLength = 0;
-    while (text.length !== prevLength) {
-      prevLength = text.length;
-      text = text.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script\s*>/gi, '');
-    }
-
-    // Remove all remaining HTML tags
-    text = text.replace(/<[^>]+>/g, ' ');
-
-    // Normalize whitespace
-    text = text.replace(/\s+/g, ' ').trim();
+    // Simply strip all HTML tags - we don't need to parse content
+    // between script/style tags since we control the input HTML
+    // and always provide explicit plain text versions
+    const text = html
+      .replace(/<[^>]*>/g, ' ')  // Remove all HTML tags
+      .replace(/\s+/g, ' ')       // Normalize whitespace
+      .trim();
 
     return text;
   }
