@@ -154,26 +154,47 @@ User roles: `creator` (default), `business-creator`, `moderator`, `admin`, `supe
 
 ## Design System
 
-### Zimbabwe Flag Color Palette
+### Mukoko Brand Color Palette
 
-All UI must use these colors consistently:
+The app uses a sophisticated purple-gray and terracotta color system. Zimbabwe flag colors are reserved for the flag strip component only.
+
+#### Primary Brand Colors
 
 | Color | Hex | Usage |
 |-------|-----|-------|
-| Green | `#00A651` | Primary actions, success states |
-| Yellow | `#FDD116` | Warnings, highlights, accents |
-| Red | `#EF3340` | Errors, destructive actions |
-| Black | `#000000` | Dark backgrounds |
-| White | `#FFFFFF` | Text on dark, highlights |
+| Primary | `#5e5772` | Primary actions, buttons, links |
+| Primary Hover | `#6f6885` | Hover states |
+| Accent | `#d4634a` | Warm terracotta for highlights, errors |
+| Success | `#779b63` | Success states, positive indicators |
+| Warning | `#e5a84d` | Warning messages |
+
+#### Surface Colors
+
+| Color | Hex | Usage |
+|-------|-----|-------|
+| Surface | `#FFFFFF` | Card backgrounds |
+| Surface Variant | `#f9f8f4` | Warm off-white backgrounds |
+| On Surface | `#1f1f1f` | Primary text |
+| On Surface Variant | `#4a4a4a` | Secondary text (WCAG AA compliant) |
+
+#### Zimbabwe Flag Colors (Flag Strip Only)
+
+| Color | Hex | Component |
+|-------|-----|-----------|
+| Green | `#00A651` | Flag strip |
+| Yellow | `#FDD116` | Flag strip |
+| Red | `#EF3340` | Flag strip |
+| Black | `#000000` | Flag strip |
+| White | `#FFFFFF` | Flag strip |
 
 ### Typography
 
-- **Headings**: Noto Serif (mobile) / Georgia (web)
-- **Body**: Noto Sans (mobile) / Inter (web)
+- **Headings/Logo**: Noto Serif - Elegant, authoritative
+- **Body**: Plus Jakarta Sans - Clean, modern, readable
 
 ### Mobile Theme (React Native Paper)
 
-Theme defined in [mobile/theme.js](mobile/theme.js) with Zimbabwe flag colors.
+Theme defined in [mobile/theme.js](mobile/theme.js) with Mukoko brand colors and WCAG AA compliant contrast ratios.
 
 ## Backend API Endpoints
 

@@ -127,6 +127,8 @@ export default function ForgotPasswordScreen({ navigation }) {
                 style={styles.input}
                 outlineColor={mukokoTheme.colors.outline}
                 activeOutlineColor={mukokoTheme.colors.primary}
+                selectionColor={mukokoTheme.colors.primary}
+                cursorColor={mukokoTheme.colors.primary}
                 error={!!error && !success}
               />
 
@@ -169,6 +171,8 @@ export default function ForgotPasswordScreen({ navigation }) {
                 style={[styles.input, styles.codeInput]}
                 outlineColor={mukokoTheme.colors.outline}
                 activeOutlineColor={mukokoTheme.colors.primary}
+                selectionColor={mukokoTheme.colors.primary}
+                cursorColor={mukokoTheme.colors.primary}
                 error={!!error}
               />
 
@@ -184,6 +188,8 @@ export default function ForgotPasswordScreen({ navigation }) {
                 style={styles.input}
                 outlineColor={mukokoTheme.colors.outline}
                 activeOutlineColor={mukokoTheme.colors.primary}
+                selectionColor={mukokoTheme.colors.primary}
+                cursorColor={mukokoTheme.colors.primary}
                 error={!!error}
               />
               <HelperText type="info">

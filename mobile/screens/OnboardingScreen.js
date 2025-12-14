@@ -202,6 +202,8 @@ export default function OnboardingScreen({ navigation }) {
               style={styles.input}
               outlineColor={usernameError ? mukokoTheme.colors.error : mukokoTheme.colors.outline}
               activeOutlineColor={usernameError ? mukokoTheme.colors.error : mukokoTheme.colors.primary}
+              selectionColor={mukokoTheme.colors.primary}
+              cursorColor={mukokoTheme.colors.primary}
               error={!!usernameError}
               right={
                 checkingUsername ? (

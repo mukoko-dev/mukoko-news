@@ -47,7 +47,7 @@ export const mukokoTheme = {
     surfaceVariant: '#f9f8f4',   // Warm off-white (Light color)
     surfaceSubtle: '#fdfcfa',    // Even lighter warm white
     onSurface: '#1f1f1f',        // Dark color
-    onSurfaceVariant: '#5a5a5a',
+    onSurfaceVariant: '#4a4a4a', // Darker for better WCAG AA contrast
 
     // Borders and dividers
     outline: '#e0dfdc',
@@ -181,7 +181,7 @@ export const paperTheme = {
     // Glass surfaces with purple tint for light theme
     surface: 'rgba(255, 255, 255, 0.92)',  // Glass white
     surfaceVariant: 'rgba(249, 248, 244, 0.88)',  // Glass warm white
-    surfaceDisabled: 'rgba(26, 26, 26, 0.08)',
+    surfaceDisabled: 'rgba(26, 26, 26, 0.12)',
 
     // Background - warm off-white base
     background: '#f7f6f8',  // Light purple-tinted off-white
@@ -197,7 +197,7 @@ export const paperTheme = {
     onTertiaryContainer: mukokoTheme.colors.onAccentContainer,
     onSurface: mukokoTheme.colors.onSurface,
     onSurfaceVariant: mukokoTheme.colors.onSurfaceVariant,
-    onSurfaceDisabled: 'rgba(26, 26, 26, 0.38)',
+    onSurfaceDisabled: 'rgba(26, 26, 26, 0.55)', // Increased opacity for WCAG AA contrast
     onError: mukokoTheme.colors.onError,
     onErrorContainer: mukokoTheme.colors.onErrorContainer,
     onBackground: mukokoTheme.colors.onBackground,
@@ -383,8 +383,8 @@ export const paperThemeDark = {
     onTertiary: '#FFFFFF',
     onTertiaryContainer: '#fce8e4',
     onSurface: '#f5f4f0',  // Warm white for readability
-    onSurfaceVariant: '#a8a8b0',  // Muted but visible
-    onSurfaceDisabled: 'rgba(255, 255, 255, 0.38)',
+    onSurfaceVariant: '#b8b8c0',  // Lighter for better WCAG AA contrast on dark
+    onSurfaceDisabled: 'rgba(255, 255, 255, 0.55)', // Increased opacity for WCAG AA contrast
     onError: '#FFFFFF',
     onErrorContainer: '#fce8e4',
     onBackground: '#f5f4f0',
