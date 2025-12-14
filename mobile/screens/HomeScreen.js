@@ -10,6 +10,7 @@ import {
   StyleSheet,
   RefreshControl,
   Dimensions,
+  TouchableOpacity,
 } from 'react-native';
 import {
   Text,
@@ -43,6 +44,7 @@ export default function HomeScreen({ navigation }) {
   const [categoriesList, setCategoriesList] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
+  const [error, setError] = useState(null);
   const paperTheme = usePaperTheme();
   const { isAuthenticated } = useAuth();
 
@@ -80,17 +82,23 @@ export default function HomeScreen({ navigation }) {
 
   const loadInitialData = async () => {
     setLoading(true);
+    setError(null);
 
-    // Load categories
-    const { data: categoriesData } = await categoriesAPI.getAll();
-    if (categoriesData?.categories) {
-      setCategoriesList(categoriesData.categories);
+    try {
+      // Load categories
+      const { data: categoriesData } = await categoriesAPI.getAll();
+      if (categoriesData?.categories) {
+        setCategoriesList(categoriesData.categories);
+      }
+
+      // Load articles
+      await loadArticles();
+    } catch (err) {
+      console.error('[Home] Initial load error:', err);
+      setError('Failed to load news. Please try again.');
+    } finally {
+      setLoading(false);
     }
-
-    // Load articles
-    await loadArticles();
-
-    setLoading(false);
   };
 
   const loadArticles = async (category = null) => {
@@ -128,8 +136,15 @@ export default function HomeScreen({ navigation }) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadArticles(selectedCategory);
-    setRefreshing(false);
+    setError(null);
+    try {
+      await loadArticles(selectedCategory);
+    } catch (err) {
+      console.error('[Home] Refresh error:', err);
+      setError('Failed to refresh. Please try again.');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleCategoryPress = async (categorySlug) => {
@@ -215,6 +230,29 @@ export default function HomeScreen({ navigation }) {
         loadingMessage="Fetching the latest news..."
         showFeatures={true}
       />
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, dynamicStyles.container, styles.centered]}>
+        <MaterialCommunityIcons
+          name="alert-circle-outline"
+          size={64}
+          color={paperTheme.colors.error}
+        />
+        <Text style={[styles.errorTitle, dynamicStyles.emptyTitle]}>Something went wrong</Text>
+        <Text style={[styles.errorMessage, dynamicStyles.emptyDescription]}>{error}</Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: paperTheme.colors.primary }]}
+          onPress={loadInitialData}
+          accessibilityRole="button"
+          accessibilityLabel="Retry loading news"
+        >
+          <MaterialCommunityIcons name="refresh" size={16} color="#FFFFFF" />
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
     );
   }
 
@@ -362,5 +400,39 @@ const styles = StyleSheet.create({
   emptyButton: {
     marginTop: mukokoTheme.spacing.sm,
     borderRadius: mukokoTheme.roundness,
+  },
+
+  // Centered layout for error/loading states
+  centered: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // Error state styles
+  errorTitle: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 20,
+    marginTop: mukokoTheme.spacing.md,
+    marginBottom: mukokoTheme.spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: mukokoTheme.spacing.lg,
+    paddingHorizontal: mukokoTheme.spacing.xl,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.sm,
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    borderRadius: mukokoTheme.roundness,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 });

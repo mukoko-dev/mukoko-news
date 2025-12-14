@@ -81,7 +81,7 @@ function SearchStack() {
   );
 }
 
-// Discover Stack (trending/featured/insights)
+// Discover Stack (trending/featured content - main browsing)
 function DiscoverStack() {
   return (
     <Stack.Navigator
@@ -89,8 +89,8 @@ function DiscoverStack() {
         headerShown: false,
       }}
     >
-      <Stack.Screen name="InsightsFeed" component={InsightsScreen} />
       <Stack.Screen name="DiscoverFeed" component={DiscoverScreen} />
+      <Stack.Screen name="InsightsFeed" component={InsightsScreen} />
       <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
       <Stack.Screen name="SearchFeed" component={SearchScreen} />
     </Stack.Navigator>
@@ -213,15 +213,15 @@ function MainTabs() {
         }}
       />
 
-      {/* 2. Insights Tab - Analytics/Trending content */}
+      {/* 2. Discover Tab - Browse trending content */}
       <Tab.Screen
         name="Discover"
         component={DiscoverStack}
         options={{
-          tabBarLabel: 'Insights',
+          tabBarLabel: 'Discover',
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
-              name={focused ? 'chart-line' : 'chart-line-variant'}
+              name={focused ? 'compass' : 'compass-outline'}
               size={24}
               color={focused ? mukokoTheme.colors.accent : color}
             />

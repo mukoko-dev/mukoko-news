@@ -44,6 +44,7 @@ export default function UserProfileScreen({ navigation, route }) {
   const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [articlesLoading, setArticlesLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadProfile();
@@ -57,6 +58,7 @@ export default function UserProfileScreen({ navigation, route }) {
 
   const loadProfile = async () => {
     setLoading(true);
+    setError(null);
     try {
       const profileResult = await userAPI.getPublicProfile(username);
       if (profileResult.error) throw new Error('User not found');
@@ -71,7 +73,7 @@ export default function UserProfileScreen({ navigation, route }) {
       }
     } catch (err) {
       console.error('Error loading profile:', err);
-      navigation.goBack();
+      setError('Failed to load profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -126,6 +128,30 @@ export default function UserProfileScreen({ navigation, route }) {
     return (
       <View style={[styles.loadingContainer, dynamicStyles.container]}>
         <ActivityIndicator size="large" color={paperTheme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.errorContainer, dynamicStyles.container]}>
+        <MaterialCommunityIcons
+          name="alert-circle-outline"
+          size={48}
+          color={paperTheme.colors.error}
+        />
+        <Text style={[styles.errorText, dynamicStyles.textMuted]}>
+          {error}
+        </Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: paperTheme.colors.primary }]}
+          onPress={loadProfile}
+          accessibilityRole="button"
+          accessibilityLabel="Retry loading profile"
+        >
+          <MaterialCommunityIcons name="refresh" size={16} color="#FFFFFF" />
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -442,6 +468,22 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
+    textAlign: 'center',
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.sm,
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    borderRadius: mukokoTheme.roundness,
+    marginTop: mukokoTheme.spacing.sm,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 
   // Header

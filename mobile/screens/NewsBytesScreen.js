@@ -37,6 +37,7 @@ export default function NewsBytesScreen({ navigation }) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [bytesState, setBytesState] = useState({});
   const [screenDimensions, setScreenDimensions] = useState(Dimensions.get('window'));
+  const [error, setError] = useState(null);
   const flatListRef = useRef(null);
 
   // Calculate responsive values based on screen size and safe areas
@@ -82,8 +83,9 @@ export default function NewsBytesScreen({ navigation }) {
   const loadNewsBytes = async () => {
     try {
       setLoading(true);
+      setError(null);
       // Request more articles since we'll filter out those without images
-      const { data, error } = await newsBytes.getFeed({ limit: 50 });
+      const { data, error: apiError } = await newsBytes.getFeed({ limit: 50 });
 
       if (data?.articles) {
         // Transform and filter - ONLY include articles with valid images
@@ -121,8 +123,9 @@ export default function NewsBytesScreen({ navigation }) {
         setBytesState(initialState);
         setBytes(transformedBytes);
       }
-    } catch (error) {
-      console.error('[NewsBytes] Load error:', error);
+    } catch (err) {
+      console.error('[NewsBytes] Load error:', err);
+      setError('Failed to load NewsBytes. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -358,6 +361,30 @@ export default function NewsBytesScreen({ navigation }) {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.accent} />
           <Text style={[styles.loadingText, { color: colors.white }]}>Loading NewsBytes...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <IconButton
+            icon="alert-circle-outline"
+            size={64}
+            iconColor={colors.accent}
+          />
+          <Text style={[styles.errorTitle, { color: colors.white }]}>Something went wrong</Text>
+          <Text style={[styles.errorMessage, { color: colors.whiteTranslucent }]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.accent }]}
+            onPress={loadNewsBytes}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading NewsBytes"
+          >
+            <Text style={styles.retryButtonText}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       </SafeAreaView>
     );
@@ -606,5 +633,34 @@ const styles = StyleSheet.create({
   emptyDescription: {
     fontSize: 14,
     textAlign: 'center',
+  },
+
+  // Error state styles
+  errorTitle: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 20,
+    marginBottom: mukokoTheme.spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: mukokoTheme.spacing.lg,
+    paddingHorizontal: mukokoTheme.spacing.xl,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.sm,
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    borderRadius: mukokoTheme.roundness,
+    minWidth: 120,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 });
