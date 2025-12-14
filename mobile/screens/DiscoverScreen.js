@@ -95,6 +95,7 @@ export default function DiscoverScreen({ navigation }) {
   const [trendingCategories, setTrendingCategories] = useState([]);
   const [journalists, setJournalists] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
+  const [error, setError] = useState(null);
 
   // Handle screen resize
   useEffect(() => {
@@ -110,12 +111,19 @@ export default function DiscoverScreen({ navigation }) {
 
   const loadInitialData = async () => {
     setLoading(true);
-    await Promise.all([
-      loadTrendingArticles(),
-      loadTrendingCategories(),
-      loadJournalists(),
-    ]);
-    setLoading(false);
+    setError(null);
+    try {
+      await Promise.all([
+        loadTrendingArticles(),
+        loadTrendingCategories(),
+        loadJournalists(),
+      ]);
+    } catch (err) {
+      console.error('[Discover] Initial load error:', err);
+      setError('Failed to load content. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loadTrendingArticles = async (category = null) => {
@@ -179,14 +187,21 @@ export default function DiscoverScreen({ navigation }) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    if (activeMode === 'trending') {
-      await loadTrendingArticles(selectedCategory);
-    } else if (activeMode === 'topics') {
-      await loadTrendingCategories();
-    } else {
-      await loadJournalists();
+    setError(null);
+    try {
+      if (activeMode === 'trending') {
+        await loadTrendingArticles(selectedCategory);
+      } else if (activeMode === 'topics') {
+        await loadTrendingCategories();
+      } else {
+        await loadJournalists();
+      }
+    } catch (err) {
+      console.error('[Discover] Refresh error:', err);
+      setError('Failed to refresh content. Please try again.');
+    } finally {
+      setRefreshing(false);
     }
-    setRefreshing(false);
   };
 
   const handleModeChange = async (modeKey) => {
@@ -598,6 +613,25 @@ export default function DiscoverScreen({ navigation }) {
     );
   }
 
+  if (error) {
+    return (
+      <View style={[styles.container, dynamicStyles.container, styles.centered]}>
+        <Text style={styles.errorEmoji}>⚠️</Text>
+        <Text style={[styles.errorTitle, dynamicStyles.title]}>Something went wrong</Text>
+        <Text style={[styles.errorMessage, dynamicStyles.subtitle]}>{error}</Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: paperTheme.colors.primary }]}
+          onPress={loadInitialData}
+          accessibilityRole="button"
+          accessibilityLabel="Retry loading content"
+        >
+          <Icon source="refresh" size={16} color="#FFFFFF" />
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={[styles.container, dynamicStyles.container]}>
       {renderModeChips()}
@@ -874,5 +908,36 @@ const styles = StyleSheet.create({
   // Bottom padding for floating tab bar
   bottomPadding: {
     height: 100,
+  },
+
+  // Error state styles
+  errorEmoji: {
+    fontSize: 60,
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  errorTitle: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 20,
+    marginBottom: mukokoTheme.spacing.sm,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: mukokoTheme.spacing.lg,
+    paddingHorizontal: mukokoTheme.spacing.xl,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.sm,
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    borderRadius: mukokoTheme.roundness,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 });
