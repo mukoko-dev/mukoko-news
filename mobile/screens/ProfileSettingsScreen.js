@@ -285,6 +285,8 @@ export default function ProfileSettingsScreen({ navigation }) {
                 style={[styles.input, dynamicStyles.input]}
                 underlineColor="transparent"
                 activeUnderlineColor={paperTheme.colors.primary}
+                selectionColor={paperTheme.colors.primary}
+                cursorColor={paperTheme.colors.primary}
               />
               <TextInput
                 mode="flat"
@@ -297,6 +299,8 @@ export default function ProfileSettingsScreen({ navigation }) {
                 style={[styles.input, styles.bioInput, dynamicStyles.input]}
                 underlineColor="transparent"
                 activeUnderlineColor={paperTheme.colors.primary}
+                selectionColor={paperTheme.colors.primary}
+                cursorColor={paperTheme.colors.primary}
               />
               <Text style={[styles.charCount, dynamicStyles.textMuted]}>
                 {bio.length}/160
@@ -364,6 +368,8 @@ export default function ProfileSettingsScreen({ navigation }) {
                 style={[styles.input, dynamicStyles.input]}
                 underlineColor="transparent"
                 activeUnderlineColor={paperTheme.colors.primary}
+                selectionColor={paperTheme.colors.primary}
+                cursorColor={paperTheme.colors.primary}
                 left={<TextInput.Affix text="@" />}
               />
               <TouchableOpacity

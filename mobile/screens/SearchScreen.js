@@ -269,6 +269,8 @@ export default function SearchScreen({ navigation }) {
           style={[styles.searchbar, dynamicStyles.searchbar]}
           inputStyle={styles.searchInput}
           iconColor={paperTheme.colors.primary}
+          selectionColor={paperTheme.colors.primary}
+          cursorColor={paperTheme.colors.primary}
           loading={loading}
         />
       </View>

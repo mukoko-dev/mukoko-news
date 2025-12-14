@@ -94,6 +94,8 @@ export default function RegisterScreen({ navigation }) {
             style={styles.input}
             outlineColor={mukokoTheme.colors.outline}
             activeOutlineColor={mukokoTheme.colors.primary}
+            selectionColor={mukokoTheme.colors.primary}
+            cursorColor={mukokoTheme.colors.primary}
           />
           <HelperText type="info">
             Optional. Auto-generated from email if not provided.
@@ -109,6 +111,8 @@ export default function RegisterScreen({ navigation }) {
             style={styles.input}
             outlineColor={mukokoTheme.colors.outline}
             activeOutlineColor={mukokoTheme.colors.primary}
+            selectionColor={mukokoTheme.colors.primary}
+            cursorColor={mukokoTheme.colors.primary}
           />
           <HelperText type="info">
             Optional
@@ -126,6 +130,8 @@ export default function RegisterScreen({ navigation }) {
             style={styles.input}
             outlineColor={mukokoTheme.colors.outline}
             activeOutlineColor={mukokoTheme.colors.primary}
+            selectionColor={mukokoTheme.colors.primary}
+            cursorColor={mukokoTheme.colors.primary}
             error={!!error}
           />
 
@@ -140,6 +146,8 @@ export default function RegisterScreen({ navigation }) {
             style={styles.input}
             outlineColor={mukokoTheme.colors.outline}
             activeOutlineColor={mukokoTheme.colors.primary}
+            selectionColor={mukokoTheme.colors.primary}
+            cursorColor={mukokoTheme.colors.primary}
             error={!!error}
           />
           <HelperText type="info">

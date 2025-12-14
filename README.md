@@ -202,18 +202,23 @@ POST /api/admin/seo/batch-update  # Update article SEO
 
 ## Design System
 
-### Zimbabwe Flag Color Palette
+### Mukoko Brand Colors
 
-- **Green (#00A651)**: Primary actions, success states, growth
-- **Yellow (#FDD116)**: Warnings, highlights, mineral wealth
-- **Red (#EF3340)**: Errors, urgent actions, heritage
-- **Black (#000000)**: Dark backgrounds, strength
-- **White (#FFFFFF)**: Light backgrounds, peace
+The app uses a sophisticated purple-gray and terracotta color palette with WCAG AA compliant contrast ratios:
+
+- **Primary (#5e5772)**: Primary actions, buttons, links - sophisticated purple-gray
+- **Accent (#d4634a)**: Highlights, errors - warm terracotta/coral
+- **Success (#779b63)**: Success states, positive indicators
+- **Warning (#e5a84d)**: Warning messages
+- **Surface (#FFFFFF / #f9f8f4)**: Card and page backgrounds
+- **On Surface (#1f1f1f / #4a4a4a)**: Text colors with high contrast
+
+*Zimbabwe flag colors (#00A651, #FDD116, #EF3340) are reserved for the flag strip component.*
 
 ### Typography
 
 - **Headings**: Noto Serif (editorial feel)
-- **Body**: Noto Sans (readability)
+- **Body**: Plus Jakarta Sans (readability)
 
 ## Database Schema
 

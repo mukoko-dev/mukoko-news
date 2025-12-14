@@ -1,6 +1,6 @@
-# Harare Metro - Brand Guidelines
+# Mukoko News - Brand Guidelines
 
-This document defines the visual identity, color system, typography, and design patterns for Harare Metro. All UI elements must adhere to these guidelines to maintain brand consistency.
+This document defines the visual identity, color system, typography, and design patterns for Mukoko News. All UI elements must adhere to these guidelines to maintain brand consistency.
 
 ---
 
@@ -10,120 +10,156 @@ This document defines the visual identity, color system, typography, and design 
 
 **Voice**: Professional yet accessible, celebrating Zimbabwe's heritage while embracing modern technology.
 
-**Visual Theme**: Zimbabwe flag colors integrated seamlessly into a dark, modern interface with clean typography and mobile-first design patterns.
+**Visual Theme**: Sophisticated purple-gray and warm terracotta palette with a light, glassmorphic interface. Clean typography and mobile-first design patterns. Zimbabwe flag colors are reserved for the flag strip brand element only.
 
 ---
 
 ## Color System
 
-### Zimbabwe Flag Palette
+### Mukoko Brand Palette (January 2025)
 
-The entire application uses colors from the Zimbabwe flag. These colors are **non-negotiable** and must be used consistently across all UI elements.
+The application uses a sophisticated purple-gray and terracotta color system designed for WCAG AA accessibility compliance.
 
 ```css
 :root {
-  --zw-green: 140 100% 32%;   /* #00A651 - Growth, prosperity, agriculture */
-  --zw-yellow: 48 98% 54%;    /* #FDD116 - Mineral wealth, sunshine */
-  --zw-red: 354 85% 57%;      /* #EF3340 - Heritage, struggle, passion */
-  --zw-black: 0 0% 0%;        /* #000000 - African heritage, strength */
-  --zw-white: 0 0% 100%;      /* #FFFFFF - Peace, unity, progress */
+  /* Primary Brand Colors */
+  --primary: #5e5772;           /* Sophisticated purple-gray */
+  --primary-hover: #6f6885;     /* Hover state */
+  --primary-active: #4d475f;    /* Active/pressed state */
+  --primary-container: #e8e6ec; /* Light purple background */
+
+  /* Accent Color */
+  --accent: #d4634a;            /* Warm terracotta/coral */
+  --accent-container: #fce8e4;  /* Light terracotta background */
+
+  /* Semantic Colors */
+  --success: #779b63;           /* Green for success states */
+  --warning: #e5a84d;           /* Amber for warnings */
+  --error: #d4634a;             /* Uses accent color for errors */
+
+  /* Surface Colors */
+  --surface: #FFFFFF;           /* White card backgrounds */
+  --surface-variant: #f9f8f4;   /* Warm off-white backgrounds */
+  --background: #f7f6f8;        /* Light purple-tinted page background */
+
+  /* Text Colors (WCAG AA Compliant) */
+  --on-surface: #1f1f1f;        /* Primary text - high contrast */
+  --on-surface-variant: #4a4a4a; /* Secondary text - WCAG AA compliant */
+  --on-surface-disabled: rgba(26, 26, 26, 0.55); /* Disabled text */
+}
+```
+
+### Zimbabwe Flag Colors (Flag Strip Only)
+
+These colors are **only used for the Zimbabwe flag strip** brand element.
+
+```css
+:root {
+  --zw-green: #00A651;   /* Flag strip only */
+  --zw-yellow: #FDD116;  /* Flag strip only */
+  --zw-red: #EF3340;     /* Flag strip only */
+  --zw-black: #000000;   /* Flag strip only */
+  --zw-white: #FFFFFF;   /* Flag strip only */
 }
 ```
 
 ### Color Usage Guidelines
 
-#### Green (#00A651)
+#### Primary (#5e5772)
 **Primary Action Color**
 - Primary buttons and CTAs
-- Success states and confirmations
-- Positive indicators and metrics
-- Growth-related visualizations
-- Active/selected states
 - Links and interactive elements
+- Active/selected states
+- Focus rings and borders
+- Navigation highlights
 
-**Examples**:
-```css
-bg-[hsl(var(--zw-green))]           /* Solid backgrounds */
-text-[hsl(var(--zw-green))]         /* Text and icons */
-border-[hsl(var(--zw-green))]       /* Borders and outlines */
-hover:bg-[hsl(var(--zw-green))]/80  /* Hover states */
+**Examples** (React Native Paper):
+```javascript
+// Primary button
+<Button mode="contained" buttonColor="#5e5772">Action</Button>
+
+// Text link
+<Text style={{ color: '#5e5772' }}>Link Text</Text>
+
+// Focus/active state
+activeOutlineColor={mukokoTheme.colors.primary}
+selectionColor={mukokoTheme.colors.primary}
 ```
 
-#### Yellow (#FDD116)
-**Accent and Highlight Color**
-- Warning messages (non-critical)
-- Highlighted content
-- Featured items and badges
-- Special announcements
-- Accent elements in illustrations
-
-**Examples**:
-```css
-bg-[hsl(var(--zw-yellow))]
-text-[hsl(var(--zw-yellow))]
-border-[hsl(var(--zw-yellow))]
-```
-
-#### Red (#EF3340)
-**Error and Urgent Action Color**
+#### Accent (#d4634a)
+**Accent and Error Color**
 - Error states and messages
 - Destructive actions (delete, remove)
-- Critical warnings
-- Urgent notifications
+- Warning highlights
+- Accent elements
 - Error input borders
 
 **Examples**:
-```css
-bg-[hsl(var(--zw-red))]
-text-[hsl(var(--zw-red))]
-border-[hsl(var(--zw-red))]
-bg-[hsl(var(--zw-red))]/10  /* Subtle error backgrounds */
+```javascript
+// Error message
+<Text style={{ color: '#d4634a' }}>Error message</Text>
+
+// Error banner background
+backgroundColor: '#d4634a15' // 15% opacity
+borderColor: '#d4634a30'     // 30% opacity
 ```
 
-#### Black (#000000)
-**Base Color**
-- Primary background color (dark mode)
-- Input backgrounds
-- Card backgrounds (darker shade)
-- High-contrast text
+#### Success (#779b63)
+**Success and Positive States**
+- Success confirmations
+- Positive indicators and metrics
+- Growth visualizations
+- Valid input states
 
 **Examples**:
-```css
-bg-black          /* Primary backgrounds */
-bg-gray-900       /* Card/panel backgrounds */
-bg-gray-800       /* Interactive elements */
-text-black        /* High contrast text (on light backgrounds) */
+```javascript
+// Success message
+<Text style={{ color: '#779b63' }}>Success!</Text>
+
+// Success icon
+<Icon color="#779b63" />
 ```
 
-#### White (#FFFFFF)
-**Text and Highlight Color**
-- Primary text on dark backgrounds
-- Button text
-- Icon colors
-- Highlights and emphasis
+#### Surface Colors
+**Backgrounds and Cards**
+- Surface (#FFFFFF): Card backgrounds
+- Surface Variant (#f9f8f4): Page backgrounds, warm off-white
+- Background (#f7f6f8): Light purple-tinted base
 
 **Examples**:
-```css
-text-white        /* Primary text */
-bg-white          /* Light backgrounds (rare) */
-border-white      /* High contrast borders */
+```javascript
+// Card background
+backgroundColor: '#FFFFFF'
+
+// Page background
+backgroundColor: '#f9f8f4'
 ```
 
-### Gray Scale (Neutral Colors)
+#### Text Colors (WCAG AA Compliant)
+**Typography**
+- On Surface (#1f1f1f): Primary text, headings
+- On Surface Variant (#4a4a4a): Secondary text, captions
+- On Surface Disabled (rgba(26,26,26,0.55)): Disabled states
 
-For backgrounds, borders, and secondary elements:
+**Examples**:
+```javascript
+// Primary text
+color: '#1f1f1f'
 
-```css
-gray-50: #F9FAFB   /* Lightest gray */
-gray-100: #F3F4F6
-gray-200: #E5E7EB
-gray-300: #D1D5DB
-gray-400: #9CA3AF  /* Mid gray - secondary text */
-gray-500: #6B7280
-gray-600: #4B5563
-gray-700: #374151  /* Borders, secondary backgrounds */
-gray-800: #1F2937  /* Interactive elements */
-gray-900: #111827  /* Card backgrounds */
+// Secondary/muted text
+color: '#4a4a4a'
+
+// Disabled text
+color: 'rgba(26, 26, 26, 0.55)'
+```
+
+### Outline Colors
+
+For borders, dividers, and subtle UI elements:
+
+```javascript
+outline: '#e0dfdc'        // Default border color
+outlineVariant: '#f0efec' // Lighter variant
 ```
 
 ---
@@ -134,30 +170,26 @@ gray-900: #111827  /* Card backgrounds */
 
 The application uses a **dual-font system** for optimal readability and brand consistency.
 
-#### Serif Font - Georgia (Headings)
-**Usage**: All headings (h1-h6), titles, and branded text
+#### Serif Font - Noto Serif (Headings/Logo)
+**Usage**: All headings (h1-h6), titles, logo text, and branded elements
 
 ```css
-font-family: Georgia, 'Times New Roman', serif;
+font-family: 'NotoSerif-Regular', 'NotoSerif-Bold', Georgia, serif;
 ```
-
-**Tailwind Class**: `font-serif`
 
 **Examples**:
 - Page titles
 - Article headlines
 - Section headers
-- Logo text ("Harare Metro")
+- Logo text ("Mukoko News")
 - Feature titles
 
-#### Sans-Serif Font - Inter (Body)
+#### Sans-Serif Font - Plus Jakarta Sans (Body)
 **Usage**: All body text, UI elements, buttons, inputs
 
 ```css
-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+font-family: 'PlusJakartaSans-Regular', 'PlusJakartaSans-Medium', 'PlusJakartaSans-Bold', sans-serif;
 ```
-
-**Tailwind Class**: `font-sans` (default)
 
 **Examples**:
 - Paragraphs
@@ -250,86 +282,126 @@ The Zimbabwe flag strip is a **core brand element** and must be present on all f
 
 ## UI Components
 
-### Buttons
+### Buttons (React Native Paper)
 
-#### Primary Button (Green)
-```tsx
-<button className="px-6 py-3 bg-[hsl(var(--zw-green))] hover:bg-[hsl(var(--zw-green))]/80 text-white font-semibold rounded-xl transition-colors">
+#### Primary Button
+```javascript
+<Button
+  mode="contained"
+  buttonColor="#5e5772"
+  textColor="#FFFFFF"
+  onPress={handlePress}
+>
   Primary Action
-</button>
+</Button>
 ```
 
-#### Secondary Button
-```tsx
-<button className="px-6 py-3 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl transition-colors">
+#### Outlined Button
+```javascript
+<Button
+  mode="outlined"
+  textColor="#5e5772"
+  onPress={handlePress}
+>
   Secondary Action
-</button>
+</Button>
 ```
 
-#### Destructive Button (Red)
-```tsx
-<button className="px-6 py-3 bg-[hsl(var(--zw-red))] hover:bg-[hsl(var(--zw-red))]/80 text-white font-semibold rounded-xl transition-colors">
+#### Destructive Button
+```javascript
+<Button
+  mode="contained"
+  buttonColor="#d4634a"
+  textColor="#FFFFFF"
+  onPress={handleDelete}
+>
   Delete
-</button>
+</Button>
 ```
 
 #### Disabled State
-```tsx
-<button className="px-6 py-3 bg-[hsl(var(--zw-green))] text-white font-semibold rounded-xl opacity-50 cursor-not-allowed" disabled>
+```javascript
+<Button
+  mode="contained"
+  buttonColor="#5e5772"
+  disabled={true}
+>
   Disabled
-</button>
+</Button>
 ```
 
-### Cards
+### Cards (React Native Paper)
 
-```tsx
-<div className="bg-gray-900 rounded-2xl p-6 border border-gray-800 shadow-lg hover:border-gray-700 transition-colors">
+```javascript
+<Surface
+  style={{
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#e0dfdc',
+  }}
+  elevation={2}
+>
   {/* Card content */}
-</div>
+</Surface>
 ```
 
 **Specifications**:
-- Background: `bg-gray-900`
-- Border: `border border-gray-800`
-- Rounded: `rounded-2xl` (16px)
-- Padding: `p-6` (24px)
-- Hover: `hover:border-gray-700`
+- Background: `#FFFFFF` (surface)
+- Border: `#e0dfdc` (outline)
+- Rounded: `24` (borderRadius)
+- Padding: `24`
+- Elevation: `2`
 
-### Form Inputs
+### Form Inputs (React Native Paper)
 
-```tsx
-<input
-  type="text"
-  className="w-full px-4 py-3 bg-black border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:border-[hsl(var(--zw-green))] focus:ring-2 focus:ring-[hsl(var(--zw-green))]/20 transition-colors"
-  placeholder="Enter text..."
+```javascript
+<TextInput
+  mode="outlined"
+  label="Input Label"
+  value={value}
+  onChangeText={setValue}
+  style={{ backgroundColor: '#FFFFFF' }}
+  outlineColor="#e0dfdc"
+  activeOutlineColor="#5e5772"
+  selectionColor="#5e5772"
+  cursorColor="#5e5772"
 />
 ```
 
 **Specifications**:
-- Background: `bg-black`
-- Border: `border-gray-700`
-- Focus border: `focus:border-[hsl(var(--zw-green))]`
-- Focus ring: `focus:ring-2 focus:ring-[hsl(var(--zw-green))]/20`
-- Rounded: `rounded-xl`
+- Background: `#FFFFFF` (surface)
+- Border: `#e0dfdc` (outline)
+- Focus border: `#5e5772` (primary)
+- Selection: `#5e5772` (primary)
 
 ### Error Input
 
-```tsx
-<input
-  type="text"
-  className="w-full px-4 py-3 bg-black border border-[hsl(var(--zw-red))] rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[hsl(var(--zw-red))]/20"
+```javascript
+<TextInput
+  mode="outlined"
+  label="Input Label"
+  value={value}
+  error={true}
+  outlineColor="#d4634a"
+  activeOutlineColor="#d4634a"
 />
-<p className="text-xs text-[hsl(var(--zw-red))] mt-2">
+<HelperText type="error">
   Error message here
-</p>
+</HelperText>
 ```
 
 ### Success Input
 
-```tsx
-<input
-  type="text"
-  className="w-full px-4 py-3 bg-black border border-[hsl(var(--zw-green))] rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-[hsl(var(--zw-green))]/20"
+```javascript
+<TextInput
+  mode="outlined"
+  label="Input Label"
+  value={value}
+  outlineColor="#779b63"
+  activeOutlineColor="#779b63"
+  right={<TextInput.Icon icon="check" color="#779b63" />}
 />
 ```
 
@@ -367,12 +439,17 @@ xl: 1280px  /* Desktops */
 
 ### Loading States
 
-```tsx
-{/* Spinner */}
-<div className="w-6 h-6 border-2 border-[hsl(var(--zw-green))] border-t-transparent rounded-full animate-spin" />
+```javascript
+// React Native Paper ActivityIndicator
+<ActivityIndicator size="large" color="#5e5772" />
 
-{/* Skeleton */}
-<div className="w-full h-4 bg-gray-800 rounded animate-pulse" />
+// Skeleton placeholder
+<View style={{
+  width: '100%',
+  height: 16,
+  backgroundColor: '#e8e6ec',
+  borderRadius: 8,
+}} />
 ```
 
 ### Transitions
@@ -443,10 +520,11 @@ import { Heart, Bookmark, Share, ArrowRight } from 'lucide-react';
 
 ### Icon Colors
 
-- Default: `text-gray-400`
-- Active/Selected: `text-[hsl(var(--zw-green))]`
-- Destructive: `text-[hsl(var(--zw-red))]`
-- White: `text-white`
+- Default: `#4a4a4a` (onSurfaceVariant)
+- Active/Selected: `#5e5772` (primary)
+- Success: `#779b63` (success)
+- Destructive: `#d4634a` (accent/error)
+- On primary: `#FFFFFF` (onPrimary)
 
 ---
 
@@ -462,12 +540,13 @@ All text must meet WCAG AA standards:
 
 All interactive elements must have visible focus states:
 
-```tsx
-focus:outline-none
-focus:ring-2
-focus:ring-[hsl(var(--zw-green))]
-focus:ring-offset-2
-focus:ring-offset-black
+```javascript
+// React Native Paper components handle focus automatically
+// For custom components:
+{
+  borderColor: focused ? '#5e5772' : '#e0dfdc',
+  borderWidth: focused ? 2 : 1,
+}
 ```
 
 ### Semantic HTML
@@ -540,143 +619,247 @@ ease-in      /* Exit animations */
 
 ### Logo Usage
 
-The "Harare Metro" logo should always use:
-- Font: Georgia (serif)
-- Colors: "Harare" in white, "Metro" in green
+The "Mukoko News" logo should always use:
+- Font: Noto Serif Bold
+- Colors: "Mukoko" in primary (#5e5772), "News" in accent (#d4634a) or vice versa
 - Never stretch or distort
 - Maintain minimum clear space
 
-```tsx
-<h1 className="font-serif font-bold text-3xl">
-  Harare <span className="text-[hsl(var(--zw-green))]">Metro</span>
-</h1>
+```javascript
+// React Native
+<Text style={{ fontFamily: 'NotoSerif-Bold', fontSize: 24 }}>
+  <Text style={{ color: '#5e5772' }}>Mukoko</Text>
+  {' '}
+  <Text style={{ color: '#d4634a' }}>News</Text>
+</Text>
 ```
 
 ---
 
 ## Examples
 
-### Article Card
+### Article Card (React Native)
 
-```tsx
-<article className="bg-gray-900 rounded-2xl p-6 border border-gray-800 hover:border-gray-700 transition-colors">
+```javascript
+<Surface style={styles.articleCard} elevation={2}>
   {/* Category Badge */}
-  <span className="inline-block px-3 py-1 bg-[hsl(var(--zw-green))]/20 text-[hsl(var(--zw-green))] text-xs font-semibold rounded-lg mb-3">
-    Politics
-  </span>
+  <View style={styles.categoryBadge}>
+    <Text style={styles.categoryText}>Politics</Text>
+  </View>
 
   {/* Title */}
-  <h3 className="text-xl font-serif font-bold text-white mb-2">
+  <Text style={styles.title}>
     Article Headline Goes Here
-  </h3>
+  </Text>
 
   {/* Excerpt */}
-  <p className="text-gray-400 text-sm mb-4">
+  <Text style={styles.excerpt}>
     Article excerpt for preview...
-  </p>
+  </Text>
 
   {/* Actions */}
-  <div className="flex items-center gap-4 text-gray-400 text-sm">
-    <button className="flex items-center gap-1 hover:text-[hsl(var(--zw-green))] transition-colors">
-      <Heart className="w-4 h-4" />
-      24
-    </button>
-    <button className="flex items-center gap-1 hover:text-[hsl(var(--zw-green))] transition-colors">
-      <Bookmark className="w-4 h-4" />
-    </button>
-  </div>
-</article>
+  <View style={styles.actions}>
+    <TouchableOpacity style={styles.actionButton}>
+      <Icon source="heart-outline" size={16} color="#4a4a4a" />
+      <Text style={styles.actionText}>24</Text>
+    </TouchableOpacity>
+    <TouchableOpacity style={styles.actionButton}>
+      <Icon source="bookmark-outline" size={16} color="#4a4a4a" />
+    </TouchableOpacity>
+  </View>
+</Surface>
+
+// Styles
+const styles = StyleSheet.create({
+  articleCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+  },
+  categoryBadge: {
+    backgroundColor: '#e8e6ec',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+  },
+  categoryText: {
+    color: '#5e5772',
+    fontSize: 12,
+    fontFamily: 'PlusJakartaSans-Medium',
+  },
+  title: {
+    fontFamily: 'NotoSerif-Bold',
+    fontSize: 18,
+    color: '#1f1f1f',
+    marginBottom: 8,
+  },
+  excerpt: {
+    color: '#4a4a4a',
+    fontSize: 14,
+    marginBottom: 16,
+  },
+  actions: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  actionText: {
+    color: '#4a4a4a',
+    fontSize: 14,
+  },
+});
 ```
 
-### Modal
+### Modal (React Native Paper)
 
-```tsx
-<div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-  <div className="bg-gray-900 rounded-3xl p-8 max-w-md w-full border border-gray-800">
-    {/* Close button */}
-    <button className="ml-auto block text-gray-400 hover:text-white transition-colors">
-      <X className="w-6 h-6" />
-    </button>
-
+```javascript
+<Portal>
+  <Modal
+    visible={visible}
+    onDismiss={onDismiss}
+    contentContainerStyle={styles.modalContainer}
+  >
     {/* Modal content */}
-    <h2 className="text-2xl font-serif font-bold text-white mb-4">
+    <Text style={styles.modalTitle}>
       Modal Title
-    </h2>
-    <p className="text-gray-400 mb-6">
+    </Text>
+    <Text style={styles.modalText}>
       Modal content goes here...
-    </p>
+    </Text>
 
     {/* Actions */}
-    <div className="flex gap-3">
-      <button className="flex-1 px-4 py-3 bg-gray-800 hover:bg-gray-700 text-white font-semibold rounded-xl transition-colors">
+    <View style={styles.modalActions}>
+      <Button
+        mode="outlined"
+        onPress={onDismiss}
+        style={styles.modalButton}
+      >
         Cancel
-      </button>
-      <button className="flex-1 px-4 py-3 bg-[hsl(var(--zw-green))] hover:bg-[hsl(var(--zw-green))]/80 text-white font-semibold rounded-xl transition-colors">
+      </Button>
+      <Button
+        mode="contained"
+        buttonColor="#5e5772"
+        onPress={onConfirm}
+        style={styles.modalButton}
+      >
         Confirm
-      </button>
-    </div>
-  </div>
-</div>
+      </Button>
+    </View>
+  </Modal>
+</Portal>
+
+// Styles
+const styles = StyleSheet.create({
+  modalContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 24,
+    margin: 16,
+  },
+  modalTitle: {
+    fontFamily: 'NotoSerif-Bold',
+    fontSize: 24,
+    color: '#1f1f1f',
+    marginBottom: 16,
+  },
+  modalText: {
+    color: '#4a4a4a',
+    fontSize: 16,
+    marginBottom: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+  },
+});
 ```
 
 ---
 
 ## Quick Reference
 
-### Color Classes
+### Color Values (React Native / JavaScript)
 
-```css
-/* Green (Primary) */
-bg-[hsl(var(--zw-green))]
-text-[hsl(var(--zw-green))]
-border-[hsl(var(--zw-green))]
+```javascript
+// Primary Brand
+primary: '#5e5772'
+primaryHover: '#6f6885'
+primaryActive: '#4d475f'
+primaryContainer: '#e8e6ec'
 
-/* Yellow (Accent) */
-bg-[hsl(var(--zw-yellow))]
-text-[hsl(var(--zw-yellow))]
+// Accent
+accent: '#d4634a'
+accentContainer: '#fce8e4'
 
-/* Red (Error) */
-bg-[hsl(var(--zw-red))]
-text-[hsl(var(--zw-red))]
+// Semantic
+success: '#779b63'
+warning: '#e5a84d'
+error: '#d4634a'
 
-/* Black (Background) */
-bg-black
-bg-gray-900
-bg-gray-800
+// Surfaces
+surface: '#FFFFFF'
+surfaceVariant: '#f9f8f4'
+background: '#f7f6f8'
 
-/* White (Text) */
-text-white
+// Text (WCAG AA)
+onSurface: '#1f1f1f'
+onSurfaceVariant: '#4a4a4a'
+onSurfaceDisabled: 'rgba(26, 26, 26, 0.55)'
+
+// Borders
+outline: '#e0dfdc'
+outlineVariant: '#f0efec'
 ```
 
-### Typography Classes
+### Typography (React Native)
 
-```css
-/* Headings */
-font-serif font-bold
-font-serif font-semibold
+```javascript
+// Headings/Logo
+fontFamily: 'NotoSerif-Regular' // or 'NotoSerif-Bold'
 
-/* Body */
-font-sans (default)
+// Body text
+fontFamily: 'PlusJakartaSans-Regular' // or Medium, Bold
 ```
 
-### Common Component Classes
+### Common Component Patterns
 
-```css
-/* Button */
-px-6 py-3 bg-[hsl(var(--zw-green))] rounded-xl font-semibold
+```javascript
+// Primary Button
+<Button
+  mode="contained"
+  buttonColor={mukokoTheme.colors.primary}
+/>
 
-/* Card */
-bg-gray-900 rounded-2xl p-6 border border-gray-800
+// Outlined Input
+<TextInput
+  mode="outlined"
+  outlineColor={mukokoTheme.colors.outline}
+  activeOutlineColor={mukokoTheme.colors.primary}
+  selectionColor={mukokoTheme.colors.primary}
+/>
 
-/* Input */
-px-4 py-3 bg-black border border-gray-700 rounded-xl
+// Card Surface
+<Surface
+  style={{ backgroundColor: mukokoTheme.colors.surface }}
+  elevation={2}
+/>
 ```
 
 ---
 
 ## Version History
 
-- **v1.0** (2025-10-31): Initial brand guidelines documentation
+- **v2.0** (2025-01-15): Updated to Mukoko brand colors, WCAG AA contrast compliance
+- **v1.0** (2025-10-31): Initial brand guidelines documentation (Harare Metro)
 
 ---
 
@@ -684,5 +867,5 @@ px-4 py-3 bg-black border border-gray-700 rounded-xl
 
 For questions about brand guidelines or design decisions, refer to:
 - [CLAUDE.md](/CLAUDE.md) - Development guide
-- [PROJECT-STATUS.md](/PROJECT-STATUS.md) - Current implementation status
+- [mobile/theme.js](/mobile/theme.js) - Theme implementation
 - [README.md](/README.md) - Project overview
