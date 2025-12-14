@@ -3160,32 +3160,40 @@ app.post("/api/auth/reset-password", async (c) => {
       return c.json({ error: "Email, code, and new password are required" }, 400);
     }
 
-    // Verify reset code
+    // Verify reset code from KV
     const storedCode = await c.env.AUTH_STORAGE.get(`reset:${email}`);
     if (!storedCode || storedCode !== code) {
       return c.json({ error: "Invalid or expired reset code" }, 400);
     }
 
-    // Hash new password
-    const encoder = new TextEncoder();
-    const data = encoder.encode(newPassword);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const passwordHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Validate password strength
+    const passwordValidation = PasswordHashService.validatePasswordStrength(newPassword);
+    if (!passwordValidation.valid) {
+      return c.json({ error: passwordValidation.issues[0] }, 400);
+    }
 
-    // Update password in KV
-    await c.env.AUTH_STORAGE.put(`password:${email}`, passwordHash);
+    // Get user from D1 database
+    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const user = await authService.getUserByEmail(email);
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
 
-    // Delete reset code
+    // Hash new password using scrypt (same as registration)
+    const passwordHash = await PasswordHashService.hashPassword(newPassword);
+
+    // Update password in D1 database (where login reads from)
+    await c.env.DB.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .bind(passwordHash, user.id)
+      .run();
+
+    // Delete reset code from KV
     await c.env.AUTH_STORAGE.delete(`reset:${email}`);
 
     // Invalidate all existing sessions for this user
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
-    const user = await authService.getUserByEmail(email);
-    if (user) {
-      await c.env.DB.prepare('DELETE FROM user_sessions WHERE user_id = ?').bind(user.id).run();
-    }
+    await c.env.DB.prepare('DELETE FROM user_sessions WHERE user_id = ?').bind(user.id).run();
 
+    console.log(`[AUTH] Password reset successful for user: ${email}`);
     return c.json({ message: "Password reset successful" });
   } catch (error: any) {
     console.error("[AUTH] Reset password error:", error);
@@ -3215,27 +3223,33 @@ app.post("/api/auth/change-password", async (c) => {
       return c.json({ error: "Current and new passwords are required" }, 400);
     }
 
-    // Verify current password
-    const storedHash = await c.env.AUTH_STORAGE.get(`password:${session.email}`);
-    const encoder = new TextEncoder();
-    const data = encoder.encode(currentPassword);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const currentHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Get user from D1 database to get stored password hash
+    const user = await authService.getUserByEmail(session.email);
+    if (!user || !user.password_hash) {
+      return c.json({ error: "User not found or password not set" }, 400);
+    }
 
-    if (storedHash !== currentHash) {
+    // Verify current password using PasswordHashService (supports both scrypt and legacy SHA-256)
+    const isCurrentPasswordValid = await PasswordHashService.verifyPassword(currentPassword, user.password_hash);
+    if (!isCurrentPasswordValid) {
       return c.json({ error: "Current password is incorrect" }, 400);
     }
 
-    // Hash new password
-    const newData = encoder.encode(newPassword);
-    const newHashBuffer = await crypto.subtle.digest('SHA-256', newData);
-    const newHashArray = Array.from(new Uint8Array(newHashBuffer));
-    const newPasswordHash = newHashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    // Validate new password strength
+    const passwordValidation = PasswordHashService.validatePasswordStrength(newPassword);
+    if (!passwordValidation.valid) {
+      return c.json({ error: passwordValidation.issues[0] }, 400);
+    }
 
-    // Update password
-    await c.env.AUTH_STORAGE.put(`password:${session.email}`, newPasswordHash);
+    // Hash new password using scrypt
+    const newPasswordHash = await PasswordHashService.hashPassword(newPassword);
 
+    // Update password in D1 database
+    await c.env.DB.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
+      .bind(newPasswordHash, user.id)
+      .run();
+
+    console.log(`[AUTH] Password changed successfully for user: ${session.email}`);
     return c.json({ message: "Password changed successfully" });
   } catch (error: any) {
     console.error("[AUTH] Change password error:", error);
