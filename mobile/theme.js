@@ -334,7 +334,7 @@ export const paperTheme = {
     },
     labelSmall: {
       ...mukokoTheme.fonts.medium,
-      fontSize: 11,
+      fontSize: 12, // Increased from 11 for WCAG readability
       lineHeight: 16,
       letterSpacing: 0.5,
     },

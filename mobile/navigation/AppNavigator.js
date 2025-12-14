@@ -189,7 +189,7 @@ function MainTabs() {
           paddingHorizontal: 2,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 12, // Increased from 11 for WCAG readability
           fontFamily: mukokoTheme.fonts.medium.fontFamily,
           marginTop: 4,
           marginBottom: 4,

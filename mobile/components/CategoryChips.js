@@ -109,6 +109,10 @@ export default function CategoryChips({
                 selected && chipSelectedStyle,
                 index === 0 && styles.chipFirst,
               ]}
+              accessibilityLabel={`${category.name} category${category.article_count ? `, ${category.article_count} articles` : ''}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              accessibilityHint={`Filter news by ${category.name} category`}
             >
               {showEmojis && (
                 <Text style={styles.chipEmoji}>{emoji}</Text>
@@ -200,6 +204,10 @@ export function CategoryPills({
               pillGlassStyle,
               selected && pillSelectedStyle,
             ]}
+            accessibilityLabel={`${category.name} category`}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: selected }}
+            accessibilityHint={selected ? `Deselect ${category.name}` : `Select ${category.name}`}
           >
             {showEmojis && (
               <Text style={styles.pillEmoji}>{emoji}</Text>
@@ -243,8 +251,9 @@ const styles = StyleSheet.create({
     // Glass effect - semi-transparent with subtle background
     backgroundColor: 'rgba(0, 0, 0, 0.06)',
     paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-    borderRadius: 20,
+    paddingVertical: mukokoTheme.spacing.sm + 2, // Increased for 44px min height
+    minHeight: 44, // WCAG touch target minimum
+    borderRadius: 22,
     marginRight: mukokoTheme.spacing.xs,
     // No border for cleaner look
     gap: mukokoTheme.spacing.xs,
@@ -278,7 +287,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   countText: {
-    fontSize: 11,
+    fontSize: 12, // Increased from 11 for WCAG readability
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     textAlign: 'center',
   },
@@ -297,8 +306,9 @@ const styles = StyleSheet.create({
     // Glass effect
     backgroundColor: 'rgba(0, 0, 0, 0.06)',
     paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-    borderRadius: 20,
+    paddingVertical: mukokoTheme.spacing.sm + 2, // Increased for 44px min height
+    minHeight: 44, // WCAG touch target minimum
+    borderRadius: 22,
     gap: mukokoTheme.spacing.xs,
   },
   pillSelected: {
