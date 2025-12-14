@@ -267,7 +267,10 @@ export default function HomeScreen({ navigation }) {
               size={64}
               color={paperTheme.colors.onSurfaceVariant}
             />
-            <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>No articles found</Text>
+            <Text
+              style={[styles.emptyTitle, dynamicStyles.emptyTitle]}
+              accessibilityRole="header"
+            >No articles found</Text>
             <Text style={[styles.emptyDescription, dynamicStyles.emptyDescription]}>
               {selectedCategory
                 ? 'No articles in this category. Try selecting a different one.'

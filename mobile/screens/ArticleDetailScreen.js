@@ -305,7 +305,10 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 size={64}
                 color={paperTheme.colors.onSurfaceVariant}
               />
-              <Text style={[styles.errorTitle, dynamicStyles.errorTitle]}>Article Not Found</Text>
+              <Text
+                style={[styles.errorTitle, dynamicStyles.errorTitle]}
+                accessibilityRole="header"
+              >Article Not Found</Text>
               <Text style={[styles.errorMessage, dynamicStyles.errorMessage]}>{error}</Text>
               <Button
                 mode="contained"
@@ -340,7 +343,10 @@ export default function ArticleDetailScreen({ route, navigation }) {
               </View>
 
               {/* Article Title */}
-              <Text style={[styles.articleTitle, dynamicStyles.articleTitle]}>{article.title}</Text>
+              <Text
+                style={[styles.articleTitle, dynamicStyles.articleTitle]}
+                accessibilityRole="header"
+              >{article.title}</Text>
 
               {/* Article Description */}
               {article.description && (

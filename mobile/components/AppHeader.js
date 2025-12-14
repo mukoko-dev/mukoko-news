@@ -71,6 +71,9 @@ export default function AppHeader() {
               onPress={() => setMenuVisible(!menuVisible)}
               style={styles.hamburgerButton}
               activeOpacity={0.7}
+              accessibilityLabel={menuVisible ? 'Close navigation menu' : 'Open navigation menu'}
+              accessibilityRole="button"
+              accessibilityState={{ expanded: menuVisible }}
             >
               <MaterialCommunityIcons
                 name="menu"
@@ -99,6 +102,9 @@ export default function AppHeader() {
               onPress={handleTrendingPress}
               style={styles.actionButton}
               activeOpacity={0.7}
+              accessibilityLabel="View insights and trending news"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to the insights screen"
             >
               <MaterialCommunityIcons
                 name="chart-line"
@@ -112,6 +118,9 @@ export default function AppHeader() {
               onPress={handleSearchPress}
               style={styles.actionButton}
               activeOpacity={0.7}
+              accessibilityLabel="Search articles"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to search screen"
             >
               <MaterialCommunityIcons
                 name="magnify"
@@ -125,6 +134,9 @@ export default function AppHeader() {
               onPress={toggleTheme}
               style={styles.actionButton}
               activeOpacity={0.7}
+              accessibilityLabel={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+              accessibilityRole="button"
+              accessibilityHint="Toggles between light and dark color themes"
             >
               <MaterialCommunityIcons
                 name={isDark ? 'weather-sunny' : 'weather-night'}
@@ -138,6 +150,9 @@ export default function AppHeader() {
               onPress={handleProfilePress}
               style={styles.actionButton}
               activeOpacity={0.7}
+              accessibilityLabel="View profile"
+              accessibilityRole="button"
+              accessibilityHint="Navigate to your profile and account settings"
             >
               <MaterialCommunityIcons
                 name="account-circle-outline"
@@ -201,7 +216,11 @@ const styles = StyleSheet.create({
   },
   hamburgerButton: {
     marginRight: mukokoTheme.spacing.sm,
-    padding: 8,
+    padding: 10,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   logoContainer: {
     flexDirection: 'row',
@@ -216,8 +235,12 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   actionButton: {
-    padding: 10,
-    marginHorizontal: 2,
+    padding: 12,
+    marginHorizontal: 0,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   modalOverlay: {
     flex: 1,
