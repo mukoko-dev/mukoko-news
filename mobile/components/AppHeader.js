@@ -33,15 +33,18 @@ export default function AppHeader() {
   // Navigation handlers using ref-based navigation
   const handleSearchPress = () => navigate('Search');
   const handleProfilePress = () => navigate('Profile');
-  const handleTrendingPress = () => navigate('Discover');
+  // Header insights icon navigates to AI-powered Insights screen
+  const handleInsightsPress = () => navigate('Discover', { screen: 'InsightsFeed' });
   const handleNavigate = (screenName) => {
     navigate(screenName);
     setMenuVisible(false);
   };
 
+  // Hamburger menu items - Discover goes to DiscoverFeed (browsing), not Insights
   const menuItems = [
     { label: 'Home', icon: 'home-outline', screen: 'Home', path: '/' },
-    { label: 'Insights', icon: 'chart-line', screen: 'Discover', path: '/insights' },
+    { label: 'Discover', icon: 'compass-outline', screen: 'Discover', path: '/discover' },
+    { label: 'Insights', icon: 'chart-line', screen: 'Discover', path: '/insights', nested: 'InsightsFeed' },
     { label: 'NewsBytes', icon: 'lightning-bolt-outline', screen: 'Bytes', path: '/bytes' },
     { label: 'Search', icon: 'magnify', screen: 'Search', path: '/search' },
     { label: 'Profile', icon: 'account-circle-outline', screen: 'Profile', path: '/profile' },
@@ -56,7 +59,12 @@ export default function AppHeader() {
       window.history.pushState({}, '', item.path);
     }
 
-    navigate(item.screen);
+    // Handle nested navigation (e.g., Insights inside Discover stack)
+    if (item.nested) {
+      navigate(item.screen, { screen: item.nested });
+    } else {
+      navigate(item.screen);
+    }
   };
 
   // Dynamic styles based on theme
@@ -109,14 +117,14 @@ export default function AppHeader() {
 
           {/* Action buttons - Always show on mobile and desktop */}
           <View style={styles.actions}>
-            {/* Trending/Insights Icon - highlighted in brand color */}
+            {/* Insights Icon - AI-powered analytics, highlighted in brand color */}
             <TouchableOpacity
-              onPress={handleTrendingPress}
+              onPress={handleInsightsPress}
               style={styles.actionButton}
               activeOpacity={0.7}
-              accessibilityLabel="View insights and trending news"
+              accessibilityLabel="View AI-powered insights and analytics"
               accessibilityRole="button"
-              accessibilityHint="Navigate to the insights screen"
+              accessibilityHint="Navigate to the insights screen with AI analytics"
             >
               <MaterialCommunityIcons
                 name="chart-line"

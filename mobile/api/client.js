@@ -478,6 +478,7 @@ export const health = {
 
 /**
  * Insights & Analytics API
+ * Community-focused analytics - open to everyone
  */
 export const insights = {
   /**
@@ -506,6 +507,20 @@ export const insights = {
    */
   async getCategoryInsights(days = 7) {
     return apiRequest(`/api/admin/category-insights?days=${days}`);
+  },
+
+  /**
+   * Get engagement analytics (views, likes, saves)
+   */
+  async getAnalytics() {
+    return apiRequest('/api/admin/analytics');
+  },
+
+  /**
+   * Get content quality metrics
+   */
+  async getContentQuality() {
+    return apiRequest('/api/admin/content-quality');
   },
 
   /**
