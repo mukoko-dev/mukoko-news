@@ -4,6 +4,7 @@ import {
   FlatList,
   StyleSheet,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import {
   Text,
@@ -29,15 +30,18 @@ export default function AdminSourcesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [error, setError] = useState(null);
 
   const loadSources = useCallback(async () => {
+    setError(null);
     try {
       const result = await admin.getSources();
       if (result.data) {
         setSources(result.data.sources || []);
       }
-    } catch (error) {
-      console.error('[Admin] Load sources error:', error);
+    } catch (err) {
+      console.error('[Admin] Load sources error:', err);
+      setError('Failed to load sources. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -92,6 +96,23 @@ export default function AdminSourcesScreen({ navigation }) {
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={styles.errorContainer}>
           <Text variant="headlineSmall">Access Denied</Text>
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.errorContainer}>
+          <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
+          <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+            onPress={loadSources}
+          >
+            <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -308,5 +329,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  retryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
 });

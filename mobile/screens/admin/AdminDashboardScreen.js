@@ -34,11 +34,13 @@ export default function AdminDashboardScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [error, setError] = useState(null);
 
   const { width } = Dimensions.get('window');
   const isWideScreen = width >= 768;
 
   const loadData = useCallback(async () => {
+    setError(null);
     try {
       const [statsResult, userStatsResult] = await Promise.all([
         admin.getStats(),
@@ -47,8 +49,9 @@ export default function AdminDashboardScreen({ navigation }) {
 
       if (statsResult.data) setStats(statsResult.data);
       if (userStatsResult.data) setUserStats(userStatsResult.data);
-    } catch (error) {
-      console.error('[Admin] Load data error:', error);
+    } catch (err) {
+      console.error('[Admin] Load data error:', err);
+      setError('Failed to load dashboard. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -108,6 +111,21 @@ export default function AdminDashboardScreen({ navigation }) {
         <Text style={{ marginTop: 16, color: theme.colors.onSurfaceVariant }}>
           Loading dashboard...
         </Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, styles.centered, { backgroundColor: theme.colors.background }]}>
+        <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
+        <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+          onPress={loadData}
+        >
+          <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -415,5 +433,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
+  },
+  retryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
 });
