@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
 import AppHeader from '../components/AppHeader';
 import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
+import { navigationRef } from './navigationRef';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -301,7 +302,7 @@ export default function AppNavigator() {
   const paperTheme = usePaperTheme();
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <SafeAreaView
         style={[
           styles.container,
