@@ -1911,6 +1911,217 @@ app.get("/api/admin/ai-pipeline-status", async (c) => {
   }
 });
 
+// AI Testing endpoint - test AI functionality
+app.post("/api/admin/ai-test", async (c) => {
+  try {
+    const services = initializeServices(c.env);
+    const body = await c.req.json().catch(() => ({}));
+    const testText = body.text || "Zimbabwe's economy shows signs of recovery as the government implements new fiscal policies to stabilize the currency and attract foreign investment.";
+    const testTitle = body.title || "Zimbabwe Economy Shows Recovery Signs";
+
+    const results: {
+      ai_available: boolean;
+      tests: Array<{
+        name: string;
+        status: 'passed' | 'failed' | 'skipped';
+        duration_ms: number;
+        result?: any;
+        error?: string;
+      }>;
+      summary: {
+        total: number;
+        passed: number;
+        failed: number;
+        skipped: number;
+      };
+      timestamp: string;
+    } = {
+      ai_available: false,
+      tests: [],
+      summary: { total: 0, passed: 0, failed: 0, skipped: 0 },
+      timestamp: new Date().toISOString()
+    };
+
+    // Test 1: Check AI binding availability
+    const aiCheckStart = Date.now();
+    try {
+      if (!c.env.AI) {
+        throw new Error("AI binding not configured");
+      }
+      results.ai_available = true;
+      results.tests.push({
+        name: "AI Binding Check",
+        status: 'passed',
+        duration_ms: Date.now() - aiCheckStart,
+        result: { message: "AI binding is available" }
+      });
+    } catch (error) {
+      results.tests.push({
+        name: "AI Binding Check",
+        status: 'failed',
+        duration_ms: Date.now() - aiCheckStart,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+
+    // Test 2: Simple AI inference test
+    const inferenceStart = Date.now();
+    try {
+      if (!results.ai_available) {
+        results.tests.push({
+          name: "Basic AI Inference",
+          status: 'skipped',
+          duration_ms: 0,
+          error: "Skipped due to AI binding unavailable"
+        });
+      } else {
+        const response = await c.env.AI.run('@cf/meta/llama-3-8b-instruct', {
+          prompt: "Say 'AI is working' if you receive this message:",
+          max_tokens: 10
+        });
+
+        results.tests.push({
+          name: "Basic AI Inference",
+          status: response?.response ? 'passed' : 'failed',
+          duration_ms: Date.now() - inferenceStart,
+          result: {
+            response: response?.response?.substring(0, 100) || "No response",
+            model: "@cf/meta/llama-3-8b-instruct"
+          }
+        });
+      }
+    } catch (error) {
+      results.tests.push({
+        name: "Basic AI Inference",
+        status: 'failed',
+        duration_ms: Date.now() - inferenceStart,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+
+    // Test 3: Content cleaning test
+    const cleaningStart = Date.now();
+    try {
+      if (!results.ai_available) {
+        results.tests.push({
+          name: "Content Cleaning",
+          status: 'skipped',
+          duration_ms: 0,
+          error: "Skipped due to AI binding unavailable"
+        });
+      } else {
+        const dirtyContent = `${testText} <img src="test.jpg"/> ~~random~~ chars!!! http://example.com/image.png ADVERTISEMENT`;
+        const cleanResult = await services.articleAIService.cleanContent(dirtyContent, {
+          removeImages: true,
+          removeRandomChars: true,
+          normalizeWhitespace: true,
+          extractImageUrls: true,
+          minContentLength: 50
+        });
+
+        results.tests.push({
+          name: "Content Cleaning",
+          status: cleanResult.cleanedContent.length > 0 ? 'passed' : 'failed',
+          duration_ms: Date.now() - cleaningStart,
+          result: {
+            original_length: dirtyContent.length,
+            cleaned_length: cleanResult.cleanedContent.length,
+            removed_chars: cleanResult.removedCharCount,
+            extracted_images: cleanResult.extractedImages.length,
+            sample: cleanResult.cleanedContent.substring(0, 200)
+          }
+        });
+      }
+    } catch (error) {
+      results.tests.push({
+        name: "Content Cleaning",
+        status: 'failed',
+        duration_ms: Date.now() - cleaningStart,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+
+    // Test 4: Keyword extraction test
+    const keywordStart = Date.now();
+    try {
+      if (!results.ai_available) {
+        results.tests.push({
+          name: "Keyword Extraction",
+          status: 'skipped',
+          duration_ms: 0,
+          error: "Skipped due to AI binding unavailable"
+        });
+      } else {
+        const keywords = await services.articleAIService.extractKeywords(testTitle, testText, 'politics');
+
+        results.tests.push({
+          name: "Keyword Extraction",
+          status: keywords && keywords.length > 0 ? 'passed' : 'failed',
+          duration_ms: Date.now() - keywordStart,
+          result: {
+            keyword_count: keywords?.length || 0,
+            keywords: keywords?.slice(0, 5).map((k: any) => ({
+              keyword: k.keyword,
+              confidence: k.confidence,
+              category: k.category
+            }))
+          }
+        });
+      }
+    } catch (error) {
+      results.tests.push({
+        name: "Keyword Extraction",
+        status: 'failed',
+        duration_ms: Date.now() - keywordStart,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+
+    // Test 5: Quality scoring test
+    const qualityStart = Date.now();
+    try {
+      if (!results.ai_available) {
+        results.tests.push({
+          name: "Quality Scoring",
+          status: 'skipped',
+          duration_ms: 0,
+          error: "Skipped due to AI binding unavailable"
+        });
+      } else {
+        const qualityScore = await services.articleAIService.calculateQualityScore(testTitle, testText);
+
+        results.tests.push({
+          name: "Quality Scoring",
+          status: typeof qualityScore === 'number' ? 'passed' : 'failed',
+          duration_ms: Date.now() - qualityStart,
+          result: {
+            quality_score: qualityScore,
+            quality_rating: qualityScore > 0.8 ? 'Excellent' : qualityScore > 0.6 ? 'Good' : qualityScore > 0.4 ? 'Fair' : 'Needs Improvement'
+          }
+        });
+      }
+    } catch (error) {
+      results.tests.push({
+        name: "Quality Scoring",
+        status: 'failed',
+        duration_ms: Date.now() - qualityStart,
+        error: error instanceof Error ? error.message : "Unknown error"
+      });
+    }
+
+    // Calculate summary
+    results.summary.total = results.tests.length;
+    results.summary.passed = results.tests.filter(t => t.status === 'passed').length;
+    results.summary.failed = results.tests.filter(t => t.status === 'failed').length;
+    results.summary.skipped = results.tests.filter(t => t.status === 'skipped').length;
+
+    return c.json(results);
+  } catch (error) {
+    console.error("Error running AI tests:", error);
+    return c.json({ error: "Failed to run AI tests", details: error instanceof Error ? error.message : "Unknown error" }, 500);
+  }
+});
+
 // Author recognition and journalism tracking
 // TODO: Add authentication back when OpenAuthService is fixed
 app.get("/api/admin/authors", async (c) => {

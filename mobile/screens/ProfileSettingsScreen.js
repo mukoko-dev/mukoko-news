@@ -41,6 +41,7 @@ export default function ProfileSettingsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [error, setError] = useState(null);
 
   // Form fields
   const [displayName, setDisplayName] = useState('');
@@ -56,10 +57,11 @@ export default function ProfileSettingsScreen({ navigation }) {
   }, []);
 
   const loadProfile = async () => {
+    setError(null);
     try {
       const result = await userAPI.getProfile();
       if (result.error) {
-        navigation.navigate('Login');
+        setError('Please log in to access settings.');
         return;
       }
       const data = result.data;
@@ -68,7 +70,7 @@ export default function ProfileSettingsScreen({ navigation }) {
       setBio(data.bio || '');
     } catch (err) {
       console.error('Error loading profile:', err);
-      navigation.navigate('Login');
+      setError('Failed to load profile. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -160,6 +162,28 @@ export default function ProfileSettingsScreen({ navigation }) {
     return (
       <View style={[styles.loadingContainer, dynamicStyles.container]}>
         <ActivityIndicator size="large" color={paperTheme.colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.loadingContainer, dynamicStyles.container]}>
+        <MaterialCommunityIcons
+          name="alert-circle-outline"
+          size={48}
+          color={paperTheme.colors.error}
+        />
+        <Text style={[styles.errorText, dynamicStyles.textMuted]}>{error}</Text>
+        <TouchableOpacity
+          style={[styles.retryButton, { backgroundColor: paperTheme.colors.primary }]}
+          onPress={loadProfile}
+          accessibilityRole="button"
+          accessibilityLabel="Retry loading settings"
+        >
+          <MaterialCommunityIcons name="refresh" size={16} color="#FFFFFF" />
+          <Text style={styles.retryButtonText}>Try Again</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -755,5 +779,28 @@ const styles = StyleSheet.create({
   footerSubtext: {
     fontSize: 12,
     marginTop: 4,
+  },
+
+  // Error state styles
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: mukokoTheme.spacing.md,
+    marginBottom: mukokoTheme.spacing.md,
+    paddingHorizontal: mukokoTheme.spacing.xl,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.sm,
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    borderRadius: mukokoTheme.roundness,
+    marginTop: mukokoTheme.spacing.sm,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 });

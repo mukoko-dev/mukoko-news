@@ -4,6 +4,7 @@ import {
   ScrollView,
   StyleSheet,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
 import {
   Text,
@@ -31,8 +32,10 @@ export default function AdminSystemScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [error, setError] = useState(null);
 
   const loadData = useCallback(async () => {
+    setError(null);
     try {
       const [healthRes, cronRes, aiRes] = await Promise.all([
         admin.getSystemHealth(),
@@ -43,8 +46,9 @@ export default function AdminSystemScreen({ navigation }) {
       if (healthRes.data) setSystemHealth(healthRes.data);
       if (cronRes.data) setCronLogs(cronRes.data.logs || []);
       if (aiRes.data) setAiStatus(aiRes.data);
-    } catch (error) {
-      console.error('[Admin] Load system data error:', error);
+    } catch (err) {
+      console.error('[Admin] Load system data error:', err);
+      setError('Failed to load system data. Please try again.');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -127,6 +131,23 @@ export default function AdminSystemScreen({ navigation }) {
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+        <View style={styles.errorContainer}>
+          <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
+          <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+            onPress={loadData}
+          >
+            <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
+          </TouchableOpacity>
         </View>
       </View>
     );
@@ -494,5 +515,10 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  retryButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
   },
 });
