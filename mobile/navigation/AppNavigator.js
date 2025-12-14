@@ -12,6 +12,7 @@ import mukokoTheme from '../theme';
 import AppHeader from '../components/AppHeader';
 import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
 import { navigationRef } from './navigationRef';
+import linking from './linking';
 
 // Screens
 import HomeScreen from '../screens/HomeScreen';
@@ -302,7 +303,38 @@ export default function AppNavigator() {
   const paperTheme = usePaperTheme();
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer
+      ref={navigationRef}
+      linking={linking}
+      documentTitle={{
+        formatter: (options, route) => {
+          // Custom page titles for SEO
+          const routeName = route?.name;
+          const baseTitle = 'Mukoko News';
+
+          switch (routeName) {
+            case 'HomeFeed':
+              return `${baseTitle} - Zimbabwe's News, Your Way`;
+            case 'ArticleDetail':
+              return options?.title ? `${options.title} | ${baseTitle}` : baseTitle;
+            case 'InsightsFeed':
+              return `Insights | ${baseTitle}`;
+            case 'BytesFeed':
+              return `NewsBytes | ${baseTitle}`;
+            case 'SearchFeed':
+              return `Search | ${baseTitle}`;
+            case 'Login':
+              return `Sign In | ${baseTitle}`;
+            case 'Register':
+              return `Create Account | ${baseTitle}`;
+            case 'AdminDashboard':
+              return `Admin Dashboard | ${baseTitle}`;
+            default:
+              return baseTitle;
+          }
+        },
+      }}
+    >
       <SafeAreaView
         style={[
           styles.container,

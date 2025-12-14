@@ -141,6 +141,11 @@ export default function ArticleDetailScreen({ route, navigation }) {
         setIsSaved(articleData.isSaved || false);
         setLikesCount(articleData.likesCount || 0);
 
+        // Set navigation title for SEO (document title)
+        navigation.setOptions({
+          title: articleData.title,
+        });
+
         // Track article view
         await articlesAPI.trackView(articleData.id);
       } else {
