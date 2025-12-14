@@ -22,7 +22,7 @@ export class EmailService {
 
   constructor(config: EmailConfig) {
     this.apiKey = config.RESEND_API_KEY;
-    this.fromEmail = config.EMAIL_FROM || 'Mukoko News <noreply@mukoko.com>';
+    this.fromEmail = config.EMAIL_FROM || 'Mukoko News <noreply@notify.mukoko.com>';
   }
 
   /**
