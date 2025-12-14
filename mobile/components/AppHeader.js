@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, TouchableOpacity, Text, Modal, Platform } from 'react-native';
+import { View, StyleSheet, Dimensions, TouchableOpacity, Text, Modal, Platform, Linking } from 'react-native';
 import { Divider, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { navigate } from '../navigation/navigationRef';
@@ -40,12 +40,24 @@ export default function AppHeader() {
   };
 
   const menuItems = [
-    { label: 'Home', icon: 'home', screen: 'Home' },
-    { label: 'Discover', icon: 'compass', screen: 'Discover' },
-    { label: 'NewsBytes', icon: 'play-circle', screen: 'Bytes' },
-    { label: 'Search', icon: 'magnify', screen: 'Search' },
-    { label: 'Profile', icon: 'account-circle', screen: 'Profile' },
+    { label: 'Home', icon: 'home-outline', screen: 'Home', path: '/' },
+    { label: 'Insights', icon: 'chart-line', screen: 'Discover', path: '/insights' },
+    { label: 'NewsBytes', icon: 'lightning-bolt-outline', screen: 'Bytes', path: '/bytes' },
+    { label: 'Search', icon: 'magnify', screen: 'Search', path: '/search' },
+    { label: 'Profile', icon: 'account-circle-outline', screen: 'Profile', path: '/profile' },
   ];
+
+  // Handle navigation with proper URL updates on web
+  const handleMenuNavigate = (item) => {
+    setMenuVisible(false);
+
+    // On web, update the URL
+    if (Platform.OS === 'web' && item.path) {
+      window.history.pushState({}, '', item.path);
+    }
+
+    navigate(item.screen);
+  };
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -181,8 +193,11 @@ export default function AppHeader() {
                   <React.Fragment key={item.screen}>
                     <TouchableOpacity
                       style={styles.menuItem}
-                      onPress={() => handleNavigate(item.screen)}
+                      onPress={() => handleMenuNavigate(item)}
                       activeOpacity={0.7}
+                      accessibilityLabel={`Navigate to ${item.label}`}
+                      accessibilityRole="link"
+                      accessibilityHint={`Opens the ${item.label.toLowerCase()} page`}
                     >
                       <View style={styles.menuIcon}>
                         <MaterialCommunityIcons
@@ -265,6 +280,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: mukokoTheme.spacing.md,
     paddingHorizontal: mukokoTheme.spacing.md,
+    minHeight: 44, // WCAG touch target minimum
   },
   menuIcon: {
     marginRight: mukokoTheme.spacing.sm,

@@ -67,8 +67,17 @@ export default function RegisterScreen({ navigation }) {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Image source={MukokoLogo} style={styles.logo} resizeMode="contain" />
-          <Text variant="bodyMedium" style={styles.subtitle}>
+          <Image
+            source={MukokoLogo}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityLabel="Mukoko News logo"
+          />
+          <Text
+            variant="bodyMedium"
+            style={styles.subtitle}
+            accessibilityRole="header"
+          >
             Create your account
           </Text>
         </View>
@@ -163,6 +172,8 @@ export default function RegisterScreen({ navigation }) {
             style={styles.button}
             contentStyle={styles.buttonContent}
             icon={() => <Icon source="account-plus" size={20} color={mukokoTheme.colors.onPrimary} />}
+            accessibilityLabel={loading ? 'Creating account' : 'Create account'}
+            accessibilityHint="Creates a new account with your email and password"
           >
             {loading ? 'Creating account...' : 'Create Account'}
           </Button>
@@ -184,6 +195,8 @@ export default function RegisterScreen({ navigation }) {
               onPress={() => navigation.navigate('Login')}
               labelStyle={styles.loginButtonLabel}
               compact
+              accessibilityLabel="Sign in to existing account"
+              accessibilityHint="Navigate to the login screen"
             >
               Sign in
             </Button>
@@ -195,6 +208,8 @@ export default function RegisterScreen({ navigation }) {
           mode="text"
           onPress={() => navigation.navigate('Home')}
           style={styles.homeButton}
+          accessibilityLabel="Go back to home"
+          accessibilityHint="Navigate to the home screen"
         >
           Back to Home
         </Button>
