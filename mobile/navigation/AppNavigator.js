@@ -260,11 +260,13 @@ function MainTabs() {
 // Root Navigator
 export default function AppNavigator() {
   const paperTheme = usePaperTheme();
+  const [isNavigationReady, setIsNavigationReady] = useState(false);
 
   return (
     <NavigationContainer
       ref={navigationRef}
       linking={linking}
+      onReady={() => setIsNavigationReady(true)}
       documentTitle={{
         formatter: (options, route) => {
           const routeName = route?.name;
@@ -299,7 +301,7 @@ export default function AppNavigator() {
         edges={['bottom']}
       >
         <ZimbabweFlagStrip />
-        <AppHeader />
+        {isNavigationReady && <AppHeader />}
         <View style={styles.content}>
           <MainTabs />
         </View>
