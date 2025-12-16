@@ -165,24 +165,29 @@ export default function ArticleDetailScreen({ route, navigation }) {
       return;
     }
 
+    // Save original values for rollback
+    const wasLiked = isLiked;
+    const originalCount = likesCount;
+
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       // Optimistic update
-      setIsLiked(!isLiked);
-      setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
+      setIsLiked(!wasLiked);
+      setLikesCount(wasLiked ? originalCount - 1 : originalCount + 1);
 
       const result = await articlesAPI.toggleLike(article.id);
       if (result.error) {
-        // Revert on error
-        setIsLiked(isLiked);
-        setLikesCount(likesCount);
+        // Revert on error using saved values
+        setIsLiked(wasLiked);
+        setLikesCount(originalCount);
         console.error('[ArticleDetail] Like error:', result.error);
       }
     } catch (error) {
       console.error('[ArticleDetail] Like error:', error);
-      setIsLiked(isLiked);
-      setLikesCount(likesCount);
+      // Revert on error using saved values
+      setIsLiked(wasLiked);
+      setLikesCount(originalCount);
     }
   };
 
@@ -192,21 +197,25 @@ export default function ArticleDetailScreen({ route, navigation }) {
       return;
     }
 
+    // Save original value for rollback
+    const wasSaved = isSaved;
+
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
       // Optimistic update
-      setIsSaved(!isSaved);
+      setIsSaved(!wasSaved);
 
       const result = await articlesAPI.toggleBookmark(article.id);
       if (result.error) {
-        // Revert on error
-        setIsSaved(isSaved);
+        // Revert on error using saved value
+        setIsSaved(wasSaved);
         console.error('[ArticleDetail] Save error:', result.error);
       }
     } catch (error) {
       console.error('[ArticleDetail] Save error:', error);
-      setIsSaved(isSaved);
+      // Revert on error using saved value
+      setIsSaved(wasSaved);
     }
   };
 

@@ -152,6 +152,10 @@ export default function SearchScreen({ navigation, route }) {
 
   useEffect(() => {
     loadInsightsData();
+    // Cleanup debounce timer on unmount
+    return () => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
   }, []);
 
   const loadInsightsData = async () => {
