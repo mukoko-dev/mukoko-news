@@ -62,6 +62,9 @@ export default function AppHeader() {
       case 'Admin':
       case 'AdminDashboard':
         return 'Admin';
+      case 'Home':
+      case 'HomeFeed':
+        return 'For You';
       case 'ArticleDetail':
         return null; // No title for article view - show logo only
       default:
@@ -91,7 +94,7 @@ export default function AppHeader() {
         )}
       </View>
 
-      {/* Right: Utility Icons (Discover, Theme, Personalized) */}
+      {/* Right: Utility Icons (Discover, Personalized, Theme) */}
       <View style={styles.rightSection}>
         {/* Discover */}
         <TouchableOpacity
@@ -108,6 +111,21 @@ export default function AppHeader() {
           />
         </TouchableOpacity>
 
+        {/* Personalized Feed (For You) */}
+        <TouchableOpacity
+          onPress={() => navigate('Home')}
+          style={styles.iconButton}
+          activeOpacity={0.7}
+          accessibilityLabel="For You - Personalized feed"
+          accessibilityRole="button"
+        >
+          <MaterialCommunityIcons
+            name="star-four-points-outline"
+            size={22}
+            color={paperTheme.colors.onSurfaceVariant}
+          />
+        </TouchableOpacity>
+
         {/* Theme Toggle */}
         <TouchableOpacity
           onPress={toggleTheme}
@@ -118,20 +136,6 @@ export default function AppHeader() {
         >
           <MaterialCommunityIcons
             name={isDark ? 'weather-sunny' : 'weather-night'}
-            size={22}
-            color={paperTheme.colors.onSurfaceVariant}
-          />
-        </TouchableOpacity>
-
-        {/* Personalized Feed */}
-        <TouchableOpacity
-          style={styles.iconButton}
-          activeOpacity={0.7}
-          accessibilityLabel="Personalized feed"
-          accessibilityRole="button"
-        >
-          <MaterialCommunityIcons
-            name="star-four-points-outline"
             size={22}
             color={paperTheme.colors.onSurfaceVariant}
           />

@@ -34,6 +34,7 @@ const prefixes = Platform.select({
  * URL Structure:
  * /                        -> Bytes (default landing - core feature)
  * /discover                -> Discover (header menu only)
+ * /foryou                  -> Home (personalized feed)
  * /search                  -> Search (includes insights when empty)
  * /profile                 -> Profile
  * /profile/login           -> Login
@@ -72,6 +73,16 @@ const config = {
             source: (source) => decodeURIComponent(source),
             slug: (slug) => decodeURIComponent(slug),
           },
+        },
+      },
+    },
+    // Home (For You) - Personalized feed
+    Home: {
+      path: 'foryou',
+      screens: {
+        HomeFeed: '',
+        ArticleDetail: {
+          path: 'article/:source/:slug',
         },
       },
     },

@@ -25,6 +25,7 @@ import UserProfileScreen from '../screens/UserProfileScreen';
 import ArticleDetailScreen from '../screens/ArticleDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
+import HomeScreen from '../screens/HomeScreen';
 // InsightsScreen removed - insights now integrated into SearchScreen
 
 // Admin Screens
@@ -70,6 +71,16 @@ function SearchStack() {
 }
 
 // Insights Stack removed - insights now integrated into SearchScreen
+
+// Home Stack (personalized feed - header access only)
+function HomeStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="HomeFeed" component={HomeScreen} />
+      <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+    </Stack.Navigator>
+  );
+}
 
 // Profile/Auth Stack
 function ProfileStack() {
@@ -216,7 +227,16 @@ function MainTabs() {
         }}
       />
 
-      {/* 5. Admin (admins only) */}
+      {/* 5. Home (For You) - Hidden tab for personalized feed */}
+      <Tab.Screen
+        name="Home"
+        component={HomeStack}
+        options={{
+          tabBarButton: () => null, // Hide from tab bar
+        }}
+      />
+
+      {/* 6. Admin (admins only) */}
       {isAdmin && (
         <Tab.Screen
           name="Admin"
@@ -257,6 +277,8 @@ export default function AppNavigator() {
               return options?.title ? `${options.title} | ${baseTitle}` : baseTitle;
             case 'DiscoverFeed':
               return `Discover | ${baseTitle}`;
+            case 'HomeFeed':
+              return `For You | ${baseTitle}`;
             // InsightsFeed removed - insights now in SearchFeed
             case 'SearchFeed':
               return `Search | ${baseTitle}`;
