@@ -17,6 +17,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.2] - 2025-12-16
+
+### Changed - Merged Search & Insights into Single Screen
+
+Simplified navigation by combining Search and Insights:
+
+#### SearchScreen (Now with Insights)
+- **Search-first** - Search bar always visible at top
+- **Insights as default content** - When search is empty, shows:
+  - Stats row (articles/sources/topics)
+  - Trending topics in 2-column grid
+  - Top journalists list
+- **Seamless transition** - Insights fade out as search results appear
+- **Single responsibility** - One screen serves both discovery and search
+
+#### Navigation Structure (Simplified)
+- **3-tab layout** - Bytes → Search → Profile
+- **Discover remains header-only** - Compass icon access
+- **Removed Insights tab** - Now integrated into Search
+
+---
+
 ## [0.9.1] - 2025-12-16
 
 ### Improved - Mobile-First Navigation & UX Overhaul
@@ -25,7 +47,6 @@ Complete restructure with NewsBytes as the core product:
 
 #### Navigation Structure
 - **Bytes is default landing** - `/` loads NewsBytes (core feature)
-- **4-tab layout** - Bytes → Search → Insights → Profile
 - **Discover is header-only** - Accessible via compass icon in header
 - **Removed Home tab** - Bytes replaces Home as entry point
 
@@ -35,16 +56,10 @@ Complete restructure with NewsBytes as the core product:
 - **2-column grid** - Responsive article layout
 - **Inline topic cards** - Trending categories mixed with articles
 
-#### InsightsScreen
-- **Stats at a glance** - Top row shows articles/sources/topics
-- **Trending topics grid** - 2-column tappable cards
-- **Journalist leaderboard** - Compact ranked list
-- **Resilient loading** - Promise.allSettled for graceful failures
-
 #### AppHeader Updates
 - **Logo tap** - Goes to Bytes (default)
 - **Discover icon** - Compass icon for header-only access
-- **Menu order** - Bytes, Discover, Search, Insights, Profile
+- **Menu order** - Bytes, Discover, Search, Profile
 
 ---
 

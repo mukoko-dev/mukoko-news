@@ -34,7 +34,7 @@ export default function AppHeader() {
   const handleBytesPress = () => navigate('Bytes');
   const handleDiscoverPress = () => navigate('Discover');
   const handleSearchPress = () => navigate('Search');
-  const handleInsightsPress = () => navigate('Insights');
+  // Insights removed - now integrated into Search screen
   const handleProfilePress = () => navigate('Profile');
   const handleNavigate = (screenName) => {
     navigate(screenName);
@@ -42,11 +42,11 @@ export default function AppHeader() {
   };
 
   // Hamburger menu items - Discover featured since it's header-only
+  // Insights removed - now integrated into Search screen
   const menuItems = [
     { label: 'Bytes', icon: 'lightning-bolt-outline', screen: 'Bytes', path: '/' },
     { label: 'Discover', icon: 'compass-outline', screen: 'Discover', path: '/discover' },
     { label: 'Search', icon: 'magnify', screen: 'Search', path: '/search' },
-    { label: 'Insights', icon: 'chart-line', screen: 'Insights', path: '/insights' },
     { label: 'Profile', icon: 'account-circle-outline', screen: 'Profile', path: '/profile' },
   ];
 
