@@ -33,19 +33,18 @@ export default function AppHeader() {
   // Navigation handlers using ref-based navigation
   const handleSearchPress = () => navigate('Search');
   const handleProfilePress = () => navigate('Profile');
-  // Header insights icon navigates to AI-powered Insights screen
-  const handleInsightsPress = () => navigate('Discover', { screen: 'InsightsFeed' });
+  // Header insights icon navigates to Insights tab directly
+  const handleInsightsPress = () => navigate('Insights');
   const handleNavigate = (screenName) => {
     navigate(screenName);
     setMenuVisible(false);
   };
 
-  // Hamburger menu items - Discover goes to DiscoverFeed (browsing), not Insights
+  // Hamburger menu items
   const menuItems = [
     { label: 'Home', icon: 'home-outline', screen: 'Home', path: '/' },
     { label: 'Discover', icon: 'compass-outline', screen: 'Discover', path: '/discover' },
-    { label: 'Insights', icon: 'chart-line', screen: 'Discover', path: '/insights', nested: 'InsightsFeed' },
-    { label: 'NewsBytes', icon: 'lightning-bolt-outline', screen: 'Bytes', path: '/bytes' },
+    { label: 'Insights', icon: 'chart-line', screen: 'Insights', path: '/insights' },
     { label: 'Search', icon: 'magnify', screen: 'Search', path: '/search' },
     { label: 'Profile', icon: 'account-circle-outline', screen: 'Profile', path: '/profile' },
   ];

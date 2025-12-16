@@ -39,7 +39,7 @@ const prefixes = Platform.select({
  * URL Structure:
  * /                        -> Home tab
  * /discover                -> Discover tab (browse trending content)
- * /discover/insights       -> AI-powered Insights screen
+ * /insights                -> Insights tab (analytics)
  * /bytes                   -> NewsBytes tab
  * /search                  -> Search tab
  * /search?q=query          -> Search with query
@@ -73,7 +73,6 @@ const config = {
       path: 'discover',
       screens: {
         DiscoverFeed: '',
-        InsightsFeed: 'insights',
         ArticleDetail: {
           path: 'article/:source/:slug',
           parse: {
@@ -82,6 +81,12 @@ const config = {
           },
         },
         SearchFeed: 'search',
+      },
+    },
+    Insights: {
+      path: 'insights',
+      screens: {
+        InsightsFeed: '',
       },
     },
     Bytes: {
