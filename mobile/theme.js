@@ -14,6 +14,12 @@
  * - Accent: Gold - Honey, rewards
  *   Light: #5D4037 | Dark: #FFD740
  *
+ * Surface Colors:
+ * - Light Mode:
+ *   Base: #FAF9F5 (Warm Cream) | Surface: #FFFFFF | Surface Dim: #F3F2EE
+ * - Dark Mode:
+ *   Base: #0A0A0A (Charcoal) | Surface: #141414 | Elevated: #1E1E1E
+ *
  * Typography (Nyuchi Brand System):
  * - Display/Headings/Logo: Noto Serif - Elegant, authoritative
  * - Body: Plus Jakarta Sans - Clean, modern, readable
@@ -51,11 +57,11 @@ export const mukokoTheme = {
     onSecondary: '#FFFFFF',
     onSecondaryContainer: '#001A40',
 
-    // Surface colors - warm off-white theme
-    surface: '#FFFFFF',
-    surfaceVariant: '#f9f8f4',   // Warm off-white (Light color)
-    surfaceSubtle: '#fdfcfa',    // Even lighter warm white
-    onSurface: '#1f1f1f',        // Dark color
+    // Surface colors - Brand System v6
+    surface: '#FFFFFF',          // White (card backgrounds)
+    surfaceVariant: '#F3F2EE',   // Surface Dim (subtle gray)
+    surfaceSubtle: '#FAF9F5',    // Warm Cream (base)
+    onSurface: '#1C1B1F',        // Dark text
     onSurfaceVariant: '#4a4a4a', // Darker for better WCAG AA contrast
 
     // Borders and dividers
@@ -78,8 +84,8 @@ export const mukokoTheme = {
     onWarning: '#FFFFFF',
     onWarningContainer: '#331200',
 
-    // Background - warm off-white
-    background: '#FAFAFA',       // Light neutral background
+    // Background - Warm Cream base
+    background: '#FAF9F5',       // Warm Cream (base)
     onBackground: '#1C1B1F',     // Dark text
 
     // Brand gradient colors - Tanzanite gradient
@@ -171,7 +177,7 @@ export const mukokoTheme = {
 /**
  * React Native Paper theme configuration
  * Converts our custom theme to Paper's format
- * Features glassmorphism with subtle purple tinge
+ * Nyuchi Brand System v6 Surface Colors
  */
 export const paperTheme = {
   dark: false,
@@ -187,13 +193,13 @@ export const paperTheme = {
     tertiary: mukokoTheme.colors.accent,
     tertiaryContainer: mukokoTheme.colors.accentContainer,
 
-    // Glass surfaces with purple tint for light theme
-    surface: 'rgba(255, 255, 255, 0.92)',  // Glass white
-    surfaceVariant: 'rgba(249, 248, 244, 0.88)',  // Glass warm white
+    // Surface colors - Brand System v6 Light Mode
+    surface: '#FFFFFF',           // White (card backgrounds)
+    surfaceVariant: '#F3F2EE',    // Surface Dim (subtle gray)
     surfaceDisabled: 'rgba(26, 26, 26, 0.12)',
 
-    // Background - warm off-white base
-    background: '#f7f6f8',  // Light purple-tinted off-white
+    // Background - Warm Cream base
+    background: '#FAF9F5',        // Warm Cream (base)
 
     error: mukokoTheme.colors.error,
     errorContainer: mukokoTheme.colors.errorContainer,
@@ -215,36 +221,36 @@ export const paperTheme = {
     outline: 'rgba(0, 0, 0, 0.08)',  // Subtle dark border
     outlineVariant: 'rgba(0, 0, 0, 0.04)',
 
-    inverseSurface: '#1f1f1f',
-    inverseOnSurface: '#f9f8f4',
-    inversePrimary: '#8a819e',
+    inverseSurface: '#0A0A0A',    // Dark mode base
+    inverseOnSurface: '#FAF9F5',  // Warm cream
+    inversePrimary: '#B388FF',    // Tanzanite dark
 
     shadow: '#000000',
     scrim: '#000000',
 
     backdrop: 'rgba(75, 0, 130, 0.4)',  // Tanzanite backdrop
 
-    // Elevation levels with glass effect
+    // Elevation levels - Brand System v6 Light Mode
     elevation: {
       level0: 'transparent',
-      level1: 'rgba(255, 255, 255, 0.95)',
-      level2: 'rgba(253, 252, 250, 0.92)',
-      level3: 'rgba(251, 250, 248, 0.90)',
-      level4: 'rgba(249, 248, 246, 0.88)',
-      level5: 'rgba(247, 246, 244, 0.85)',
+      level1: '#FFFFFF',          // White surface
+      level2: '#FFFFFF',          // White surface
+      level3: '#F3F2EE',          // Surface dim
+      level4: '#F3F2EE',          // Surface dim
+      level5: '#E8E7E3',          // Slightly darker
     },
 
     // Glass effect colors - Tanzanite-tinted glassmorphism
     glass: 'rgba(75, 0, 130, 0.08)',        // Tanzanite glass overlay
     glassBorder: 'rgba(0, 0, 0, 0.06)',     // Thin dark border for contrast
-    glassCard: 'rgba(255, 255, 255, 0.88)', // Glass white card
-    glassSurface: 'rgba(253, 252, 250, 0.85)', // Glass warm surface
+    glassCard: '#FFFFFF',                    // White card
+    glassSurface: '#FAF9F5',                 // Warm Cream
 
     // Glass effect colors - Gold/accent-tinted glassmorphism
     glassAccent: 'rgba(93, 64, 55, 0.08)',     // Gold glass overlay
     glassAccentBorder: 'rgba(0, 0, 0, 0.06)', // Thin dark border for contrast
-    glassAccentCard: 'rgba(255, 250, 245, 0.88)',  // Warm honey glass card
-    glassAccentSurface: 'rgba(252, 248, 240, 0.85)', // Warm honey glass surface
+    glassAccentCard: '#FFFFFF',               // White card
+    glassAccentSurface: '#F3F2EE',            // Surface dim
   },
 
   fonts: {
@@ -376,13 +382,13 @@ export const paperThemeDark = {
     tertiary: '#FFD740',          // Gold Dark
     tertiaryContainer: 'rgba(255, 215, 64, 0.25)',
 
-    // Glass effect surfaces - Tanzanite-tinted glassmorphism
-    surface: 'rgba(30, 20, 45, 0.88)',      // Tanzanite-tinted dark glass
-    surfaceVariant: 'rgba(45, 30, 65, 0.82)', // Lighter tanzanite glass surface
+    // Surface colors - Brand System v6 Dark Mode
+    surface: '#141414',             // Card Surface
+    surfaceVariant: '#1E1E1E',      // Elevated Surface
     surfaceDisabled: 'rgba(255, 255, 255, 0.08)',
 
-    // Background - dark with subtle Tanzanite undertone
-    background: '#120A1C',  // Deep tanzanite-tinted dark base
+    // Background - Near Black (Charcoal)
+    background: '#0A0A0A',          // Base (Near Black)
 
     error: '#FF8A80',       // Light red for dark mode
     errorContainer: 'rgba(179, 38, 30, 0.25)',
@@ -405,8 +411,8 @@ export const paperThemeDark = {
     outline: 'rgba(179, 136, 255, 0.2)',  // Tanzanite-tinted border
     outlineVariant: 'rgba(179, 136, 255, 0.1)',
 
-    inverseSurface: '#F5F0FA',
-    inverseOnSurface: '#1A0033',
+    inverseSurface: '#FAF9F5',    // Warm Cream
+    inverseOnSurface: '#0A0A0A',  // Near Black
     inversePrimary: '#4B0082',    // Tanzanite Light
 
     shadow: '#000000',
@@ -414,27 +420,27 @@ export const paperThemeDark = {
 
     backdrop: 'rgba(75, 0, 130, 0.5)',  // Tanzanite backdrop
 
-    // Elevation levels with glass effect - Tanzanite-tinted
+    // Elevation levels - Brand System v6 Dark Mode
     elevation: {
       level0: 'transparent',
-      level1: 'rgba(25, 15, 40, 0.92)',   // Tanzanite-tinted dark glass
-      level2: 'rgba(35, 22, 55, 0.90)',
-      level3: 'rgba(45, 30, 70, 0.88)',
-      level4: 'rgba(55, 38, 82, 0.86)',
-      level5: 'rgba(65, 45, 95, 0.85)',
+      level1: '#141414',   // Card Surface
+      level2: '#1E1E1E',   // Elevated Surface
+      level3: '#252525',   // Higher elevation
+      level4: '#2C2C2C',   // Higher elevation
+      level5: '#333333',   // Highest elevation
     },
 
     // Glass effect colors - Tanzanite glassmorphism for dark mode
     glass: 'rgba(179, 136, 255, 0.15)',       // Tanzanite glass overlay
     glassBorder: 'rgba(179, 136, 255, 0.12)', // Tanzanite-tinted border for contrast
-    glassCard: 'rgba(35, 22, 55, 0.88)',      // Tanzanite-tinted dark glass card
-    glassSurface: 'rgba(25, 15, 40, 0.90)',   // Tanzanite-tinted dark glass surface
+    glassCard: '#141414',                      // Card Surface
+    glassSurface: '#0A0A0A',                   // Base (Near Black)
 
     // Glass effect colors - Gold/accent glassmorphism for dark mode
     glassAccent: 'rgba(255, 215, 64, 0.15)',   // Gold glass overlay
     glassAccentBorder: 'rgba(255, 215, 64, 0.12)', // Gold-tinted border for contrast
-    glassAccentCard: 'rgba(50, 40, 25, 0.88)',    // Gold-tinted dark glass card
-    glassAccentSurface: 'rgba(40, 32, 20, 0.90)', // Gold-tinted dark glass surface
+    glassAccentCard: '#1E1E1E',                    // Elevated Surface
+    glassAccentSurface: '#141414',                 // Card Surface
   },
 
   fonts: paperTheme.fonts, // Use same font configuration
