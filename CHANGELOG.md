@@ -19,33 +19,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.9.1] - 2025-12-16
 
-### Improved - Mobile-First Discover & Insights Redesign
+### Improved - Mobile-First Navigation & UX Overhaul
 
-Complete redesign of Discover and Insights screens with mobile-first UX principles:
-- Content visible immediately (no banners blocking)
-- Single continuous scroll
-- No redundant navigation (tab bar exists)
-- Everything scannable at a glance
+Complete restructure with NewsBytes as the core product:
 
-#### DiscoverScreen
-- **Content-first layout** - Articles visible immediately, no blocking banners
-- **Compact category bar** - Horizontal scroll filter at top
-- **2-column grid** - Responsive article grid
-- **Inline topic cards** - Trending categories mixed with articles for discovery
-- **Simplified code** - Removed complex tab modes, masonry, hero sections
+#### Navigation Structure
+- **Bytes is default landing** - `/` loads NewsBytes (core feature)
+- **4-tab layout** - Bytes → Search → Insights → Profile
+- **Discover is header-only** - Accessible via compass icon in header
+- **Removed Home tab** - Bytes replaces Home as entry point
+
+#### DiscoverScreen (Header Access Only)
+- **Content-first layout** - Articles visible immediately
+- **Compact category bar** - Horizontal scroll filter
+- **2-column grid** - Responsive article layout
+- **Inline topic cards** - Trending categories mixed with articles
 
 #### InsightsScreen
-- **Stats at a glance** - Top row shows articles/sources/topics instantly
-- **Trending topics grid** - 2-column tappable cards with ranking badges
+- **Stats at a glance** - Top row shows articles/sources/topics
+- **Trending topics grid** - 2-column tappable cards
 - **Journalist leaderboard** - Compact ranked list
-- **Zero redundant navigation** - No "Quick Actions" duplicating tab bar
-- **Resilient loading** - Promise.allSettled for graceful data failures
+- **Resilient loading** - Promise.allSettled for graceful failures
 
-#### Navigation Changes
-- **Insights promoted to top-level tab** - `/insights` not `/discover/insights`
-- **Cleaner URL structure** - Insights accessible directly
-- **5-tab layout** - Home, Discover, Insights, Search, Profile
-- **AppHeader updated** - Insights icon navigates to Insights tab
+#### AppHeader Updates
+- **Logo tap** - Goes to Bytes (default)
+- **Discover icon** - Compass icon for header-only access
+- **Menu order** - Bytes, Discover, Search, Insights, Profile
 
 ---
 

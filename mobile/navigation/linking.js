@@ -13,18 +13,13 @@ import { Platform } from 'react-native';
 
 /**
  * URL path prefixes for the app
- * On web, we use the current domain
- * On mobile, we could use a custom scheme like 'mukoko://'
  */
 const prefixes = Platform.select({
   web: [
-    // Production domain
     'https://mukoko.news',
     'https://www.mukoko.news',
-    // Development
     'http://localhost:8081',
     'http://localhost:19006',
-    // Vercel preview
     'https://mukoko-news.vercel.app',
   ],
   default: [
@@ -37,25 +32,23 @@ const prefixes = Platform.select({
  * Screen configuration mapping URLs to screens
  *
  * URL Structure:
- * /                        -> Home tab
- * /discover                -> Discover tab (browse trending content)
- * /insights                -> Insights tab (analytics)
- * /bytes                   -> NewsBytes tab
- * /search                  -> Search tab
- * /search?q=query          -> Search with query
- * /profile                 -> Profile tab
- * /profile/login           -> Login screen
- * /profile/register        -> Register screen
+ * /                        -> Bytes (default landing - core feature)
+ * /discover                -> Discover (header menu only)
+ * /search                  -> Search
+ * /insights                -> Insights
+ * /profile                 -> Profile
+ * /profile/login           -> Login
+ * /profile/register        -> Register
  * /article/:source/:slug   -> Article detail
- * /admin                   -> Admin dashboard (protected)
+ * /admin                   -> Admin dashboard
  */
 const config = {
   screens: {
-    // Main tabs
-    Home: {
+    // Bytes - Default landing (core feature)
+    Bytes: {
       path: '',
       screens: {
-        HomeFeed: '',
+        BytesFeed: '',
         ArticleDetail: {
           path: 'article/:source/:slug',
           parse: {
@@ -69,6 +62,7 @@ const config = {
         },
       },
     },
+    // Discover - Header menu access only
     Discover: {
       path: 'discover',
       screens: {
@@ -80,21 +74,9 @@ const config = {
             slug: (slug) => decodeURIComponent(slug),
           },
         },
-        SearchFeed: 'search',
       },
     },
-    Insights: {
-      path: 'insights',
-      screens: {
-        InsightsFeed: '',
-      },
-    },
-    Bytes: {
-      path: 'bytes',
-      screens: {
-        BytesFeed: '',
-      },
-    },
+    // Search
     Search: {
       path: 'search',
       screens: {
@@ -110,17 +92,30 @@ const config = {
         },
       },
     },
+    // Insights
+    Insights: {
+      path: 'insights',
+      screens: {
+        InsightsFeed: '',
+        DiscoverFeed: 'discover',
+        ArticleDetail: {
+          path: 'article/:source/:slug',
+        },
+      },
+    },
+    // Profile
     Profile: {
       path: 'profile',
       screens: {
+        UserProfile: '',
         Login: 'login',
         Register: 'register',
         ForgotPassword: 'forgot-password',
         Onboarding: 'onboarding',
         ProfileSettings: 'settings',
-        UserProfile: '',
       },
     },
+    // Admin
     Admin: {
       path: 'admin',
       screens: {
@@ -141,25 +136,19 @@ const linking = {
   prefixes,
   config,
 
-  // Custom function to get initial URL
   async getInitialURL() {
-    // On web, use the current URL
     if (Platform.OS === 'web') {
       return window.location.href;
     }
-    // On mobile, could handle deep links here
     return null;
   },
 
-  // Subscribe to URL changes (for web)
   subscribe(listener) {
     if (Platform.OS === 'web') {
-      // Listen for popstate events (browser back/forward)
       const onPopState = () => {
         listener(window.location.href);
       };
       window.addEventListener('popstate', onPopState);
-
       return () => {
         window.removeEventListener('popstate', onPopState);
       };
@@ -172,9 +161,6 @@ export default linking;
 
 /**
  * Helper function to generate article URL
- * @param {string} source - Article source identifier
- * @param {string} slug - Article slug
- * @returns {string} Full article URL path
  */
 export function getArticleUrl(source, slug) {
   return `/article/${encodeURIComponent(source)}/${encodeURIComponent(slug)}`;
@@ -182,9 +168,6 @@ export function getArticleUrl(source, slug) {
 
 /**
  * Helper function to generate search URL with query
- * @param {string} query - Search query
- * @param {string} category - Optional category filter
- * @returns {string} Search URL with query params
  */
 export function getSearchUrl(query, category = '') {
   const params = new URLSearchParams();
@@ -196,9 +179,7 @@ export function getSearchUrl(query, category = '') {
 
 /**
  * Helper function to generate category URL
- * @param {string} categorySlug - Category slug
- * @returns {string} Category URL path
  */
 export function getCategoryUrl(categorySlug) {
-  return `/?category=${encodeURIComponent(categorySlug)}`;
+  return `/discover?category=${encodeURIComponent(categorySlug)}`;
 }
