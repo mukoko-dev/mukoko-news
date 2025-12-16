@@ -17,6 +17,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.9.1] - 2025-12-16
+
+### Improved - Discover & Insights Screens Redesign
+
+Complete redesign of the Discover and Insights screens to address UX issues where screens felt like "empty broken shells".
+
+#### DiscoverScreen Improvements
+- **Unified Discovery Hub** - Single scrollable experience replacing fragmented tab-based navigation
+- **Insights Banner** - Prominent entry point to analytics at the top of the screen
+- **Featured Article** - Top story hero section with visual prominence
+- **Horizontal Scroll Sections** - Trending Topics and Top Journalists as engaging horizontal carousels
+- **Platform Stats** - Quick stats (articles, sources) visible in the Insights banner
+- **Better Empty States** - Actionable empty states with category filter clearing
+- **Removed Tab Complexity** - Simplified from 3 separate modes to unified scroll
+
+#### InsightsScreen Improvements
+- **Resilient Data Loading** - Uses `Promise.allSettled` so partial data failures don't break the entire screen
+- **Graceful Fallbacks** - Each section only shows when data is available
+- **Platform Overview Card** - Live animated stats with article/source/category counts
+- **Community Activity** - Views, likes, saves engagement metrics
+- **Content Quality Metrics** - Average word count, images percentage, read time
+- **AI Analysis Card** - Shows AI summary when available
+- **Hot Topics Grid** - 2-column grid with fire badges for top trending
+- **Top Journalists List** - Ranked list with gold/silver/bronze badges
+- **Quick Actions** - Trending, Search, Bytes shortcuts at bottom
+- **Better Visual Hierarchy** - Clear sections with consistent spacing
+
+#### Technical Improvements
+- Removed unused imports and dependencies
+- Simplified state management (removed complex expandable sections)
+- Better error handling with partial failure support
+- Consistent styling with theme colors
+- Improved accessibility labels
+
+---
+
 ## [0.9.0] - 2025-12-13
 
 ### Added - Admin Dashboard Frontend
