@@ -11,7 +11,6 @@ import {
 import {
   Text,
   ActivityIndicator,
-  Surface,
   Icon,
   Chip,
   useTheme as usePaperTheme,
@@ -20,7 +19,6 @@ import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import ArticleCard from '../components/ArticleCard';
-import MasonryGrid from '../components/MasonryGrid';
 import { useAuth } from '../contexts/AuthContext';
 import {
   articles as articlesAPI,
@@ -59,21 +57,17 @@ const getEmoji = (categoryName) => {
   return CATEGORY_EMOJIS[lowerName] || '📰';
 };
 
-// Responsive column calculation
-const getColumnCount = (screenWidth) => {
-  if (screenWidth >= 1200) return 4;
-  if (screenWidth >= 900) return 3;
-  if (screenWidth >= 600) return 2;
-  return 2;
-};
-
 /**
- * DiscoverScreen - Unified discovery hub for news content
- * Features: Live insights banner, trending content, topic exploration, journalist spotlights
- * Single scrollable experience with clear visual hierarchy
+ * DiscoverScreen - Mobile-first content discovery
+ *
+ * UX Principles:
+ * - Content visible immediately (no banners/heroes blocking)
+ * - Single continuous scroll
+ * - Category filtering at top (compact)
+ * - Articles flow naturally
+ * - Trending topics inline with content
  */
 export default function DiscoverScreen({ navigation }) {
-  const { isAuthenticated } = useAuth();
   const { isDark } = useTheme();
   const paperTheme = usePaperTheme();
 
@@ -83,11 +77,8 @@ export default function DiscoverScreen({ navigation }) {
 
   // Data states
   const [articles, setArticles] = useState([]);
-  const [featuredArticle, setFeaturedArticle] = useState(null);
   const [categories, setCategories] = useState([]);
   const [trendingCategories, setTrendingCategories] = useState([]);
-  const [journalists, setJournalists] = useState([]);
-  const [platformStats, setPlatformStats] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [error, setError] = useState(null);
 
@@ -108,31 +99,18 @@ export default function DiscoverScreen({ navigation }) {
     setError(null);
     try {
       await Promise.all([
-        loadTrendingArticles(),
-        loadTrendingCategories(),
-        loadJournalists(),
-        loadPlatformStats(),
+        loadArticles(),
+        loadCategories(),
       ]);
     } catch (err) {
       console.error('[Discover] Initial load error:', err);
-      setError('Failed to load content. Please try again.');
+      setError('Failed to load content');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPlatformStats = async () => {
-    try {
-      const result = await insightsAPI.getStats();
-      if (result.data?.database) {
-        setPlatformStats(result.data.database);
-      }
-    } catch (err) {
-      console.error('[Discover] Load stats error:', err);
-    }
-  };
-
-  const loadTrendingArticles = async (category = null) => {
+  const loadArticles = async (category = null) => {
     try {
       let result = await articlesAPI.getFeed({
         limit: 30,
@@ -150,32 +128,18 @@ export default function DiscoverScreen({ navigation }) {
         });
       }
 
-      if (result.data?.articles) {
-        const allArticles = result.data.articles;
-        // Set first article as featured, rest as regular
-        if (allArticles.length > 0) {
-          setFeaturedArticle(allArticles[0]);
-          setArticles(allArticles.slice(1));
-        } else {
-          setFeaturedArticle(null);
-          setArticles([]);
-        }
-      } else {
-        setFeaturedArticle(null);
-        setArticles([]);
-      }
+      setArticles(result.data?.articles || []);
     } catch (err) {
       console.error('[Discover] Load articles error:', err);
-      setFeaturedArticle(null);
       setArticles([]);
     }
   };
 
-  const loadTrendingCategories = async () => {
+  const loadCategories = async () => {
     try {
       const [categoriesResult, trendingResult] = await Promise.all([
         categoriesAPI.getAll(),
-        insightsAPI.getTrendingCategories(8),
+        insightsAPI.getTrendingCategories(6),
       ]);
 
       if (categoriesResult.data?.categories) {
@@ -190,28 +154,11 @@ export default function DiscoverScreen({ navigation }) {
     }
   };
 
-  const loadJournalists = async () => {
-    try {
-      const result = await insightsAPI.getTrendingAuthors(6);
-      if (result.data?.trending_authors) {
-        setJournalists(result.data.trending_authors);
-      }
-    } catch (err) {
-      console.error('[Discover] Load journalists error:', err);
-    }
-  };
-
   const onRefresh = async () => {
     setRefreshing(true);
     setError(null);
-    try {
-      await loadInitialData();
-    } catch (err) {
-      console.error('[Discover] Refresh error:', err);
-      setError('Failed to refresh content. Please try again.');
-    } finally {
-      setRefreshing(false);
-    }
+    await loadInitialData();
+    setRefreshing(false);
   };
 
   const handleCategoryPress = async (category) => {
@@ -223,15 +170,11 @@ export default function DiscoverScreen({ navigation }) {
 
     if (!categorySlug || selectedCategory === categorySlug) {
       setSelectedCategory(null);
-      await loadTrendingArticles(null);
+      await loadArticles(null);
     } else {
       setSelectedCategory(categorySlug);
-      await loadTrendingArticles(categorySlug);
+      await loadArticles(categorySlug);
     }
-  };
-
-  const handleJournalistPress = (journalist) => {
-    navigation.navigate('SearchFeed', { searchQuery: journalist.name });
   };
 
   const handleArticlePress = useCallback((article) => {
@@ -242,22 +185,15 @@ export default function DiscoverScreen({ navigation }) {
     });
   }, [navigation]);
 
-  const handleInsightsPress = () => {
-    navigation.navigate('InsightsFeed');
-  };
-
-  // Calculate dimensions
-  const columnCount = getColumnCount(screenWidth);
+  // Calculate card width for 2-column grid
   const gap = mukokoTheme.spacing.sm;
+  const padding = mukokoTheme.spacing.md;
+  const cardWidth = (screenWidth - padding * 2 - gap) / 2;
 
-  // Dynamic styles based on theme
+  // Dynamic styles
   const dynamicStyles = {
     container: {
       backgroundColor: paperTheme.colors.background,
-    },
-    card: {
-      backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-      borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
     },
     title: {
       color: paperTheme.colors.onSurface,
@@ -265,332 +201,126 @@ export default function DiscoverScreen({ navigation }) {
     subtitle: {
       color: paperTheme.colors.onSurfaceVariant,
     },
-    accentCard: {
-      backgroundColor: paperTheme.colors.glassAccentCard || paperTheme.colors.surface,
-      borderColor: paperTheme.colors.glassAccentBorder || paperTheme.colors.outline,
+    card: {
+      backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
+      borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
     },
   };
 
-  // Render Live Insights Banner - Entry point to analytics
-  const renderInsightsBanner = () => (
+  // Render inline trending topic card (inserted between articles)
+  const renderTrendingTopicInline = (category, index) => (
     <TouchableOpacity
-      style={[styles.insightsBanner, dynamicStyles.accentCard]}
-      onPress={handleInsightsPress}
-      activeOpacity={0.8}
-      accessibilityRole="button"
-      accessibilityLabel="View insights and analytics"
+      key={`topic-${category.id || index}`}
+      style={[styles.inlineTopicCard, dynamicStyles.card, { width: cardWidth }]}
+      onPress={() => handleCategoryPress(category)}
+      activeOpacity={0.7}
     >
-      <View style={styles.insightsBannerLeft}>
-        <View style={[styles.insightsBadge, { backgroundColor: mukokoTheme.colors.accent + '20' }]}>
-          <Icon source="chart-line" size={16} color={mukokoTheme.colors.accent} />
-          <Text style={[styles.insightsBadgeText, { color: mukokoTheme.colors.accent }]}>
-            INSIGHTS
-          </Text>
-        </View>
-        <Text style={[styles.insightsBannerTitle, dynamicStyles.title]}>
-          Zimbabwe News Analytics
+      <Text style={styles.topicEmoji}>{getEmoji(category.name || category.category_name)}</Text>
+      <Text style={[styles.topicName, dynamicStyles.title]} numberOfLines={1}>
+        {category.name || category.category_name}
+      </Text>
+      <View style={styles.topicMeta}>
+        <Text style={[styles.topicCount, dynamicStyles.subtitle]}>
+          {category.article_count || 0}
         </Text>
-        <Text style={[styles.insightsBannerSubtitle, dynamicStyles.subtitle]}>
-          AI-powered trends, community stats, and more
-        </Text>
-      </View>
-      <View style={styles.insightsBannerRight}>
-        {platformStats && (
-          <View style={styles.quickStats}>
-            <View style={styles.quickStat}>
-              <Text style={[styles.quickStatValue, { color: paperTheme.colors.primary }]}>
-                {(platformStats.total_articles || 0).toLocaleString()}
-              </Text>
-              <Text style={[styles.quickStatLabel, dynamicStyles.subtitle]}>Articles</Text>
-            </View>
-            <View style={styles.quickStat}>
-              <Text style={[styles.quickStatValue, { color: paperTheme.colors.primary }]}>
-                {platformStats.active_sources || 0}
-              </Text>
-              <Text style={[styles.quickStatLabel, dynamicStyles.subtitle]}>Sources</Text>
-            </View>
+        {category.growth_rate > 0 && (
+          <View style={[styles.growthBadge, { backgroundColor: mukokoTheme.colors.success + '20' }]}>
+            <Icon source="trending-up" size={10} color={mukokoTheme.colors.success} />
           </View>
         )}
-        <Icon source="chevron-right" size={24} color={mukokoTheme.colors.accent} />
       </View>
     </TouchableOpacity>
   );
 
-  // Render Category Filter Chips
-  const renderCategoryFilter = () => (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.categoryFilter}
-      contentContainerStyle={styles.categoryFilterContent}
-    >
-      <Chip
-        mode={selectedCategory === null ? 'flat' : 'outlined'}
-        selected={selectedCategory === null}
-        onPress={() => handleCategoryPress(null)}
-        style={[
-          styles.filterChip,
-          selectedCategory === null && { backgroundColor: paperTheme.colors.primary },
-        ]}
-        textStyle={[
-          styles.filterChipText,
-          selectedCategory === null && { color: '#FFFFFF' },
-        ]}
-      >
-        All
-      </Chip>
-      {categories.slice(0, 10).map((category) => (
-        <Chip
-          key={category.id || category.slug}
-          mode={selectedCategory === (category.slug || category.id) ? 'flat' : 'outlined'}
-          selected={selectedCategory === (category.slug || category.id)}
-          onPress={() => handleCategoryPress(category)}
-          style={[
-            styles.filterChip,
-            selectedCategory === (category.slug || category.id) && {
-              backgroundColor: paperTheme.colors.primary,
-            },
-          ]}
-          textStyle={[
-            styles.filterChipText,
-            selectedCategory === (category.slug || category.id) && { color: '#FFFFFF' },
-          ]}
-          icon={() => <Text style={styles.chipEmoji}>{getEmoji(category.name)}</Text>}
-        >
-          {category.name}
-        </Chip>
-      ))}
-    </ScrollView>
-  );
+  // Build mixed content: articles with inline topic cards
+  const buildMixedContent = () => {
+    const content = [];
+    let topicIndex = 0;
 
-  // Render Featured Article (Hero)
-  const renderFeaturedArticle = () => {
-    if (!featuredArticle) return null;
-
-    return (
-      <View style={styles.featuredSection}>
-        <View style={styles.sectionHeader}>
-          <Icon source="fire" size={20} color={mukokoTheme.colors.accent} />
-          <Text style={[styles.sectionTitle, dynamicStyles.title]}>Top Story</Text>
+    articles.forEach((article, index) => {
+      // Add article
+      content.push(
+        <View key={`article-${article.id}`} style={[styles.gridItem, { width: cardWidth }]}>
+          <ArticleCard
+            article={article}
+            onPress={() => handleArticlePress(article)}
+            width={cardWidth}
+            variant="compact"
+          />
         </View>
-        <ArticleCard
-          article={featuredArticle}
-          onPress={() => handleArticlePress(featuredArticle)}
-          variant="featured"
-        />
-      </View>
-    );
+      );
+
+      // Insert a trending topic card after every 4 articles (if available)
+      if ((index + 1) % 4 === 0 && topicIndex < trendingCategories.length && !selectedCategory) {
+        content.push(renderTrendingTopicInline(trendingCategories[topicIndex], topicIndex));
+        topicIndex++;
+      }
+    });
+
+    return content;
   };
-
-  // Render Trending Topics Section
-  const renderTrendingTopics = () => {
-    if (trendingCategories.length === 0) return null;
-
-    return (
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Icon source="trending-up" size={20} color={paperTheme.colors.primary} />
-          <Text style={[styles.sectionTitle, dynamicStyles.title]}>Trending Topics</Text>
-          <TouchableOpacity
-            onPress={handleInsightsPress}
-            style={styles.seeAllButton}
-            accessibilityRole="button"
-            accessibilityLabel="See all trending topics"
-          >
-            <Text style={[styles.seeAllText, { color: paperTheme.colors.primary }]}>See All</Text>
-            <Icon source="chevron-right" size={16} color={paperTheme.colors.primary} />
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.topicsScrollContent}
-        >
-          {trendingCategories.map((category, index) => (
-            <TouchableOpacity
-              key={category.id || index}
-              style={[styles.topicCard, dynamicStyles.card]}
-              onPress={() => handleCategoryPress(category)}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={`View ${category.name || category.category_name} articles`}
-            >
-              <Text style={styles.topicEmoji}>
-                {getEmoji(category.name || category.category_name)}
-              </Text>
-              <Text style={[styles.topicName, dynamicStyles.title]} numberOfLines={1}>
-                {category.name || category.category_name}
-              </Text>
-              <Text style={[styles.topicCount, dynamicStyles.subtitle]}>
-                {category.article_count || 0} articles
-              </Text>
-              {category.growth_rate !== undefined && category.growth_rate > 0 && (
-                <View style={[styles.growthBadge, { backgroundColor: mukokoTheme.colors.success + '20' }]}>
-                  <Icon source="trending-up" size={12} color={mukokoTheme.colors.success} />
-                  <Text style={[styles.growthText, { color: mukokoTheme.colors.success }]}>
-                    +{Math.abs(category.growth_rate || 0).toFixed(0)}%
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-    );
-  };
-
-  // Render Top Journalists Section
-  const renderJournalists = () => {
-    if (journalists.length === 0) return null;
-
-    return (
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Icon source="account-group" size={20} color={paperTheme.colors.primary} />
-          <Text style={[styles.sectionTitle, dynamicStyles.title]}>Top Journalists</Text>
-          <TouchableOpacity
-            onPress={handleInsightsPress}
-            style={styles.seeAllButton}
-            accessibilityRole="button"
-            accessibilityLabel="See all journalists"
-          >
-            <Text style={[styles.seeAllText, { color: paperTheme.colors.primary }]}>See All</Text>
-            <Icon source="chevron-right" size={16} color={paperTheme.colors.primary} />
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.journalistsScrollContent}
-        >
-          {journalists.map((journalist, index) => (
-            <TouchableOpacity
-              key={journalist.id || index}
-              style={[styles.journalistCard, dynamicStyles.card]}
-              onPress={() => handleJournalistPress(journalist)}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={`View articles by ${journalist.name}`}
-            >
-              {index < 3 && (
-                <View style={[
-                  styles.journalistRankBadge,
-                  {
-                    backgroundColor: index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32',
-                  },
-                ]}>
-                  <Text style={styles.journalistRankText}>{index + 1}</Text>
-                </View>
-              )}
-              <View style={[styles.journalistAvatar, { backgroundColor: paperTheme.colors.primaryContainer }]}>
-                <Icon source="account" size={28} color={paperTheme.colors.primary} />
-              </View>
-              <Text style={[styles.journalistName, dynamicStyles.title]} numberOfLines={2}>
-                {journalist.name}
-              </Text>
-              <Text style={[styles.journalistStats, dynamicStyles.subtitle]}>
-                {journalist.article_count || 0} articles
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-    );
-  };
-
-  // Render article item for masonry
-  const renderArticleItem = useCallback(({ item, columnWidth }) => (
-    <ArticleCard
-      article={item}
-      onPress={() => handleArticlePress(item)}
-      width={columnWidth}
-      variant="default"
-    />
-  ), [handleArticlePress]);
-
-  // Render More Articles Grid
-  const renderArticlesGrid = () => {
-    if (articles.length === 0) return null;
-
-    return (
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Icon source="newspaper-variant-multiple" size={20} color={paperTheme.colors.primary} />
-          <Text style={[styles.sectionTitle, dynamicStyles.title]}>
-            {selectedCategory ? `${selectedCategory} News` : 'More Stories'}
-          </Text>
-        </View>
-        <MasonryGrid
-          data={articles}
-          renderItem={renderArticleItem}
-          keyExtractor={(item) => item.id?.toString()}
-          gap={gap}
-        />
-      </View>
-    );
-  };
-
-  // Empty state
-  const renderEmptyState = () => (
-    <View style={styles.emptyContent}>
-      <Text style={styles.emptyEmoji}>🔍</Text>
-      <Text style={[styles.emptyTitle, dynamicStyles.title]}>No Articles Found</Text>
-      <Text style={[styles.emptyMessage, dynamicStyles.subtitle]}>
-        {selectedCategory
-          ? `No articles in "${selectedCategory}" right now. Try a different category.`
-          : 'Pull down to refresh or check back later for new stories.'}
-      </Text>
-      {selectedCategory && (
-        <TouchableOpacity
-          style={[styles.clearFilterButton, { backgroundColor: paperTheme.colors.primary }]}
-          onPress={() => handleCategoryPress(null)}
-          accessibilityRole="button"
-          accessibilityLabel="Clear category filter"
-        >
-          <Text style={styles.clearFilterText}>Show All Categories</Text>
-        </TouchableOpacity>
-      )}
-    </View>
-  );
 
   if (loading) {
     return (
       <View style={[styles.container, dynamicStyles.container, styles.centered]}>
         <ActivityIndicator size="large" color={paperTheme.colors.primary} />
-        <Text style={[styles.loadingText, dynamicStyles.subtitle]}>Discovering content...</Text>
       </View>
     );
   }
-
-  if (error && !featuredArticle && articles.length === 0) {
-    return (
-      <View style={[styles.container, dynamicStyles.container, styles.centered]}>
-        <Text style={styles.errorEmoji}>⚠️</Text>
-        <Text style={[styles.errorTitle, dynamicStyles.title]}>Something went wrong</Text>
-        <Text style={[styles.errorMessage, dynamicStyles.subtitle]}>{error}</Text>
-        <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: paperTheme.colors.primary }]}
-          onPress={loadInitialData}
-          accessibilityRole="button"
-          accessibilityLabel="Retry loading content"
-        >
-          <Icon source="refresh" size={16} color="#FFFFFF" />
-          <Text style={styles.retryButtonText}>Try Again</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
-  const hasContent = featuredArticle || articles.length > 0;
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
+      {/* Compact category filter - always at top */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoryBar}
+        contentContainerStyle={styles.categoryBarContent}
+      >
+        <Chip
+          mode={selectedCategory === null ? 'flat' : 'outlined'}
+          selected={selectedCategory === null}
+          onPress={() => handleCategoryPress(null)}
+          style={[
+            styles.categoryChip,
+            selectedCategory === null && { backgroundColor: paperTheme.colors.primary },
+          ]}
+          textStyle={[
+            styles.categoryChipText,
+            selectedCategory === null && { color: '#FFFFFF' },
+          ]}
+          compact
+        >
+          All
+        </Chip>
+        {categories.slice(0, 12).map((category) => (
+          <Chip
+            key={category.id || category.slug}
+            mode={selectedCategory === (category.slug || category.id) ? 'flat' : 'outlined'}
+            selected={selectedCategory === (category.slug || category.id)}
+            onPress={() => handleCategoryPress(category)}
+            style={[
+              styles.categoryChip,
+              selectedCategory === (category.slug || category.id) && {
+                backgroundColor: paperTheme.colors.primary,
+              },
+            ]}
+            textStyle={[
+              styles.categoryChipText,
+              selectedCategory === (category.slug || category.id) && { color: '#FFFFFF' },
+            ]}
+            icon={() => <Text style={styles.chipEmoji}>{getEmoji(category.name)}</Text>}
+            compact
+          >
+            {category.name}
+          </Chip>
+        ))}
+      </ScrollView>
+
+      {/* Content grid */}
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={[
-          styles.scrollContent,
-          !hasContent && styles.scrollContentCentered,
-        ]}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -601,31 +331,28 @@ export default function DiscoverScreen({ navigation }) {
           />
         }
       >
-        {/* Insights Banner - Always visible at top */}
-        {renderInsightsBanner()}
-
-        {/* Category Filter */}
-        {renderCategoryFilter()}
-
-        {hasContent ? (
-          <>
-            {/* Featured Article */}
-            {renderFeaturedArticle()}
-
-            {/* Trending Topics - Horizontal scroll */}
-            {!selectedCategory && renderTrendingTopics()}
-
-            {/* Top Journalists - Horizontal scroll */}
-            {!selectedCategory && renderJournalists()}
-
-            {/* More Articles Grid */}
-            {renderArticlesGrid()}
-          </>
+        {articles.length > 0 ? (
+          <View style={styles.grid}>
+            {buildMixedContent()}
+          </View>
         ) : (
-          renderEmptyState()
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyEmoji}>📰</Text>
+            <Text style={[styles.emptyTitle, dynamicStyles.title]}>No stories yet</Text>
+            <Text style={[styles.emptySubtitle, dynamicStyles.subtitle]}>
+              {selectedCategory ? 'Try another category' : 'Pull to refresh'}
+            </Text>
+            {selectedCategory && (
+              <TouchableOpacity
+                style={[styles.clearButton, { borderColor: paperTheme.colors.primary }]}
+                onPress={() => handleCategoryPress(null)}
+              >
+                <Text style={{ color: paperTheme.colors.primary }}>Show all</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
 
-        {/* Bottom padding for floating tab bar */}
         <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
@@ -641,281 +368,111 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  // Insights Banner
-  insightsBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: mukokoTheme.spacing.md,
-    marginTop: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.sm,
-    padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness,
-    borderWidth: 1,
+  // Category bar - compact, always visible
+  categoryBar: {
+    maxHeight: 44,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
   },
-  insightsBannerLeft: {
-    flex: 1,
-  },
-  insightsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
+  categoryBarContent: {
     paddingHorizontal: mukokoTheme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  insightsBadgeText: {
-    fontSize: 10,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    letterSpacing: 0.5,
-  },
-  insightsBannerTitle: {
-    fontSize: 16,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    marginBottom: 2,
-  },
-  insightsBannerSubtitle: {
-    fontSize: 12,
-  },
-  insightsBannerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
-  },
-  quickStats: {
-    flexDirection: 'row',
-    gap: mukokoTheme.spacing.md,
-  },
-  quickStat: {
-    alignItems: 'center',
-  },
-  quickStatValue: {
-    fontSize: 18,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  quickStatLabel: {
-    fontSize: 10,
-  },
-
-  // Category Filter
-  categoryFilter: {
-    maxHeight: 52,
-  },
-  categoryFilterContent: {
-    paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.xs,
-    gap: mukokoTheme.spacing.sm,
+    alignItems: 'center',
   },
-  filterChip: {
-    marginRight: mukokoTheme.spacing.xs,
+  categoryChip: {
+    marginHorizontal: 3,
+    height: 32,
   },
-  filterChipText: {
-    fontSize: 13,
+  categoryChipText: {
+    fontSize: 12,
+    marginVertical: 0,
+    marginHorizontal: 0,
   },
   chipEmoji: {
-    fontSize: 14,
+    fontSize: 12,
   },
 
-  // Scroll View
+  // Content scroll
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    flexGrow: 1,
-  },
-  scrollContentCentered: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    padding: mukokoTheme.spacing.md,
+    paddingTop: mukokoTheme.spacing.sm,
   },
 
-  // Sections
-  section: {
-    marginTop: mukokoTheme.spacing.lg,
-  },
-  featuredSection: {
-    marginTop: mukokoTheme.spacing.md,
-    paddingHorizontal: mukokoTheme.spacing.md,
-  },
-  sectionHeader: {
+  // Grid layout
+  grid: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.md,
-    paddingHorizontal: mukokoTheme.spacing.md,
   },
-  sectionTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 18,
-    flex: 1,
-  },
-  seeAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  seeAllText: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  gridItem: {
+    marginBottom: 0,
   },
 
-  // Trending Topics
-  topicsScrollContent: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    gap: mukokoTheme.spacing.sm,
-  },
-  topicCard: {
-    width: 140,
+  // Inline topic card (mixed with articles)
+  inlineTopicCard: {
     padding: mukokoTheme.spacing.md,
     borderRadius: mukokoTheme.roundness,
     borderWidth: 1,
     alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 100,
   },
   topicEmoji: {
-    fontSize: 32,
-    marginBottom: mukokoTheme.spacing.sm,
+    fontSize: 28,
+    marginBottom: mukokoTheme.spacing.xs,
   },
   topicName: {
-    fontSize: 14,
+    fontSize: 13,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
     textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.xs,
   },
-  topicCount: {
-    fontSize: 12,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  growthBadge: {
+  topicMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    gap: 4,
+    marginTop: 4,
+  },
+  topicCount: {
+    fontSize: 11,
+  },
+  growthBadge: {
+    width: 16,
+    height: 16,
     borderRadius: 8,
-    gap: 2,
-    marginTop: mukokoTheme.spacing.xs,
-  },
-  growthText: {
-    fontSize: 10,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-
-  // Journalists
-  journalistsScrollContent: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    gap: mukokoTheme.spacing.sm,
-  },
-  journalistCard: {
-    width: 120,
-    padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness,
-    borderWidth: 1,
-    alignItems: 'center',
-    position: 'relative',
-  },
-  journalistRankBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 1,
-  },
-  journalistRankText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  journalistAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  journalistName: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  journalistStats: {
-    fontSize: 10,
-    textAlign: 'center',
   },
 
-  // Loading & Empty States
-  loadingText: {
-    marginTop: mukokoTheme.spacing.md,
-    fontSize: 14,
-  },
-  emptyContent: {
+  // Empty state
+  emptyState: {
     alignItems: 'center',
-    padding: mukokoTheme.spacing.xl,
+    paddingVertical: mukokoTheme.spacing.xxl,
   },
   emptyEmoji: {
-    fontSize: 60,
+    fontSize: 48,
     marginBottom: mukokoTheme.spacing.md,
   },
   emptyTitle: {
+    fontSize: 18,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 20,
-    marginBottom: mukokoTheme.spacing.sm,
-    textAlign: 'center',
+    marginBottom: mukokoTheme.spacing.xs,
   },
-  emptyMessage: {
+  emptySubtitle: {
     fontSize: 14,
-    textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.lg,
-    paddingHorizontal: mukokoTheme.spacing.xl,
-  },
-  clearFilterButton: {
-    paddingVertical: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-  },
-  clearFilterText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-
-  // Bottom padding for floating tab bar
-  bottomPadding: {
-    height: 100,
-  },
-
-  // Error state styles
-  errorEmoji: {
-    fontSize: 60,
     marginBottom: mukokoTheme.spacing.md,
   },
-  errorTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 20,
-    marginBottom: mukokoTheme.spacing.sm,
-    textAlign: 'center',
-  },
-  errorMessage: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.lg,
-    paddingHorizontal: mukokoTheme.spacing.xl,
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
+  clearButton: {
     paddingVertical: mukokoTheme.spacing.sm,
     paddingHorizontal: mukokoTheme.spacing.lg,
     borderRadius: mukokoTheme.roundness,
+    borderWidth: 1,
   },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+
+  // Bottom padding for tab bar
+  bottomPadding: {
+    height: 100,
   },
 });

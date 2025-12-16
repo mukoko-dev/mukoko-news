@@ -90,8 +90,22 @@ function DiscoverStack() {
       }}
     >
       <Stack.Screen name="DiscoverFeed" component={DiscoverScreen} />
-      <Stack.Screen name="InsightsFeed" component={InsightsScreen} />
       <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+      <Stack.Screen name="SearchFeed" component={SearchScreen} />
+    </Stack.Navigator>
+  );
+}
+
+// Insights Stack (analytics - top level)
+function InsightsStack() {
+  return (
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="InsightsFeed" component={InsightsScreen} />
+      <Stack.Screen name="DiscoverFeed" component={DiscoverScreen} />
       <Stack.Screen name="SearchFeed" component={SearchScreen} />
     </Stack.Navigator>
   );
@@ -223,22 +237,22 @@ function MainTabs() {
             <MaterialCommunityIcons
               name={focused ? 'compass' : 'compass-outline'}
               size={24}
-              color={focused ? mukokoTheme.colors.accent : color}
+              color={color}
             />
           ),
         }}
       />
 
-      {/* 3. NewsBytes Tab (Center - Featured) */}
+      {/* 3. Insights Tab - Analytics */}
       <Tab.Screen
-        name="Bytes"
-        component={BytesStack}
+        name="Insights"
+        component={InsightsStack}
         options={{
-          tabBarLabel: 'Bytes',
+          tabBarLabel: 'Insights',
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
-              name={focused ? 'lightning-bolt' : 'lightning-bolt-outline'}
-              size={26}
+              name={focused ? 'chart-line' : 'chart-line-variant'}
+              size={24}
               color={focused ? mukokoTheme.colors.accent : color}
             />
           ),
