@@ -1,17 +1,26 @@
 /**
  * Mukoko News Custom Material Design Theme
- * Updated brand colors - January 2025
+ * Nyuchi Brand System v6 - December 2025
  *
- * Brand Colors:
- * - Primary: #5e5772 - Sophisticated purple-gray
- * - Accent: #d4634a - Warm terracotta/coral
- * - Light: #f9f8f4 - Warm off-white
- * - Dark: #1f1f1f - Near black
- * - Gradient: Circular gradient from #779b63 to #1f1f1f
+ * Mukoko = "Beehive" — Where community gathers and stores
+ * The digital gathering place where community stores knowledge,
+ * shares stories, and authenticates identity.
+ *
+ * Brand Colors (Five Minerals):
+ * - Primary: Tanzanite - Premium, creativity
+ *   Light: #4B0082 | Dark: #B388FF
+ * - Secondary: Cobalt - Digital future, knowledge
+ *   Light: #0047AB | Dark: #00B0FF
+ * - Accent: Gold - Honey, rewards
+ *   Light: #5D4037 | Dark: #FFD740
  *
  * Typography (Nyuchi Brand System):
  * - Display/Headings/Logo: Noto Serif - Elegant, authoritative
  * - Body: Plus Jakarta Sans - Clean, modern, readable
+ *
+ * Design Tokens:
+ * - Button radius: 12px
+ * - Card radius: 16px
  *
  * Note: Zimbabwe flag strip uses separate flag colors (zwGreen, zwYellow, zwRed, etc.)
  */
@@ -20,27 +29,27 @@ export const mukokoTheme = {
   // Roundness - clean modern feel (reduced for mobile)
   roundness: 12,
 
-  // Mukoko News brand colors
+  // Mukoko News brand colors (Nyuchi Brand System v6 - Five Minerals)
   colors: {
-    // Primary brand color - Sophisticated purple-gray
-    primary: '#5e5772',
-    primaryHover: '#6f6885',
-    primaryActive: '#4d475f',
-    primaryContainer: '#e8e6ec',
+    // Primary brand color - Tanzanite (Premium, creativity)
+    primary: '#4B0082',           // Tanzanite Light
+    primaryHover: '#5C109A',      // Lighter tanzanite for hover
+    primaryActive: '#3A0066',     // Darker tanzanite for active
+    primaryContainer: '#E8D5F9',  // Light purple container
     onPrimary: '#FFFFFF',
-    onPrimaryContainer: '#2a2634',
+    onPrimaryContainer: '#1A0033',
 
-    // Accent color - Warm terracotta/coral
-    accent: '#d4634a',
-    accentContainer: '#fce8e4',
+    // Accent color - Gold (Honey, rewards)
+    accent: '#5D4037',            // Gold Light (brown-gold)
+    accentContainer: '#F5E6D3',   // Light gold/honey container
     onAccent: '#FFFFFF',
-    onAccentContainer: '#3d1a12',
+    onAccentContainer: '#2D1F1A',
 
-    // Secondary palette (same as primary for consistency)
-    secondary: '#5e5772',
-    secondaryContainer: '#e8e6ec',
+    // Secondary palette - Cobalt (Digital future, knowledge)
+    secondary: '#0047AB',         // Cobalt Light
+    secondaryContainer: '#D6E4F9',
     onSecondary: '#FFFFFF',
-    onSecondaryContainer: '#2a2634',
+    onSecondaryContainer: '#001A40',
 
     // Surface colors - warm off-white theme
     surface: '#FFFFFF',
@@ -54,28 +63,28 @@ export const mukokoTheme = {
     outlineVariant: '#f0efec',
 
     // Semantic colors
-    error: '#d4634a',            // Using accent for errors (warm red)
-    errorContainer: '#fce8e4',
+    error: '#B3261E',            // Material error red
+    errorContainer: '#F9DEDC',
     onError: '#FFFFFF',
-    onErrorContainer: '#3d1a12',
+    onErrorContainer: '#410E0B',
 
-    success: '#779b63',          // Gradient green for success
-    successContainer: '#e8f0e4',
+    success: '#1B5E20',          // Success green
+    successContainer: '#E8F5E9',
     onSuccess: '#FFFFFF',
-    onSuccessContainer: '#1f2d1a',
+    onSuccessContainer: '#0D3311',
 
-    warning: '#e5a84d',
-    warningContainer: '#fcf3e4',
-    onWarning: '#1f1f1f',
-    onWarningContainer: '#3d2e12',
+    warning: '#E65100',          // Warning orange
+    warningContainer: '#FFF3E0',
+    onWarning: '#FFFFFF',
+    onWarningContainer: '#331200',
 
     // Background - warm off-white
-    background: '#f9f8f4',       // Light color
-    onBackground: '#1f1f1f',     // Dark color
+    background: '#FAFAFA',       // Light neutral background
+    onBackground: '#1C1B1F',     // Dark text
 
-    // Brand gradient colors
-    gradientStart: '#779b63',    // Green for gradient
-    gradientEnd: '#1f1f1f',      // Dark for gradient
+    // Brand gradient colors - Tanzanite gradient
+    gradientStart: '#4B0082',    // Tanzanite
+    gradientEnd: '#0047AB',      // Cobalt
 
     // Zimbabwe flag colors (kept for Zimbabwe flag strip component ONLY)
     zwGreen: '#00A651',
@@ -213,7 +222,7 @@ export const paperTheme = {
     shadow: '#000000',
     scrim: '#000000',
 
-    backdrop: 'rgba(94, 87, 114, 0.4)',
+    backdrop: 'rgba(75, 0, 130, 0.4)',  // Tanzanite backdrop
 
     // Elevation levels with glass effect
     elevation: {
@@ -225,17 +234,17 @@ export const paperTheme = {
       level5: 'rgba(247, 246, 244, 0.85)',
     },
 
-    // Glass effect colors - primary-tinted (purple) glassmorphism
-    glass: 'rgba(94, 87, 114, 0.08)',  // Purple glass overlay
-    glassBorder: 'rgba(0, 0, 0, 0.06)',  // Thin dark border for contrast
-    glassCard: 'rgba(255, 255, 255, 0.88)',  // Glass white card
-    glassSurface: 'rgba(253, 252, 250, 0.85)',  // Glass warm surface
+    // Glass effect colors - Tanzanite-tinted glassmorphism
+    glass: 'rgba(75, 0, 130, 0.08)',        // Tanzanite glass overlay
+    glassBorder: 'rgba(0, 0, 0, 0.06)',     // Thin dark border for contrast
+    glassCard: 'rgba(255, 255, 255, 0.88)', // Glass white card
+    glassSurface: 'rgba(253, 252, 250, 0.85)', // Glass warm surface
 
-    // Glass effect colors - accent-tinted (terracotta) glassmorphism
-    glassAccent: 'rgba(212, 99, 74, 0.08)',  // Terracotta glass overlay
-    glassAccentBorder: 'rgba(0, 0, 0, 0.06)',  // Thin dark border for contrast
-    glassAccentCard: 'rgba(255, 250, 248, 0.88)',  // Warm glass card
-    glassAccentSurface: 'rgba(252, 248, 244, 0.85)',  // Warm glass surface
+    // Glass effect colors - Gold/accent-tinted glassmorphism
+    glassAccent: 'rgba(93, 64, 55, 0.08)',     // Gold glass overlay
+    glassAccentBorder: 'rgba(0, 0, 0, 0.06)', // Thin dark border for contrast
+    glassAccentCard: 'rgba(255, 250, 245, 0.88)',  // Warm honey glass card
+    glassAccentSurface: 'rgba(252, 248, 240, 0.85)', // Warm honey glass surface
   },
 
   fonts: {
@@ -347,6 +356,7 @@ export const paperTheme = {
 
 /**
  * Dark theme variant for React Native Paper
+ * Nyuchi Brand System v6 - Tanzanite Dark Mode
  * Features glassmorphism effects with semi-transparent surfaces
  */
 export const paperThemeDark = {
@@ -354,75 +364,77 @@ export const paperThemeDark = {
   roundness: mukokoTheme.roundness,
 
   colors: {
-    // Primary - lighter for dark mode visibility
-    primary: '#8a7fa0',  // Lighter purple for dark mode
-    primaryContainer: 'rgba(94, 87, 114, 0.3)',  // Glass effect
+    // Primary - Tanzanite Dark Mode
+    primary: '#B388FF',           // Tanzanite Dark
+    primaryContainer: 'rgba(179, 136, 255, 0.25)',  // Glass effect
 
-    secondary: '#8a7fa0',
-    secondaryContainer: 'rgba(94, 87, 114, 0.3)',
+    // Secondary - Cobalt Dark Mode
+    secondary: '#00B0FF',         // Cobalt Dark
+    secondaryContainer: 'rgba(0, 176, 255, 0.25)',
 
-    tertiary: '#e88a75',  // Lighter terracotta for dark mode
-    tertiaryContainer: 'rgba(212, 99, 74, 0.25)',
+    // Tertiary/Accent - Gold Dark Mode
+    tertiary: '#FFD740',          // Gold Dark
+    tertiaryContainer: 'rgba(255, 215, 64, 0.25)',
 
-    // Glass effect surfaces - purple-tinted glassmorphism
-    surface: 'rgba(38, 35, 48, 0.88)',  // Purple-tinted dark glass
-    surfaceVariant: 'rgba(48, 44, 58, 0.82)',  // Lighter purple glass surface
+    // Glass effect surfaces - Tanzanite-tinted glassmorphism
+    surface: 'rgba(30, 20, 45, 0.88)',      // Tanzanite-tinted dark glass
+    surfaceVariant: 'rgba(45, 30, 65, 0.82)', // Lighter tanzanite glass surface
     surfaceDisabled: 'rgba(255, 255, 255, 0.08)',
 
-    // Background - dark with subtle purple undertone
-    background: '#161418',  // Purple-tinted dark base
+    // Background - dark with subtle Tanzanite undertone
+    background: '#120A1C',  // Deep tanzanite-tinted dark base
 
-    error: '#ff8a7a',  // Lighter red for dark mode
-    errorContainer: 'rgba(212, 99, 74, 0.25)',
+    error: '#FF8A80',       // Light red for dark mode
+    errorContainer: 'rgba(179, 38, 30, 0.25)',
 
     // Text colors - high contrast for readability
-    onPrimary: '#FFFFFF',
-    onPrimaryContainer: '#e0dce8',
-    onSecondary: '#FFFFFF',
-    onSecondaryContainer: '#e0dce8',
-    onTertiary: '#FFFFFF',
-    onTertiaryContainer: '#fce8e4',
-    onSurface: '#f5f4f0',  // Warm white for readability
-    onSurfaceVariant: '#b8b8c0',  // Lighter for better WCAG AA contrast on dark
+    onPrimary: '#1A0033',         // Dark text on light Tanzanite
+    onPrimaryContainer: '#E8D5F9',
+    onSecondary: '#001A40',       // Dark text on light Cobalt
+    onSecondaryContainer: '#D6E4F9',
+    onTertiary: '#1A1400',        // Dark text on Gold
+    onTertiaryContainer: '#FFF8E1',
+    onSurface: '#F5F0FA',         // Light purple-white for readability
+    onSurfaceVariant: '#C5B8D0',  // Lighter for better WCAG AA contrast on dark
     onSurfaceDisabled: 'rgba(255, 255, 255, 0.55)', // Increased opacity for WCAG AA contrast
-    onError: '#FFFFFF',
-    onErrorContainer: '#fce8e4',
-    onBackground: '#f5f4f0',
+    onError: '#1A0000',
+    onErrorContainer: '#FFCDD2',
+    onBackground: '#F5F0FA',
 
     // Borders - thin white borders for dark theme contrast
-    outline: 'rgba(255, 255, 255, 0.1)',  // Thin white border
-    outlineVariant: 'rgba(255, 255, 255, 0.05)',
+    outline: 'rgba(179, 136, 255, 0.2)',  // Tanzanite-tinted border
+    outlineVariant: 'rgba(179, 136, 255, 0.1)',
 
-    inverseSurface: '#f5f4f0',
-    inverseOnSurface: '#1a1a1c',
-    inversePrimary: '#5e5772',
+    inverseSurface: '#F5F0FA',
+    inverseOnSurface: '#1A0033',
+    inversePrimary: '#4B0082',    // Tanzanite Light
 
     shadow: '#000000',
     scrim: 'rgba(0, 0, 0, 0.6)',
 
-    backdrop: 'rgba(0, 0, 0, 0.6)',
+    backdrop: 'rgba(75, 0, 130, 0.5)',  // Tanzanite backdrop
 
-    // Elevation levels with glass effect - purple-tinted
+    // Elevation levels with glass effect - Tanzanite-tinted
     elevation: {
       level0: 'transparent',
-      level1: 'rgba(35, 32, 42, 0.92)',  // Purple-tinted dark glass
-      level2: 'rgba(42, 38, 52, 0.90)',
-      level3: 'rgba(50, 45, 60, 0.88)',
-      level4: 'rgba(55, 50, 65, 0.86)',
-      level5: 'rgba(60, 55, 72, 0.85)',
+      level1: 'rgba(25, 15, 40, 0.92)',   // Tanzanite-tinted dark glass
+      level2: 'rgba(35, 22, 55, 0.90)',
+      level3: 'rgba(45, 30, 70, 0.88)',
+      level4: 'rgba(55, 38, 82, 0.86)',
+      level5: 'rgba(65, 45, 95, 0.85)',
     },
 
-    // Glass effect colors - primary-tinted (purple) glassmorphism for dark mode
-    glass: 'rgba(138, 127, 160, 0.15)',  // Purple glass overlay
-    glassBorder: 'rgba(255, 255, 255, 0.08)',  // Thin white border for contrast
-    glassCard: 'rgba(45, 42, 58, 0.88)',  // Purple-tinted dark glass card
-    glassSurface: 'rgba(35, 32, 45, 0.90)',  // Purple-tinted dark glass surface
+    // Glass effect colors - Tanzanite glassmorphism for dark mode
+    glass: 'rgba(179, 136, 255, 0.15)',       // Tanzanite glass overlay
+    glassBorder: 'rgba(179, 136, 255, 0.12)', // Tanzanite-tinted border for contrast
+    glassCard: 'rgba(35, 22, 55, 0.88)',      // Tanzanite-tinted dark glass card
+    glassSurface: 'rgba(25, 15, 40, 0.90)',   // Tanzanite-tinted dark glass surface
 
-    // Glass effect colors - accent-tinted (terracotta) glassmorphism for dark mode
-    glassAccent: 'rgba(232, 138, 117, 0.15)',  // Terracotta glass overlay
-    glassAccentBorder: 'rgba(255, 255, 255, 0.08)',  // Thin white border for contrast
-    glassAccentCard: 'rgba(55, 42, 42, 0.88)',  // Warm-tinted dark glass card
-    glassAccentSurface: 'rgba(45, 35, 35, 0.90)',  // Warm-tinted dark glass surface
+    // Glass effect colors - Gold/accent glassmorphism for dark mode
+    glassAccent: 'rgba(255, 215, 64, 0.15)',   // Gold glass overlay
+    glassAccentBorder: 'rgba(255, 215, 64, 0.12)', // Gold-tinted border for contrast
+    glassAccentCard: 'rgba(50, 40, 25, 0.88)',    // Gold-tinted dark glass card
+    glassAccentSurface: 'rgba(40, 32, 20, 0.90)', // Gold-tinted dark glass surface
   },
 
   fonts: paperTheme.fonts, // Use same font configuration
