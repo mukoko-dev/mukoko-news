@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useTheme as usePaperTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Compass, Newspaper, Sun, Moon } from 'lucide-react-native';
 import { useNavigationState } from '@react-navigation/native';
 import { navigate } from '../navigation/navigationRef';
 import { useTheme } from '../contexts/ThemeContext';
@@ -14,7 +14,7 @@ import Logo from './Logo';
  *
  * Pattern:
  * - Left: Logo + Screen title (contextual)
- * - Right: Utility icons (theme toggle, notifications)
+ * - Right: Utility icons (Discover, Pulse, Theme)
  * - No hamburger menu (navigation via tabs)
  */
 export default function AppHeader() {
@@ -73,11 +73,12 @@ export default function AppHeader() {
   };
 
   const screenTitle = getScreenTitle();
+  const iconColor = paperTheme.colors.onSurfaceVariant;
 
   // Dynamic styles based on theme
   const dynamicStyles = {
     header: {
-      backgroundColor: isDark ? paperTheme.colors.background : paperTheme.colors.background,
+      backgroundColor: paperTheme.colors.background,
     },
     title: {
       color: paperTheme.colors.onSurface,
@@ -94,7 +95,7 @@ export default function AppHeader() {
         )}
       </View>
 
-      {/* Right: Utility Icons (Discover, Personalized, Theme) */}
+      {/* Right: Utility Icons (Discover, Pulse, Theme) */}
       <View style={styles.rightSection}>
         {/* Discover */}
         <TouchableOpacity
@@ -104,11 +105,7 @@ export default function AppHeader() {
           accessibilityLabel="Discover content"
           accessibilityRole="button"
         >
-          <MaterialCommunityIcons
-            name="compass-outline"
-            size={22}
-            color={paperTheme.colors.onSurfaceVariant}
-          />
+          <Compass size={22} color={iconColor} strokeWidth={1.5} />
         </TouchableOpacity>
 
         {/* Pulse - Personalized Feed */}
@@ -119,11 +116,7 @@ export default function AppHeader() {
           accessibilityLabel="Pulse - Personalized feed"
           accessibilityRole="button"
         >
-          <MaterialCommunityIcons
-            name="star-four-points-outline"
-            size={22}
-            color={paperTheme.colors.onSurfaceVariant}
-          />
+          <Newspaper size={22} color={iconColor} strokeWidth={1.5} />
         </TouchableOpacity>
 
         {/* Theme Toggle */}
@@ -134,11 +127,11 @@ export default function AppHeader() {
           accessibilityLabel={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
           accessibilityRole="button"
         >
-          <MaterialCommunityIcons
-            name={isDark ? 'weather-sunny' : 'weather-night'}
-            size={22}
-            color={paperTheme.colors.onSurfaceVariant}
-          />
+          {isDark ? (
+            <Sun size={22} color={iconColor} strokeWidth={1.5} />
+          ) : (
+            <Moon size={22} color={iconColor} strokeWidth={1.5} />
+          )}
         </TouchableOpacity>
       </View>
     </View>
