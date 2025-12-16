@@ -30,22 +30,23 @@ export default function AppHeader() {
 
   // Always show logo in header (route-independent for stability)
 
-  // Navigation handlers using ref-based navigation
+  // Navigation handlers
+  const handleBytesPress = () => navigate('Bytes');
+  const handleDiscoverPress = () => navigate('Discover');
   const handleSearchPress = () => navigate('Search');
-  const handleProfilePress = () => navigate('Profile');
-  // Header insights icon navigates to Insights tab directly
   const handleInsightsPress = () => navigate('Insights');
+  const handleProfilePress = () => navigate('Profile');
   const handleNavigate = (screenName) => {
     navigate(screenName);
     setMenuVisible(false);
   };
 
-  // Hamburger menu items
+  // Hamburger menu items - Discover featured since it's header-only
   const menuItems = [
-    { label: 'Home', icon: 'home-outline', screen: 'Home', path: '/' },
+    { label: 'Bytes', icon: 'lightning-bolt-outline', screen: 'Bytes', path: '/' },
     { label: 'Discover', icon: 'compass-outline', screen: 'Discover', path: '/discover' },
-    { label: 'Insights', icon: 'chart-line', screen: 'Insights', path: '/insights' },
     { label: 'Search', icon: 'magnify', screen: 'Search', path: '/search' },
+    { label: 'Insights', icon: 'chart-line', screen: 'Insights', path: '/insights' },
     { label: 'Profile', icon: 'account-circle-outline', screen: 'Profile', path: '/profile' },
   ];
 
@@ -102,10 +103,10 @@ export default function AppHeader() {
             </TouchableOpacity>
           )}
 
-          {/* Logo - Always visible for consistent branding */}
+          {/* Logo - Taps go to Bytes (home/default) */}
           <TouchableOpacity
             style={styles.logoContainer}
-            onPress={() => handleNavigate('Home')}
+            onPress={handleBytesPress}
             activeOpacity={0.7}
           >
             <Logo size="sm" theme={isDark ? 'light' : 'dark'} />
@@ -116,17 +117,17 @@ export default function AppHeader() {
 
           {/* Action buttons - Always show on mobile and desktop */}
           <View style={styles.actions}>
-            {/* Insights Icon - AI-powered analytics, highlighted in brand color */}
+            {/* Discover Icon - Header-only access to browse content */}
             <TouchableOpacity
-              onPress={handleInsightsPress}
+              onPress={handleDiscoverPress}
               style={styles.actionButton}
               activeOpacity={0.7}
-              accessibilityLabel="View AI-powered insights and analytics"
+              accessibilityLabel="Browse and discover content"
               accessibilityRole="button"
-              accessibilityHint="Navigate to the insights screen with AI analytics"
+              accessibilityHint="Navigate to discover screen"
             >
               <MaterialCommunityIcons
-                name="chart-line"
+                name="compass-outline"
                 size={22}
                 color={paperTheme.colors.primary}
               />

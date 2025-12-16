@@ -15,7 +15,6 @@ import { navigationRef } from './navigationRef';
 import linking from './linking';
 
 // Screens
-import HomeScreen from '../screens/HomeScreen';
 import NewsBytesScreen from '../screens/NewsBytesScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
@@ -40,29 +39,22 @@ import {
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
-// Home Stack (includes home and article details)
-function HomeStack() {
+// Bytes Stack (core feature - default landing)
+function BytesStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="HomeFeed" component={HomeScreen} />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="BytesFeed" component={NewsBytesScreen} />
       <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
     </Stack.Navigator>
   );
 }
 
-// NewsBytes Stack
-function BytesStack() {
+// Discover Stack (header-only access)
+function DiscoverStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="BytesFeed" component={NewsBytesScreen} />
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="DiscoverFeed" component={DiscoverScreen} />
+      <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -70,43 +62,20 @@ function BytesStack() {
 // Search Stack
 function SearchStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="SearchFeed" component={SearchScreen} />
       <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
     </Stack.Navigator>
   );
 }
 
-// Discover Stack (trending/featured content - main browsing)
-function DiscoverStack() {
-  return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="DiscoverFeed" component={DiscoverScreen} />
-      <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
-      <Stack.Screen name="SearchFeed" component={SearchScreen} />
-    </Stack.Navigator>
-  );
-}
-
-// Insights Stack (analytics - top level)
+// Insights Stack
 function InsightsStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="InsightsFeed" component={InsightsScreen} />
       <Stack.Screen name="DiscoverFeed" component={DiscoverScreen} />
-      <Stack.Screen name="SearchFeed" component={SearchScreen} />
+      <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -114,29 +83,21 @@ function InsightsStack() {
 // Profile/Auth Stack
 function ProfileStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="UserProfile" component={UserProfileScreen} />
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
-      <Stack.Screen name="UserProfile" component={UserProfileScreen} />
     </Stack.Navigator>
   );
 }
 
-// Admin Stack (protected - only visible to admins)
+// Admin Stack (protected)
 function AdminStack() {
   return (
-    <Stack.Navigator
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="AdminDashboard" component={AdminDashboardScreen} />
       <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
       <Stack.Screen name="AdminSources" component={AdminSourcesScreen} />
@@ -146,8 +107,9 @@ function AdminStack() {
   );
 }
 
-// Main Tab Navigator - 5 Tabs (Modern Mobile Pattern) + Admin tab for admins
-// Pattern: Home, Discover, Bytes (Center/Featured), Search, Profile, [Admin]
+// Main Tab Navigator
+// Pattern: Bytes (default) → Search → Insights → Profile [+ Admin]
+// Discover is header-only (hamburger menu)
 function MainTabs() {
   const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
   const { isDark } = useTheme();
@@ -159,27 +121,23 @@ function MainTabs() {
       const { width } = Dimensions.get('window');
       setIsTabletOrDesktop(width >= 768);
     };
-
     updateLayout();
     const subscription = Dimensions.addEventListener('change', updateLayout);
     return () => subscription?.remove();
   }, []);
 
-  // Dynamic tab bar styles based on theme - using glass effect colors
   const getTabBarStyle = () => {
     if (isTabletOrDesktop) {
       return { display: 'none' };
     }
-
     return {
       position: 'absolute',
       bottom: 12,
       left: 12,
       right: 12,
-      // Glass effect with purple tinge from theme
       backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
       borderRadius: 24,
-      height: 76,  // Increased from 64 to 76 for better text display
+      height: 72,
       paddingBottom: 8,
       paddingTop: 8,
       borderWidth: 1,
@@ -200,26 +158,40 @@ function MainTabs() {
         tabBarInactiveTintColor: paperTheme.colors.onSurfaceVariant,
         tabBarStyle: getTabBarStyle(),
         tabBarItemStyle: {
-          paddingVertical: 6,
-          paddingHorizontal: 2,
+          paddingVertical: 4,
         },
         tabBarLabelStyle: {
-          fontSize: 12, // Increased from 11 for WCAG readability
+          fontSize: 11,
           fontFamily: mukokoTheme.fonts.medium.fontFamily,
-          marginTop: 4,
-          marginBottom: 4,
+          marginTop: 2,
         },
       }}
     >
-      {/* 1. Home Tab */}
+      {/* 1. Bytes - Core feature, default landing */}
       <Tab.Screen
-        name="Home"
-        component={HomeStack}
+        name="Bytes"
+        component={BytesStack}
         options={{
-          tabBarLabel: 'Home',
+          tabBarLabel: 'Bytes',
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
-              name={focused ? 'home' : 'home-outline'}
+              name={focused ? 'lightning-bolt' : 'lightning-bolt-outline'}
+              size={26}
+              color={focused ? mukokoTheme.colors.accent : color}
+            />
+          ),
+        }}
+      />
+
+      {/* 2. Search */}
+      <Tab.Screen
+        name="Search"
+        component={SearchStack}
+        options={{
+          tabBarLabel: 'Search',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons
+              name="magnify"
               size={24}
               color={color}
             />
@@ -227,23 +199,7 @@ function MainTabs() {
         }}
       />
 
-      {/* 2. Discover Tab - Browse trending content */}
-      <Tab.Screen
-        name="Discover"
-        component={DiscoverStack}
-        options={{
-          tabBarLabel: 'Discover',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'compass' : 'compass-outline'}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
-
-      {/* 3. Insights Tab - Analytics */}
+      {/* 3. Insights */}
       <Tab.Screen
         name="Insights"
         component={InsightsStack}
@@ -253,29 +209,13 @@ function MainTabs() {
             <MaterialCommunityIcons
               name={focused ? 'chart-line' : 'chart-line-variant'}
               size={24}
-              color={focused ? mukokoTheme.colors.accent : color}
-            />
-          ),
-        }}
-      />
-
-      {/* 4. Search Tab */}
-      <Tab.Screen
-        name="Search"
-        component={SearchStack}
-        options={{
-          tabBarLabel: 'Search',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'magnify' : 'magnify'}
-              size={24}
               color={color}
             />
           ),
         }}
       />
 
-      {/* 5. Profile Tab */}
+      {/* 4. Profile */}
       <Tab.Screen
         name="Profile"
         component={ProfileStack}
@@ -291,7 +231,16 @@ function MainTabs() {
         }}
       />
 
-      {/* 6. Admin Tab (only for admins) */}
+      {/* 5. Discover - Hidden tab for navigation purposes */}
+      <Tab.Screen
+        name="Discover"
+        component={DiscoverStack}
+        options={{
+          tabBarButton: () => null, // Hide from tab bar
+        }}
+      />
+
+      {/* 6. Admin (admins only) */}
       {isAdmin && (
         <Tab.Screen
           name="Admin"
@@ -312,7 +261,7 @@ function MainTabs() {
   );
 }
 
-// Root Navigator with Global Header and Footer
+// Root Navigator
 export default function AppNavigator() {
   const paperTheme = usePaperTheme();
 
@@ -322,19 +271,18 @@ export default function AppNavigator() {
       linking={linking}
       documentTitle={{
         formatter: (options, route) => {
-          // Custom page titles for SEO
           const routeName = route?.name;
           const baseTitle = 'Mukoko News';
 
           switch (routeName) {
-            case 'HomeFeed':
+            case 'BytesFeed':
               return `${baseTitle} - Zimbabwe's News, Your Way`;
             case 'ArticleDetail':
               return options?.title ? `${options.title} | ${baseTitle}` : baseTitle;
+            case 'DiscoverFeed':
+              return `Discover | ${baseTitle}`;
             case 'InsightsFeed':
               return `Insights | ${baseTitle}`;
-            case 'BytesFeed':
-              return `NewsBytes | ${baseTitle}`;
             case 'SearchFeed':
               return `Search | ${baseTitle}`;
             case 'Login':
@@ -350,10 +298,7 @@ export default function AppNavigator() {
       }}
     >
       <SafeAreaView
-        style={[
-          styles.container,
-          { backgroundColor: paperTheme.colors.background }
-        ]}
+        style={[styles.container, { backgroundColor: paperTheme.colors.background }]}
         edges={['bottom']}
       >
         <ZimbabweFlagStrip />
