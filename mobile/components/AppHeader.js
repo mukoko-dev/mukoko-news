@@ -1,303 +1,171 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions, TouchableOpacity, Text, Modal, Platform, Linking } from 'react-native';
-import { Divider, useTheme as usePaperTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React from 'react';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { useTheme as usePaperTheme } from 'react-native-paper';
+import { Compass, Newspaper, Sun, Moon } from 'lucide-react-native';
+import { useNavigationState } from '@react-navigation/native';
 import { navigate } from '../navigation/navigationRef';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
 import Logo from './Logo';
 
+/**
+ * AppHeader - Netflix-style minimal header
+ *
+ * Pattern:
+ * - Left: Logo + Screen title (contextual)
+ * - Right: Utility icons (Discover, Pulse, Theme)
+ * - No hamburger menu (navigation via tabs)
+ */
 export default function AppHeader() {
-  const [menuVisible, setMenuVisible] = useState(false);
-  const { theme, isDark, toggleTheme } = useTheme();
+  const { isDark, toggleTheme } = useTheme();
   const paperTheme = usePaperTheme();
+  const { user } = useAuth();
 
-  // Show header icons on web (tablet/desktop) - mobile uses compact icons
-  const [isDesktop, setIsDesktop] = useState(Platform.OS === 'web');
+  // Get current route name from navigation state
+  const routeName = useNavigationState((state) => {
+    if (!state) return 'Bytes';
 
-  useEffect(() => {
-    const updateLayout = () => {
-      const { width } = Dimensions.get('window');
-      // Desktop mode for full header actions with hamburger menu
-      const isWeb = Platform.OS === 'web';
-      setIsDesktop(isWeb && width >= 768);
-    };
+    // Get the current tab
+    const currentRoute = state.routes[state.index];
+    if (!currentRoute) return 'Bytes';
 
-    updateLayout();
-    const subscription = Dimensions.addEventListener('change', updateLayout);
-    return () => subscription?.remove();
-  }, []);
-
-  // Always show logo in header (route-independent for stability)
-
-  // Navigation handlers using ref-based navigation
-  const handleSearchPress = () => navigate('Search');
-  const handleProfilePress = () => navigate('Profile');
-  // Header insights icon navigates to AI-powered Insights screen
-  const handleInsightsPress = () => navigate('Discover', { screen: 'InsightsFeed' });
-  const handleNavigate = (screenName) => {
-    navigate(screenName);
-    setMenuVisible(false);
-  };
-
-  // Hamburger menu items - Discover goes to DiscoverFeed (browsing), not Insights
-  const menuItems = [
-    { label: 'Home', icon: 'home-outline', screen: 'Home', path: '/' },
-    { label: 'Discover', icon: 'compass-outline', screen: 'Discover', path: '/discover' },
-    { label: 'Insights', icon: 'chart-line', screen: 'Discover', path: '/insights', nested: 'InsightsFeed' },
-    { label: 'NewsBytes', icon: 'lightning-bolt-outline', screen: 'Bytes', path: '/bytes' },
-    { label: 'Search', icon: 'magnify', screen: 'Search', path: '/search' },
-    { label: 'Profile', icon: 'account-circle-outline', screen: 'Profile', path: '/profile' },
-  ];
-
-  // Handle navigation with proper URL updates on web
-  const handleMenuNavigate = (item) => {
-    setMenuVisible(false);
-
-    // On web, update the URL
-    if (Platform.OS === 'web' && item.path) {
-      window.history.pushState({}, '', item.path);
+    // If tab has nested stack, get the nested route name
+    const nestedState = currentRoute.state;
+    if (nestedState && nestedState.routes) {
+      const nestedRoute = nestedState.routes[nestedState.index];
+      return nestedRoute?.name || currentRoute.name;
     }
 
-    // Handle nested navigation (e.g., Insights inside Discover stack)
-    if (item.nested) {
-      navigate(item.screen, { screen: item.nested });
-    } else {
-      navigate(item.screen);
+    return currentRoute.name;
+  });
+
+  // Screen titles mapping
+  const getScreenTitle = () => {
+    switch (routeName) {
+      case 'Bytes':
+      case 'BytesFeed':
+        return 'Bytes';
+      case 'Search':
+      case 'SearchFeed':
+        return 'Search';
+      case 'Discover':
+      case 'DiscoverFeed':
+        return 'Discover';
+      case 'Profile':
+      case 'UserProfile':
+        return user?.username || 'Profile';
+      case 'Login':
+        return 'Sign In';
+      case 'Register':
+        return 'Create Account';
+      case 'Admin':
+      case 'AdminDashboard':
+        return 'Admin';
+      case 'Pulse':
+      case 'PulseFeed':
+        return 'Pulse';
+      case 'ArticleDetail':
+        return null; // No title for article view - show logo only
+      default:
+        return null;
     }
   };
+
+  const screenTitle = getScreenTitle();
+  const iconColor = paperTheme.colors.onSurfaceVariant;
 
   // Dynamic styles based on theme
   const dynamicStyles = {
     header: {
-      backgroundColor: isDark ? theme.colors.background : paperTheme.colors.background,
+      backgroundColor: paperTheme.colors.background,
     },
-    menuContainer: {
-      backgroundColor: isDark ? 'rgba(45, 45, 52, 0.95)' : paperTheme.colors.surface,
-      borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
-      borderWidth: isDark ? 1 : 0,
-    },
-    menuLabel: {
+    title: {
       color: paperTheme.colors.onSurface,
     },
   };
 
   return (
-      <>
-        <View style={[styles.header, dynamicStyles.header]}>
-          {/* Hamburger Menu Button - Desktop Only */}
-          {isDesktop && (
-            <TouchableOpacity
-              onPress={() => setMenuVisible(!menuVisible)}
-              style={styles.hamburgerButton}
-              activeOpacity={0.7}
-              accessibilityLabel={menuVisible ? 'Close navigation menu' : 'Open navigation menu'}
-              accessibilityRole="button"
-              accessibilityState={{ expanded: menuVisible }}
-            >
-              <MaterialCommunityIcons
-                name="menu"
-                size={24}
-                color={paperTheme.colors.onSurface}
-              />
-            </TouchableOpacity>
-          )}
-
-          {/* Logo - Always visible for consistent branding */}
-          <TouchableOpacity
-            style={styles.logoContainer}
-            onPress={() => handleNavigate('Home')}
-            activeOpacity={0.7}
-          >
-            <Logo size="sm" theme={isDark ? 'light' : 'dark'} />
-          </TouchableOpacity>
-
-          {/* Spacer - pushes logo to center on mobile, actions to right on desktop */}
-          <View style={styles.spacer} />
-
-          {/* Action buttons - Always show on mobile and desktop */}
-          <View style={styles.actions}>
-            {/* Insights Icon - AI-powered analytics, highlighted in brand color */}
-            <TouchableOpacity
-              onPress={handleInsightsPress}
-              style={styles.actionButton}
-              activeOpacity={0.7}
-              accessibilityLabel="View AI-powered insights and analytics"
-              accessibilityRole="button"
-              accessibilityHint="Navigate to the insights screen with AI analytics"
-            >
-              <MaterialCommunityIcons
-                name="chart-line"
-                size={22}
-                color={paperTheme.colors.primary}
-              />
-            </TouchableOpacity>
-
-            {/* Search Icon */}
-            <TouchableOpacity
-              onPress={handleSearchPress}
-              style={styles.actionButton}
-              activeOpacity={0.7}
-              accessibilityLabel="Search articles"
-              accessibilityRole="button"
-              accessibilityHint="Navigate to search screen"
-            >
-              <MaterialCommunityIcons
-                name="magnify"
-                size={22}
-                color={paperTheme.colors.onSurface}
-              />
-            </TouchableOpacity>
-
-            {/* Theme Toggle - Now functional */}
-            <TouchableOpacity
-              onPress={toggleTheme}
-              style={styles.actionButton}
-              activeOpacity={0.7}
-              accessibilityLabel={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
-              accessibilityRole="button"
-              accessibilityHint="Toggles between light and dark color themes"
-            >
-              <MaterialCommunityIcons
-                name={isDark ? 'weather-sunny' : 'weather-night'}
-                size={22}
-                color={paperTheme.colors.onSurfaceVariant}
-              />
-            </TouchableOpacity>
-
-            {/* Profile/Login Icon */}
-            <TouchableOpacity
-              onPress={handleProfilePress}
-              style={styles.actionButton}
-              activeOpacity={0.7}
-              accessibilityLabel="View profile"
-              accessibilityRole="button"
-              accessibilityHint="Navigate to your profile and account settings"
-            >
-              <MaterialCommunityIcons
-                name="account-circle-outline"
-                size={22}
-                color={paperTheme.colors.onSurface}
-              />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Dropdown Menu for Desktop */}
-        {isDesktop && (
-          <Modal
-            visible={menuVisible}
-            transparent
-            animationType="fade"
-            onRequestClose={() => setMenuVisible(false)}
-          >
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => setMenuVisible(false)}
-            >
-              <View style={[styles.menuContainer, dynamicStyles.menuContainer]}>
-                {menuItems.map((item, index) => (
-                  <React.Fragment key={item.screen}>
-                    <TouchableOpacity
-                      style={styles.menuItem}
-                      onPress={() => handleMenuNavigate(item)}
-                      activeOpacity={0.7}
-                      accessibilityLabel={`Navigate to ${item.label}`}
-                      accessibilityRole="link"
-                      accessibilityHint={`Opens the ${item.label.toLowerCase()} page`}
-                    >
-                      <View style={styles.menuIcon}>
-                        <MaterialCommunityIcons
-                          name={item.icon}
-                          size={20}
-                          color={paperTheme.colors.primary}
-                        />
-                      </View>
-                      <Text style={[styles.menuLabel, dynamicStyles.menuLabel]}>{item.label}</Text>
-                    </TouchableOpacity>
-                    {index < menuItems.length - 1 && <Divider />}
-                  </React.Fragment>
-                ))}
-              </View>
-            </TouchableOpacity>
-          </Modal>
+    <View style={[styles.header, dynamicStyles.header]}>
+      {/* Left: Logo + Title */}
+      <View style={styles.leftSection}>
+        <Logo size="icon" theme={isDark ? 'light' : 'dark'} />
+        {screenTitle && (
+          <Text style={[styles.title, dynamicStyles.title]}>{screenTitle}</Text>
         )}
-    </>
+      </View>
+
+      {/* Right: Utility Icons (Discover, Pulse, Theme) */}
+      <View style={styles.rightSection}>
+        {/* Discover */}
+        <TouchableOpacity
+          onPress={() => navigate('Discover')}
+          style={styles.iconButton}
+          activeOpacity={0.7}
+          accessibilityLabel="Discover content"
+          accessibilityRole="button"
+        >
+          <Compass size={22} color={iconColor} strokeWidth={1.5} />
+        </TouchableOpacity>
+
+        {/* Pulse - Personalized Feed */}
+        <TouchableOpacity
+          onPress={() => navigate('Pulse')}
+          style={styles.iconButton}
+          activeOpacity={0.7}
+          accessibilityLabel="Pulse - Personalized feed"
+          accessibilityRole="button"
+        >
+          <Newspaper size={22} color={iconColor} strokeWidth={1.5} />
+        </TouchableOpacity>
+
+        {/* Theme Toggle */}
+        <TouchableOpacity
+          onPress={toggleTheme}
+          style={styles.iconButton}
+          activeOpacity={0.7}
+          accessibilityLabel={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+          accessibilityRole="button"
+        >
+          {isDark ? (
+            <Sun size={22} color={iconColor} strokeWidth={1.5} />
+          ) : (
+            <Moon size={22} color={iconColor} strokeWidth={1.5} />
+          )}
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: mukokoTheme.colors.background,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     height: 56,
     paddingHorizontal: mukokoTheme.spacing.md,
-    // No border - seamless design
   },
-  hamburgerButton: {
-    marginRight: mukokoTheme.spacing.sm,
+  leftSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  title: {
+    fontSize: 22,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    letterSpacing: -0.5,
+  },
+  rightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  iconButton: {
     padding: 10,
     minWidth: 44,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  logoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  spacer: {
-    flex: 1,
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  actionButton: {
-    padding: 12,
-    marginHorizontal: 0,
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  menuContainer: {
-    position: 'absolute',
-    top: 56,
-    left: 16,
-    backgroundColor: mukokoTheme.colors.surface,
-    borderRadius: 16,
-    minWidth: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    overflow: 'hidden',
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.md,
-    paddingHorizontal: mukokoTheme.spacing.md,
-    minHeight: 44, // WCAG touch target minimum
-  },
-  menuIcon: {
-    marginRight: mukokoTheme.spacing.sm,
-    width: 24,
-    alignItems: 'center',
-  },
-  menuLabel: {
-    fontSize: 16,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurface,
   },
 });

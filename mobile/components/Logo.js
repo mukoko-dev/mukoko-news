@@ -9,8 +9,8 @@ const logoIcon = require('../assets/mukoko-logo-compact.png');
  * Logo Component
  * Displays the Mukoko logo - icon with serif wordmark
  *
- * @param {string} size - 'sm' | 'md' | 'lg'
- * @param {boolean} showText - Whether to show text next to logo
+ * @param {string} size - 'icon' | 'sm' | 'md' | 'lg' ('icon' = logo only, no text)
+ * @param {boolean} showText - Whether to show text next to logo (ignored for 'icon' size)
  * @param {string} textStyle - 'light' | 'dark' - text color for different backgrounds
  */
 export default function Logo({
@@ -22,10 +22,14 @@ export default function Logo({
   style,
 }) {
   const sizes = {
+    icon: { logoSize: 28, fontSize: 0, spacing: 0 }, // Icon only, no text
     sm: { logoSize: 32, fontSize: 20, spacing: 8 },
     md: { logoSize: 40, fontSize: 24, spacing: 10 },
     lg: { logoSize: 52, fontSize: 32, spacing: 12 },
   };
+
+  // Icon size implies no text
+  const shouldShowText = size === 'icon' ? false : showText;
 
   const { logoSize, fontSize, spacing } = sizes[size];
 
@@ -49,7 +53,7 @@ export default function Logo({
         }}
         resizeMode="contain"
       />
-      {showText && (
+      {shouldShowText && (
         <Text style={[styles.logoText, { fontSize, color: textColor }]}>
           Mukoko News
         </Text>
