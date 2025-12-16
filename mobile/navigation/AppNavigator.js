@@ -72,11 +72,11 @@ function SearchStack() {
 
 // Insights Stack removed - insights now integrated into SearchScreen
 
-// Home Stack (personalized feed - header access only)
-function HomeStack() {
+// Clips Stack (personalized feed - header access only)
+function ClipsStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="HomeFeed" component={HomeScreen} />
+      <Stack.Screen name="ClipsFeed" component={HomeScreen} />
       <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
     </Stack.Navigator>
   );
@@ -227,10 +227,10 @@ function MainTabs() {
         }}
       />
 
-      {/* 5. Home (For You) - Hidden tab for personalized feed */}
+      {/* 5. Clips - Hidden tab for personalized feed */}
       <Tab.Screen
-        name="Home"
-        component={HomeStack}
+        name="Clips"
+        component={ClipsStack}
         options={{
           tabBarButton: () => null, // Hide from tab bar
         }}
@@ -277,8 +277,8 @@ export default function AppNavigator() {
               return options?.title ? `${options.title} | ${baseTitle}` : baseTitle;
             case 'DiscoverFeed':
               return `Discover | ${baseTitle}`;
-            case 'HomeFeed':
-              return `For You | ${baseTitle}`;
+            case 'ClipsFeed':
+              return `Clips | ${baseTitle}`;
             // InsightsFeed removed - insights now in SearchFeed
             case 'SearchFeed':
               return `Search | ${baseTitle}`;
