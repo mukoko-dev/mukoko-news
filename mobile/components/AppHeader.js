@@ -62,9 +62,9 @@ export default function AppHeader() {
       case 'Admin':
       case 'AdminDashboard':
         return 'Admin';
-      case 'Home':
-      case 'HomeFeed':
-        return 'For You';
+      case 'Clips':
+      case 'ClipsFeed':
+        return 'Clips';
       case 'ArticleDetail':
         return null; // No title for article view - show logo only
       default:
@@ -111,12 +111,12 @@ export default function AppHeader() {
           />
         </TouchableOpacity>
 
-        {/* Personalized Feed (For You) */}
+        {/* Clips - Personalized Feed */}
         <TouchableOpacity
-          onPress={() => navigate('Home')}
+          onPress={() => navigate('Clips')}
           style={styles.iconButton}
           activeOpacity={0.7}
-          accessibilityLabel="For You - Personalized feed"
+          accessibilityLabel="Clips - Personalized feed"
           accessibilityRole="button"
         >
           <MaterialCommunityIcons
