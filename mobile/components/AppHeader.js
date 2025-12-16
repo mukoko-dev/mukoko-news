@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigationState } from '@react-navigation/native';
+import { navigate } from '../navigation/navigationRef';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
@@ -90,8 +91,23 @@ export default function AppHeader() {
         )}
       </View>
 
-      {/* Right: Utility Icons */}
+      {/* Right: Utility Icons (Discover, Theme, Personalized) */}
       <View style={styles.rightSection}>
+        {/* Discover */}
+        <TouchableOpacity
+          onPress={() => navigate('Discover')}
+          style={styles.iconButton}
+          activeOpacity={0.7}
+          accessibilityLabel="Discover content"
+          accessibilityRole="button"
+        >
+          <MaterialCommunityIcons
+            name="compass-outline"
+            size={22}
+            color={paperTheme.colors.onSurfaceVariant}
+          />
+        </TouchableOpacity>
+
         {/* Theme Toggle */}
         <TouchableOpacity
           onPress={toggleTheme}
@@ -107,15 +123,15 @@ export default function AppHeader() {
           />
         </TouchableOpacity>
 
-        {/* Notifications (placeholder for future) */}
+        {/* Personalized Feed */}
         <TouchableOpacity
           style={styles.iconButton}
           activeOpacity={0.7}
-          accessibilityLabel="Notifications"
+          accessibilityLabel="Personalized feed"
           accessibilityRole="button"
         >
           <MaterialCommunityIcons
-            name="bell-outline"
+            name="star-four-points-outline"
             size={22}
             color={paperTheme.colors.onSurfaceVariant}
           />
