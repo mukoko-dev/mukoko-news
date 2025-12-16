@@ -6,27 +6,60 @@ import {
   TouchableOpacity,
   Image,
   Platform,
+  RefreshControl,
+  Dimensions,
 } from 'react-native';
 import {
   Text,
   Searchbar,
   Chip,
-  Button,
   ActivityIndicator,
   Surface,
+  Icon,
   useTheme as usePaperTheme,
 } from 'react-native-paper';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import CategoryChips from '../components/CategoryChips';
-import { useAuth } from '../contexts/AuthContext';
-import { search as searchAPI, categories as categoriesAPI } from '../api/client';
+import {
+  search as searchAPI,
+  categories as categoriesAPI,
+  insights as insightsAPI,
+} from '../api/client';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Category emojis
+const CATEGORY_EMOJIS = {
+  politics: '🏛️',
+  business: '💼',
+  sports: '⚽',
+  entertainment: '🎬',
+  technology: '💻',
+  health: '🏥',
+  world: '🌍',
+  local: '📍',
+  opinion: '💭',
+  breaking: '⚡',
+  crime: '🚨',
+  education: '📚',
+  environment: '🌱',
+  lifestyle: '✨',
+  agriculture: '🌾',
+  mining: '⛏️',
+  tourism: '✈️',
+  finance: '💰',
+  culture: '🎭',
+  general: '📰',
+};
+
+const getEmoji = (name) => CATEGORY_EMOJIS[(name || '').toLowerCase()] || '📰';
 
 /**
  * Memoized Search Result Card
  */
-const SearchResultCard = memo(({ article, onPress }) => {
+const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
   const [imageError, setImageError] = useState(false);
 
   const formatDate = (dateString) => {
@@ -42,10 +75,7 @@ const SearchResultCard = memo(({ article, onPress }) => {
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays}d ago`;
 
-    return date.toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-    });
+    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
   };
 
   const hasImage = article.image_url && !imageError;
@@ -56,9 +86,8 @@ const SearchResultCard = memo(({ article, onPress }) => {
       onPress={() => onPress(article)}
       style={styles.resultCard}
     >
-      <Surface style={styles.card} elevation={1}>
+      <Surface style={[styles.card, { backgroundColor: paperTheme.colors.surface }]} elevation={1}>
         <View style={styles.cardRow}>
-          {/* Image - only show if available */}
           {hasImage && (
             <View style={styles.cardImageContainer}>
               <Image
@@ -66,18 +95,19 @@ const SearchResultCard = memo(({ article, onPress }) => {
                 style={styles.cardImage}
                 resizeMode="cover"
                 onError={() => setImageError(true)}
-                fadeDuration={0}
               />
             </View>
           )}
-
-          {/* Content */}
           <View style={[styles.cardContent, !hasImage && styles.cardContentNoImage]}>
-            <Text style={styles.cardSource}>{article.source || 'News'}</Text>
-            <Text style={styles.cardTitle} numberOfLines={2}>
+            <Text style={[styles.cardSource, { color: paperTheme.colors.primary }]}>
+              {article.source || 'News'}
+            </Text>
+            <Text style={[styles.cardTitle, { color: paperTheme.colors.onSurface }]} numberOfLines={2}>
               {article.title}
             </Text>
-            <Text style={styles.cardDate}>{formatDate(article.published_at)}</Text>
+            <Text style={[styles.cardDate, { color: paperTheme.colors.onSurfaceVariant }]}>
+              {formatDate(article.published_at)}
+            </Text>
           </View>
         </View>
       </Surface>
@@ -86,14 +116,15 @@ const SearchResultCard = memo(({ article, onPress }) => {
 }, (prevProps, nextProps) => prevProps.article.id === nextProps.article.id);
 
 /**
- * SearchScreen - Search news articles
- * Clean design without duplicate headers
+ * SearchScreen - Search + Insights combined
+ * When empty: shows insights (stats, trending, journalists)
+ * When searching: shows search results
  */
-export default function SearchScreen({ navigation }) {
-  const { isAuthenticated } = useAuth();
+export default function SearchScreen({ navigation, route }) {
   const { isDark } = useTheme();
   const paperTheme = usePaperTheme();
 
+  // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -104,20 +135,59 @@ export default function SearchScreen({ navigation }) {
   const [error, setError] = useState(null);
   const [debounceTimer, setDebounceTimer] = useState(null);
 
+  // Insights state
+  const [insightsLoading, setInsightsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState(null);
+  const [trending, setTrending] = useState([]);
+  const [authors, setAuthors] = useState([]);
+
+  // Handle incoming search query from route params
   useEffect(() => {
-    loadCategories();
+    if (route?.params?.searchQuery) {
+      setSearchQuery(route.params.searchQuery);
+      performSearch(route.params.searchQuery);
+    }
+  }, [route?.params?.searchQuery]);
+
+  useEffect(() => {
+    loadInsightsData();
   }, []);
 
-  const loadCategories = async () => {
+  const loadInsightsData = async () => {
+    setInsightsLoading(true);
     try {
-      const result = await categoriesAPI.getAll();
-      if (result.data?.categories) {
-        setCategories(result.data.categories);
+      const results = await Promise.allSettled([
+        categoriesAPI.getAll(),
+        insightsAPI.getStats(),
+        insightsAPI.getTrendingCategories(8),
+        insightsAPI.getTrendingAuthors(5),
+      ]);
+
+      if (results[0].status === 'fulfilled' && results[0].value.data?.categories) {
+        setCategories(results[0].value.data.categories);
+      }
+      if (results[1].status === 'fulfilled' && results[1].value.data?.database) {
+        setStats(results[1].value.data.database);
+      }
+      if (results[2].status === 'fulfilled' && results[2].value.data?.trending) {
+        setTrending(results[2].value.data.trending);
+      }
+      if (results[3].status === 'fulfilled' && results[3].value.data?.trending_authors) {
+        setAuthors(results[3].value.data.trending_authors);
       }
     } catch (err) {
-      console.error('[Search] Load categories error:', err);
+      console.error('[Search] Load insights error:', err);
+    } finally {
+      setInsightsLoading(false);
     }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadInsightsData();
+    setRefreshing(false);
+  }, []);
 
   const performSearch = async (query, category = null) => {
     if (!query || query.trim().length === 0) {
@@ -132,10 +202,7 @@ export default function SearchScreen({ navigation }) {
       setError(null);
       setActiveQuery(query);
 
-      const result = await searchAPI.query(query, {
-        category,
-        limit: 50,
-      });
+      const result = await searchAPI.query(query, { category, limit: 50 });
 
       if (result.error) {
         setError(result.error);
@@ -157,10 +224,7 @@ export default function SearchScreen({ navigation }) {
 
   const handleSearchChange = (text) => {
     setSearchQuery(text);
-
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
+    if (debounceTimer) clearTimeout(debounceTimer);
 
     const timer = setTimeout(() => {
       if (text.trim().length > 0) {
@@ -181,6 +245,14 @@ export default function SearchScreen({ navigation }) {
     }
   };
 
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setActiveQuery('');
+    setResults([]);
+    setTotal(0);
+    setSelectedCategory(null);
+  };
+
   const handleCategoryPress = async (categorySlug) => {
     if (Platform.OS !== 'web') {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -188,14 +260,10 @@ export default function SearchScreen({ navigation }) {
 
     if (selectedCategory === categorySlug) {
       setSelectedCategory(null);
-      if (activeQuery) {
-        await performSearch(activeQuery, null);
-      }
+      if (activeQuery) await performSearch(activeQuery, null);
     } else {
       setSelectedCategory(categorySlug);
-      if (activeQuery) {
-        await performSearch(activeQuery, categorySlug);
-      }
+      if (activeQuery) await performSearch(activeQuery, categorySlug);
     }
   };
 
@@ -207,76 +275,53 @@ export default function SearchScreen({ navigation }) {
     });
   }, [navigation]);
 
-  const handleSuggestionPress = (categoryName) => {
-    setSearchQuery(categoryName.toLowerCase());
-    performSearch(categoryName.toLowerCase());
+  const handleTopicPress = (topic) => {
+    const query = topic.name || topic.category_name;
+    setSearchQuery(query);
+    performSearch(query);
   };
 
-  // Dynamic styles based on theme
-  const dynamicStyles = {
-    container: {
-      backgroundColor: paperTheme.colors.background,
-    },
-    searchContainer: {
-      backgroundColor: paperTheme.colors.surface,
-      borderBottomColor: paperTheme.colors.outlineVariant,
-    },
-    searchbar: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
-    },
-    resultsInfo: {
-      backgroundColor: paperTheme.colors.surface,
-      borderBottomColor: paperTheme.colors.outlineVariant,
-    },
-    resultsInfoText: {
-      color: paperTheme.colors.onSurfaceVariant,
-    },
-    errorContainer: {
-      backgroundColor: paperTheme.colors.errorContainer,
-    },
-    errorText: {
-      color: paperTheme.colors.onErrorContainer,
-    },
-    emptyStateCard: {
-      backgroundColor: paperTheme.colors.surface,
-    },
-    emptyTitle: {
-      color: paperTheme.colors.onSurface,
-    },
-    emptyMessage: {
-      color: paperTheme.colors.onSurfaceVariant,
-    },
-    suggestionsTitle: {
-      color: paperTheme.colors.onSurface,
-    },
-    suggestionChip: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
-    },
-    loadingText: {
-      color: paperTheme.colors.onSurfaceVariant,
-    },
+  const handleAuthorPress = (author) => {
+    setSearchQuery(author.name);
+    performSearch(author.name);
   };
+
+  // Colors
+  const colors = {
+    bg: paperTheme.colors.background,
+    surface: paperTheme.colors.surface,
+    text: paperTheme.colors.onSurface,
+    textMuted: paperTheme.colors.onSurfaceVariant,
+    primary: paperTheme.colors.primary,
+    border: paperTheme.colors.outline,
+    card: paperTheme.colors.glassCard || paperTheme.colors.surface,
+    cardBorder: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+  };
+
+  // Card width for 2-column grid
+  const cardWidth = (SCREEN_WIDTH - mukokoTheme.spacing.md * 2 - mukokoTheme.spacing.sm) / 2;
+
+  const isSearchMode = activeQuery.length > 0;
 
   return (
-    <View style={[styles.container, dynamicStyles.container]}>
-      {/* Search Bar */}
-      <View style={[styles.searchContainer, dynamicStyles.searchContainer]}>
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      {/* Search Bar - Always visible */}
+      <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <Searchbar
           placeholder="Search Zimbabwe news..."
           value={searchQuery}
           onChangeText={handleSearchChange}
           onSubmitEditing={handleSearchSubmit}
-          style={[styles.searchbar, dynamicStyles.searchbar]}
+          style={[styles.searchbar, { backgroundColor: paperTheme.colors.surfaceVariant }]}
           inputStyle={styles.searchInput}
-          iconColor={paperTheme.colors.primary}
-          selectionColor={paperTheme.colors.primary}
-          cursorColor={paperTheme.colors.primary}
+          iconColor={colors.primary}
           loading={loading}
+          onClearIconPress={handleClearSearch}
         />
       </View>
 
-      {/* Category Filter (only show when there's a query) */}
-      {activeQuery && categories.length > 0 && (
+      {/* Category Filter - Only in search mode */}
+      {isSearchMode && categories.length > 0 && (
         <CategoryChips
           categories={categories}
           selectedCategory={selectedCategory}
@@ -286,10 +331,10 @@ export default function SearchScreen({ navigation }) {
         />
       )}
 
-      {/* Search Results Info */}
-      {activeQuery && !loading && (
-        <View style={[styles.resultsInfo, dynamicStyles.resultsInfo]}>
-          <Text style={[styles.resultsInfoText, dynamicStyles.resultsInfoText]}>
+      {/* Results Info - Search mode */}
+      {isSearchMode && !loading && (
+        <View style={[styles.resultsInfo, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          <Text style={[styles.resultsInfoText, { color: colors.textMuted }]}>
             {total} result{total !== 1 ? 's' : ''} for "{activeQuery}"
           </Text>
         </View>
@@ -297,65 +342,22 @@ export default function SearchScreen({ navigation }) {
 
       {/* Error State */}
       {error && (
-        <View style={[styles.errorContainer, dynamicStyles.errorContainer]}>
-          <Text style={[styles.errorText, dynamicStyles.errorText]}>{error}</Text>
+        <View style={[styles.errorBanner, { backgroundColor: paperTheme.colors.errorContainer }]}>
+          <Icon source="alert-circle" size={16} color={paperTheme.colors.error} />
+          <Text style={{ color: paperTheme.colors.error, flex: 1 }}>{error}</Text>
         </View>
       )}
 
-      {/* Empty State - No Query */}
-      {!activeQuery && !loading && (
-        <View style={styles.emptyStateContainer}>
-          <View style={[styles.emptyStateCard, dynamicStyles.emptyStateCard]}>
-            <Text style={styles.emptyEmoji}>🔍</Text>
-            <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>Search Zimbabwe News</Text>
-            <Text style={[styles.emptyMessage, dynamicStyles.emptyMessage]}>
-              Find articles from trusted Zimbabwe news sources
-            </Text>
-
-            {categories.length > 0 && (
-              <View style={styles.suggestionsContainer}>
-                <Text style={[styles.suggestionsTitle, dynamicStyles.suggestionsTitle]}>Popular Topics</Text>
-                <View style={styles.suggestionsGrid}>
-                  {categories.slice(0, 6).map((category) => (
-                    <Chip
-                      key={category.id}
-                      onPress={() => handleSuggestionPress(category.name)}
-                      style={[styles.suggestionChip, dynamicStyles.suggestionChip]}
-                      textStyle={styles.suggestionChipText}
-                    >
-                      {category.emoji} {category.name}
-                    </Chip>
-                  ))}
-                </View>
-              </View>
-            )}
-          </View>
-        </View>
-      )}
-
-      {/* No Results State */}
-      {activeQuery && results.length === 0 && !loading && !error && (
-        <View style={styles.emptyStateContainer}>
-          <View style={[styles.emptyStateCard, dynamicStyles.emptyStateCard]}>
-            <Text style={styles.emptyEmoji}>📭</Text>
-            <Text style={[styles.emptyTitle, dynamicStyles.emptyTitle]}>No Results</Text>
-            <Text style={[styles.emptyMessage, dynamicStyles.emptyMessage]}>
-              No articles found for "{activeQuery}"
-            </Text>
-            <Button
-              mode="contained"
-              onPress={() => navigation.navigate('Home')}
-              style={styles.browseButton}
-              buttonColor={paperTheme.colors.primary}
-            >
-              Browse All News
-            </Button>
-          </View>
+      {/* Loading - Search mode */}
+      {loading && (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Searching...</Text>
         </View>
       )}
 
       {/* Search Results */}
-      {results.length > 0 && (
+      {isSearchMode && !loading && results.length > 0 && (
         <ScrollView
           style={styles.resultsScroll}
           contentContainerStyle={styles.resultsContent}
@@ -366,20 +368,160 @@ export default function SearchScreen({ navigation }) {
               key={article.id}
               article={article}
               onPress={handleArticlePress}
+              paperTheme={paperTheme}
             />
           ))}
-
-          {/* Bottom padding for tab bar */}
           <View style={styles.bottomPadding} />
         </ScrollView>
       )}
 
-      {/* Loading State */}
-      {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={paperTheme.colors.primary} />
-          <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Searching...</Text>
+      {/* No Results - Search mode */}
+      {isSearchMode && !loading && results.length === 0 && !error && (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyEmoji}>📭</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No results</Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+            Try a different search term
+          </Text>
+          <TouchableOpacity
+            style={[styles.clearButton, { borderColor: colors.primary }]}
+            onPress={handleClearSearch}
+          >
+            <Text style={{ color: colors.primary }}>Clear search</Text>
+          </TouchableOpacity>
         </View>
+      )}
+
+      {/* Insights Content - When not searching */}
+      {!isSearchMode && !loading && (
+        <ScrollView
+          contentContainerStyle={styles.insightsContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          {insightsLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={colors.primary} />
+            </View>
+          ) : (
+            <>
+              {/* Stats Row */}
+              {stats && (
+                <View style={styles.statsRow}>
+                  <View style={styles.stat}>
+                    <Text style={[styles.statValue, { color: colors.primary }]}>
+                      {(stats.total_articles || 0).toLocaleString()}
+                    </Text>
+                    <Text style={[styles.statLabel, { color: colors.textMuted }]}>Articles</Text>
+                  </View>
+                  <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.stat}>
+                    <Text style={[styles.statValue, { color: colors.primary }]}>
+                      {stats.active_sources || 0}
+                    </Text>
+                    <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sources</Text>
+                  </View>
+                  <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                  <View style={styles.stat}>
+                    <Text style={[styles.statValue, { color: colors.primary }]}>
+                      {stats.categories || 0}
+                    </Text>
+                    <Text style={[styles.statLabel, { color: colors.textMuted }]}>Topics</Text>
+                  </View>
+                </View>
+              )}
+
+              {/* Trending Topics */}
+              {trending.length > 0 && (
+                <>
+                  <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+                    🔥 Trending Now
+                  </Text>
+                  <View style={styles.topicsGrid}>
+                    {trending.map((topic, i) => (
+                      <TouchableOpacity
+                        key={topic.id || i}
+                        style={[styles.topicCard, { backgroundColor: colors.card, borderColor: colors.cardBorder, width: cardWidth }]}
+                        onPress={() => handleTopicPress(topic)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.topicRow}>
+                          <Text style={styles.topicEmoji}>{getEmoji(topic.name || topic.category_name)}</Text>
+                          {i < 3 && (
+                            <View style={[styles.hotBadge, { backgroundColor: mukokoTheme.colors.accent }]}>
+                              <Text style={styles.hotBadgeText}>{i + 1}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={[styles.topicName, { color: colors.text }]} numberOfLines={1}>
+                          {topic.name || topic.category_name}
+                        </Text>
+                        <Text style={[styles.topicCount, { color: colors.textMuted }]}>
+                          {topic.article_count || 0} articles
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {/* Top Journalists */}
+              {authors.length > 0 && (
+                <>
+                  <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+                    ✍️ Top Journalists
+                  </Text>
+                  <View style={styles.authorsList}>
+                    {authors.map((author, i) => (
+                      <TouchableOpacity
+                        key={author.id || i}
+                        style={[styles.authorRow, { borderBottomColor: colors.border }]}
+                        onPress={() => handleAuthorPress(author)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={[
+                          styles.rank,
+                          { backgroundColor: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : colors.card }
+                        ]}>
+                          <Text style={[styles.rankText, { color: i < 3 ? '#FFF' : colors.text }]}>{i + 1}</Text>
+                        </View>
+                        <View style={styles.authorInfo}>
+                          <Text style={[styles.authorName, { color: colors.text }]} numberOfLines={1}>
+                            {author.name}
+                          </Text>
+                          <Text style={[styles.authorMeta, { color: colors.textMuted }]}>
+                            {author.article_count || 0} articles
+                          </Text>
+                        </View>
+                        <Icon source="chevron-right" size={18} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </>
+              )}
+
+              {/* No Data */}
+              {!stats && trending.length === 0 && authors.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyEmoji}>🔍</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>Search Zimbabwe News</Text>
+                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+                    Find articles from trusted sources
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+
+          <View style={styles.bottomPadding} />
+        </ScrollView>
       )}
     </View>
   );
@@ -388,18 +530,14 @@ export default function SearchScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: mukokoTheme.colors.background,
   },
 
   // Search Bar
   searchContainer: {
     padding: mukokoTheme.spacing.md,
-    backgroundColor: mukokoTheme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outlineVariant,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   searchbar: {
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
     borderRadius: mukokoTheme.roundness,
     elevation: 0,
   },
@@ -411,85 +549,32 @@ const styles = StyleSheet.create({
   resultsInfo: {
     paddingHorizontal: mukokoTheme.spacing.md,
     paddingVertical: mukokoTheme.spacing.sm,
-    backgroundColor: mukokoTheme.colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: mukokoTheme.colors.outlineVariant,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   resultsInfoText: {
-    fontSize: 14,
-    color: mukokoTheme.colors.onSurfaceVariant,
+    fontSize: 13,
   },
 
   // Error
-  errorContainer: {
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.sm,
     margin: mukokoTheme.spacing.md,
-    padding: mukokoTheme.spacing.md,
-    backgroundColor: mukokoTheme.colors.errorContainer,
-    borderRadius: mukokoTheme.roundness - 8,
-  },
-  errorText: {
-    color: mukokoTheme.colors.onErrorContainer,
-    fontSize: 14,
-    textAlign: 'center',
+    padding: mukokoTheme.spacing.sm,
+    borderRadius: mukokoTheme.roundness,
   },
 
-  // Empty State
-  emptyStateContainer: {
+  // Loading
+  loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: mukokoTheme.spacing.xl,
+    gap: mukokoTheme.spacing.md,
+    paddingVertical: mukokoTheme.spacing.xxl,
   },
-  emptyStateCard: {
-    backgroundColor: mukokoTheme.colors.surface,
-    borderRadius: mukokoTheme.roundness,
-    padding: mukokoTheme.spacing.xl,
-    alignItems: 'center',
-    maxWidth: 400,
-    width: '100%',
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  emptyTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 20,
-    color: mukokoTheme.colors.onSurface,
-    marginBottom: mukokoTheme.spacing.xs,
-    textAlign: 'center',
-  },
-  emptyMessage: {
+  loadingText: {
     fontSize: 14,
-    color: mukokoTheme.colors.onSurfaceVariant,
-    textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.lg,
-  },
-  browseButton: {
-    borderRadius: mukokoTheme.roundness,
-  },
-
-  // Suggestions
-  suggestionsContainer: {
-    width: '100%',
-    marginTop: mukokoTheme.spacing.md,
-  },
-  suggestionsTitle: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurface,
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  suggestionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.xs,
-  },
-  suggestionChip: {
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
-  },
-  suggestionChipText: {
-    fontSize: 12,
   },
 
   // Results
@@ -503,8 +588,7 @@ const styles = StyleSheet.create({
     marginBottom: mukokoTheme.spacing.sm,
   },
   card: {
-    borderRadius: mukokoTheme.roundness - 8,
-    backgroundColor: mukokoTheme.colors.surface,
+    borderRadius: mukokoTheme.roundness,
     overflow: 'hidden',
   },
   cardRow: {
@@ -512,11 +596,10 @@ const styles = StyleSheet.create({
     padding: mukokoTheme.spacing.sm,
   },
   cardImageContainer: {
-    width: 100,
-    height: 80,
+    width: 80,
+    height: 60,
     borderRadius: 8,
     overflow: 'hidden',
-    backgroundColor: mukokoTheme.colors.surfaceVariant,
   },
   cardImage: {
     width: '100%',
@@ -531,8 +614,7 @@ const styles = StyleSheet.create({
     marginLeft: 0,
   },
   cardSource: {
-    fontSize: 11,
-    color: mukokoTheme.colors.primary,
+    fontSize: 10,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -540,29 +622,156 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 14,
-    lineHeight: 18,
-    color: mukokoTheme.colors.onSurface,
-    marginBottom: 4,
+    fontSize: 13,
+    lineHeight: 17,
+    marginBottom: 2,
   },
   cardDate: {
-    fontSize: 11,
-    color: mukokoTheme.colors.onSurfaceVariant,
+    fontSize: 10,
   },
 
-  // Loading
-  loadingContainer: {
+  // Empty State
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: mukokoTheme.spacing.xxl,
+    paddingHorizontal: mukokoTheme.spacing.xl,
+  },
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  emptyTitle: {
+    fontSize: 18,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    marginBottom: mukokoTheme.spacing.xs,
+  },
+  emptySubtitle: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  clearButton: {
+    paddingVertical: mukokoTheme.spacing.sm,
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    borderRadius: mukokoTheme.roundness,
+    borderWidth: 1,
+  },
+
+  // Insights Content
+  insightsContent: {
+    padding: mukokoTheme.spacing.md,
+  },
+
+  // Stats Row
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    paddingVertical: mukokoTheme.spacing.md,
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  stat: {
+    alignItems: 'center',
     flex: 1,
+  },
+  statValue: {
+    fontSize: 24,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+  },
+  statLabel: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  statDivider: {
+    width: 1,
+    height: 28,
+  },
+
+  // Section Labels
+  sectionLabel: {
+    fontSize: 13,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    marginBottom: mukokoTheme.spacing.sm,
+    marginTop: mukokoTheme.spacing.sm,
+  },
+
+  // Topics Grid
+  topicsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: mukokoTheme.spacing.sm,
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  topicCard: {
+    padding: mukokoTheme.spacing.sm,
+    borderRadius: mukokoTheme.roundness,
+    borderWidth: 1,
+  },
+  topicRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  topicEmoji: {
+    fontSize: 22,
+  },
+  hotBadge: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: mukokoTheme.spacing.md,
   },
-  loadingText: {
-    fontSize: 14,
-    color: mukokoTheme.colors.onSurfaceVariant,
+  hotBadgeText: {
+    color: '#FFF',
+    fontSize: 9,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+  topicName: {
+    fontSize: 12,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    marginBottom: 2,
+  },
+  topicCount: {
+    fontSize: 10,
   },
 
-  // Bottom padding for floating tab bar
+  // Authors List
+  authorsList: {
+    marginBottom: mukokoTheme.spacing.md,
+  },
+  authorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: mukokoTheme.spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  rank: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: mukokoTheme.spacing.sm,
+  },
+  rankText: {
+    fontSize: 10,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+  authorInfo: {
+    flex: 1,
+  },
+  authorName: {
+    fontSize: 13,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+  authorMeta: {
+    fontSize: 10,
+    marginTop: 1,
+  },
+
+  // Bottom padding
   bottomPadding: {
     height: 100,
   },
