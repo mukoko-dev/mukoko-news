@@ -34,7 +34,7 @@ const prefixes = Platform.select({
  * URL Structure:
  * /                        -> Bytes (default landing - core feature)
  * /discover                -> Discover (header menu only)
- * /clips                   -> Clips (personalized feed)
+ * /pulse                   -> Pulse (personalized feed)
  * /search                  -> Search (includes insights when empty)
  * /profile                 -> Profile
  * /profile/login           -> Login
@@ -76,11 +76,11 @@ const config = {
         },
       },
     },
-    // Clips - Personalized feed
-    Clips: {
-      path: 'clips',
+    // Pulse - Personalized feed
+    Pulse: {
+      path: 'pulse',
       screens: {
-        ClipsFeed: '',
+        PulseFeed: '',
         ArticleDetail: {
           path: 'article/:source/:slug',
         },
