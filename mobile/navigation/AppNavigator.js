@@ -25,7 +25,7 @@ import UserProfileScreen from '../screens/UserProfileScreen';
 import ArticleDetailScreen from '../screens/ArticleDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
-import InsightsScreen from '../screens/InsightsScreen';
+// InsightsScreen removed - insights now integrated into SearchScreen
 
 // Admin Screens
 import {
@@ -69,16 +69,7 @@ function SearchStack() {
   );
 }
 
-// Insights Stack
-function InsightsStack() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="InsightsFeed" component={InsightsScreen} />
-      <Stack.Screen name="DiscoverFeed" component={DiscoverScreen} />
-      <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
-    </Stack.Navigator>
-  );
-}
+// Insights Stack removed - insights now integrated into SearchScreen
 
 // Profile/Auth Stack
 function ProfileStack() {
@@ -108,8 +99,9 @@ function AdminStack() {
 }
 
 // Main Tab Navigator
-// Pattern: Bytes (default) → Search → Insights → Profile [+ Admin]
+// Pattern: Bytes (default) → Search → Profile [+ Admin]
 // Discover is header-only (hamburger menu)
+// Insights is integrated into Search (shows when search is empty)
 function MainTabs() {
   const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
   const { isDark } = useTheme();
@@ -183,7 +175,7 @@ function MainTabs() {
         }}
       />
 
-      {/* 2. Search */}
+      {/* 2. Search (includes Insights when empty) */}
       <Tab.Screen
         name="Search"
         component={SearchStack}
@@ -199,23 +191,7 @@ function MainTabs() {
         }}
       />
 
-      {/* 3. Insights */}
-      <Tab.Screen
-        name="Insights"
-        component={InsightsStack}
-        options={{
-          tabBarLabel: 'Insights',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'chart-line' : 'chart-line-variant'}
-              size={24}
-              color={color}
-            />
-          ),
-        }}
-      />
-
-      {/* 4. Profile */}
+      {/* 3. Profile */}
       <Tab.Screen
         name="Profile"
         component={ProfileStack}
@@ -231,7 +207,7 @@ function MainTabs() {
         }}
       />
 
-      {/* 5. Discover - Hidden tab for navigation purposes */}
+      {/* 4. Discover - Hidden tab for navigation purposes */}
       <Tab.Screen
         name="Discover"
         component={DiscoverStack}
@@ -240,7 +216,7 @@ function MainTabs() {
         }}
       />
 
-      {/* 6. Admin (admins only) */}
+      {/* 5. Admin (admins only) */}
       {isAdmin && (
         <Tab.Screen
           name="Admin"
@@ -281,8 +257,7 @@ export default function AppNavigator() {
               return options?.title ? `${options.title} | ${baseTitle}` : baseTitle;
             case 'DiscoverFeed':
               return `Discover | ${baseTitle}`;
-            case 'InsightsFeed':
-              return `Insights | ${baseTitle}`;
+            // InsightsFeed removed - insights now in SearchFeed
             case 'SearchFeed':
               return `Search | ${baseTitle}`;
             case 'Login':

@@ -34,8 +34,7 @@ const prefixes = Platform.select({
  * URL Structure:
  * /                        -> Bytes (default landing - core feature)
  * /discover                -> Discover (header menu only)
- * /search                  -> Search
- * /insights                -> Insights
+ * /search                  -> Search (includes insights when empty)
  * /profile                 -> Profile
  * /profile/login           -> Login
  * /profile/register        -> Register
@@ -87,17 +86,6 @@ const config = {
             category: (category) => decodeURIComponent(category || ''),
           },
         },
-        ArticleDetail: {
-          path: 'article/:source/:slug',
-        },
-      },
-    },
-    // Insights
-    Insights: {
-      path: 'insights',
-      screens: {
-        InsightsFeed: '',
-        DiscoverFeed: 'discover',
         ArticleDetail: {
           path: 'article/:source/:slug',
         },
