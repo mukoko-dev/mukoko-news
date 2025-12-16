@@ -3,7 +3,7 @@
  * Clean, grouped settings with profile card header
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   StyleSheet,
@@ -52,8 +52,17 @@ export default function ProfileSettingsScreen({ navigation }) {
   const [editingProfile, setEditingProfile] = useState(false);
   const [editingUsername, setEditingUsername] = useState(false);
 
+  // Ref to track message timeout for cleanup
+  const messageTimeoutRef = useRef(null);
+
   useEffect(() => {
     loadProfile();
+    // Cleanup message timeout on unmount
+    return () => {
+      if (messageTimeoutRef.current) {
+        clearTimeout(messageTimeoutRef.current);
+      }
+    };
   }, []);
 
   const loadProfile = async () => {
@@ -77,8 +86,12 @@ export default function ProfileSettingsScreen({ navigation }) {
   };
 
   const showMessage = (type, text) => {
+    // Clear any existing timeout
+    if (messageTimeoutRef.current) {
+      clearTimeout(messageTimeoutRef.current);
+    }
     setMessage({ type, text });
-    setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+    messageTimeoutRef.current = setTimeout(() => setMessage({ type: '', text: '' }), 3000);
   };
 
   const handleUpdateProfile = async () => {

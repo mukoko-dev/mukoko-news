@@ -139,31 +139,45 @@ export default function NewsBytesScreen({ navigation }) {
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
+    // Capture original values for rollback
+    const originalState = bytesState[byte.id] || {};
+    const wasLiked = originalState.isLiked || false;
+    const originalCount = originalState.likesCount || 0;
+
+    // Optimistic update
     setBytesState(prev => ({
       ...prev,
       [byte.id]: {
         ...prev[byte.id],
-        isLiked: !prev[byte.id]?.isLiked,
-        likesCount: prev[byte.id]?.isLiked
-          ? (prev[byte.id]?.likesCount || 0) - 1
-          : (prev[byte.id]?.likesCount || 0) + 1,
+        isLiked: !wasLiked,
+        likesCount: wasLiked ? originalCount - 1 : originalCount + 1,
       },
     }));
 
     try {
       const result = await articlesAPI.toggleLike(byte.id);
       if (result.error) {
+        // Revert to original values
         setBytesState(prev => ({
           ...prev,
           [byte.id]: {
             ...prev[byte.id],
-            isLiked: prev[byte.id]?.isLiked,
-            likesCount: prev[byte.id]?.likesCount,
+            isLiked: wasLiked,
+            likesCount: originalCount,
           },
         }));
       }
     } catch (error) {
       console.error('[NewsBytes] Like error:', error);
+      // Revert to original values on error
+      setBytesState(prev => ({
+        ...prev,
+        [byte.id]: {
+          ...prev[byte.id],
+          isLiked: wasLiked,
+          likesCount: originalCount,
+        },
+      }));
     }
   };
 
@@ -175,27 +189,41 @@ export default function NewsBytesScreen({ navigation }) {
 
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
+    // Capture original value for rollback
+    const originalState = bytesState[byte.id] || {};
+    const wasSaved = originalState.isSaved || false;
+
+    // Optimistic update
     setBytesState(prev => ({
       ...prev,
       [byte.id]: {
         ...prev[byte.id],
-        isSaved: !prev[byte.id]?.isSaved,
+        isSaved: !wasSaved,
       },
     }));
 
     try {
       const result = await articlesAPI.toggleBookmark(byte.id);
       if (result.error) {
+        // Revert to original value
         setBytesState(prev => ({
           ...prev,
           [byte.id]: {
             ...prev[byte.id],
-            isSaved: !prev[byte.id]?.isSaved,
+            isSaved: wasSaved,
           },
         }));
       }
     } catch (error) {
       console.error('[NewsBytes] Save error:', error);
+      // Revert to original value on error
+      setBytesState(prev => ({
+        ...prev,
+        [byte.id]: {
+          ...prev[byte.id],
+          isSaved: wasSaved,
+        },
+      }));
     }
   };
 

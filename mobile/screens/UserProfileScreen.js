@@ -33,7 +33,7 @@ const GRID_COLUMNS = 3;
 const GRID_ITEM_SIZE = (SCREEN_WIDTH - GRID_GAP * (GRID_COLUMNS + 1)) / GRID_COLUMNS;
 
 export default function UserProfileScreen({ navigation, route }) {
-  const { username } = route.params;
+  const { username } = route.params || {};
   const insets = useSafeAreaInsets();
   const paperTheme = usePaperTheme();
 
@@ -57,6 +57,11 @@ export default function UserProfileScreen({ navigation, route }) {
   }, [activeTab, isOwnProfile]);
 
   const loadProfile = async () => {
+    if (!username) {
+      setError('No username provided');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {

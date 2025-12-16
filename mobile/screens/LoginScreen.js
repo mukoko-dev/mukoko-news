@@ -16,11 +16,15 @@ export default function LoginScreen({ navigation, route }) {
 
   // Check for reset success message
   useEffect(() => {
+    let timeoutId;
     if (route.params?.resetSuccess) {
       setResetSuccess(true);
       // Clear the param after showing the message
-      setTimeout(() => setResetSuccess(false), 5000);
+      timeoutId = setTimeout(() => setResetSuccess(false), 5000);
     }
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [route.params?.resetSuccess]);
 
   const handleLogin = async () => {
