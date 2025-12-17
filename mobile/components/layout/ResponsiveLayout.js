@@ -5,20 +5,21 @@ import { useTheme as usePaperTheme } from 'react-native-paper';
 /**
  * Responsive breakpoints matching Instagram-style layout
  * - Mobile: < 768px - Full width, bottom tab navigation
- * - Tablet: 768px - 1200px - Left sidebar + content (no right sidebar)
- * - Desktop: >= 1200px - Left sidebar + content + right sidebar
+ * - Tablet: 768px - 1024px - Left sidebar + content + right sidebar
+ * - Desktop: >= 1024px - Left sidebar + content + right sidebar
  */
 export const BREAKPOINTS = {
   mobile: 768,    // Below this: mobile layout with bottom tabs
-  tablet: 1200,   // 768-1200: tablet layout with left sidebar only
-  desktop: 1200,  // Above this: full desktop with both sidebars
+  tablet: 1024,   // 768-1024: tablet layout with both sidebars
+  desktop: 1024,  // Above this: full desktop with both sidebars
 };
 
 // Sidebar widths matching Instagram proportions
 export const SIDEBAR_WIDTHS = {
   left: 220,           // Left navigation sidebar
   leftCollapsed: 72,   // Collapsed icon-only sidebar (tablet portrait)
-  right: 320,          // Right suggestions sidebar (desktop only)
+  right: 320,          // Right suggestions sidebar
+  rightTablet: 280,    // Narrower right sidebar for tablet
 };
 
 // Content constraints for readability
@@ -45,12 +46,12 @@ export const useLayout = () => useContext(LayoutContext);
  * - Full-width content
  * - Bottom tab navigation (handled by AppNavigator)
  *
- * On Tablet (768px - 1200px):
+ * On Tablet (768px - 1024px):
  * - Left sidebar navigation (icons + labels)
  * - Centered content area
- * - No right sidebar
+ * - Right sidebar with suggestions/trending (narrower)
  *
- * On Desktop (>= 1200px):
+ * On Desktop (>= 1024px):
  * - Left sidebar navigation
  * - Centered content area with max-width
  * - Right sidebar with suggestions/trending
@@ -85,9 +86,12 @@ export default function ResponsiveLayout({
   const isTablet = layout === 'tablet';
   const isDesktop = layout === 'desktop';
 
-  // Sidebar visibility
+  // Sidebar visibility - both sidebars show on tablet and desktop
   const isLeftSidebarVisible = !isMobile && showLeftSidebar && leftSidebar;
-  const isRightSidebarVisible = isDesktop && showRightSidebar && rightSidebar;
+  const isRightSidebarVisible = !isMobile && showRightSidebar && rightSidebar;
+
+  // Right sidebar width - narrower on tablet
+  const rightSidebarWidth = isTablet ? SIDEBAR_WIDTHS.rightTablet : SIDEBAR_WIDTHS.right;
 
   // Calculate content width
   const getContentWidth = () => {
@@ -95,7 +99,7 @@ export default function ResponsiveLayout({
 
     let availableWidth = screenWidth;
     if (isLeftSidebarVisible) availableWidth -= SIDEBAR_WIDTHS.left;
-    if (isRightSidebarVisible) availableWidth -= SIDEBAR_WIDTHS.right;
+    if (isRightSidebarVisible) availableWidth -= rightSidebarWidth;
 
     // Limit content width for readability on very wide screens
     return Math.min(availableWidth, CONTENT_WIDTHS.maxWidth);
@@ -110,6 +114,7 @@ export default function ResponsiveLayout({
     isLeftSidebarVisible,
     isRightSidebarVisible,
     contentWidth,
+    rightSidebarWidth,
     isMobile,
     isTablet,
     isDesktop,
@@ -165,12 +170,12 @@ export default function ResponsiveLayout({
           </View>
         </View>
 
-        {/* Right Sidebar - Suggestions (Desktop only) */}
+        {/* Right Sidebar - Suggestions (Tablet and Desktop) */}
         {isRightSidebarVisible && (
           <View style={[
             styles.rightSidebar,
             dynamicStyles.sidebar,
-            { width: SIDEBAR_WIDTHS.right }
+            { width: rightSidebarWidth }
           ]}>
             {rightSidebar}
           </View>
