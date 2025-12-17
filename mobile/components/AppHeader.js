@@ -1,13 +1,33 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useTheme as usePaperTheme } from 'react-native-paper';
 import { Compass, Newspaper, Sun, Moon } from 'lucide-react-native';
-import { useNavigationState } from '@react-navigation/native';
-import { navigate } from '../navigation/navigationRef';
+import { navigate, navigationRef } from '../navigation/navigationRef';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
 import Logo from './Logo';
+
+/**
+ * Helper to safely get the current route name from navigation state
+ * Uses navigationRef directly to avoid useNavigationState hook issues
+ */
+function getRouteNameFromState(state) {
+  if (!state) return 'Bytes';
+
+  // Get the current tab
+  const currentRoute = state.routes?.[state.index];
+  if (!currentRoute) return 'Bytes';
+
+  // If tab has nested stack, get the nested route name
+  const nestedState = currentRoute.state;
+  if (nestedState && nestedState.routes) {
+    const nestedRoute = nestedState.routes[nestedState.index];
+    return nestedRoute?.name || currentRoute.name;
+  }
+
+  return currentRoute.name;
+}
 
 /**
  * AppHeader - Netflix-style minimal header
@@ -21,24 +41,24 @@ export default function AppHeader() {
   const { isDark, toggleTheme } = useTheme();
   const paperTheme = usePaperTheme();
   const { user } = useAuth();
+  const [routeName, setRouteName] = useState('Bytes');
 
-  // Get current route name from navigation state
-  const routeName = useNavigationState((state) => {
-    if (!state) return 'Bytes';
-
-    // Get the current tab
-    const currentRoute = state.routes[state.index];
-    if (!currentRoute) return 'Bytes';
-
-    // If tab has nested stack, get the nested route name
-    const nestedState = currentRoute.state;
-    if (nestedState && nestedState.routes) {
-      const nestedRoute = nestedState.routes[nestedState.index];
-      return nestedRoute?.name || currentRoute.name;
+  // Subscribe to navigation state changes using navigationRef
+  useEffect(() => {
+    // Get initial route name if available
+    if (navigationRef.isReady()) {
+      const state = navigationRef.getRootState();
+      setRouteName(getRouteNameFromState(state));
     }
 
-    return currentRoute.name;
-  });
+    // Subscribe to state changes
+    const unsubscribe = navigationRef.addListener('state', (event) => {
+      const state = event.data?.state;
+      setRouteName(getRouteNameFromState(state));
+    });
+
+    return unsubscribe;
+  }, []);
 
   // Screen titles mapping
   const getScreenTitle = () => {
