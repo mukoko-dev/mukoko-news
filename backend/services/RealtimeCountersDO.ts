@@ -228,11 +228,16 @@ export class RealtimeCountersDO {
    * Update counter values
    */
   private async updateCounter(request: Request): Promise<Response> {
-    const body = await request.json()
+    const body = await request.json() as {
+      type?: 'increment' | 'decrement' | 'set';
+      metric?: string;
+      value?: number;
+      metadata?: Record<string, unknown>;
+    }
     const update: CounterUpdate = {
-      type: body.type,
-      metric: body.metric,
-      value: body.value,
+      type: body.type || 'increment',
+      metric: body.metric || 'unknown',
+      value: body.value || 0,
       metadata: body.metadata
     }
 

@@ -97,6 +97,87 @@ export interface FollowResult {
   message: string;
 }
 
+// Database row types for D1 queries
+interface AuthorRow {
+  id: number;
+  name: string;
+  slug: string;
+  normalized_name: string;
+  title?: string;
+  profile_description?: string;
+  specialization?: string;
+  years_experience?: number;
+  education?: string;
+  awards?: string;
+  contact_email?: string;
+  website_url?: string;
+  twitter_handle?: string;
+  linkedin_url?: string;
+  instagram_handle?: string;
+  facebook_url?: string;
+  youtube_url?: string;
+  is_verified?: number;
+  follower_count?: number;
+  following_count?: number;
+  total_engagement?: number;
+  profile_views?: number;
+  is_featured?: number;
+  featured_until?: string;
+  last_active?: string;
+  status?: string;
+  articles_count?: number;
+}
+
+interface OutletRow {
+  id: string;
+  name: string;
+  role: string;
+  is_primary: number;
+  articles_count: number;
+  start_date?: string;
+  end_date?: string;
+}
+
+interface ExpertiseRow {
+  category_id: string;
+  category_name: string;
+  expertise_level: string;
+  articles_written: number;
+  avg_quality_score: number;
+  reader_rating: number;
+  last_article_date?: string;
+}
+
+interface CredibilityRow {
+  fact_check_score: number;
+  source_reliability: number;
+  peer_recognition: number;
+  reader_trust: number;
+  correction_rate: number;
+  overall_credibility: number;
+  last_calculated: string;
+}
+
+interface ArticleRow {
+  id: number;
+  title: string;
+  published_at: string;
+  category: string;
+  outlet: string;
+  quality_score: number;
+  engagement_count: number;
+}
+
+interface StatsRow {
+  total_articles: number;
+  articles_this_month: number;
+  avg_quality_score: number;
+  total_views: number;
+  total_likes: number;
+  total_shares: number;
+  top_categories?: string;
+}
+
 export class AuthorProfileService {
   private d1Service: D1Service;
 
@@ -112,7 +193,7 @@ export class AuthorProfileService {
       // Get basic author information
       const author = await this.d1Service.db.prepare(`
         SELECT * FROM authors WHERE slug = ?
-      `).bind(slug).first();
+      `).bind(slug).first<AuthorRow>();
 
       if (!author) {
         return null;
@@ -159,7 +240,7 @@ export class AuthorProfileService {
         isFeatured: Boolean(author.is_featured),
         featuredUntil: author.featured_until,
         lastActive: author.last_active,
-        status: author.status || 'active',
+        status: (author.status as 'active' | 'inactive' | 'retired') || 'active',
         outlets,
         expertise,
         credibility,
@@ -186,12 +267,12 @@ export class AuthorProfileService {
     // First, try exact name match across all outlets
     let author = await this.d1Service.db.prepare(`
       SELECT * FROM authors WHERE normalized_name = ?
-    `).bind(normalizedName).first();
+    `).bind(normalizedName).first<AuthorRow>();
 
     if (author) {
       // Author exists, ensure outlet relationship
       await this.ensureAuthorOutletRelationship(author.id, authorData.outlet, authorData.title);
-      return this.getAuthorProfile(author.slug);
+      return this.getAuthorProfile(author.slug) as Promise<AuthorProfile>;
     }
 
     // Try fuzzy matching for similar names (handle typos, variations)
@@ -226,15 +307,15 @@ export class AuthorProfileService {
       'unverified',
       this.estimateExperience(authorData.title),
       'active'
-    ).first();
+    ).first<AuthorRow>();
 
     // Create outlet relationship
-    await this.ensureAuthorOutletRelationship(result.id, authorData.outlet, authorData.title, true);
+    await this.ensureAuthorOutletRelationship(result!.id, authorData.outlet, authorData.title, true);
 
     // Initialize credibility scores
-    await this.initializeAuthorCredibility(result.id);
+    await this.initializeAuthorCredibility(result!.id);
 
-    return this.getAuthorProfile(slug);
+    return this.getAuthorProfile(slug) as Promise<AuthorProfile>;
   }
 
   /**
@@ -383,8 +464,8 @@ export class AuthorProfileService {
       LIMIT ?
     `).bind(limit).all();
 
-    const profiles = [];
-    for (const author of authors.results) {
+    const profiles: AuthorProfile[] = [];
+    for (const author of authors.results as Array<{ slug: string }>) {
       const profile = await this.getAuthorProfile(author.slug);
       if (profile) {
         profiles.push(profile);
@@ -417,8 +498,8 @@ export class AuthorProfileService {
       LIMIT ?
     `).bind(limit).all();
 
-    const profiles = [];
-    for (const author of authors.results) {
+    const profiles: AuthorProfile[] = [];
+    for (const author of authors.results as Array<{ slug: string }>) {
       const profile = await this.getAuthorProfile(author.slug);
       if (profile) {
         profiles.push(profile);
@@ -459,8 +540,45 @@ export class AuthorProfileService {
       limit
     ).all();
 
-    const profiles = [];
-    for (const author of authors.results) {
+    const profiles: AuthorProfile[] = [];
+    for (const author of authors.results as Array<{ slug: string }>) {
+      const profile = await this.getAuthorProfile(author.slug);
+      if (profile) {
+        profiles.push(profile);
+      }
+    }
+
+    return profiles;
+  }
+
+  /**
+   * Get all authors with optional filtering
+   */
+  async getAuthors(options: { limit?: number; outlet?: string } = {}): Promise<AuthorProfile[]> {
+    const { limit = 20, outlet } = options;
+
+    let query = `
+      SELECT DISTINCT a.slug
+      FROM authors a
+      LEFT JOIN author_outlets ao ON a.id = ao.author_id
+      LEFT JOIN news_sources ns ON ao.outlet_id = ns.id
+      WHERE a.status = 'active'
+    `;
+
+    const params: (string | number)[] = [];
+
+    if (outlet) {
+      query += ` AND LOWER(ns.name) LIKE ?`;
+      params.push(`%${outlet.toLowerCase()}%`);
+    }
+
+    query += ` ORDER BY a.articles_count DESC LIMIT ?`;
+    params.push(limit);
+
+    const authors = await this.d1Service.db.prepare(query).bind(...params).all();
+
+    const profiles: AuthorProfile[] = [];
+    for (const author of authors.results as Array<{ slug: string }>) {
       const profile = await this.getAuthorProfile(author.slug);
       if (profile) {
         profiles.push(profile);
@@ -529,7 +647,7 @@ export class AuthorProfileService {
   private async getAuthorCredibility(authorId: number): Promise<AuthorCredibility> {
     const credibility = await this.d1Service.db.prepare(`
       SELECT * FROM author_credibility WHERE author_id = ?
-    `).bind(authorId).first();
+    `).bind(authorId).first<CredibilityRow>();
 
     if (!credibility) {
       // Initialize default credibility scores
@@ -590,16 +708,16 @@ export class AuthorProfileService {
     // Get total articles
     const totalArticlesResult = await this.d1Service.db.prepare(`
       SELECT COUNT(*) as count FROM article_authors WHERE author_id = ?
-    `).bind(authorId).first();
+    `).bind(authorId).first<{ count: number }>();
 
     // Get articles this month
     const thisMonthResult = await this.d1Service.db.prepare(`
-      SELECT COUNT(*) as count 
+      SELECT COUNT(*) as count
       FROM article_authors aa
       JOIN articles a ON aa.article_id = a.id
-      WHERE aa.author_id = ? 
+      WHERE aa.author_id = ?
       AND datetime(a.published_at) > datetime('now', 'start of month')
-    `).bind(authorId).first();
+    `).bind(authorId).first<{ count: number }>();
 
     // Get average quality score
     const qualityResult = await this.d1Service.db.prepare(`
@@ -607,11 +725,11 @@ export class AuthorProfileService {
       FROM article_authors aa
       JOIN articles a ON aa.article_id = a.id
       WHERE aa.author_id = ? AND a.quality_score IS NOT NULL
-    `).bind(authorId).first();
+    `).bind(authorId).first<{ avg_score: number }>();
 
     // Get engagement totals
     const engagementResult = await this.d1Service.db.prepare(`
-      SELECT 
+      SELECT
         SUM(COALESCE(a.view_count, 0)) as total_views,
         COUNT(DISTINCT l.id) as total_likes,
         SUM(COALESCE(a.social_shares, 0)) as total_shares
@@ -619,7 +737,7 @@ export class AuthorProfileService {
       JOIN articles a ON aa.article_id = a.id
       LEFT JOIN user_likes l ON a.id = l.article_id
       WHERE aa.author_id = ?
-    `).bind(authorId).first();
+    `).bind(authorId).first<{ total_views: number; total_likes: number; total_shares: number }>();
 
     // Get top categories
     const categoriesResult = await this.d1Service.db.prepare(`
@@ -769,16 +887,16 @@ export class AuthorProfileService {
   private async getAuthorFollowerCount(authorId: number): Promise<number> {
     const result = await this.d1Service.db.prepare(`
       SELECT follower_count FROM authors WHERE id = ?
-    `).bind(authorId).first();
-    
+    `).bind(authorId).first<{ follower_count: number }>();
+
     return result?.follower_count || 0;
   }
 
   private async getSourceFollowerCount(sourceId: string): Promise<number> {
     const result = await this.d1Service.db.prepare(`
       SELECT follower_count FROM news_sources WHERE id = ?
-    `).bind(sourceId).first();
-    
+    `).bind(sourceId).first<{ follower_count: number }>();
+
     return result?.follower_count || 0;
   }
 }

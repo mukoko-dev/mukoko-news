@@ -227,7 +227,7 @@ export class OpenAuthService {
       // Validate password strength
       const passwordValidation = PasswordHashService.validatePasswordStrength(password);
       if (!passwordValidation.valid) {
-        return { success: false, error: passwordValidation.error };
+        return { success: false, error: passwordValidation.issues.join(', ') };
       }
 
       // Hash password with salt
@@ -304,7 +304,7 @@ export class OpenAuthService {
       const user = await this.db
         .prepare('SELECT * FROM users WHERE email = ? AND status = "active"')
         .bind(email)
-        .first();
+        .first<{ id: string; email: string; password_hash: string; username: string; role: string; status: string }>();
 
       if (!user) {
         // Use constant-time delay to prevent user enumeration

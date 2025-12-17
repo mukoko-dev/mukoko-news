@@ -93,7 +93,6 @@ export class NewsSourceManager {
         try {
           const response = await fetch(feedUrl, {
             method: 'HEAD',
-            timeout: 10000,
             headers: {
               'User-Agent': 'Harare Metro News Aggregator 2.0 (Feed Discovery)'
             }
@@ -114,7 +113,6 @@ export class NewsSourceManager {
       // Try to fetch main page and look for RSS links
       try {
         const mainPageResponse = await fetch(websiteUrl, {
-          timeout: 10000,
           headers: {
             'User-Agent': 'Harare Metro News Aggregator 2.0 (Feed Discovery)'
           }
@@ -178,7 +176,6 @@ export class NewsSourceManager {
 
       // Try to fetch the RSS feed
       const response = await fetch(feedUrl, {
-        timeout: 15000,
         headers: {
           'User-Agent': 'Harare Metro News Aggregator 2.0 (Validation)',
           'Accept': 'application/rss+xml, application/xml, text/xml'
@@ -682,9 +679,9 @@ export class NewsSourceManager {
         total_sources: totalSources?.count || 0,
         active_sources: activeSources?.count || 0,
         high_quality_sources: highQualitySources?.count || 0,
-        sources_needing_attention: sourcesNeedingAttention.results as NewsSource[],
-        top_performers: topPerformers.results as NewsSource[],
-        recent_additions: recentAdditions.results as NewsSource[]
+        sources_needing_attention: sourcesNeedingAttention.results as unknown as NewsSource[],
+        top_performers: topPerformers.results as unknown as NewsSource[],
+        recent_additions: recentAdditions.results as unknown as NewsSource[]
       };
     } catch (error) {
       console.error('[NewsSourceManager] Error generating performance report:', error);

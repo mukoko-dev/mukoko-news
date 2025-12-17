@@ -41,6 +41,7 @@ type Bindings = {
   USER_BEHAVIOR: DurableObjectNamespace;
   REALTIME_COUNTERS: DurableObjectNamespace;
   REALTIME_ANALYTICS: DurableObjectNamespace;
+  NEWS_INTERACTIONS: AnalyticsEngineDataset;
   NEWS_ANALYTICS: AnalyticsEngineDataset;
   SEARCH_ANALYTICS: AnalyticsEngineDataset;
   CATEGORY_ANALYTICS: AnalyticsEngineDataset;
@@ -130,6 +131,9 @@ function initializeServices(env: Bindings) {
   const observabilityService = new ObservabilityService(env.DB, env.LOG_LEVEL || 'info');
   const userService = new D1UserService(env.DB);
 
+  // Initialize SimpleRSSService for RSS feed processing
+  const rssService = new SimpleRSSService(env.DB);
+
   console.log('[INIT] All services initialized - using SimpleRSSService for RSS processing');
 
   return {
@@ -145,7 +149,8 @@ function initializeServices(env: Bindings) {
     newsSourceManager,
     categoryManager,
     observabilityService,
-    userService
+    userService,
+    rssService
   };
 }
 
@@ -498,10 +503,10 @@ app.get("/api/feeds", async (c) => {
       await c.env.DB.prepare(articlesQuery).bind(limit, offset).all();
 
     const totalResult = category && category !== 'all' ?
-      await c.env.DB.prepare(countQuery).bind(category).first() :
-      await c.env.DB.prepare(countQuery).first();
+      await c.env.DB.prepare(countQuery).bind(category).first<{ total: number }>() :
+      await c.env.DB.prepare(countQuery).first<{ total: number }>();
 
-    const totalCount = totalResult.total || 0;
+    const totalCount = totalResult?.total || 0;
 
     // Fetch keywords for each article
     const articles = articlesResult.results || [];
@@ -865,13 +870,14 @@ app.get("/api/admin/rss-config", async (c) => {
     `).all();
     
     // Get today's stats
+    interface DailyStats { source_id: string; articles_fetched: number; articles_stored: number; successful_fetches: number; }
     const todayStats = await services.d1Service.db.prepare(`
       SELECT source_id, articles_fetched, articles_stored, successful_fetches
-      FROM daily_source_stats 
+      FROM daily_source_stats
       WHERE date_tracked = DATE('now')
-    `).all();
-    
-    const statsMap = {};
+    `).all<DailyStats>();
+
+    const statsMap: Record<string, DailyStats> = {};
     for (const stat of todayStats.results) {
       statsMap[stat.source_id] = stat;
     }
@@ -961,10 +967,10 @@ app.get("/api/admin/sources", async (c) => {
     
     // Enhance with statistics and status
     const sourcesWithStats = await Promise.all(
-      sources.map(async (source) => {
+      sources.map(async (source: any) => {
         const articleCount = await services.d1Service.getArticleCount({ source_id: source.id });
         const lastFetch = await services.cacheService.getLastFetch(source.id);
-        
+
         return {
           ...source,
           articles: articleCount,
@@ -1184,10 +1190,10 @@ app.get("/api/news-bytes", async (c) => {
       await c.env.DB.prepare(query).bind(limit, offset).all();
 
     const totalResult = category && category !== 'all' ?
-      await c.env.DB.prepare(countQuery).bind(category).first() :
-      await c.env.DB.prepare(countQuery).first();
+      await c.env.DB.prepare(countQuery).bind(category).first<{ total: number }>() :
+      await c.env.DB.prepare(countQuery).first<{ total: number }>();
 
-    const totalCount = totalResult.total || 0;
+    const totalCount = totalResult?.total || 0;
 
     return c.json({
       articles: articlesResult.results,
@@ -1232,7 +1238,7 @@ app.get("/api/search", async (c) => {
       )
     `;
 
-    const params = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
+    const params: (string | number)[] = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
 
     if (category && category !== 'all') {
       searchQuery += ` AND a.category_id = ?`;
@@ -1374,9 +1380,7 @@ app.post("/api/refresh", async (c) => {
     console.log('[USER_REFRESH] User-triggered refresh initiated by:', userId);
 
     // Call RSS service directly instead of HTTP request
-    const result = await services.rssService.refreshAllSources({
-      limit: 5 // Limit to 5 articles per source for user refresh
-    });
+    const result = await services.rssService.refreshAllFeeds();
 
     // Track refresh in analytics
     if (c.env.NEWS_INTERACTIONS) {
@@ -1683,8 +1687,8 @@ app.get("/api/user/me/preferences", async (c) => {
       WHERE user_id = ?
     `).bind(userId).all();
 
-    const preferences = {};
-    for (const pref of prefs.results) {
+    const preferences: Record<string, unknown> = {};
+    for (const pref of prefs.results as Array<{ preference_key: string; preference_value: unknown }>) {
       preferences[pref.preference_key] = pref.preference_value;
     }
 
@@ -2495,8 +2499,8 @@ app.get("/api/admin/categories/with-authors", async (c) => {
       ORDER BY cm.category_id, cm.manager_type
     `).all();
     
-    const managersByCategory = {};
-    for (const manager of managers.results) {
+    const managersByCategory: Record<string, Array<unknown>> = {};
+    for (const manager of managers.results as Array<{ category_id: string; manager_name: string; manager_type: string; permissions: string }>) {
       if (!managersByCategory[manager.category_id]) {
         managersByCategory[manager.category_id] = [];
       }

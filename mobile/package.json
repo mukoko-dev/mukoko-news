@@ -7,7 +7,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build": "expo export --platform web && node scripts/inject-sw-cleanup.js"
+    "build": "expo export --platform web && node scripts/inject-sw-cleanup.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "dependencies": {
     "@expo/metro-runtime": "^6.1.2",
@@ -32,5 +35,12 @@
     "react-native-vector-icons": "^10.3.0",
     "react-native-web": "^0.21.2"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@testing-library/react-native": "^12.4.0",
+    "@testing-library/jest-native": "^5.4.3",
+    "react-test-renderer": "19.1.0",
+    "@react-native-async-storage/async-storage": "^2.2.0"
+  }
 }

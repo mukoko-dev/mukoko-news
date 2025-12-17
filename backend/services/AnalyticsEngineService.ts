@@ -467,17 +467,17 @@ export class AnalyticsEngineService {
   /**
    * Generic event tracking method for admin operations
    */
-  async trackEvent(eventType, data = {}) {
+  async trackEvent(eventType: string, data: Record<string, unknown> = {}) {
     try {
       const timestamp = Date.now();
-      
+
       // Use NEWS_ANALYTICS as the default dataset for admin events
       if (this.datasets.NEWS_ANALYTICS) {
         this.datasets.NEWS_ANALYTICS.writeDataPoint({
           blobs: [
             eventType,                    // Event type
             'admin_operation',            // Category
-            data.source || 'system',     // Source
+            (data.source as string) || 'system',     // Source
             'unknown',                    // Country
             'web',                        // Device type
             'system',                     // Browser

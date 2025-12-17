@@ -163,7 +163,7 @@ export class ArticleInteractionsDO {
    * Handle like/unlike actions
    */
   private async handleLike(request: Request): Promise<Response> {
-    const body = await request.json()
+    const body = await request.json() as { userId?: string; action?: string }
     const { userId, action } = body // action: 'like' or 'unlike'
 
     if (!userId) {
@@ -203,7 +203,7 @@ export class ArticleInteractionsDO {
    * Handle save/unsave actions
    */
   private async handleSave(request: Request): Promise<Response> {
-    const body = await request.json()
+    const body = await request.json() as { userId?: string; action?: string }
     const { userId, action } = body // action: 'save' or 'unsave'
 
     if (!userId) {
@@ -243,7 +243,7 @@ export class ArticleInteractionsDO {
    * Handle share actions
    */
   private async handleShare(request: Request): Promise<Response> {
-    const body = await request.json()
+    const body = await request.json() as { userId?: string; shareType?: string }
     const { userId, shareType } = body // shareType: 'twitter', 'facebook', 'whatsapp', 'copy'
 
     const interaction: ArticleInteraction = {
@@ -472,7 +472,7 @@ export class ArticleInteractionsDO {
    * Handle interaction via POST
    */
   private async handleInteraction(request: Request): Promise<Response> {
-    const body = await request.json()
+    const body = await request.json() as { userId?: string; type?: string; articleId?: number; metadata?: Record<string, unknown> }
     const { userId, type, articleId } = body
 
     if (!userId || !type) {
@@ -486,7 +486,7 @@ export class ArticleInteractionsDO {
 
     const interaction: ArticleInteraction = {
       userId,
-      type,
+      type: type as 'like' | 'share' | 'save' | 'unsave' | 'unlike',
       timestamp: Date.now(),
       metadata: body.metadata
     }

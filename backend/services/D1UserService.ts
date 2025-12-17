@@ -1,6 +1,9 @@
 // worker/services/D1UserService.js
 export class D1UserService {
-  constructor(d1Database) {
+  private db: D1Database;
+  private initialized: boolean;
+
+  constructor(d1Database: D1Database) {
     this.db = d1Database
     this.initialized = false
   }
@@ -94,7 +97,7 @@ export class D1UserService {
   }
 
   // User Management
-  async createUser(userId, userData = {}) {
+  async createUser(userId: string, userData: { email?: string; preferences?: Record<string, unknown>; stats?: Record<string, unknown> } = {}) {
     try {
       await this.initialize()
 
@@ -127,7 +130,7 @@ export class D1UserService {
 
       const result = await this.db.prepare(`
         SELECT * FROM users WHERE id = ?
-      `).bind(userId).first()
+      `).bind(userId).first<{ id: string; email: string; preferences: string; stats: string; created_at: string; updated_at: string }>()
 
       if (result) {
         return {
@@ -467,8 +470,8 @@ export class D1UserService {
         DELETE FROM user_reading_history WHERE read_at < ?
       `).bind(cutoffDateString).run()
 
-      console.log(`Cleaned up ${result.changes} old reading history entries`)
-      return { success: true, cleanedEntries: result.changes }
+      console.log(`Cleaned up ${result.meta?.changes || 0} old reading history entries`)
+      return { success: true, cleanedEntries: result.meta?.changes || 0 }
     } catch (error) {
       console.log('Error cleaning up old data:', error)
       return { success: false, error: error.message }

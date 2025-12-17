@@ -5,8 +5,8 @@
  */
 
 import { D1Service } from "../../database/D1Service.js";
-import { ArticleAIService } from "./ArticleAIService.ts";
-import { AuthorProfileService } from "./AuthorProfileService.ts";
+import { ArticleAIService } from "./ArticleAIService.js";
+import { AuthorProfileService } from "./AuthorProfileService.js";
 
 export interface PipelineStage {
   name: string;
@@ -159,7 +159,13 @@ export class ContentProcessingPipeline {
 
       // Stage 2: Content Cleaning
       await this.executeStage(stages[1], async () => {
-        const cleaningResult = await this.aiService.cleanContent(content.content || content.description);
+        const cleaningResult = await this.aiService.cleanContent(content.content || content.description || '', {
+          removeImages: true,
+          removeRandomChars: true,
+          normalizeWhitespace: true,
+          extractImageUrls: true,
+          minContentLength: 100
+        });
         await this.updateArticle(articleId!, {
           processed_content: cleaningResult.cleanedContent,
           extracted_images: JSON.stringify(cleaningResult.extractedImages)
@@ -197,15 +203,17 @@ export class ContentProcessingPipeline {
       // Stage 7: Vector Embedding Creation
       await this.executeStage(stages[6], async () => {
         const article = await this.getArticle(articleId!);
-        const embeddingResult = await this.aiService.createEmbedding(
+        const embeddingId = await this.aiService.createEmbedding(
           articleId!,
           article.title,
           article.processed_content || article.content
         );
-        await this.updateArticle(articleId!, {
-          embedding_id: embeddingResult.embeddingId
-        });
-        return embeddingResult;
+        if (embeddingId) {
+          await this.updateArticle(articleId!, {
+            embedding_id: embeddingId
+          });
+        }
+        return { embeddingId };
       });
 
       // Stage 8: Publication & Finalization
@@ -618,9 +626,9 @@ export class ContentProcessingPipeline {
         source.id,
         content.image_url || content.enclosure?.url,
         content.description
-      ).first();
+      ).first<{ id: number }>();
 
-      return { success: true, articleId: result.id };
+      return { success: true, articleId: result?.id || 0 };
     } catch (error) {
       return { success: false, error: error.message };
     }
