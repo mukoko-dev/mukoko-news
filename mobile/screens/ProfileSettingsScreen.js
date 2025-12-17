@@ -27,6 +27,7 @@ import * as Haptics from 'expo-haptics';
 import { mukokoTheme } from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
+import { useLayout } from '../components/layout';
 import { user as userAPI } from '../api/client';
 
 const AVATAR_SIZE = 80;
@@ -36,6 +37,10 @@ export default function ProfileSettingsScreen({ navigation }) {
   const paperTheme = usePaperTheme();
   const { isDark, toggleTheme } = useTheme();
   const { signOut } = useAuth();
+  const layout = useLayout();
+
+  // On tablet/desktop, no bottom tab bar, so reduce padding
+  const bottomPadding = layout.isMobile ? 100 : 24;
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -247,7 +252,7 @@ export default function ProfileSettingsScreen({ navigation }) {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
@@ -622,7 +627,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 16,
-    paddingBottom: 100,
+    // paddingBottom is set dynamically based on layout (tab bar visibility)
   },
 
   // Profile Card

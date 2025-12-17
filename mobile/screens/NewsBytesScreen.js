@@ -25,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { newsBytes, articles as articlesAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useLayout, CONTENT_WIDTHS } from '../components/layout';
 import mukokoTheme from '../theme';
 import SourceIcon from '../components/SourceIcon';
 
@@ -32,6 +33,7 @@ export default function NewsBytesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const paperTheme = usePaperTheme();
   const { user, isAuthenticated } = useAuth();
+  const layout = useLayout();
   const [loading, setLoading] = useState(true);
   const [bytes, setBytes] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -42,10 +44,19 @@ export default function NewsBytesScreen({ navigation }) {
 
   // Calculate responsive values based on screen size and safe areas
   const SCREEN_HEIGHT = screenDimensions.height;
-  const SCREEN_WIDTH = screenDimensions.width;
+
+  // On tablet/desktop, constrain width to maintain mobile phone-like experience
+  // This creates the Instagram-style centered content look
+  const isResponsiveLayout = layout.isTablet || layout.isDesktop;
+  const SCREEN_WIDTH = isResponsiveLayout
+    ? Math.min(screenDimensions.width, CONTENT_WIDTHS.maxWidth)
+    : screenDimensions.width;
 
   // Content positioning - responsive to screen size and safe areas
-  const CONTENT_BOTTOM_OFFSET = Math.max(insets.bottom + 100, 140); // Tab bar + padding
+  // On desktop/tablet, no tab bar so reduce bottom offset
+  const CONTENT_BOTTOM_OFFSET = isResponsiveLayout
+    ? Math.max(insets.bottom + 40, 60)
+    : Math.max(insets.bottom + 100, 140);
   const ACTIONS_RIGHT_OFFSET = mukokoTheme.spacing.md;
   const PROGRESS_TOP_OFFSET = insets.top + mukokoTheme.spacing.lg;
 
