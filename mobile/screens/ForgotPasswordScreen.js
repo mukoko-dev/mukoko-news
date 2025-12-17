@@ -1,190 +1,348 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { Text, TextInput, Button, Surface, HelperText, Icon } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+  Dimensions,
+  TouchableOpacity,
+} from 'react-native';
+import {
+  Text,
+  TextInput,
+  Button,
+  Surface,
+  Icon,
+  ActivityIndicator,
+  useTheme as usePaperTheme,
+} from 'react-native-paper';
 import { mukokoTheme } from '../theme';
 import { auth } from '../api/client';
 
 // Logo asset
 const MukokoLogo = require('../assets/mukoko-logo-compact.png');
 
+/**
+ * ForgotPasswordScreen - Two-step password reset flow
+ *
+ * Step 1: Enter email to receive reset code
+ * Step 2: Enter code and new password
+ *
+ * Features:
+ * - Clear step indicators
+ * - Status feedback for each action
+ * - Responsive layout
+ */
 export default function ForgotPasswordScreen({ navigation }) {
-  const [step, setStep] = useState('request'); // 'request' or 'reset'
+  const paperTheme = usePaperTheme();
+
+  // Step state
+  const [step, setStep] = useState(1); // 1 = email, 2 = reset code
+
+  // Form state
   const [email, setEmail] = useState('');
   const [code, setCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
-  const handleRequestReset = async () => {
-    if (!email) {
-      setError('Please enter your email address');
+  // Status state
+  const [status, setStatus] = useState('idle'); // idle, loading, success, error
+  const [error, setError] = useState('');
+
+  // Responsive
+  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const isWideScreen = dimensions.width >= 600;
+  const cardMaxWidth = isWideScreen ? 400 : '100%';
+
+  // Dynamic colors
+  const colors = {
+    bg: paperTheme.colors.background,
+    surface: paperTheme.colors.surface,
+    text: paperTheme.colors.onSurface,
+    textMuted: paperTheme.colors.onSurfaceVariant,
+    primary: paperTheme.colors.primary,
+    error: paperTheme.colors.error,
+    success: mukokoTheme.colors.success,
+  };
+
+  const handleRequestCode = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email');
+      setStatus('error');
       return;
     }
 
-    setLoading(true);
+    if (!email.includes('@') || !email.includes('.')) {
+      setError('Please enter a valid email address');
+      setStatus('error');
+      return;
+    }
+
+    setStatus('loading');
     setError('');
 
     try {
-      const result = await auth.forgotPassword(email);
+      const result = await auth.forgotPassword(email.trim());
 
       if (result.error) {
         setError(result.error);
-      } else {
-        setSuccess(true);
-        setStep('reset');
+        setStatus('error');
+        return;
       }
+
+      // Move to step 2
+      setStatus('idle');
+      setStep(2);
     } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error('[ForgotPassword] Error:', err);
+      setError('Connection error. Please try again.');
+      setStatus('error');
     }
   };
 
   const handleResetPassword = async () => {
-    if (!code || !newPassword) {
-      setError('Please enter both the code and new password');
+    if (!code.trim()) {
+      setError('Please enter the reset code');
+      setStatus('error');
+      return;
+    }
+
+    if (code.length !== 6) {
+      setError('Reset code must be 6 digits');
+      setStatus('error');
       return;
     }
 
     if (newPassword.length < 8) {
       setError('Password must be at least 8 characters');
+      setStatus('error');
       return;
     }
 
-    setLoading(true);
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      setStatus('error');
+      return;
+    }
+
+    setStatus('loading');
     setError('');
 
     try {
-      const result = await auth.resetPassword(email, code, newPassword);
+      const result = await auth.resetPassword(email.trim(), code.trim(), newPassword);
 
       if (result.error) {
         setError(result.error);
-      } else {
-        // Navigate to login with success message
-        navigation.navigate('Login', { resetSuccess: true });
+        setStatus('error');
+        return;
       }
+
+      // Show success and redirect to login
+      setStatus('success');
+      setTimeout(() => {
+        navigation.navigate('Login', { resetSuccess: true });
+      }, 1500);
     } catch (err) {
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
+      console.error('[ForgotPassword] Reset error:', err);
+      setError('Connection error. Please try again.');
+      setStatus('error');
     }
   };
+
+  const handleGoBack = () => {
+    if (step === 2) {
+      setStep(1);
+      setCode('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setError('');
+      setStatus('idle');
+    } else if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Login');
+    }
+  };
+
+  // Success state
+  if (status === 'success') {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
+        <View style={styles.statusContainer}>
+          <View style={[styles.successCircle, { backgroundColor: colors.success + '20' }]}>
+            <Icon source="check" size={48} color={colors.success} />
+          </View>
+          <Text style={[styles.statusTitle, { color: colors.text }]}>
+            Password reset!
+          </Text>
+          <Text style={[styles.statusSubtitle, { color: colors.textMuted }]}>
+            Redirecting to sign in...
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.bg }]}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isWideScreen && styles.scrollContentWide,
+        ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
+        {/* Back Button */}
+        <TouchableOpacity
+          onPress={handleGoBack}
+          style={styles.backButton}
+          accessibilityLabel={step === 2 ? 'Go back to email' : 'Go back'}
+          accessibilityRole="button"
+        >
+          <Icon source="arrow-left" size={24} color={colors.textMuted} />
+        </TouchableOpacity>
+
         {/* Header */}
         <View style={styles.header}>
           <Image
             source={MukokoLogo}
             style={styles.logo}
             resizeMode="contain"
-            accessibilityLabel="Mukoko News logo"
+            accessibilityLabel="Mukoko News"
           />
-          <Text
-            variant="bodyMedium"
-            style={styles.subtitle}
-            accessibilityRole="header"
-          >
-            {step === 'request' ? 'Forgot your password?' : 'Reset your password'}
+          <Text style={[styles.title, { color: colors.text }]}>
+            {step === 1 ? 'Forgot password?' : 'Reset password'}
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            {step === 1
+              ? "We'll send you a reset code"
+              : `Enter the code sent to ${email}`}
           </Text>
         </View>
 
+        {/* Step Indicator */}
+        <View style={styles.stepIndicator}>
+          <View style={[styles.stepDot, { backgroundColor: colors.primary }]} />
+          <View
+            style={[
+              styles.stepLine,
+              { backgroundColor: step >= 2 ? colors.primary : colors.textMuted + '40' },
+            ]}
+          />
+          <View
+            style={[
+              styles.stepDot,
+              { backgroundColor: step >= 2 ? colors.primary : colors.textMuted + '40' },
+            ]}
+          />
+        </View>
+
         {/* Form Card */}
-        <Surface style={styles.card} elevation={2}>
-          {step === 'request' ? (
-            // Step 1: Request Reset Code
-            <>
-              {/* Success Message */}
-              {success && (
-                <Surface style={styles.successBanner} elevation={0}>
-                  <Text style={styles.successText}>
-                    Check your email for the reset code!
-                  </Text>
-                </Surface>
-              )}
-
-              {/* Error Message */}
-              {error && !success && (
-                <Surface style={styles.errorBanner} elevation={0}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </Surface>
-              )}
-
-              <Text variant="bodyMedium" style={styles.helperText}>
-                Enter your email address and we'll send you a 6-digit reset code.
-                The code expires in 15 minutes.
+        <Surface
+          style={[
+            styles.card,
+            { backgroundColor: colors.surface, maxWidth: cardMaxWidth },
+          ]}
+          elevation={1}
+        >
+          {/* Error Message */}
+          {status === 'error' && error && (
+            <View style={[styles.banner, { backgroundColor: colors.error + '15', borderColor: colors.error + '30' }]}>
+              <Icon source="alert-circle" size={20} color={colors.error} />
+              <Text style={[styles.bannerText, { color: colors.error }]}>
+                {error}
               </Text>
+            </View>
+          )}
 
-              {/* Email Field */}
+          {step === 1 ? (
+            // Step 1: Enter Email
+            <>
               <TextInput
                 mode="outlined"
-                label="Email Address"
+                label="Email"
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => {
+                  setEmail(text);
+                  if (status === 'error') setStatus('idle');
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoComplete="email"
-                left={<TextInput.Icon icon={() => <Icon source="email" size={20} color={mukokoTheme.colors.onSurfaceVariant} />} />}
+                autoCorrect={false}
                 style={styles.input}
-                outlineColor={mukokoTheme.colors.outline}
-                activeOutlineColor={mukokoTheme.colors.primary}
-                selectionColor={mukokoTheme.colors.primary}
-                cursorColor={mukokoTheme.colors.primary}
-                error={!!error && !success}
+                outlineColor={colors.textMuted + '40'}
+                activeOutlineColor={colors.primary}
+                textColor={colors.text}
+                disabled={status === 'loading'}
+                left={<TextInput.Icon icon="email-outline" color={colors.textMuted} />}
+                onSubmitEditing={handleRequestCode}
               />
 
-              {/* Submit Button */}
               <Button
                 mode="contained"
-                onPress={handleRequestReset}
-                loading={loading}
-                disabled={loading || !email}
+                onPress={handleRequestCode}
+                disabled={status === 'loading' || !email.trim()}
                 style={styles.button}
                 contentStyle={styles.buttonContent}
-                icon={() => <Icon source="email" size={20} color={mukokoTheme.colors.onPrimary} />}
-                accessibilityLabel={loading ? 'Sending reset code' : 'Send reset code to email'}
-                accessibilityHint="Sends a 6-digit code to your email address"
+                labelStyle={styles.buttonLabel}
               >
-                {loading ? 'Sending code...' : 'Send Reset Code'}
+                {status === 'loading' ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator size={20} color={colors.surface} />
+                    <Text style={[styles.buttonLabel, { color: colors.surface, marginLeft: 8 }]}>
+                      Sending code...
+                    </Text>
+                  </View>
+                ) : (
+                  'Send Reset Code'
+                )}
               </Button>
             </>
           ) : (
             // Step 2: Enter Code and New Password
             <>
-              {/* Error Message */}
-              {error && (
-                <Surface style={styles.errorBanner} elevation={0}>
-                  <Text style={styles.errorText}>{error}</Text>
-                </Surface>
-              )}
-
-              <Text variant="bodyMedium" style={styles.helperText}>
-                Enter the 6-digit code sent to{' '}
-                <Text style={styles.emailHighlight}>{email}</Text>
-              </Text>
+              {/* Success message for code sent */}
+              <View style={[styles.banner, { backgroundColor: colors.success + '15', borderColor: colors.success + '30' }]}>
+                <Icon source="email-check" size={20} color={colors.success} />
+                <Text style={[styles.bannerText, { color: colors.success }]}>
+                  Reset code sent! Check your email.
+                </Text>
+              </View>
 
               {/* Reset Code Field */}
               <TextInput
                 mode="outlined"
-                label="Reset Code"
+                label="6-digit Code"
                 value={code}
-                onChangeText={setCode}
+                onChangeText={(text) => {
+                  // Only allow digits
+                  const digits = text.replace(/[^0-9]/g, '').slice(0, 6);
+                  setCode(digits);
+                  if (status === 'error') setStatus('idle');
+                }}
                 keyboardType="number-pad"
                 maxLength={6}
                 style={[styles.input, styles.codeInput]}
-                outlineColor={mukokoTheme.colors.outline}
-                activeOutlineColor={mukokoTheme.colors.primary}
-                selectionColor={mukokoTheme.colors.primary}
-                cursorColor={mukokoTheme.colors.primary}
-                error={!!error}
+                outlineColor={colors.textMuted + '40'}
+                activeOutlineColor={colors.primary}
+                textColor={colors.text}
+                disabled={status === 'loading'}
               />
 
               {/* New Password Field */}
@@ -192,60 +350,126 @@ export default function ForgotPasswordScreen({ navigation }) {
                 mode="outlined"
                 label="New Password"
                 value={newPassword}
-                onChangeText={setNewPassword}
-                secureTextEntry
+                onChangeText={(text) => {
+                  setNewPassword(text);
+                  if (status === 'error') setStatus('idle');
+                }}
+                secureTextEntry={!showPassword}
                 autoCapitalize="none"
-                left={<TextInput.Icon icon={() => <Icon source="key" size={20} color={mukokoTheme.colors.onSurfaceVariant} />} />}
+                autoCorrect={false}
                 style={styles.input}
-                outlineColor={mukokoTheme.colors.outline}
-                activeOutlineColor={mukokoTheme.colors.primary}
-                selectionColor={mukokoTheme.colors.primary}
-                cursorColor={mukokoTheme.colors.primary}
-                error={!!error}
+                outlineColor={colors.textMuted + '40'}
+                activeOutlineColor={colors.primary}
+                textColor={colors.text}
+                disabled={status === 'loading'}
+                left={<TextInput.Icon icon="lock-outline" color={colors.textMuted} />}
+                right={
+                  <TextInput.Icon
+                    icon={showPassword ? 'eye-off' : 'eye'}
+                    color={colors.textMuted}
+                    onPress={() => setShowPassword(!showPassword)}
+                  />
+                }
               />
-              <HelperText type="info">
-                Minimum 8 characters
-              </HelperText>
 
-              {/* Submit Button */}
+              {/* Confirm Password Field */}
+              <TextInput
+                mode="outlined"
+                label="Confirm Password"
+                value={confirmPassword}
+                onChangeText={(text) => {
+                  setConfirmPassword(text);
+                  if (status === 'error') setStatus('idle');
+                }}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={styles.input}
+                outlineColor={colors.textMuted + '40'}
+                activeOutlineColor={colors.primary}
+                textColor={colors.text}
+                disabled={status === 'loading'}
+                left={<TextInput.Icon icon="lock-check-outline" color={colors.textMuted} />}
+                onSubmitEditing={handleResetPassword}
+              />
+
+              {/* Password Match Indicator */}
+              {confirmPassword.length > 0 && (
+                <View style={styles.matchContainer}>
+                  <Icon
+                    source={newPassword === confirmPassword ? 'check-circle' : 'close-circle'}
+                    size={16}
+                    color={newPassword === confirmPassword ? colors.success : colors.error}
+                  />
+                  <Text
+                    style={[
+                      styles.matchText,
+                      { color: newPassword === confirmPassword ? colors.success : colors.error },
+                    ]}
+                  >
+                    {newPassword === confirmPassword ? 'Passwords match' : 'Passwords do not match'}
+                  </Text>
+                </View>
+              )}
+
               <Button
                 mode="contained"
                 onPress={handleResetPassword}
-                loading={loading}
-                disabled={loading || !code || !newPassword}
+                disabled={
+                  status === 'loading' ||
+                  code.length !== 6 ||
+                  newPassword.length < 8 ||
+                  newPassword !== confirmPassword
+                }
                 style={styles.button}
                 contentStyle={styles.buttonContent}
-                icon={() => <Icon source="key" size={20} color={mukokoTheme.colors.onPrimary} />}
-                accessibilityLabel={loading ? 'Resetting password' : 'Reset password'}
-                accessibilityHint="Updates your password with the new one"
+                labelStyle={styles.buttonLabel}
               >
-                {loading ? 'Resetting password...' : 'Reset Password'}
+                {status === 'loading' ? (
+                  <View style={styles.loadingRow}>
+                    <ActivityIndicator size={20} color={colors.surface} />
+                    <Text style={[styles.buttonLabel, { color: colors.surface, marginLeft: 8 }]}>
+                      Resetting...
+                    </Text>
+                  </View>
+                ) : (
+                  'Reset Password'
+                )}
               </Button>
+
+              {/* Resend Code */}
+              <TouchableOpacity
+                onPress={() => {
+                  setStep(1);
+                  setCode('');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                  setError('');
+                }}
+                style={styles.resendButton}
+              >
+                <Text style={[styles.resendText, { color: colors.primary }]}>
+                  Didn't receive code? Send again
+                </Text>
+              </TouchableOpacity>
             </>
           )}
 
           {/* Back to Login */}
-          <Button
-            mode="text"
-            onPress={() => navigation.navigate('Login')}
-            style={styles.linkButton}
-            accessibilityLabel="Go back to login"
-            accessibilityHint="Navigate to the login screen"
-          >
-            Back to Login
-          </Button>
+          <View style={styles.loginContainer}>
+            <Text style={[styles.loginText, { color: colors.textMuted }]}>
+              Remember your password?
+            </Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Login')}
+              disabled={status === 'loading'}
+            >
+              <Text style={[styles.loginLink, { color: colors.primary }]}>
+                {' '}Sign in
+              </Text>
+            </TouchableOpacity>
+          </View>
         </Surface>
-
-        {/* Back to Home */}
-        <Button
-          mode="text"
-          onPress={() => navigation.navigate('Home')}
-          style={styles.homeButton}
-          accessibilityLabel="Go back to home"
-          accessibilityHint="Navigate to the home screen"
-        >
-          Back to Home
-        </Button>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -254,81 +478,152 @@ export default function ForgotPasswordScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: mukokoTheme.colors.background,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: mukokoTheme.spacing.lg,
+    padding: 24,
     justifyContent: 'center',
   },
-  header: {
-    marginBottom: mukokoTheme.spacing.xl,
+  scrollContentWide: {
     alignItems: 'center',
   },
+  backButton: {
+    position: 'absolute',
+    top: 16,
+    left: 0,
+    padding: 8,
+    zIndex: 10,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   logo: {
-    width: 80,
-    height: 80,
-    marginBottom: mukokoTheme.spacing.md,
+    width: 64,
+    height: 64,
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 4,
   },
   subtitle: {
+    fontSize: 14,
     textAlign: 'center',
-    color: mukokoTheme.colors.onSurfaceVariant,
+  },
+  stepIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 24,
+    gap: 8,
+  },
+  stepDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  stepLine: {
+    width: 40,
+    height: 2,
+    borderRadius: 1,
   },
   card: {
-    padding: mukokoTheme.spacing.xl,
-    borderRadius: mukokoTheme.roundness * 2,
-    backgroundColor: mukokoTheme.colors.surface,
+    padding: 24,
+    borderRadius: 16,
+    width: '100%',
+    alignSelf: 'center',
   },
-  successBanner: {
-    padding: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    backgroundColor: `${mukokoTheme.colors.success}15`,
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: `${mukokoTheme.colors.success}30`,
+    gap: 8,
   },
-  successText: {
-    color: mukokoTheme.colors.success,
-  },
-  errorBanner: {
-    padding: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    backgroundColor: `${mukokoTheme.colors.error}15`,
-    borderWidth: 1,
-    borderColor: `${mukokoTheme.colors.error}30`,
-  },
-  errorText: {
-    color: mukokoTheme.colors.error,
-  },
-  helperText: {
-    marginBottom: mukokoTheme.spacing.lg,
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-  emailHighlight: {
-    fontWeight: '600',
-    color: mukokoTheme.colors.onSurface,
+  bannerText: {
+    flex: 1,
+    fontSize: 14,
   },
   input: {
-    marginBottom: mukokoTheme.spacing.md,
-    backgroundColor: mukokoTheme.colors.surface,
+    marginBottom: 16,
+    backgroundColor: 'transparent',
   },
   codeInput: {
     textAlign: 'center',
     fontSize: 24,
     letterSpacing: 8,
   },
+  matchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+    gap: 6,
+  },
+  matchText: {
+    fontSize: 12,
+  },
   button: {
-    marginTop: mukokoTheme.spacing.md,
+    marginTop: 8,
+    borderRadius: 12,
   },
   buttonContent: {
-    paddingVertical: mukokoTheme.spacing.sm,
+    paddingVertical: 8,
   },
-  linkButton: {
-    marginTop: mukokoTheme.spacing.lg,
+  buttonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
   },
-  homeButton: {
-    marginTop: mukokoTheme.spacing.lg,
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  resendButton: {
     alignSelf: 'center',
+    marginTop: 16,
+    padding: 8,
+  },
+  resendText: {
+    fontSize: 14,
+  },
+  loginContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
+  },
+  loginText: {
+    fontSize: 14,
+  },
+  loginLink: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statusContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  successCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  statusTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  statusSubtitle: {
+    fontSize: 16,
   },
 });
