@@ -22,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import CategoryChips from '../components/CategoryChips';
+import { useLayout } from '../components/layout';
 import {
   search as searchAPI,
   categories as categoriesAPI,
@@ -123,6 +124,10 @@ const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
 export default function SearchScreen({ navigation, route }) {
   const { isDark } = useTheme();
   const paperTheme = usePaperTheme();
+  const layout = useLayout();
+
+  // On tablet/desktop, no bottom tab bar, so reduce padding
+  const bottomPadding = layout.isMobile ? 100 : 24;
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -375,7 +380,7 @@ export default function SearchScreen({ navigation, route }) {
               paperTheme={paperTheme}
             />
           ))}
-          <View style={styles.bottomPadding} />
+          <View style={{ height: bottomPadding }} />
         </ScrollView>
       )}
 
@@ -524,7 +529,7 @@ export default function SearchScreen({ navigation, route }) {
             </>
           )}
 
-          <View style={styles.bottomPadding} />
+          <View style={{ height: bottomPadding }} />
         </ScrollView>
       )}
     </View>
