@@ -1,25 +1,68 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { Text, TextInput, Button, Surface, Divider, Icon } from 'react-native-paper';
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Image,
+  Dimensions,
+  TouchableOpacity,
+} from 'react-native';
+import {
+  Text,
+  TextInput,
+  Button,
+  Surface,
+  Icon,
+  ActivityIndicator,
+  useTheme as usePaperTheme,
+} from 'react-native-paper';
 import { mukokoTheme } from '../theme';
 import { auth } from '../api/client';
+import { useAuth } from '../contexts/AuthContext';
 
 // Logo asset
 const MukokoLogo = require('../assets/mukoko-logo-compact.png');
 
+/**
+ * LoginScreen - Clean, minimal login with status feedback
+ *
+ * Features:
+ * - Simple email/password form
+ * - Clear loading and error states
+ * - Success animation before navigation
+ * - Responsive layout
+ */
 export default function LoginScreen({ navigation, route }) {
+  const paperTheme = usePaperTheme();
+  const { refreshAuth } = useAuth();
+
+  // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  // Status state
+  const [status, setStatus] = useState('idle'); // idle, loading, success, error
   const [error, setError] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
+
+  // Responsive
+  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setDimensions(window);
+    });
+    return () => subscription?.remove();
+  }, []);
 
   // Check for reset success message
   useEffect(() => {
     let timeoutId;
     if (route.params?.resetSuccess) {
       setResetSuccess(true);
-      // Clear the param after showing the message
       timeoutId = setTimeout(() => setResetSuccess(false), 5000);
     }
     return () => {
@@ -27,91 +70,179 @@ export default function LoginScreen({ navigation, route }) {
     };
   }, [route.params?.resetSuccess]);
 
+  const isWideScreen = dimensions.width >= 600;
+  const cardMaxWidth = isWideScreen ? 400 : '100%';
+
   const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Please enter both email and password');
+    if (!email.trim()) {
+      setError('Please enter your email');
+      setStatus('error');
+      return;
+    }
+    if (!password) {
+      setError('Please enter your password');
+      setStatus('error');
       return;
     }
 
-    setLoading(true);
+    setStatus('loading');
     setError('');
 
     try {
-      // Use centralized auth service
-      const result = await auth.signIn(email, password);
+      const result = await auth.signIn(email.trim(), password);
 
       if (result.error) {
         setError(result.error);
+        setStatus('error');
         return;
       }
 
-      // Navigate to home
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'MainApp' }],
-      });
+      // Show success state briefly
+      setStatus('success');
+
+      // Refresh auth context
+      if (refreshAuth) {
+        await refreshAuth();
+      }
+
+      // Navigate after brief success animation
+      setTimeout(() => {
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'Bytes' }],
+        });
+      }, 800);
     } catch (err) {
       console.error('[LoginScreen] Error:', err);
-      setError('Network error. Please try again.');
-    } finally {
-      setLoading(false);
+      setError('Connection error. Please check your internet and try again.');
+      setStatus('error');
     }
   };
+
+  const handleGoBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Bytes');
+    }
+  };
+
+  // Dynamic colors
+  const colors = {
+    bg: paperTheme.colors.background,
+    surface: paperTheme.colors.surface,
+    text: paperTheme.colors.onSurface,
+    textMuted: paperTheme.colors.onSurfaceVariant,
+    primary: paperTheme.colors.primary,
+    error: paperTheme.colors.error,
+    success: mukokoTheme.colors.success,
+  };
+
+  // Success state - show checkmark
+  if (status === 'success') {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.bg }]}>
+        <View style={styles.statusContainer}>
+          <View style={[styles.successCircle, { backgroundColor: colors.success + '20' }]}>
+            <Icon source="check" size={48} color={colors.success} />
+          </View>
+          <Text style={[styles.statusTitle, { color: colors.text }]}>
+            Welcome back!
+          </Text>
+          <Text style={[styles.statusSubtitle, { color: colors.textMuted }]}>
+            Signing you in...
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.bg }]}
     >
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          isWideScreen && styles.scrollContentWide,
+        ]}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
+        {/* Back Button */}
+        <TouchableOpacity
+          onPress={handleGoBack}
+          style={styles.backButton}
+          accessibilityLabel="Go back"
+          accessibilityRole="button"
+        >
+          <Icon source="arrow-left" size={24} color={colors.textMuted} />
+        </TouchableOpacity>
+
         {/* Header */}
         <View style={styles.header}>
-          <Image source={MukokoLogo} style={styles.logo} resizeMode="contain" />
-          <Text
-            variant="bodyMedium"
-            style={styles.subtitle}
-            accessibilityRole="header"
-          >
-            Sign in to your account
+          <Image
+            source={MukokoLogo}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityLabel="Mukoko News"
+          />
+          <Text style={[styles.title, { color: colors.text }]}>
+            Welcome back
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
+            Sign in to continue
           </Text>
         </View>
 
         {/* Form Card */}
-        <Surface style={styles.card} elevation={2}>
+        <Surface
+          style={[
+            styles.card,
+            { backgroundColor: colors.surface, maxWidth: cardMaxWidth },
+          ]}
+          elevation={1}
+        >
           {/* Reset Success Message */}
           {resetSuccess && (
-            <Surface style={styles.successBanner} elevation={0}>
-              <Text style={styles.successText}>
-                Password reset successful! Please sign in with your new password.
+            <View style={[styles.banner, { backgroundColor: colors.success + '15', borderColor: colors.success + '30' }]}>
+              <Icon source="check-circle" size={20} color={colors.success} />
+              <Text style={[styles.bannerText, { color: colors.success }]}>
+                Password reset successful! Sign in with your new password.
               </Text>
-            </Surface>
+            </View>
           )}
 
           {/* Error Message */}
-          {error && (
-            <Surface style={styles.errorBanner} elevation={0}>
-              <Text style={styles.errorText}>{error}</Text>
-            </Surface>
+          {status === 'error' && error && (
+            <View style={[styles.banner, { backgroundColor: colors.error + '15', borderColor: colors.error + '30' }]}>
+              <Icon source="alert-circle" size={20} color={colors.error} />
+              <Text style={[styles.bannerText, { color: colors.error }]}>
+                {error}
+              </Text>
+            </View>
           )}
 
           {/* Email Field */}
           <TextInput
             mode="outlined"
-            label="Email Address"
+            label="Email"
             value={email}
-            onChangeText={setEmail}
+            onChangeText={(text) => {
+              setEmail(text);
+              if (status === 'error') setStatus('idle');
+            }}
             keyboardType="email-address"
             autoCapitalize="none"
             autoComplete="email"
+            autoCorrect={false}
             style={styles.input}
-            outlineColor={mukokoTheme.colors.outline}
-            activeOutlineColor={mukokoTheme.colors.primary}
-            selectionColor={mukokoTheme.colors.primary}
-            cursorColor={mukokoTheme.colors.primary}
-            error={!!error}
+            outlineColor={colors.textMuted + '40'}
+            activeOutlineColor={colors.primary}
+            textColor={colors.text}
+            disabled={status === 'loading'}
+            left={<TextInput.Icon icon="email-outline" color={colors.textMuted} />}
           />
 
           {/* Password Field */}
@@ -119,71 +250,76 @@ export default function LoginScreen({ navigation, route }) {
             mode="outlined"
             label="Password"
             value={password}
-            onChangeText={setPassword}
-            secureTextEntry
+            onChangeText={(text) => {
+              setPassword(text);
+              if (status === 'error') setStatus('idle');
+            }}
+            secureTextEntry={!showPassword}
             autoCapitalize="none"
+            autoCorrect={false}
             style={styles.input}
-            outlineColor={mukokoTheme.colors.outline}
-            activeOutlineColor={mukokoTheme.colors.primary}
-            selectionColor={mukokoTheme.colors.primary}
-            cursorColor={mukokoTheme.colors.primary}
-            error={!!error}
+            outlineColor={colors.textMuted + '40'}
+            activeOutlineColor={colors.primary}
+            textColor={colors.text}
+            disabled={status === 'loading'}
+            left={<TextInput.Icon icon="lock-outline" color={colors.textMuted} />}
+            right={
+              <TextInput.Icon
+                icon={showPassword ? 'eye-off' : 'eye'}
+                color={colors.textMuted}
+                onPress={() => setShowPassword(!showPassword)}
+              />
+            }
+            onSubmitEditing={handleLogin}
           />
 
           {/* Forgot Password Link */}
-          <Button
-            mode="text"
+          <TouchableOpacity
             onPress={() => navigation.navigate('ForgotPassword')}
             style={styles.forgotButton}
-            labelStyle={styles.forgotButtonLabel}
+            disabled={status === 'loading'}
           >
-            Forgot Password?
-          </Button>
+            <Text style={[styles.forgotText, { color: colors.primary }]}>
+              Forgot password?
+            </Text>
+          </TouchableOpacity>
 
           {/* Submit Button */}
           <Button
             mode="contained"
             onPress={handleLogin}
-            loading={loading}
-            disabled={loading || !email || !password}
+            disabled={status === 'loading' || !email.trim() || !password}
             style={styles.button}
             contentStyle={styles.buttonContent}
-            icon={() => <Icon source="login" size={20} color={mukokoTheme.colors.onPrimary} />}
+            labelStyle={styles.buttonLabel}
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {status === 'loading' ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size={20} color={colors.surface} />
+                <Text style={[styles.buttonLabel, { color: colors.surface, marginLeft: 8 }]}>
+                  Signing in...
+                </Text>
+              </View>
+            ) : (
+              'Sign In'
+            )}
           </Button>
-
-          {/* Divider */}
-          <View style={styles.dividerContainer}>
-            <Divider style={styles.divider} />
-            <Text variant="bodySmall" style={styles.dividerText}>or</Text>
-            <Divider style={styles.divider} />
-          </View>
 
           {/* Register Link */}
           <View style={styles.registerContainer}>
-            <Text variant="bodyMedium" style={styles.registerText}>
-              Don't have an account?{' '}
+            <Text style={[styles.registerText, { color: colors.textMuted }]}>
+              Don't have an account?
             </Text>
-            <Button
-              mode="text"
+            <TouchableOpacity
               onPress={() => navigation.navigate('Register')}
-              labelStyle={styles.registerButtonLabel}
-              compact
+              disabled={status === 'loading'}
             >
-              Sign up
-            </Button>
+              <Text style={[styles.registerLink, { color: colors.primary }]}>
+                {' '}Sign up
+              </Text>
+            </TouchableOpacity>
           </View>
         </Surface>
-
-        {/* Back to Home */}
-        <Button
-          mode="text"
-          onPress={() => navigation.navigate('Home')}
-          style={styles.homeButton}
-        >
-          Back to Home
-        </Button>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -192,96 +328,120 @@ export default function LoginScreen({ navigation, route }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: mukokoTheme.colors.background,
   },
   scrollContent: {
     flexGrow: 1,
-    padding: mukokoTheme.spacing.lg,
+    padding: 24,
     justifyContent: 'center',
   },
-  header: {
-    marginBottom: mukokoTheme.spacing.xl,
+  scrollContentWide: {
     alignItems: 'center',
   },
+  backButton: {
+    position: 'absolute',
+    top: 16,
+    left: 0,
+    padding: 8,
+    zIndex: 10,
+  },
+  header: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
   logo: {
-    width: 80,
-    height: 80,
-    marginBottom: mukokoTheme.spacing.md,
+    width: 64,
+    height: 64,
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 4,
   },
   subtitle: {
-    textAlign: 'center',
-    color: mukokoTheme.colors.onSurfaceVariant,
+    fontSize: 16,
   },
   card: {
-    padding: mukokoTheme.spacing.xl,
-    borderRadius: mukokoTheme.roundness * 2,
-    backgroundColor: mukokoTheme.colors.surface,
+    padding: 24,
+    borderRadius: 16,
+    width: '100%',
+    alignSelf: 'center',
   },
-  successBanner: {
-    padding: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    backgroundColor: `${mukokoTheme.colors.success}15`,
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
     borderWidth: 1,
-    borderColor: `${mukokoTheme.colors.success}30`,
+    gap: 8,
   },
-  successText: {
-    color: mukokoTheme.colors.success,
-  },
-  errorBanner: {
-    padding: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    backgroundColor: `${mukokoTheme.colors.error}15`,
-    borderWidth: 1,
-    borderColor: `${mukokoTheme.colors.error}30`,
-  },
-  errorText: {
-    color: mukokoTheme.colors.error,
+  bannerText: {
+    flex: 1,
+    fontSize: 14,
   },
   input: {
-    marginBottom: mukokoTheme.spacing.md,
-    backgroundColor: mukokoTheme.colors.surface,
+    marginBottom: 16,
+    backgroundColor: 'transparent',
   },
   forgotButton: {
     alignSelf: 'flex-end',
-    marginBottom: mukokoTheme.spacing.md,
+    marginBottom: 16,
+    padding: 4,
   },
-  forgotButtonLabel: {
-    color: mukokoTheme.colors.primary,
+  forgotText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
   button: {
-    marginTop: mukokoTheme.spacing.md,
+    marginTop: 8,
+    borderRadius: 12,
   },
   buttonContent: {
-    paddingVertical: mukokoTheme.spacing.sm,
+    paddingVertical: 8,
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: mukokoTheme.spacing.lg,
+  buttonLabel: {
+    fontSize: 16,
+    fontWeight: '600',
   },
-  divider: {
-    flex: 1,
-  },
-  dividerText: {
-    marginHorizontal: mukokoTheme.spacing.md,
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-  registerContainer: {
+  loadingRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  registerText: {
-    color: mukokoTheme.colors.onSurfaceVariant,
+  registerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 24,
   },
-  registerButtonLabel: {
-    color: mukokoTheme.colors.primary,
+  registerText: {
+    fontSize: 14,
+  },
+  registerLink: {
+    fontSize: 14,
     fontWeight: '600',
   },
-  homeButton: {
-    marginTop: mukokoTheme.spacing.lg,
-    alignSelf: 'center',
+  statusContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  successCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  statusTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  statusSubtitle: {
+    fontSize: 16,
   },
 });
