@@ -24,6 +24,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { mukokoTheme } from '../theme';
+import { useLayout } from '../components/layout';
 import { user as userAPI, auth } from '../api/client';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -36,6 +37,10 @@ export default function UserProfileScreen({ navigation, route }) {
   const { username } = route.params || {};
   const insets = useSafeAreaInsets();
   const paperTheme = usePaperTheme();
+  const layout = useLayout();
+
+  // On tablet/desktop, no bottom tab bar, so reduce padding
+  const bottomPadding = layout.isMobile ? 100 : 24;
 
   const [profile, setProfile] = useState(null);
   const [stats, setStats] = useState(null);
@@ -262,7 +267,7 @@ export default function UserProfileScreen({ navigation, route }) {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Section */}
@@ -514,7 +519,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    // paddingBottom is set dynamically based on layout (tab bar visibility)
   },
 
   // Profile Section

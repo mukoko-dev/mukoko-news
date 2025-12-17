@@ -20,6 +20,7 @@ import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import ArticleCard from '../components/ArticleCard';
 import { useAuth } from '../contexts/AuthContext';
+import { useLayout } from '../components/layout';
 import {
   articles as articlesAPI,
   categories as categoriesAPI,
@@ -70,10 +71,14 @@ const getEmoji = (categoryName) => {
 export default function DiscoverScreen({ navigation }) {
   const { isDark } = useTheme();
   const paperTheme = usePaperTheme();
+  const layout = useLayout();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
+
+  // On tablet/desktop, no bottom tab bar, so reduce padding
+  const bottomPadding = layout.isMobile ? 100 : 24;
 
   // Data states
   const [articles, setArticles] = useState([]);
@@ -353,7 +358,7 @@ export default function DiscoverScreen({ navigation }) {
           </View>
         )}
 
-        <View style={styles.bottomPadding} />
+        <View style={{ height: bottomPadding }} />
       </ScrollView>
     </View>
   );

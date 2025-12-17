@@ -27,6 +27,7 @@ import SearchPromo from '../components/SearchPromo';
 import LoginPromo from '../components/LoginPromo';
 import SplashScreen from '../components/SplashScreen';
 import { useAuth } from '../contexts/AuthContext';
+import { useLayout } from '../components/layout';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -47,6 +48,10 @@ export default function HomeScreen({ navigation }) {
   const [error, setError] = useState(null);
   const paperTheme = usePaperTheme();
   const { isAuthenticated } = useAuth();
+  const layout = useLayout();
+
+  // On tablet/desktop, no bottom tab bar, so reduce padding
+  const bottomPadding = layout.isMobile ? 100 : 24;
 
   // Calculate responsive layout
   const getLayoutConfig = useCallback((width) => {
@@ -273,7 +278,7 @@ export default function HomeScreen({ navigation }) {
         renderItem={renderArticleItem}
         keyExtractor={(item) => item.id.toString()}
         numColumns={layoutConfig.numColumns > 1 ? layoutConfig.numColumns : 1}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
         columnWrapperStyle={layoutConfig.numColumns > 1 ? styles.columnWrapper : undefined}
         ListHeaderComponent={
           <SearchPromo
@@ -341,7 +346,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: mukokoTheme.spacing.md,
-    paddingBottom: 100, // Space for tab bar
+    // paddingBottom is set dynamically based on layout (tab bar visibility)
   },
   columnWrapper: {
     gap: mukokoTheme.spacing.md,
