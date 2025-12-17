@@ -1,10 +1,41 @@
-// worker/services/ArticleService.js
+// worker/services/ArticleService.ts
 // Service for managing articles in D1 database with slugs and content scraping
 
+interface ScraperConfig {
+  contentSelectors: string[];
+  excludeSelectors: string[];
+  maxContentLength: number;
+  timeout: number;
+}
+
+interface ArticleFilters {
+  category?: string;
+  source?: string;
+  limit?: number;
+  offset?: number;
+  orderBy?: string;
+  orderDirection?: string;
+  status?: string;
+  search?: string;
+}
+
+interface ViewData {
+  userId?: string;
+  sessionId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  referrer?: string;
+  readingTime?: number;
+  scrollDepth?: number;
+}
+
 export class ArticleService {
-  constructor(articlesDb) {
-    this.db = articlesDb
-    
+  private db: D1Database;
+  private scraperConfig: ScraperConfig;
+
+  constructor(articlesDb: D1Database) {
+    this.db = articlesDb;
+
     // Web scraping configuration
     this.scraperConfig = {
       // Common content selectors for news websites
@@ -44,9 +75,9 @@ export class ArticleService {
   }
 
   // Generate URL-friendly slug from title
-  generateSlug(title) {
-    if (!title) return null
-    
+  generateSlug(title: string | null): string | null {
+    if (!title) return null;
+
     return title
       .toLowerCase()
       .replace(/[^\w\s-]/g, '') // Remove special characters
@@ -54,11 +85,11 @@ export class ArticleService {
       .replace(/-+/g, '-')      // Replace multiple hyphens with single
       .trim()                   // Remove leading/trailing spaces
       .substring(0, 80)         // Limit length
-      .replace(/-$/, '')        // Remove trailing hyphen
+      .replace(/-$/, '');       // Remove trailing hyphen
   }
 
   // Ensure slug is unique by appending number if needed
-  async ensureUniqueSlug(baseSlug, excludeId = null) {
+  async ensureUniqueSlug(baseSlug: string | null, excludeId: number | null = null): Promise<string | null> {
     if (!baseSlug) return null
 
     let slug = baseSlug
@@ -254,7 +285,16 @@ export class ArticleService {
   }
 
   // Get articles with pagination
-  async getArticles(options = {}) {
+  async getArticles(options: {
+    category?: string | null;
+    source?: string | null;
+    limit?: number;
+    offset?: number;
+    orderBy?: string;
+    orderDirection?: string;
+    status?: string;
+    search?: string | null;
+  } = {}) {
     try {
       const {
         category = null,
@@ -268,7 +308,7 @@ export class ArticleService {
       } = options
 
       let query = 'SELECT * FROM articles WHERE status = ?'
-      const params = [status]
+      const params: (string | number)[] = [status]
 
       if (category) {
         query += ' AND category = ?'
@@ -354,7 +394,15 @@ export class ArticleService {
   }
 
   // Track article analytics
-  async trackArticleView(articleId, context = {}) {
+  async trackArticleView(articleId: string | number, context: {
+    userId?: string | null;
+    sessionId?: string | null;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    referrer?: string | null;
+    readingTime?: number | null;
+    scrollDepth?: number | null;
+  } = {}) {
     try {
       if (!articleId) return
 
@@ -561,13 +609,32 @@ export class ArticleService {
   }
 
   // Strip HTML tags from text
+  // Uses loop-based removal to handle nested/malformed tags safely
   stripHTML(html) {
-    return html
-      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Remove scripts
-      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // Remove styles
-      .replace(/<[^>]+>/g, ' ') // Remove HTML tags
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .trim()
+    let result = html;
+    let previousLength;
+
+    // Loop to remove script tags until none remain (handles nested scripts)
+    // Pattern matches any whitespace (spaces, tabs, newlines) in closing tag
+    do {
+      previousLength = result.length;
+      result = result.replace(/<script\b[^>]*>[\s\S]*?<\/script[\s\S]*?>/gi, '');
+    } while (result.length !== previousLength);
+
+    // Loop to remove style tags until none remain (handles nested styles)
+    do {
+      previousLength = result.length;
+      result = result.replace(/<style\b[^>]*>[\s\S]*?<\/style[\s\S]*?>/gi, '');
+    } while (result.length !== previousLength);
+
+    // Remove all remaining HTML tags with multiple passes for nested content
+    do {
+      previousLength = result.length;
+      result = result.replace(/<[^>]+>/g, ' ');
+    } while (result.length !== previousLength);
+
+    // Normalize whitespace and trim
+    return result.replace(/\s+/g, ' ').trim();
   }
 
   // Extract main image from HTML
@@ -719,15 +786,16 @@ export class ArticleService {
   }
 
   // Clean text content
+  // IMPORTANT: Decode &amp; LAST to avoid double-unescaping (e.g., &amp;lt; -> &lt; -> <)
   cleanText(text) {
     return text
       .replace(/\s+/g, ' ')
-      .replace(/&amp;/g, '&')
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
       .replace(/&#039;/g, "'")
       .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')  // Decode &amp; LAST to prevent double-unescaping
       .trim()
   }
 

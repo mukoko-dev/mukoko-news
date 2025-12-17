@@ -225,7 +225,7 @@ export class PersonalizedFeedService {
       LIMIT ?
     `).bind(limit).all();
 
-    const articles = (result.results || []) as ScoredArticle[];
+    const articles = (result.results || []) as unknown as ScoredArticle[];
 
     // Filter out already read articles if needed
     if (excludeIds.size > 0) {

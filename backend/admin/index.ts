@@ -574,6 +574,13 @@ export function getAdminHTML(): string {
     </div>
 
     <script>
+        // Escape HTML to prevent XSS
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
         async function runAITests() {
             const resultsDiv = document.getElementById('aiTestResults');
             const statusIndicator = document.getElementById('aiStatusIndicator');
@@ -618,17 +625,17 @@ export function getAdminHTML(): string {
 
                     let resultHtml = '';
                     if (test.result) {
-                        resultHtml = '<div class="ai-test-result">' + JSON.stringify(test.result, null, 2) + '</div>';
+                        resultHtml = '<div class="ai-test-result">' + escapeHtml(JSON.stringify(test.result, null, 2)) + '</div>';
                     }
                     if (test.error) {
-                        resultHtml = '<div class="ai-test-result ai-test-error">Error: ' + test.error + '</div>';
+                        resultHtml = '<div class="ai-test-result ai-test-error">Error: ' + escapeHtml(String(test.error)) + '</div>';
                     }
 
                     testItem.innerHTML = \`
                         <div class="ai-test-name">
-                            <span>\${test.name}</span>
-                            <span class="ai-test-badge \${test.status}">\${test.status}</span>
-                            <span class="ai-test-duration">\${test.duration_ms}ms</span>
+                            <span>\${escapeHtml(String(test.name))}</span>
+                            <span class="ai-test-badge \${escapeHtml(String(test.status))}">\${escapeHtml(String(test.status))}</span>
+                            <span class="ai-test-duration">\${escapeHtml(String(test.duration_ms))}ms</span>
                         </div>
                         \${resultHtml}
                     \`;
@@ -636,22 +643,22 @@ export function getAdminHTML(): string {
                     testsList.appendChild(testItem);
                 });
 
-                // Render summary
+                // Render summary (numeric values escaped for safety)
                 summaryDiv.innerHTML = \`
                     <div class="ai-summary-item">
-                        <div class="ai-summary-value">\${data.summary.total}</div>
+                        <div class="ai-summary-value">\${escapeHtml(String(data.summary.total))}</div>
                         <div class="ai-summary-label">Total</div>
                     </div>
                     <div class="ai-summary-item">
-                        <div class="ai-summary-value passed">\${data.summary.passed}</div>
+                        <div class="ai-summary-value passed">\${escapeHtml(String(data.summary.passed))}</div>
                         <div class="ai-summary-label">Passed</div>
                     </div>
                     <div class="ai-summary-item">
-                        <div class="ai-summary-value failed">\${data.summary.failed}</div>
+                        <div class="ai-summary-value failed">\${escapeHtml(String(data.summary.failed))}</div>
                         <div class="ai-summary-label">Failed</div>
                     </div>
                     <div class="ai-summary-item">
-                        <div class="ai-summary-value skipped">\${data.summary.skipped}</div>
+                        <div class="ai-summary-value skipped">\${escapeHtml(String(data.summary.skipped))}</div>
                         <div class="ai-summary-label">Skipped</div>
                     </div>
                 \`;
@@ -659,7 +666,7 @@ export function getAdminHTML(): string {
             } catch (error) {
                 statusIndicator.className = 'ai-status-indicator failed';
                 statusText.textContent = 'Test run failed';
-                testsList.innerHTML = '<div class="ai-test-result ai-test-error">Error: ' + error.message + '</div>';
+                testsList.innerHTML = '<div class="ai-test-result ai-test-error">Error: ' + escapeHtml(String(error.message)) + '</div>';
             } finally {
                 runButton.disabled = false;
                 runButton.textContent = 'Run AI Tests →';

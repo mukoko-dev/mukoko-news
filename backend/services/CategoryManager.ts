@@ -86,7 +86,7 @@ export class CategoryManager {
         .bind(userId)
         .all();
 
-      return result.results as UserInterest[];
+      return result.results as unknown as UserInterest[];
     } catch (error) {
       console.error('[CategoryManager] Error getting user interests:', error);
       return [];
@@ -259,7 +259,7 @@ export class CategoryManager {
         ? await this.db.prepare(query).bind(categoryId, days).all()
         : await this.db.prepare(query).bind(days).all();
 
-      return result.results as CategoryPerformance[];
+      return result.results as unknown as CategoryPerformance[];
     } catch (error) {
       console.error('[CategoryManager] Error getting category analytics:', error);
       return [];

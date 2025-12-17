@@ -7,7 +7,10 @@
     "dev": "wrangler dev",
     "deploy": "npm run clean && npm run build && wrangler deploy",
     "build": "wrangler deploy --dry-run",
-    "test": "npm run build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:build": "npm run build",
     "typecheck": "tsc --noEmit",
     "lint": "echo 'Backend: TypeScript compilation serves as linting'",
     "validate": "npm run typecheck && npm run build",
@@ -29,6 +32,8 @@
     "@cloudflare/workers-types": "^4.20250425.0",
     "@types/node": "^20.11.0",
     "typescript": "^5.3.3",
+    "vitest": "^2.1.0",
+    "@vitest/coverage-v8": "^2.1.0",
     "wrangler": "^4.21.2"
   }
 }

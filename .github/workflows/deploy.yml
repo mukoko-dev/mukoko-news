@@ -6,8 +6,13 @@ on:
   pull_request:
     branches: [ main ]
 
+# Restrict GITHUB_TOKEN permissions (principle of least privilege)
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
-  test:
+  test-backend:
     runs-on: ubuntu-latest
     name: Test Backend
 
@@ -27,15 +32,50 @@ jobs:
         cd backend
         npm install
 
-    - name: Test backend build
+    - name: Run backend unit tests
       run: |
         cd backend
         npm run test
 
+    - name: Type check backend
+      run: |
+        cd backend
+        npm run typecheck
+
+    - name: Test backend build
+      run: |
+        cd backend
+        npm run test:build
+
+  test-mobile:
+    runs-on: ubuntu-latest
+    name: Test Mobile App
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js for mobile
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'mobile/package-lock.json'
+
+    - name: Install mobile dependencies
+      run: |
+        cd mobile
+        npm install
+
+    - name: Run mobile unit tests
+      run: |
+        cd mobile
+        npm run test -- --passWithNoTests
+
   deploy-backend:
     runs-on: ubuntu-latest
     name: Deploy Backend
-    needs: test
+    needs: [test-backend, test-mobile]
     if: github.ref == 'refs/heads/main'
 
     steps:

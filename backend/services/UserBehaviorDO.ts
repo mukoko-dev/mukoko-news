@@ -198,10 +198,18 @@ export class UserBehaviorDO {
    * Track user activity
    */
   private async trackActivity(request: Request): Promise<Response> {
-    const body = await request.json()
+    const body = await request.json() as {
+      type?: string;
+      articleId?: string;
+      categoryId?: string;
+      searchQuery?: string;
+      duration?: number;
+      scrollDepth?: number;
+      metadata?: Record<string, unknown>;
+    }
     const activity: UserActivity = {
-      type: body.type,
-      articleId: body.articleId,
+      type: (body.type as UserActivity['type']) || 'page_view',
+      articleId: body.articleId ? Number(body.articleId) : undefined,
       categoryId: body.categoryId,
       searchQuery: body.searchQuery,
       duration: body.duration,
@@ -222,7 +230,7 @@ export class UserBehaviorDO {
    * Start a new user session
    */
   private async startSession(request: Request): Promise<Response> {
-    const body = await request.json()
+    const body = await request.json() as { userId?: string }
     const { userId } = body
 
     if (this.userState.userId === '') {
@@ -246,7 +254,7 @@ export class UserBehaviorDO {
    * Update current session
    */
   private async updateSession(request: Request): Promise<Response> {
-    const body = await request.json()
+    const body = await request.json() as { activity?: UserActivity }
     const { activity } = body
 
     if (!this.userState.currentSession) {

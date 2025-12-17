@@ -164,9 +164,19 @@ export class ArticleAIService {
 
     // Step 2: Remove images and image-related content
     if (options.removeImages) {
+      // Use loop-based removal to handle nested/malformed tags
+      let previousLength;
+      do {
+        previousLength = content.length;
+        content = content.replace(/<img[^>]*>/gi, '');
+      } while (content.length !== previousLength);
+
+      do {
+        previousLength = content.length;
+        content = content.replace(/<figure[^>]*>[\s\S]*?<\/figure[\s\S]*?>/gi, '');
+      } while (content.length !== previousLength);
+
       content = content
-        .replace(/<img[^>]*>/gi, '') // Remove img tags
-        .replace(/<figure[^>]*>.*?<\/figure>/gi, '') // Remove figure tags
         .replace(/!\[.*?\]\([^)]+\)/g, '') // Remove markdown images
         .replace(/src="[^"]*"/gi, '') // Remove src attributes
         .replace(/\[caption[^\]]*\].*?\[\/caption\]/gi, '') // Remove WordPress captions
@@ -215,12 +225,14 @@ Return only the cleaned text content, no explanations:`,
         .trim()
     }
 
-    // Step 5: Remove HTML entities and tags
-    content = content
-      .replace(/&[a-zA-Z0-9#]+;/g, ' ') // HTML entities
-      .replace(/<[^>]*>/g, '') // HTML tags
-      .replace(/\s+/g, ' ') // Clean up spaces again
-      .trim()
+    // Step 5: Remove HTML entities and tags (loop-based for nested tags)
+    content = content.replace(/&[a-zA-Z0-9#]+;/g, ' '); // HTML entities
+    let prevLen;
+    do {
+      prevLen = content.length;
+      content = content.replace(/<[^>]*>/g, '');
+    } while (content.length !== prevLen);
+    content = content.replace(/\s+/g, ' ').trim(); // Clean up spaces
 
     const removedCharCount = originalLength - content.length
 
@@ -290,11 +302,12 @@ Return JSON format:
           const parsed = JSON.parse(aiResponse.response)
           if (parsed.keywords && Array.isArray(parsed.keywords)) {
             // Match extracted keywords with database keywords to get categories
+            const dbKeywords = existingKeywords.results as Array<{ keyword: string; category_id: string }>
             for (const kw of parsed.keywords) {
-              const dbKeyword = existingKeywords.results.find((k: any) => 
+              const dbKeyword = dbKeywords.find((k) =>
                 k.keyword.toLowerCase() === kw.keyword.toLowerCase()
               )
-              
+
               if (dbKeyword && kw.confidence > 0.5) {
                 extractedKeywords.push({
                   keyword: kw.keyword,
@@ -312,8 +325,8 @@ Return JSON format:
       // Fallback: simple keyword matching if AI failed
       if (extractedKeywords.length === 0) {
         const contentLower = (title + ' ' + content).toLowerCase()
-        
-        for (const kw of existingKeywords.results.slice(0, 20)) {
+
+        for (const kw of existingKeywords.results.slice(0, 20) as Array<{ keyword: string; category_id: string }>) {
           if (contentLower.includes(kw.keyword.toLowerCase())) {
             extractedKeywords.push({
               keyword: kw.keyword,
