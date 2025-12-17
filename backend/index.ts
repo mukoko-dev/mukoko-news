@@ -2925,7 +2925,7 @@ app.post("/api/auth/login", async (c) => {
       status: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Set-Cookie': `auth_token=${sessionToken}; Domain=.hararemetro.co.zw; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`
+        'Set-Cookie': `auth_token=${sessionToken}; Domain=.mukoko.com; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`
       }
     });
   } catch (error: any) {
@@ -2995,7 +2995,7 @@ app.post("/api/auth/logout", async (c) => {
     return new Response(JSON.stringify({ success: true }), {
       headers: {
         'Content-Type': 'application/json',
-        'Set-Cookie': 'auth_token=; Domain=.hararemetro.co.zw; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
+        'Set-Cookie': 'auth_token=; Domain=.mukoko.com; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0'
       }
     });
   } catch (error: any) {

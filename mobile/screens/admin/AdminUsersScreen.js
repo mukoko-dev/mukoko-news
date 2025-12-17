@@ -225,16 +225,20 @@ export default function AdminUsersScreen({ navigation }) {
                 mode="outlined"
                 compact
                 onPress={() => setMenuVisible(`role-${user.id}`)}
+                accessibilityLabel="Change user role"
               >
                 Change Role
               </Button>
             }
+            contentStyle={{ accessibilityRole: 'menu' }}
+            accessibilityLabel={`Role options for ${user.email}`}
           >
             {ROLES.map((role) => (
               <Menu.Item
                 key={role}
                 onPress={() => handleRoleChange(user.id, role)}
                 title={role.replace('_', ' ')}
+                accessibilityLabel={`Set role to ${role.replace('_', ' ')}`}
               />
             ))}
           </Menu>
@@ -247,16 +251,20 @@ export default function AdminUsersScreen({ navigation }) {
                 mode="outlined"
                 compact
                 onPress={() => setMenuVisible(`status-${user.id}`)}
+                accessibilityLabel="Change user status"
               >
                 Change Status
               </Button>
             }
+            contentStyle={{ accessibilityRole: 'menu' }}
+            accessibilityLabel={`Status options for ${user.email}`}
           >
             {STATUSES.map((status) => (
               <Menu.Item
                 key={status}
                 onPress={() => handleStatusChange(user.id, status)}
                 title={status}
+                accessibilityLabel={`Set status to ${status}`}
               />
             ))}
           </Menu>
@@ -266,6 +274,7 @@ export default function AdminUsersScreen({ navigation }) {
             iconColor={theme.colors.error}
             size={20}
             onPress={() => handleDelete(user.id, user.email)}
+            accessibilityLabel={`Delete user ${user.email}`}
           />
         </View>
       </Card.Content>
