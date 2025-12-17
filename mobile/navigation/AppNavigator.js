@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
 import AppHeader from '../components/AppHeader';
 import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
+import { ResponsiveLayout, LeftSidebar, RightSidebar, BREAKPOINTS } from '../components/layout';
 import { navigationRef } from './navigationRef';
 import linking from './linking';
 
@@ -113,7 +114,7 @@ function AdminStack() {
 // Pattern: Bytes (default) → Search → Profile [+ Admin]
 // Discover is header-only (hamburger menu)
 // Insights is integrated into Search (shows when search is empty)
-function MainTabs() {
+function MainTabs({ currentRoute }) {
   const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
   const { isDark } = useTheme();
   const paperTheme = usePaperTheme();
@@ -122,7 +123,7 @@ function MainTabs() {
   useEffect(() => {
     const updateLayout = () => {
       const { width } = Dimensions.get('window');
-      setIsTabletOrDesktop(width >= 768);
+      setIsTabletOrDesktop(width >= BREAKPOINTS.mobile);
     };
     updateLayout();
     const subscription = Dimensions.addEventListener('change', updateLayout);
@@ -257,16 +258,49 @@ function MainTabs() {
   );
 }
 
+// Helper to get current route from navigation state
+function getRouteFromState(state) {
+  if (!state) return 'Bytes';
+  const currentRoute = state.routes?.[state.index];
+  return currentRoute?.name || 'Bytes';
+}
+
 // Root Navigator
 export default function AppNavigator() {
   const paperTheme = usePaperTheme();
   const [isNavigationReady, setIsNavigationReady] = useState(false);
+  const [currentRoute, setCurrentRoute] = useState('Bytes');
+  const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+
+  // Track screen width for responsive layout
+  useEffect(() => {
+    const subscription = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenWidth(window.width);
+    });
+    return () => subscription?.remove();
+  }, []);
+
+  const isTabletOrDesktop = screenWidth >= BREAKPOINTS.mobile;
+
+  // Track current route for sidebar highlighting
+  const handleStateChange = useCallback((state) => {
+    if (state) {
+      setCurrentRoute(getRouteFromState(state));
+    }
+  }, []);
 
   return (
     <NavigationContainer
       ref={navigationRef}
       linking={linking}
-      onReady={() => setIsNavigationReady(true)}
+      onReady={() => {
+        setIsNavigationReady(true);
+        const state = navigationRef.getRootState();
+        if (state) {
+          setCurrentRoute(getRouteFromState(state));
+        }
+      }}
+      onStateChange={handleStateChange}
       documentTitle={{
         formatter: (options, route) => {
           const routeName = route?.name;
@@ -301,10 +335,14 @@ export default function AppNavigator() {
         edges={['bottom']}
       >
         <ZimbabweFlagStrip />
-        {isNavigationReady && <AppHeader />}
-        <View style={styles.content}>
-          <MainTabs />
-        </View>
+        {/* Only show AppHeader on mobile - tablet/desktop uses sidebar */}
+        {isNavigationReady && !isTabletOrDesktop && <AppHeader />}
+        <ResponsiveLayout
+          leftSidebar={<LeftSidebar currentRoute={currentRoute} />}
+          rightSidebar={<RightSidebar />}
+        >
+          <MainTabs currentRoute={currentRoute} />
+        </ResponsiveLayout>
       </SafeAreaView>
     </NavigationContainer>
   );
@@ -312,9 +350,6 @@ export default function AppNavigator() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
-  },
-  content: {
     flex: 1,
   },
 });
