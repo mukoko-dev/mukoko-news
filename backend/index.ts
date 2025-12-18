@@ -3856,6 +3856,473 @@ app.get("/api/auth/check-username", async (c) => {
   }
 });
 
+// ===== USER IDENTITY & AUTH PROVIDERS =====
+
+// Get user's linked authentication providers
+app.get("/api/user/me/auth-providers", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const providers = await c.env.DB.prepare(`
+      SELECT
+        id, provider_type, provider_name,
+        CASE WHEN oidc_subject IS NOT NULL THEN 'linked' ELSE NULL END as oidc_status,
+        CASE WHEN wallet_address IS NOT NULL THEN wallet_address ELSE NULL END as wallet_address,
+        chain_id, ens_name,
+        CASE WHEN mobile_number IS NOT NULL THEN
+          CONCAT(SUBSTR(mobile_number, 1, 4), '****', SUBSTR(mobile_number, -4))
+        ELSE NULL END as mobile_masked,
+        mobile_verified, whatsapp_enabled,
+        is_primary, verified_at, last_used_at, created_at
+      FROM user_auth_providers
+      WHERE user_id = ?
+      ORDER BY is_primary DESC, created_at ASC
+    `).bind(userId).all();
+
+    return c.json({
+      providers: providers.results || [],
+      count: providers.results?.length || 0
+    });
+  } catch (error) {
+    console.error("[AUTH_PROVIDERS] Error:", error);
+    return c.json({ error: "Failed to fetch auth providers" }, 500);
+  }
+});
+
+// Link a new authentication provider (OIDC callback handler)
+app.post("/api/user/me/auth-providers/oidc", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { provider_name, oidc_subject, oidc_issuer, claims } = body;
+
+    if (!provider_name || !oidc_subject || !oidc_issuer) {
+      return c.json({ error: "Missing required OIDC fields" }, 400);
+    }
+
+    // Check if this OIDC subject is already linked to another user
+    const existing = await c.env.DB.prepare(`
+      SELECT user_id FROM user_auth_providers
+      WHERE provider_type = 'oidc' AND oidc_subject = ? AND oidc_issuer = ? AND user_id != ?
+    `).bind(oidc_subject, oidc_issuer, userId).first();
+
+    if (existing) {
+      return c.json({ error: "This identity is already linked to another account" }, 409);
+    }
+
+    // Link the provider
+    await c.env.DB.prepare(`
+      INSERT INTO user_auth_providers (
+        user_id, provider_type, provider_name, oidc_subject, oidc_issuer,
+        verified_at, metadata
+      ) VALUES (?, 'oidc', ?, ?, ?, CURRENT_TIMESTAMP, ?)
+      ON CONFLICT(provider_type, provider_name, oidc_subject) DO UPDATE SET
+        user_id = excluded.user_id,
+        verified_at = CURRENT_TIMESTAMP,
+        metadata = excluded.metadata,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(userId, provider_name, oidc_subject, oidc_issuer, JSON.stringify(claims || {})).run();
+
+    // Update user profile from OIDC claims if provided
+    if (claims) {
+      const updates: string[] = [];
+      const params: any[] = [];
+
+      if (claims.name && !await hasUserField(c.env.DB, userId, 'display_name')) {
+        updates.push('display_name = ?');
+        params.push(claims.name);
+      }
+      if (claims.picture && !await hasUserField(c.env.DB, userId, 'avatar_url')) {
+        updates.push('avatar_url = ?');
+        params.push(claims.picture);
+      }
+      if (claims.email && !await hasUserField(c.env.DB, userId, 'email')) {
+        updates.push('email = ?');
+        params.push(claims.email);
+      }
+      if (claims.email_verified) {
+        updates.push('email_verified = TRUE');
+      }
+      if (claims.phone_number && !await hasUserField(c.env.DB, userId, 'mobile_number')) {
+        updates.push('mobile_number = ?');
+        params.push(claims.phone_number);
+      }
+      if (claims.phone_number_verified) {
+        updates.push('mobile_verified = TRUE');
+      }
+
+      if (updates.length > 0) {
+        params.push(userId);
+        await c.env.DB.prepare(`
+          UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        `).bind(...params).run();
+      }
+    }
+
+    return c.json({ success: true, message: "Authentication provider linked" });
+  } catch (error) {
+    console.error("[LINK_OIDC] Error:", error);
+    return c.json({ error: "Failed to link authentication provider" }, 500);
+  }
+});
+
+// Helper function to check if user has a field set
+async function hasUserField(db: D1Database, userId: string, field: string): Promise<boolean> {
+  const result = await db.prepare(`SELECT ${field} FROM users WHERE id = ?`).bind(userId).first();
+  return result && result[field] !== null && result[field] !== '';
+}
+
+// Link mobile number
+app.post("/api/user/me/auth-providers/mobile", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { mobile_number, country_code } = body;
+
+    if (!mobile_number) {
+      return c.json({ error: "Mobile number required" }, 400);
+    }
+
+    // Check if mobile is already linked to another user
+    const existing = await c.env.DB.prepare(`
+      SELECT user_id FROM user_auth_providers
+      WHERE provider_type = 'mobile' AND mobile_number = ? AND user_id != ?
+    `).bind(mobile_number, userId).first();
+
+    if (existing) {
+      return c.json({ error: "This mobile number is already linked to another account" }, 409);
+    }
+
+    // Create provider link (unverified - will need OTP verification)
+    await c.env.DB.prepare(`
+      INSERT INTO user_auth_providers (
+        user_id, provider_type, provider_name, mobile_number, mobile_country_code, mobile_verified
+      ) VALUES (?, 'mobile', 'sms', ?, ?, FALSE)
+      ON CONFLICT(mobile_number) DO UPDATE SET
+        user_id = excluded.user_id,
+        mobile_country_code = excluded.mobile_country_code,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(userId, mobile_number, country_code || 'ZW').run();
+
+    return c.json({
+      success: true,
+      message: "Mobile number added. Please verify with OTP.",
+      requires_verification: true
+    });
+  } catch (error) {
+    console.error("[LINK_MOBILE] Error:", error);
+    return c.json({ error: "Failed to link mobile number" }, 500);
+  }
+});
+
+// Link Web3 wallet
+app.post("/api/user/me/auth-providers/wallet", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { wallet_address, chain_id, ens_name } = body;
+
+    if (!wallet_address) {
+      return c.json({ error: "Wallet address required" }, 400);
+    }
+
+    const normalizedAddress = wallet_address.toLowerCase();
+
+    // Check if wallet is already linked to another user
+    const existing = await c.env.DB.prepare(`
+      SELECT user_id FROM user_auth_providers
+      WHERE provider_type = 'web3' AND wallet_address = ? AND user_id != ?
+    `).bind(normalizedAddress, userId).first();
+
+    if (existing) {
+      return c.json({ error: "This wallet is already linked to another account" }, 409);
+    }
+
+    // Create provider link (will need signature verification for full verification)
+    await c.env.DB.prepare(`
+      INSERT INTO user_auth_providers (
+        user_id, provider_type, provider_name, wallet_address, chain_id, ens_name
+      ) VALUES (?, 'web3', 'ethereum', ?, ?, ?)
+      ON CONFLICT(wallet_address, chain_id) DO UPDATE SET
+        user_id = excluded.user_id,
+        ens_name = COALESCE(excluded.ens_name, ens_name),
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(userId, normalizedAddress, chain_id || 1, ens_name || null).run();
+
+    return c.json({
+      success: true,
+      message: "Wallet linked. Signature verification recommended.",
+      requires_verification: true
+    });
+  } catch (error) {
+    console.error("[LINK_WALLET] Error:", error);
+    return c.json({ error: "Failed to link wallet" }, 500);
+  }
+});
+
+// Set primary authentication provider
+app.put("/api/user/me/auth-providers/:providerId/primary", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const providerId = c.req.param("providerId");
+
+    // Clear all primary flags for this user
+    await c.env.DB.prepare(`
+      UPDATE user_auth_providers SET is_primary = FALSE WHERE user_id = ?
+    `).bind(userId).run();
+
+    // Set the new primary
+    const result = await c.env.DB.prepare(`
+      UPDATE user_auth_providers
+      SET is_primary = TRUE, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND user_id = ?
+    `).bind(providerId, userId).run();
+
+    if (result.meta.changes === 0) {
+      return c.json({ error: "Provider not found" }, 404);
+    }
+
+    return c.json({ success: true, message: "Primary authentication method updated" });
+  } catch (error) {
+    console.error("[SET_PRIMARY_PROVIDER] Error:", error);
+    return c.json({ error: "Failed to update primary provider" }, 500);
+  }
+});
+
+// Unlink authentication provider
+app.delete("/api/user/me/auth-providers/:providerId", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const providerId = c.req.param("providerId");
+
+    // Check if this is the only auth method
+    const countResult = await c.env.DB.prepare(`
+      SELECT COUNT(*) as count FROM user_auth_providers WHERE user_id = ?
+    `).bind(userId).first<{ count: number }>();
+
+    if ((countResult?.count || 0) <= 1) {
+      return c.json({ error: "Cannot remove your only authentication method" }, 400);
+    }
+
+    // Delete the provider
+    const result = await c.env.DB.prepare(`
+      DELETE FROM user_auth_providers WHERE id = ? AND user_id = ?
+    `).bind(providerId, userId).run();
+
+    if (result.meta.changes === 0) {
+      return c.json({ error: "Provider not found" }, 404);
+    }
+
+    return c.json({ success: true, message: "Authentication provider removed" });
+  } catch (error) {
+    console.error("[UNLINK_PROVIDER] Error:", error);
+    return c.json({ error: "Failed to remove provider" }, 500);
+  }
+});
+
+// Get user identity summary (combines user profile with auth providers)
+app.get("/api/user/me/identity", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    // Get user profile
+    const user = await c.env.DB.prepare(`
+      SELECT id, email, username, display_name, avatar_url, bio,
+             user_number, user_uid, mobile_number, mobile_verified, mobile_country_code,
+             primary_wallet_address, primary_chain_id,
+             role, status, email_verified,
+             created_at, updated_at, last_login_at
+      FROM users WHERE id = ?
+    `).bind(userId).first();
+
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    // Get auth providers summary
+    const providers = await c.env.DB.prepare(`
+      SELECT provider_type, provider_name, is_primary, verified_at IS NOT NULL as is_verified
+      FROM user_auth_providers WHERE user_id = ?
+    `).bind(userId).all();
+
+    // Calculate identity completeness
+    const u = user as Record<string, any>;
+    const completeness = {
+      has_email: !!u.email && u.email_verified,
+      has_mobile: !!u.mobile_number && u.mobile_verified,
+      has_wallet: !!u.primary_wallet_address,
+      has_username: !!u.username,
+      has_display_name: !!u.display_name,
+      has_avatar: !!u.avatar_url,
+      provider_count: providers.results?.length || 0,
+      score: 0
+    };
+    completeness.score = [
+      completeness.has_email,
+      completeness.has_mobile,
+      completeness.has_wallet,
+      completeness.has_username,
+      completeness.has_display_name,
+      completeness.has_avatar
+    ].filter(Boolean).length;
+
+    return c.json({
+      user: {
+        id: u.id,
+        user_uid: u.user_uid,
+        user_number: u.user_number,
+        email: u.email,
+        email_verified: u.email_verified,
+        username: u.username,
+        display_name: u.display_name,
+        avatar_url: u.avatar_url,
+        bio: u.bio,
+        mobile_number: u.mobile_number ? u.mobile_number.replace(/(\+\d{3})\d+(\d{4})/, '$1****$2') : null,
+        mobile_verified: u.mobile_verified,
+        mobile_country_code: u.mobile_country_code,
+        primary_wallet_address: u.primary_wallet_address,
+        primary_chain_id: u.primary_chain_id,
+        role: u.role,
+        status: u.status,
+        created_at: u.created_at,
+        last_login_at: u.last_login_at
+      },
+      providers: providers.results || [],
+      completeness
+    });
+  } catch (error) {
+    console.error("[USER_IDENTITY] Error:", error);
+    return c.json({ error: "Failed to fetch user identity" }, 500);
+  }
+});
+
+// Sync user profile from OIDC claims (called after OIDC login)
+app.post("/api/user/me/identity/sync-from-oidc", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { claims, overwrite = false } = body;
+
+    if (!claims) {
+      return c.json({ error: "OIDC claims required" }, 400);
+    }
+
+    // Build update query based on claims
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    // Map OIDC standard claims to user fields
+    const fieldMapping: Record<string, string> = {
+      name: 'display_name',
+      given_name: 'display_name',  // Fallback
+      picture: 'avatar_url',
+      email: 'email',
+      phone_number: 'mobile_number'
+    };
+
+    for (const [claimKey, userField] of Object.entries(fieldMapping)) {
+      if (claims[claimKey]) {
+        if (overwrite || !await hasUserField(c.env.DB, userId, userField)) {
+          updates.push(`${userField} = ?`);
+          params.push(claims[claimKey]);
+        }
+      }
+    }
+
+    // Handle verified flags
+    if (claims.email_verified === true) {
+      updates.push('email_verified = TRUE');
+    }
+    if (claims.phone_number_verified === true) {
+      updates.push('mobile_verified = TRUE');
+    }
+
+    if (updates.length > 0) {
+      params.push(userId);
+      await c.env.DB.prepare(`
+        UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).bind(...params).run();
+    }
+
+    return c.json({
+      success: true,
+      message: "Profile synced from OIDC claims",
+      fields_updated: updates.length
+    });
+  } catch (error) {
+    console.error("[SYNC_OIDC] Error:", error);
+    return c.json({ error: "Failed to sync profile" }, 500);
+  }
+});
+
+// Get available authentication providers
+app.get("/api/auth/providers", async (c) => {
+  try {
+    const countryCode = c.req.query("country") || null;
+
+    let query = `
+      SELECT id, provider_type, display_name, icon_url, sort_order,
+             available_countries, enabled
+      FROM auth_provider_config
+      WHERE enabled = TRUE
+    `;
+
+    const result = await c.env.DB.prepare(query).all();
+
+    // Filter by country if specified
+    let providers = result.results || [];
+    if (countryCode) {
+      providers = providers.filter((p: any) => {
+        if (!p.available_countries) return true;
+        const countries = JSON.parse(p.available_countries);
+        return countries.includes(countryCode);
+      });
+    }
+
+    // Group by type
+    const grouped = {
+      oidc: providers.filter((p: any) => p.provider_type === 'oidc'),
+      mobile: providers.filter((p: any) => p.provider_type === 'mobile'),
+      web3: providers.filter((p: any) => p.provider_type === 'web3')
+    };
+
+    return c.json({ providers: grouped });
+  } catch (error) {
+    console.error("[AUTH_PROVIDERS_LIST] Error:", error);
+    return c.json({ error: "Failed to fetch providers" }, 500);
+  }
+});
+
 // ===== USER MANAGEMENT (ADMIN ONLY) =====
 
 // Get all users (admin only)
