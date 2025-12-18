@@ -136,14 +136,14 @@ function MainTabs({ currentRoute }) {
     }
     return {
       position: 'absolute',
-      bottom: 12,
-      left: 12,
-      right: 12,
+      bottom: 16,
+      left: 16,
+      right: 16,
       backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-      borderRadius: 24,
-      height: 72,
-      paddingBottom: 8,
-      paddingTop: 8,
+      borderRadius: 20,
+      height: 64,
+      paddingBottom: 6,
+      paddingTop: 6,
       borderWidth: 1,
       borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
       elevation: 4,
@@ -162,12 +162,18 @@ function MainTabs({ currentRoute }) {
         tabBarInactiveTintColor: paperTheme.colors.onSurfaceVariant,
         tabBarStyle: getTabBarStyle(),
         tabBarItemStyle: {
-          paddingVertical: 4,
+          paddingVertical: 2,
+          justifyContent: 'center',
+          alignItems: 'center',
         },
         tabBarLabelStyle: {
           fontSize: 11,
           fontFamily: mukokoTheme.fonts.medium.fontFamily,
           marginTop: 2,
+          marginBottom: 0,
+        },
+        tabBarIconStyle: {
+          marginTop: 0,
         },
       }}
     >
