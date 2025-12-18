@@ -1,41 +1,93 @@
+/**
+ * OnboardingScreen - Post-signup onboarding flow
+ *
+ * 3-step flow for authenticated users:
+ * 1. Country selection (Pan-African)
+ * 2. Username selection
+ * 3. Category interests
+ *
+ * WCAG AA compliant accessibility
+ */
+
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image } from 'react-native';
-import { Text, TextInput, Button, Surface, Chip, Icon } from 'react-native-paper';
+import { View, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Image, Platform } from 'react-native';
+import { Text, TextInput, Button, Surface, Icon } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mukokoTheme } from '../theme';
-import { categories as categoriesAPI, user as userAPI } from '../api/client';
+import { categories as categoriesAPI, countries as countriesAPI, user as userAPI } from '../api/client';
 
 // Logo asset
 const MukokoLogo = require('../assets/mukoko-logo-compact.png');
 
 const AUTH_TOKEN_KEY = '@mukoko_auth_token';
 
+// Minimum touch target size for WCAG compliance (44x44 dp)
+const MIN_TOUCH_TARGET = 44;
+
 const { width } = Dimensions.get('window');
+
+/**
+ * ProgressIndicator - Step indicator dots
+ */
+function ProgressIndicator({ currentStep, totalSteps }) {
+  return (
+    <View
+      style={styles.progressContainer}
+      accessibilityRole="progressbar"
+      accessibilityLabel={`Step ${currentStep} of ${totalSteps}`}
+      accessibilityValue={{ min: 1, max: totalSteps, now: currentStep }}
+    >
+      {Array.from({ length: totalSteps }, (_, i) => (
+        <View
+          key={i}
+          style={[
+            styles.progressBar,
+            i < currentStep && styles.progressBarActive,
+            i === currentStep - 1 && styles.progressBarCurrent,
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
 
 export default function OnboardingScreen({ navigation }) {
   const [step, setStep] = useState(1);
   const [username, setUsername] = useState('');
+  const [selectedCountries, setSelectedCountries] = useState([]);
+  const [primaryCountry, setPrimaryCountry] = useState(null);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [countries, setCountries] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [usernameError, setUsernameError] = useState('');
   const [checkingUsername, setCheckingUsername] = useState(false);
   const [error, setError] = useState('');
 
-  // Load categories on mount
+  // Load countries and categories on mount
   useEffect(() => {
-    loadCategories();
+    loadData();
   }, []);
 
-  const loadCategories = async () => {
+  const loadData = async () => {
     try {
-      const result = await categoriesAPI.getAll();
-      if (result.data && result.data.categories) {
-        setCategories(result.data.categories);
+      // Load countries
+      const countriesResult = await countriesAPI.getAll({ withStats: true });
+      if (countriesResult.data?.countries) {
+        // Sort by priority, show enabled only
+        const enabledCountries = countriesResult.data.countries
+          .filter(c => c.enabled !== false)
+          .sort((a, b) => (b.priority || 0) - (a.priority || 0));
+        setCountries(enabledCountries);
+      }
+
+      // Load categories
+      const categoriesResult = await categoriesAPI.getAll();
+      if (categoriesResult.data?.categories) {
+        setCategories(categoriesResult.data.categories);
       }
     } catch (err) {
-      console.error('Failed to load categories:', err);
-      setCategories([]);
+      console.error('Failed to load onboarding data:', err);
     }
   };
 
@@ -82,6 +134,32 @@ export default function OnboardingScreen({ navigation }) {
     }
   };
 
+  const toggleCountry = (countryCode) => {
+    setSelectedCountries((prev) => {
+      const newSelection = prev.includes(countryCode)
+        ? prev.filter((code) => code !== countryCode)
+        : [...prev, countryCode];
+
+      // If deselecting the primary country, clear primary
+      if (primaryCountry === countryCode && !newSelection.includes(countryCode)) {
+        setPrimaryCountry(null);
+      }
+
+      // Auto-set first selected as primary if none set
+      if (!primaryCountry && newSelection.length > 0) {
+        setPrimaryCountry(newSelection[0]);
+      }
+
+      return newSelection;
+    });
+  };
+
+  const handleSetPrimary = (countryCode) => {
+    if (selectedCountries.includes(countryCode)) {
+      setPrimaryCountry(countryCode);
+    }
+  };
+
   const toggleCategory = (categoryId) => {
     setSelectedCategories((prev) =>
       prev.includes(categoryId)
@@ -91,7 +169,13 @@ export default function OnboardingScreen({ navigation }) {
   };
 
   const handleContinue = async () => {
+    setError('');
+
     if (step === 1) {
+      // Country selection - can skip
+      setStep(2);
+    } else if (step === 2) {
+      // Username validation
       if (!username || username.length < 3) {
         setUsernameError('Username must be at least 3 characters');
         return;
@@ -102,14 +186,22 @@ export default function OnboardingScreen({ navigation }) {
         return;
       }
 
-      setStep(2);
-    } else {
+      setStep(3);
+    } else if (step === 3) {
+      // Category selection - require at least 3
       if (selectedCategories.length < 3) {
         setError('Please select at least 3 topics');
         return;
       }
 
       await handleSubmit();
+    }
+  };
+
+  const handleBack = () => {
+    if (step > 1) {
+      setStep(step - 1);
+      setError('');
     }
   };
 
@@ -123,7 +215,19 @@ export default function OnboardingScreen({ navigation }) {
 
       if (usernameResult.error) {
         setError(usernameResult.error || 'Failed to update username');
+        setLoading(false);
         return;
+      }
+
+      // Save country preferences
+      if (selectedCountries.length > 0) {
+        await countriesAPI.setUserPreferences(
+          selectedCountries.map((code, index) => ({
+            country_id: code,
+            is_primary: code === primaryCountry,
+            priority: selectedCountries.length - index,
+          }))
+        );
       }
 
       // Update category interests
@@ -150,41 +254,144 @@ export default function OnboardingScreen({ navigation }) {
     });
   };
 
+  // Calculate card width for country grid (3 columns)
+  const countryCardWidth = (width - mukokoTheme.spacing.lg * 2 - mukokoTheme.spacing.xl * 2 - mukokoTheme.spacing.sm * 2) / 3;
+
+  // Calculate card width for category grid (2 columns)
+  const categoryCardWidth = (width - mukokoTheme.spacing.lg * 2 - mukokoTheme.spacing.xl * 2 - mukokoTheme.spacing.sm) / 2;
+
   return (
     <View style={styles.container}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
       >
         {/* Progress Indicator */}
-        <View style={styles.progressContainer}>
-          <View style={[styles.progressBar, step >= 1 && styles.progressBarActive]} />
-          <View style={[styles.progressBar, step >= 2 && styles.progressBarActive]} />
-        </View>
+        <ProgressIndicator currentStep={step} totalSteps={3} />
 
         {/* Header */}
         <View style={styles.header}>
-          <Image source={MukokoLogo} style={styles.logo} resizeMode="contain" />
-          <Text variant="headlineLarge" style={styles.title}>
+          <Image
+            source={MukokoLogo}
+            style={styles.logo}
+            resizeMode="contain"
+            accessibilityLabel="Mukoko News logo"
+          />
+          <Text
+            variant="headlineLarge"
+            style={styles.title}
+            accessibilityRole="header"
+          >
             Welcome!
           </Text>
           <Text variant="bodyMedium" style={styles.subtitle}>
-            {step === 1 ? "Let's personalize your experience" : "Choose topics you care about"}
+            {step === 1 && "Choose countries you want news from"}
+            {step === 2 && "Let's personalize your experience"}
+            {step === 3 && "Choose topics you care about"}
           </Text>
         </View>
 
         {/* Error Message */}
         {error && (
-          <Surface style={styles.errorBanner} elevation={0}>
+          <Surface
+            style={styles.errorBanner}
+            elevation={0}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+          >
             <Text style={styles.errorText}>{error}</Text>
           </Surface>
         )}
 
-        {/* Step 1: Username */}
+        {/* Step 1: Country Selection */}
         {step === 1 && (
           <Surface style={styles.card} elevation={2}>
             <View style={styles.stepHeader}>
-              <Icon source="account" size={48} color={mukokoTheme.colors.primary} />
+              <Text variant="titleLarge" style={styles.stepTitle}>
+                Select Your Countries
+              </Text>
+              <Text variant="bodyMedium" style={styles.stepSubtitle}>
+                Get news from countries you care about. Long press to set your primary country.
+              </Text>
+            </View>
+
+            {/* Country Grid */}
+            <View
+              style={styles.countryGrid}
+              accessibilityRole="group"
+              accessibilityLabel="Country selection grid"
+            >
+              {countries.map((country) => {
+                const isSelected = selectedCountries.includes(country.id || country.code);
+                const isPrimary = primaryCountry === (country.id || country.code);
+                return (
+                  <TouchableOpacity
+                    key={country.id || country.code}
+                    onPress={() => toggleCountry(country.id || country.code)}
+                    onLongPress={() => handleSetPrimary(country.id || country.code)}
+                    style={[
+                      styles.countryChip,
+                      { width: countryCardWidth },
+                      isSelected && styles.countryChipSelected,
+                      isPrimary && styles.countryChipPrimary,
+                    ]}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: isSelected }}
+                    accessibilityLabel={`${country.name}${isPrimary ? ', primary country' : isSelected ? ', selected' : ''}`}
+                    accessibilityHint={isSelected ? 'Long press to set as primary' : 'Double tap to select'}
+                    delayLongPress={500}
+                  >
+                    <Text style={styles.countryEmoji} accessibilityElementsHidden>{country.emoji}</Text>
+                    <Text
+                      style={[
+                        styles.countryName,
+                        isSelected && styles.countryNameSelected,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {country.name}
+                    </Text>
+                    {isPrimary && (
+                      <View style={styles.primaryBadge}>
+                        <Text style={styles.primaryBadgeText}>★</Text>
+                      </View>
+                    )}
+                    {isSelected && !isPrimary && (
+                      <View style={styles.checkmark}>
+                        <Icon source="check" size={14} color={mukokoTheme.colors.onPrimary} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Selection Counter */}
+            <Text style={styles.selectionCounter}>
+              {selectedCountries.length === 0 && 'No selection = news from all of Africa'}
+              {selectedCountries.length > 0 &&
+                `${selectedCountries.length} ${selectedCountries.length === 1 ? 'country' : 'countries'} selected${primaryCountry ? ' • ★ = primary' : ''}`}
+            </Text>
+
+            <Button
+              mode="contained"
+              onPress={handleContinue}
+              style={styles.button}
+              contentStyle={styles.buttonContent}
+              icon="arrow-right"
+              accessibilityLabel="Continue to username selection"
+            >
+              {selectedCountries.length === 0 ? 'Skip' : 'Continue'}
+            </Button>
+          </Surface>
+        )}
+
+        {/* Step 2: Username */}
+        {step === 2 && (
+          <Surface style={styles.card} elevation={2}>
+            <View style={styles.stepHeader}>
+              <Icon source="account" size={48} color={mukokoTheme.colors.primary} accessibilityElementsHidden />
               <Text variant="titleLarge" style={styles.stepTitle}>
                 Choose Your Username
               </Text>
@@ -205,41 +412,57 @@ export default function OnboardingScreen({ navigation }) {
               selectionColor={mukokoTheme.colors.primary}
               cursorColor={mukokoTheme.colors.primary}
               error={!!usernameError}
+              accessibilityLabel="Username input"
+              accessibilityHint="Enter your desired username"
               right={
                 checkingUsername ? (
-                  <TextInput.Icon icon="loading" />
+                  <TextInput.Icon icon="loading" accessibilityLabel="Checking username availability" />
                 ) : (
                   username.length >= 3 && !usernameError && (
                     <TextInput.Icon
                       icon={() => <Icon source="check" size={20} color={mukokoTheme.colors.success} />}
+                      accessibilityLabel="Username is available"
                     />
                   )
                 )
               }
             />
             {usernameError ? (
-              <Text style={styles.helperTextError}>{usernameError}</Text>
+              <Text style={styles.helperTextError} accessibilityRole="alert">{usernameError}</Text>
             ) : (
               <Text style={styles.helperText}>
                 Letters, numbers, and underscores only. Minimum 3 characters.
               </Text>
             )}
 
-            <Button
-              mode="contained"
-              onPress={handleContinue}
-              disabled={!username || username.length < 3 || !!usernameError || checkingUsername}
-              style={styles.button}
-              contentStyle={styles.buttonContent}
-              icon={() => <Icon source="arrow-right" size={20} color={mukokoTheme.colors.onPrimary} />}
-            >
-              {checkingUsername ? 'Checking...' : 'Continue'}
-            </Button>
+            {/* Navigation Buttons */}
+            <View style={styles.buttonRow}>
+              <Button
+                mode="outlined"
+                onPress={handleBack}
+                style={[styles.button, styles.buttonHalf]}
+                contentStyle={styles.buttonContent}
+                accessibilityLabel="Go back to country selection"
+              >
+                Back
+              </Button>
+              <Button
+                mode="contained"
+                onPress={handleContinue}
+                disabled={!username || username.length < 3 || !!usernameError || checkingUsername}
+                style={[styles.button, styles.buttonHalf]}
+                contentStyle={styles.buttonContent}
+                icon="arrow-right"
+                accessibilityLabel="Continue to topic selection"
+              >
+                {checkingUsername ? 'Checking...' : 'Continue'}
+              </Button>
+            </View>
           </Surface>
         )}
 
-        {/* Step 2: Category Interests */}
-        {step === 2 && (
+        {/* Step 3: Category Interests */}
+        {step === 3 && (
           <Surface style={styles.card} elevation={2}>
             <View style={styles.stepHeader}>
               <Text variant="titleLarge" style={styles.stepTitle}>
@@ -251,7 +474,11 @@ export default function OnboardingScreen({ navigation }) {
             </View>
 
             {/* Category Grid */}
-            <View style={styles.categoryGrid}>
+            <View
+              style={styles.categoryGrid}
+              accessibilityRole="group"
+              accessibilityLabel="Topic selection grid"
+            >
               {categories.map((category) => {
                 const isSelected = selectedCategories.includes(category.id);
                 return (
@@ -260,10 +487,15 @@ export default function OnboardingScreen({ navigation }) {
                     onPress={() => toggleCategory(category.id)}
                     style={[
                       styles.categoryChip,
+                      { width: categoryCardWidth },
                       isSelected && styles.categoryChipSelected,
                     ]}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: isSelected }}
+                    accessibilityLabel={`${category.name}${isSelected ? ', selected' : ''}`}
+                    accessibilityHint={`Double tap to ${isSelected ? 'deselect' : 'select'} ${category.name}`}
                   >
-                    <Text style={styles.categoryEmoji}>{category.emoji || '📰'}</Text>
+                    <Text style={styles.categoryEmoji} accessibilityElementsHidden>{category.emoji || '📰'}</Text>
                     <Text
                       style={[
                         styles.categoryName,
@@ -283,7 +515,11 @@ export default function OnboardingScreen({ navigation }) {
             </View>
 
             {/* Selection Counter */}
-            <Text style={styles.selectionCounter}>
+            <Text
+              style={styles.selectionCounter}
+              accessibilityRole="status"
+              accessibilityLiveRegion="polite"
+            >
               {selectedCategories.length === 0 && 'Select at least 3 topics'}
               {selectedCategories.length > 0 && selectedCategories.length < 3 &&
                 `${selectedCategories.length} selected • ${3 - selectedCategories.length} more needed`}
@@ -295,9 +531,10 @@ export default function OnboardingScreen({ navigation }) {
             <View style={styles.buttonRow}>
               <Button
                 mode="outlined"
-                onPress={() => setStep(1)}
+                onPress={handleBack}
                 style={[styles.button, styles.buttonHalf]}
                 contentStyle={styles.buttonContent}
+                accessibilityLabel="Go back to username selection"
               >
                 Back
               </Button>
@@ -308,7 +545,8 @@ export default function OnboardingScreen({ navigation }) {
                 loading={loading}
                 style={[styles.button, styles.buttonHalf]}
                 contentStyle={styles.buttonContent}
-                icon={() => <Icon source="arrow-right" size={20} color={mukokoTheme.colors.onPrimary} />}
+                icon="check"
+                accessibilityLabel="Finish onboarding and start reading news"
               >
                 {loading ? 'Setting up...' : 'Get Started'}
               </Button>
@@ -321,6 +559,8 @@ export default function OnboardingScreen({ navigation }) {
           mode="text"
           onPress={handleSkip}
           style={styles.skipButton}
+          accessibilityLabel="Skip onboarding"
+          accessibilityHint="Skip setup and go directly to news feed"
         >
           Skip for now
         </Button>
@@ -346,12 +586,16 @@ const styles = StyleSheet.create({
     marginBottom: mukokoTheme.spacing.xl,
   },
   progressBar: {
-    width: 48,
+    width: 32,
     height: 4,
     borderRadius: 2,
     backgroundColor: mukokoTheme.colors.surfaceVariant,
   },
   progressBarActive: {
+    backgroundColor: mukokoTheme.colors.primary,
+  },
+  progressBarCurrent: {
+    width: 48,
     backgroundColor: mukokoTheme.colors.primary,
   },
   header: {
@@ -418,6 +662,65 @@ const styles = StyleSheet.create({
     color: mukokoTheme.colors.error,
     marginBottom: mukokoTheme.spacing.lg,
   },
+
+  // Country Grid (3 columns)
+  countryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: mukokoTheme.spacing.sm,
+    marginBottom: mukokoTheme.spacing.lg,
+    justifyContent: 'center',
+  },
+  countryChip: {
+    padding: mukokoTheme.spacing.sm,
+    borderRadius: mukokoTheme.roundness,
+    borderWidth: 2,
+    borderColor: mukokoTheme.colors.outline,
+    backgroundColor: mukokoTheme.colors.background,
+    alignItems: 'center',
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  countryChipSelected: {
+    borderColor: mukokoTheme.colors.primary,
+    backgroundColor: mukokoTheme.colors.primary,
+  },
+  countryChipPrimary: {
+    borderColor: mukokoTheme.colors.success || '#779b63',
+    backgroundColor: mukokoTheme.colors.success || '#779b63',
+  },
+  countryEmoji: {
+    fontSize: 24,
+    marginBottom: 2,
+  },
+  countryName: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+    color: mukokoTheme.colors.onSurface,
+  },
+  countryNameSelected: {
+    color: mukokoTheme.colors.onPrimary,
+  },
+  primaryBadge: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryBadgeText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+
+  // Category Grid (2 columns)
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -426,24 +729,25 @@ const styles = StyleSheet.create({
     maxHeight: 400,
   },
   categoryChip: {
-    width: (width - mukokoTheme.spacing.lg * 2 - mukokoTheme.spacing.xl * 2 - mukokoTheme.spacing.sm) / 2,
     padding: mukokoTheme.spacing.md,
     borderRadius: mukokoTheme.roundness,
     borderWidth: 2,
     borderColor: mukokoTheme.colors.outline,
     backgroundColor: mukokoTheme.colors.background,
     alignItems: 'center',
+    minHeight: 70,
+    position: 'relative',
   },
   categoryChipSelected: {
     borderColor: mukokoTheme.colors.primary,
     backgroundColor: `${mukokoTheme.colors.primary}15`,
   },
   categoryEmoji: {
-    fontSize: 32,
+    fontSize: 28,
     marginBottom: mukokoTheme.spacing.xs,
   },
   categoryName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     textAlign: 'center',
     color: mukokoTheme.colors.onSurface,
@@ -455,9 +759,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: mukokoTheme.spacing.xs,
     right: mukokoTheme.spacing.xs,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: mukokoTheme.colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -472,6 +776,7 @@ const styles = StyleSheet.create({
   },
   buttonContent: {
     paddingVertical: mukokoTheme.spacing.sm,
+    minHeight: MIN_TOUCH_TARGET,
   },
   buttonRow: {
     flexDirection: 'row',
@@ -483,5 +788,6 @@ const styles = StyleSheet.create({
   skipButton: {
     marginTop: mukokoTheme.spacing.lg,
     alignSelf: 'center',
+    minHeight: MIN_TOUCH_TARGET,
   },
 });
