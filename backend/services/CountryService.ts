@@ -72,7 +72,7 @@ export class CountryService {
         ORDER BY c.priority DESC, c.name ASC
       `).all();
 
-      return (result.results || []) as CountryWithStats[];
+      return (result.results || []) as unknown as CountryWithStats[];
     }
 
     const result = await this.db.prepare(`
@@ -81,7 +81,7 @@ export class CountryService {
       ORDER BY priority DESC, name ASC
     `).all();
 
-    return (result.results || []) as Country[];
+    return (result.results || []) as unknown as Country[];
   }
 
   /**
@@ -92,7 +92,7 @@ export class CountryService {
       SELECT * FROM countries WHERE id = ?
     `).bind(countryId).first();
 
-    return result as Country | null;
+    return result as unknown as Country | null;
   }
 
   /**
@@ -163,7 +163,7 @@ export class CountryService {
       ORDER BY ucp.is_primary DESC, ucp.priority DESC
     `).bind(userId).all();
 
-    const countries = (result.results || []) as (Country & {
+    const countries = (result.results || []) as unknown as (Country & {
       is_primary: boolean;
       priority: number;
       notify_breaking: boolean;
