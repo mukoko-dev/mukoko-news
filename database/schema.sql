@@ -1,28 +1,38 @@
 -- Mukoko News Database Schema
--- D1 Database: mukoko-news-db - News articles, RSS sources, categories, and analytics
--- Auth handled separately via id.mukoko.com (OIDC)
+-- D1 Database: mukoko-news-db
+-- Auth: OIDC via id.mukoko.com | Identity: Mobile & Web3
+-- Standards: OpenID Connect 1.0, EIP-155 (Chain IDs), EIP-55 (Checksummed Addresses)
 
 PRAGMA defer_foreign_keys=TRUE;
 
 -- ================================================
--- USER TABLES (local profile data, auth via OIDC)
+-- USER TABLES (OpenID Connect Standard Claims)
+-- https://openid.net/specs/openid-connect-core-1_0.html#StandardClaims
 -- ================================================
 
 CREATE TABLE IF NOT EXISTS users (
+    -- Primary identifier (internal)
     id TEXT PRIMARY KEY NOT NULL DEFAULT (lower(hex(randomblob(16)))),
-    email TEXT UNIQUE NOT NULL,
-    username TEXT UNIQUE, -- TikTok-style usernames (@username)
 
-    -- Profile information
-    display_name TEXT,
-    avatar_url TEXT,
-    bio TEXT,
+    -- OIDC Standard Claims
+    sub TEXT UNIQUE,                          -- OIDC subject identifier (from id.mukoko.com)
+    email TEXT UNIQUE,                        -- email claim
+    email_verified BOOLEAN DEFAULT FALSE,     -- email_verified claim
+    name TEXT,                                -- name claim (full display name)
+    given_name TEXT,                          -- given_name claim
+    family_name TEXT,                         -- family_name claim
+    picture TEXT,                             -- picture claim (avatar URL)
+    phone_number TEXT,                        -- phone_number claim (E.164 format)
+    phone_number_verified BOOLEAN DEFAULT FALSE, -- phone_number_verified claim
 
-    -- Role management (admin, moderator, support, author, user)
+    -- Platform-specific profile
+    username TEXT UNIQUE,                     -- @username for social features
+    bio TEXT,                                 -- User biography
+
+    -- Role-Based Access Control
     role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'moderator', 'support', 'author', 'user')),
 
     -- Account status
-    email_verified BOOLEAN DEFAULT FALSE,
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'deleted')),
 
     -- Activity tracking
@@ -31,14 +41,148 @@ CREATE TABLE IF NOT EXISTS users (
 
     -- Preferences
     preferences JSON DEFAULT '{}',
+    locale TEXT DEFAULT 'en',                 -- locale claim
+    zoneinfo TEXT,                            -- zoneinfo claim (timezone)
 
-    -- Analytics opt-in
+    -- Analytics consent (GDPR)
     analytics_consent BOOLEAN DEFAULT TRUE,
 
-    -- Timestamps
+    -- OIDC timestamps
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP  -- updated_at claim
 );
+
+-- ================================================
+-- AUTH PROVIDERS (Multi-provider identity linking)
+-- Supports: OIDC, Mobile (SMS/WhatsApp), Web3 (Ethereum/EVM)
+-- ================================================
+
+CREATE TABLE IF NOT EXISTS user_auth_providers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+
+    -- Provider identification
+    provider_type TEXT NOT NULL CHECK (provider_type IN ('oidc', 'mobile', 'web3')),
+    provider_name TEXT NOT NULL,              -- e.g., 'mukoko', 'google', 'sms', 'ethereum'
+
+    -- Link status
+    is_primary BOOLEAN DEFAULT FALSE,
+    verified_at TIMESTAMP,
+    last_used_at TIMESTAMP,
+
+    -- OIDC-specific (OpenID Connect)
+    oidc_subject TEXT,                        -- sub claim from provider
+    oidc_issuer TEXT,                         -- iss claim (provider URL)
+
+    -- Mobile-specific (E.164 format)
+    mobile_number TEXT,
+    mobile_country_code TEXT,                 -- ISO 3166-1 alpha-2
+    mobile_verified BOOLEAN DEFAULT FALSE,
+
+    -- Web3-specific (EIP-55 checksummed address, EIP-155 chain ID)
+    wallet_address TEXT,                      -- Checksummed Ethereum address
+    chain_id INTEGER,                         -- EIP-155 chain ID (1=Ethereum, 137=Polygon, etc.)
+    ens_name TEXT,                            -- ENS domain if resolved
+
+    -- Metadata
+    metadata JSON DEFAULT '{}',
+
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Unique constraints per provider type
+    UNIQUE(provider_type, oidc_subject, oidc_issuer),
+    UNIQUE(provider_type, mobile_number),
+    UNIQUE(provider_type, wallet_address, chain_id)
+);
+
+-- ================================================
+-- AUTH PROVIDER CONFIGURATION
+-- ================================================
+
+CREATE TABLE IF NOT EXISTS auth_provider_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    provider_type TEXT NOT NULL CHECK (provider_type IN ('oidc', 'mobile', 'web3')),
+    provider_name TEXT NOT NULL UNIQUE,
+    display_name TEXT NOT NULL,
+
+    -- Provider configuration
+    enabled BOOLEAN DEFAULT TRUE,
+    config JSON DEFAULT '{}',                 -- Provider-specific config
+
+    -- For OIDC: issuer URL, client_id, etc.
+    -- For Mobile: country codes, SMS provider
+    -- For Web3: supported chain IDs, contract addresses
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Seed default providers
+INSERT OR IGNORE INTO auth_provider_config (provider_type, provider_name, display_name, enabled, config) VALUES
+    ('oidc', 'mukoko', 'Mukoko ID', TRUE, '{"issuer": "https://id.mukoko.com"}'),
+    ('oidc', 'google', 'Google', FALSE, '{"issuer": "https://accounts.google.com"}'),
+    ('oidc', 'apple', 'Apple', FALSE, '{"issuer": "https://appleid.apple.com"}'),
+    ('mobile', 'sms', 'SMS Verification', TRUE, '{"countries": ["ZW", "ZA", "KE", "NG"]}'),
+    ('mobile', 'whatsapp', 'WhatsApp', FALSE, '{}'),
+    ('web3', 'ethereum', 'Ethereum', TRUE, '{"chainIds": [1, 137, 8453]}'),
+    ('web3', 'polygon', 'Polygon', TRUE, '{"chainIds": [137]}');
+
+-- ================================================
+-- ROLE DEFINITIONS (RBAC)
+-- ================================================
+
+CREATE TABLE IF NOT EXISTS role_definitions (
+    role TEXT PRIMARY KEY,
+    level INTEGER NOT NULL,
+    display_name TEXT NOT NULL,
+    description TEXT,
+    permissions JSON DEFAULT '[]',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT OR REPLACE INTO role_definitions (role, level, display_name, description, permissions) VALUES
+    ('admin', 100, 'Administrator', 'Full system access', '["*"]'),
+    ('moderator', 75, 'Moderator', 'Content moderation, user management', '["moderate:*", "view:*"]'),
+    ('support', 50, 'Support', 'Customer support, limited admin', '["support:*", "view:users"]'),
+    ('author', 25, 'Author', 'Content creation', '["create:articles", "edit:own"]'),
+    ('user', 10, 'User', 'Basic access', '["read:*", "create:comments"]');
+
+-- ================================================
+-- AUTH SETTINGS (Configurable per-role auth)
+-- ================================================
+
+CREATE TABLE IF NOT EXISTS auth_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL UNIQUE CHECK (role IN ('admin', 'moderator', 'support', 'author', 'user')),
+    auth_required BOOLEAN NOT NULL DEFAULT FALSE,
+    locked BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_by TEXT REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS auth_settings_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL,
+    auth_required_old BOOLEAN,
+    auth_required_new BOOLEAN NOT NULL,
+    changed_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    changed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    reason TEXT
+);
+
+-- Seed default auth settings (admin locked, others disabled during OIDC migration)
+INSERT OR IGNORE INTO auth_settings (role, auth_required, locked) VALUES
+    ('admin', TRUE, TRUE),
+    ('moderator', FALSE, FALSE),
+    ('support', FALSE, FALSE),
+    ('author', FALSE, FALSE),
+    ('user', FALSE, FALSE);
+
+-- ================================================
+-- USER PREFERENCES
+-- ================================================
 
 CREATE TABLE IF NOT EXISTS user_preferences (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -927,36 +1071,24 @@ CREATE INDEX IF NOT EXISTS idx_cron_execution_log_type ON cron_execution_log(cro
 CREATE INDEX IF NOT EXISTS idx_cron_execution_log_status ON cron_execution_log(status);
 
 -- ================================================
--- AUTH SETTINGS (Role-based authentication config)
+-- AUTH INDEXES
 -- ================================================
 
-CREATE TABLE IF NOT EXISTS auth_settings (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    role TEXT NOT NULL UNIQUE CHECK (role IN ('admin', 'moderator', 'support', 'author', 'user')),
-    auth_required BOOLEAN NOT NULL DEFAULT FALSE,
-    locked BOOLEAN NOT NULL DEFAULT FALSE,
-    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-    updated_by TEXT REFERENCES users(id) ON DELETE SET NULL
-);
+-- Users (OIDC claims)
+CREATE INDEX IF NOT EXISTS idx_users_sub ON users(sub);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone_number);
+CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
 
-CREATE TABLE IF NOT EXISTS auth_settings_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    role TEXT NOT NULL,
-    auth_required_old BOOLEAN,
-    auth_required_new BOOLEAN NOT NULL,
-    changed_by TEXT REFERENCES users(id) ON DELETE SET NULL,
-    changed_at TEXT NOT NULL DEFAULT (datetime('now')),
-    reason TEXT
-);
+-- Auth providers
+CREATE INDEX IF NOT EXISTS idx_auth_providers_user ON user_auth_providers(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_providers_oidc ON user_auth_providers(provider_type, oidc_subject, oidc_issuer);
+CREATE INDEX IF NOT EXISTS idx_auth_providers_mobile ON user_auth_providers(provider_type, mobile_number);
+CREATE INDEX IF NOT EXISTS idx_auth_providers_wallet ON user_auth_providers(provider_type, wallet_address, chain_id);
 
+-- Auth settings
 CREATE INDEX IF NOT EXISTS idx_auth_settings_role ON auth_settings(role);
 CREATE INDEX IF NOT EXISTS idx_auth_settings_log_role ON auth_settings_log(role);
 CREATE INDEX IF NOT EXISTS idx_auth_settings_log_changed_at ON auth_settings_log(changed_at);
-
--- Seed default auth settings
-INSERT OR IGNORE INTO auth_settings (role, auth_required, locked) VALUES
-    ('admin', TRUE, TRUE),
-    ('moderator', FALSE, FALSE),
-    ('support', FALSE, FALSE),
-    ('author', FALSE, FALSE),
-    ('user', FALSE, FALSE);
