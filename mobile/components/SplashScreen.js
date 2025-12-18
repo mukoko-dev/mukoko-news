@@ -32,7 +32,7 @@ import { countries as countriesAPI, categories as categoriesAPI } from '../api/c
 import localPreferences from '../services/LocalPreferencesService';
 
 // Logo asset
-const MukokoLogo = require('../assets/mukoko-logo-compact.png');
+const MukokoLogo = require('../assets/mukoko-icon-dark.png');
 
 // Auto-close timeout (60 seconds)
 const AUTO_CLOSE_TIMEOUT = 60000;

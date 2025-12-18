@@ -24,7 +24,7 @@ import { useAuth } from '../contexts/AuthContext';
 import AuthMigrationModal, { useAuthMigrationModal } from '../components/AuthMigrationModal';
 
 // Logo asset
-const MukokoLogo = require('../assets/mukoko-logo-compact.png');
+const MukokoLogo = require('../assets/mukoko-icon-dark.png');
 
 /**
  * RegisterScreen - Clean, minimal registration with status feedback

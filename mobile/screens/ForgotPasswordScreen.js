@@ -22,7 +22,7 @@ import { mukokoTheme } from '../theme';
 import { auth } from '../api/client';
 
 // Logo asset
-const MukokoLogo = require('../assets/mukoko-logo-compact.png');
+const MukokoLogo = require('../assets/mukoko-icon-dark.png');
 
 /**
  * ForgotPasswordScreen - Two-step password reset flow
