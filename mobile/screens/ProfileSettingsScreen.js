@@ -79,7 +79,7 @@ export default function ProfileSettingsScreen({ navigation }) {
       }
       const data = result.data;
       setProfile(data);
-      setDisplayName(data.displayName || data.display_name || '');
+      setDisplayName(data.name || data.displayName || data.display_name || '');
       setBio(data.bio || '');
     } catch (err) {
       console.error('Error loading profile:', err);
@@ -102,7 +102,7 @@ export default function ProfileSettingsScreen({ navigation }) {
     if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const result = await userAPI.updateProfile({
-        displayName: displayName || undefined,
+        name: displayName || undefined,
         bio: bio || undefined,
       });
       if (result.error) {

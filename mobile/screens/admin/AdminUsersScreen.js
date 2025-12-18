@@ -1,3 +1,9 @@
+/**
+ * AdminUsersScreen - Modern user management
+ * Design inspired by ProfileSettingsScreen for consistency
+ * Features: Clean cards, icon-based actions, OIDC-aligned schema
+ */
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -7,25 +13,26 @@ import {
   Alert,
   Platform,
   TouchableOpacity,
+  ScrollView,
+  Image,
 } from 'react-native';
 import {
   Text,
-  Card,
   Searchbar,
   Chip,
   Menu,
-  Button,
-  useTheme,
+  useTheme as usePaperTheme,
   ActivityIndicator,
-  IconButton,
-  Divider,
 } from 'react-native-paper';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
 import AdminScreenWrapper from '../../components/AdminScreenWrapper';
+import { mukokoTheme } from '../../theme';
 
-const ROLES = ['creator', 'business-creator', 'moderator', 'admin', 'super_admin'];
+// Updated roles to match OIDC schema
+const ROLES = ['user', 'author', 'support', 'moderator', 'admin'];
 const STATUSES = ['active', 'suspended', 'deleted'];
 
 /**
@@ -33,7 +40,7 @@ const STATUSES = ['active', 'suspended', 'deleted'];
  * Manage users, roles, and status
  */
 export default function AdminUsersScreen({ navigation }) {
-  const theme = useTheme();
+  const theme = usePaperTheme();
   const { isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
@@ -47,6 +54,18 @@ export default function AdminUsersScreen({ navigation }) {
   const [error, setError] = useState(null);
 
   const LIMIT = 20;
+
+  // Dynamic styles for theme
+  const dynamicStyles = {
+    container: { backgroundColor: theme.colors.background },
+    text: { color: theme.colors.onSurface },
+    textMuted: { color: theme.colors.onSurfaceVariant },
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.outline,
+    },
+    divider: { backgroundColor: theme.colors.outline },
+  };
 
   const loadUsers = useCallback(async () => {
     setError(null);
@@ -125,22 +144,22 @@ export default function AdminUsersScreen({ navigation }) {
     }
   };
 
-  const getRoleBadgeColor = (role) => {
+  const getRoleConfig = (role) => {
     switch (role) {
-      case 'super_admin': return '#8B5CF6';
-      case 'admin': return '#EF4444';
-      case 'moderator': return '#3B82F6';
-      case 'business-creator': return '#10B981';
-      default: return '#6B7280';
+      case 'admin': return { color: '#EF4444', icon: 'shield-crown' };
+      case 'moderator': return { color: '#8B5CF6', icon: 'shield-check' };
+      case 'support': return { color: '#3B82F6', icon: 'headset' };
+      case 'author': return { color: '#10B981', icon: 'pencil' };
+      default: return { color: '#6B7280', icon: 'account' };
     }
   };
 
-  const getStatusBadgeColor = (status) => {
+  const getStatusConfig = (status) => {
     switch (status) {
-      case 'active': return '#10B981';
-      case 'suspended': return '#F59E0B';
-      case 'deleted': return '#EF4444';
-      default: return '#6B7280';
+      case 'active': return { color: '#10B981', icon: 'check-circle' };
+      case 'suspended': return { color: '#F59E0B', icon: 'pause-circle' };
+      case 'deleted': return { color: '#EF4444', icon: 'close-circle' };
+      default: return { color: '#6B7280', icon: 'help-circle' };
     }
   };
 
@@ -151,9 +170,13 @@ export default function AdminUsersScreen({ navigation }) {
 
   if (!isAdmin) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, dynamicStyles.container]}>
         <View style={styles.errorContainer}>
-          <Text variant="headlineSmall">Access Denied</Text>
+          <MaterialCommunityIcons name="shield-alert" size={48} color={theme.colors.error} />
+          <Text style={[styles.errorTitle, dynamicStyles.text]}>Access Denied</Text>
+          <Text style={[styles.errorText, dynamicStyles.textMuted]}>
+            You don't have permission to access this page.
+          </Text>
         </View>
       </View>
     );
@@ -161,235 +184,299 @@ export default function AdminUsersScreen({ navigation }) {
 
   if (error) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, dynamicStyles.container]}>
         <View style={styles.errorContainer}>
-          <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
-          <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
+          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={theme.colors.error} />
+          <Text style={[styles.errorTitle, dynamicStyles.text]}>Something went wrong</Text>
+          <Text style={[styles.errorText, dynamicStyles.textMuted]}>{error}</Text>
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
             onPress={loadUsers}
           >
-            <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
+            <MaterialCommunityIcons name="refresh" size={16} color="#FFFFFF" />
+            <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   }
 
-  const renderUser = ({ item: user }) => (
-    <Card style={[styles.userCard, { backgroundColor: theme.colors.surface }]}>
-      <Card.Content>
+  // User card component - consistent with ProfileSettingsScreen design
+  const UserCard = ({ user }) => {
+    const roleConfig = getRoleConfig(user.role);
+    const statusConfig = getStatusConfig(user.status);
+
+    return (
+      <View style={[styles.userCard, dynamicStyles.card]}>
+        {/* User Header */}
         <View style={styles.userHeader}>
-          <View style={styles.userAvatar}>
-            <Text style={styles.avatarText}>
-              {user.email?.charAt(0).toUpperCase() || 'U'}
-            </Text>
-          </View>
+          {user.picture ? (
+            <Image
+              source={{ uri: user.picture }}
+              style={styles.userAvatar}
+            />
+          ) : (
+            <View style={[styles.userAvatarPlaceholder, { backgroundColor: `${roleConfig.color}15` }]}>
+              <Text style={[styles.avatarText, { color: roleConfig.color }]}>
+                {(user.name || user.username || user.email || 'U').charAt(0).toUpperCase()}
+              </Text>
+            </View>
+          )}
           <View style={styles.userInfo}>
-            <Text variant="titleMedium">
-              {user.display_name || user.username || 'Unknown'}
+            <Text style={[styles.userName, dynamicStyles.text]} numberOfLines={1}>
+              {user.name || user.username || 'Unknown'}
             </Text>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+            <Text style={[styles.userEmail, dynamicStyles.textMuted]} numberOfLines={1}>
               {user.email}
             </Text>
+            {user.username && (
+              <Text style={[styles.userUsername, dynamicStyles.textMuted]}>
+                @{user.username}
+              </Text>
+            )}
           </View>
         </View>
 
-        <View style={styles.userMeta}>
-          <View style={styles.badges}>
-            <View style={[styles.badge, { backgroundColor: getRoleBadgeColor(user.role) + '20' }]}>
-              <Text style={[styles.badgeText, { color: getRoleBadgeColor(user.role) }]}>
-                {user.role?.replace('_', ' ')}
-              </Text>
-            </View>
-            <View style={[styles.badge, { backgroundColor: getStatusBadgeColor(user.status) + '20' }]}>
-              <Text style={[styles.badgeText, { color: getStatusBadgeColor(user.status) }]}>
-                {user.status}
-              </Text>
-            </View>
+        {/* Badges Row */}
+        <View style={styles.badgesRow}>
+          <View style={[styles.badge, { backgroundColor: `${roleConfig.color}15` }]}>
+            <MaterialCommunityIcons name={roleConfig.icon} size={12} color={roleConfig.color} />
+            <Text style={[styles.badgeText, { color: roleConfig.color }]}>
+              {user.role}
+            </Text>
           </View>
-
-          <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-            Joined: {formatDate(user.created_at)}
+          <View style={[styles.badge, { backgroundColor: `${statusConfig.color}15` }]}>
+            <MaterialCommunityIcons name={statusConfig.icon} size={12} color={statusConfig.color} />
+            <Text style={[styles.badgeText, { color: statusConfig.color }]}>
+              {user.status}
+            </Text>
+          </View>
+          <Text style={[styles.dateText, dynamicStyles.textMuted]}>
+            Joined {formatDate(user.created_at)}
           </Text>
         </View>
 
-        <Divider style={{ marginVertical: 12 }} />
+        {/* Divider */}
+        <View style={[styles.divider, dynamicStyles.divider]} />
 
-        <View style={styles.userActions}>
+        {/* Actions Row */}
+        <View style={styles.actionsRow}>
+          {/* Role Menu */}
           <Menu
             visible={menuVisible === `role-${user.id}`}
             onDismiss={() => setMenuVisible(null)}
             anchor={
-              <Button
-                mode="outlined"
-                compact
+              <TouchableOpacity
+                style={styles.actionButton}
                 onPress={() => setMenuVisible(`role-${user.id}`)}
-                accessibilityLabel="Change user role"
               >
-                Change Role
-              </Button>
+                <View style={[styles.actionIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
+                  <MaterialCommunityIcons name="shield-edit" size={16} color="#3B82F6" />
+                </View>
+                <Text style={[styles.actionText, dynamicStyles.text]}>Role</Text>
+              </TouchableOpacity>
             }
-            contentStyle={{ accessibilityRole: 'menu' }}
-            accessibilityLabel={`Role options for ${user.email}`}
           >
             {ROLES.map((role) => (
               <Menu.Item
                 key={role}
                 onPress={() => handleRoleChange(user.id, role)}
-                title={role.replace('_', ' ')}
-                accessibilityLabel={`Set role to ${role.replace('_', ' ')}`}
+                title={role}
+                leadingIcon={() => (
+                  <MaterialCommunityIcons
+                    name={getRoleConfig(role).icon}
+                    size={18}
+                    color={getRoleConfig(role).color}
+                  />
+                )}
               />
             ))}
           </Menu>
 
+          {/* Status Menu */}
           <Menu
             visible={menuVisible === `status-${user.id}`}
             onDismiss={() => setMenuVisible(null)}
             anchor={
-              <Button
-                mode="outlined"
-                compact
+              <TouchableOpacity
+                style={styles.actionButton}
                 onPress={() => setMenuVisible(`status-${user.id}`)}
-                accessibilityLabel="Change user status"
               >
-                Change Status
-              </Button>
+                <View style={[styles.actionIcon, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
+                  <MaterialCommunityIcons name="account-cog" size={16} color="#F59E0B" />
+                </View>
+                <Text style={[styles.actionText, dynamicStyles.text]}>Status</Text>
+              </TouchableOpacity>
             }
-            contentStyle={{ accessibilityRole: 'menu' }}
-            accessibilityLabel={`Status options for ${user.email}`}
           >
             {STATUSES.map((status) => (
               <Menu.Item
                 key={status}
                 onPress={() => handleStatusChange(user.id, status)}
                 title={status}
-                accessibilityLabel={`Set status to ${status}`}
+                leadingIcon={() => (
+                  <MaterialCommunityIcons
+                    name={getStatusConfig(status).icon}
+                    size={18}
+                    color={getStatusConfig(status).color}
+                  />
+                )}
               />
             ))}
           </Menu>
 
-          <IconButton
-            icon="delete"
-            iconColor={theme.colors.error}
-            size={20}
+          {/* Delete Button */}
+          <TouchableOpacity
+            style={styles.actionButton}
             onPress={() => handleDelete(user.id, user.email)}
-            accessibilityLabel={`Delete user ${user.email}`}
-          />
+          >
+            <View style={[styles.actionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+              <MaterialCommunityIcons name="delete" size={16} color="#EF4444" />
+            </View>
+            <Text style={[styles.actionText, { color: '#EF4444' }]}>Delete</Text>
+          </TouchableOpacity>
         </View>
-      </Card.Content>
-    </Card>
-  );
+      </View>
+    );
+  };
 
   return (
     <AdminScreenWrapper>
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View style={[styles.container, dynamicStyles.container]}>
         <AdminHeader navigation={navigation} currentScreen="AdminUsers" />
+
         {/* Header */}
-      <View style={styles.header}>
-        <Text variant="headlineSmall" style={styles.title}>Users</Text>
-        <Text style={{ color: theme.colors.onSurfaceVariant }}>
-          {total.toLocaleString()} total users
-        </Text>
-      </View>
+        <View style={styles.header}>
+          <Text style={[styles.title, dynamicStyles.text]}>Users</Text>
+          <View style={styles.statsBadge}>
+            <MaterialCommunityIcons name="account-group" size={14} color={theme.colors.primary} />
+            <Text style={[styles.statsText, { color: theme.colors.primary }]}>
+              {total.toLocaleString()}
+            </Text>
+          </View>
+        </View>
 
-      {/* Search */}
-      <View style={styles.searchContainer}>
-        <Searchbar
-          placeholder="Search by email or username..."
-          onChangeText={(text) => {
-            setSearchQuery(text);
-            setPage(0);
-          }}
-          value={searchQuery}
-          style={styles.searchbar}
-          selectionColor={theme.colors.primary}
-          cursorColor={theme.colors.primary}
-        />
-      </View>
+        {/* Search */}
+        <View style={styles.searchContainer}>
+          <Searchbar
+            placeholder="Search users..."
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              setPage(0);
+            }}
+            value={searchQuery}
+            style={[styles.searchbar, dynamicStyles.card]}
+            inputStyle={{ fontSize: 15 }}
+            icon={() => <MaterialCommunityIcons name="magnify" size={20} color={theme.colors.onSurfaceVariant} />}
+          />
+        </View>
 
-      {/* Filters */}
-      <View style={styles.filters}>
-        <ScrollViewHorizontal>
+        {/* Role Filters */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filtersContainer}
+          contentContainerStyle={styles.filtersContent}
+        >
           <Chip
             selected={!selectedRole}
             onPress={() => { setSelectedRole(''); setPage(0); }}
             style={styles.chip}
+            textStyle={styles.chipText}
           >
-            All Roles
+            All
           </Chip>
-          {ROLES.map((role) => (
-            <Chip
-              key={role}
-              selected={selectedRole === role}
-              onPress={() => { setSelectedRole(role); setPage(0); }}
-              style={styles.chip}
-            >
-              {role.replace('_', ' ')}
-            </Chip>
-          ))}
-        </ScrollViewHorizontal>
-      </View>
+          {ROLES.map((role) => {
+            const config = getRoleConfig(role);
+            return (
+              <Chip
+                key={role}
+                selected={selectedRole === role}
+                onPress={() => { setSelectedRole(role); setPage(0); }}
+                style={styles.chip}
+                textStyle={styles.chipText}
+                icon={() => (
+                  <MaterialCommunityIcons name={config.icon} size={14} color={config.color} />
+                )}
+              >
+                {role}
+              </Chip>
+            );
+          })}
+        </ScrollView>
 
-      {/* Users List */}
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      ) : (
-        <FlatList
-          data={users}
-          renderItem={renderUser}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[theme.colors.primary]}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text>No users found</Text>
-            </View>
-          }
-          ListFooterComponent={
-            users.length > 0 && (
-              <View style={styles.pagination}>
-                <Button
-                  mode="outlined"
-                  onPress={() => setPage((p) => Math.max(0, p - 1))}
-                  disabled={page === 0}
-                >
-                  Previous
-                </Button>
-                <Text style={{ color: theme.colors.onSurfaceVariant }}>
-                  Page {page + 1}
-                </Text>
-                <Button
-                  mode="outlined"
-                  onPress={() => setPage((p) => p + 1)}
-                  disabled={(page + 1) * LIMIT >= total}
-                >
-                  Next
-                </Button>
+        {/* Users List */}
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={theme.colors.primary} />
+            <Text style={[styles.loadingText, dynamicStyles.textMuted]}>Loading users...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={users}
+            renderItem={({ item }) => <UserCard user={item} />}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.list}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[theme.colors.primary]}
+              />
+            }
+            ListEmptyComponent={
+              <View style={styles.emptyContainer}>
+                <MaterialCommunityIcons
+                  name="account-search"
+                  size={48}
+                  color={theme.colors.onSurfaceVariant}
+                />
+                <Text style={[styles.emptyText, dynamicStyles.textMuted]}>No users found</Text>
               </View>
-            )
-          }
-        />
-      )}
+            }
+            ListFooterComponent={
+              users.length > 0 && (
+                <View style={styles.pagination}>
+                  <TouchableOpacity
+                    style={[
+                      styles.pageButton,
+                      dynamicStyles.card,
+                      page === 0 && styles.pageButtonDisabled,
+                    ]}
+                    onPress={() => setPage((p) => Math.max(0, p - 1))}
+                    disabled={page === 0}
+                  >
+                    <MaterialCommunityIcons
+                      name="chevron-left"
+                      size={20}
+                      color={page === 0 ? theme.colors.onSurfaceDisabled : theme.colors.onSurface}
+                    />
+                  </TouchableOpacity>
+                  <Text style={[styles.pageText, dynamicStyles.textMuted]}>
+                    Page {page + 1} of {Math.ceil(total / LIMIT)}
+                  </Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.pageButton,
+                      dynamicStyles.card,
+                      (page + 1) * LIMIT >= total && styles.pageButtonDisabled,
+                    ]}
+                    onPress={() => setPage((p) => p + 1)}
+                    disabled={(page + 1) * LIMIT >= total}
+                  >
+                    <MaterialCommunityIcons
+                      name="chevron-right"
+                      size={20}
+                      color={(page + 1) * LIMIT >= total ? theme.colors.onSurfaceDisabled : theme.colors.onSurface}
+                    />
+                  </TouchableOpacity>
+                </View>
+              )
+            }
+          />
+        )}
       </View>
     </AdminScreenWrapper>
-  );
-}
-
-// Simple horizontal scroll for filters
-function ScrollViewHorizontal({ children }) {
-  return (
-    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-      {children}
-    </View>
   );
 }
 
@@ -398,11 +485,28 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    padding: 16,
-    paddingBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   title: {
-    fontWeight: '700',
+    fontSize: 24,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+  statsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: 'rgba(94, 87, 114, 0.1)',
+  },
+  statsText: {
+    fontSize: 13,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
   searchContainer: {
     paddingHorizontal: 16,
@@ -411,23 +515,33 @@ const styles = StyleSheet.create({
   searchbar: {
     elevation: 0,
     borderRadius: 12,
+    borderWidth: 1,
   },
-  filters: {
+  filtersContainer: {
+    maxHeight: 44,
+  },
+  filtersContent: {
     paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
+    gap: 8,
   },
   chip: {
     marginRight: 8,
-    marginBottom: 8,
+  },
+  chipText: {
+    fontSize: 13,
+    textTransform: 'capitalize',
   },
   list: {
     padding: 16,
-    paddingTop: 0,
+    paddingTop: 4,
     paddingBottom: 100,
   },
   userCard: {
-    marginBottom: 12,
     borderRadius: 12,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 12,
   },
   userHeader: {
     flexDirection: 'row',
@@ -438,66 +552,152 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#5e577220',
+    marginRight: 12,
+  },
+  userAvatarPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
   avatarText: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#5e5772',
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
   userInfo: {
     flex: 1,
   },
-  userMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  userName: {
+    fontSize: 16,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    marginBottom: 2,
   },
-  badges: {
+  userEmail: {
+    fontSize: 13,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+  },
+  userUsername: {
+    fontSize: 12,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    marginTop: 2,
+  },
+  badgesRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
+    marginBottom: 12,
   },
   badge: {
-    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
     textTransform: 'capitalize',
   },
-  userActions: {
+  dateText: {
+    fontSize: 11,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    marginLeft: 'auto',
+  },
+  divider: {
+    height: 1,
+    marginBottom: 12,
+  },
+  actionsRow: {
     flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  actionButton: {
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+  },
+  actionIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  actionText: {
+    fontSize: 11,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
+  },
+  loadingText: {
+    fontSize: 14,
   },
   emptyContainer: {
-    padding: 32,
+    padding: 48,
     alignItems: 'center',
+    gap: 12,
+  },
+  emptyText: {
+    fontSize: 15,
   },
   pagination: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: 16,
     paddingVertical: 16,
+  },
+  pageButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  pageButtonDisabled: {
+    opacity: 0.5,
+  },
+  pageText: {
+    fontSize: 13,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 24,
+  },
+  errorTitle: {
+    fontSize: 18,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    marginTop: 12,
+    marginBottom: 4,
+  },
+  errorText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
   },
   retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 });
