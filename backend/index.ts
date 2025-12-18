@@ -470,13 +470,13 @@ app.get("/api/stats", async (c) => {
     // Get RSS source count
     const sourcesResult = await c.env.DB.prepare(
       'SELECT COUNT(*) as count FROM rss_sources WHERE enabled = 1'
-    ).first<{ count: number }>();
+    ).first();
     const activeSources = sourcesResult?.count || 0;
 
     // Get categories count
     const categoriesResult = await c.env.DB.prepare(
       'SELECT COUNT(*) as count FROM categories WHERE enabled = 1'
-    ).first<{ count: number }>();
+    ).first();
     const categoriesCount = categoriesResult?.count || 0;
 
     // Get today's article count
@@ -2659,12 +2659,8 @@ app.post("/api/author/:authorId/follow", async (c) => {
     const services = initializeServices(c.env);
     const authorId = parseInt(c.req.param("authorId"));
 
-    // Get userId from headers - consistent with other user engagement endpoints
-    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
-
-    if (!userId) {
-      return c.json({ error: "User identification required. Please login or provide session ID." }, 401);
-    }
+    // Get userId from headers - supports anonymous session-based engagement
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id') || 'anonymous';
 
     const result = await services.authorProfileService.toggleAuthorFollow(userId, authorId);
 
@@ -2681,12 +2677,8 @@ app.post("/api/source/:sourceId/follow", async (c) => {
     const services = initializeServices(c.env);
     const sourceId = c.req.param("sourceId");
 
-    // Get userId from headers - consistent with other user engagement endpoints
-    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
-
-    if (!userId) {
-      return c.json({ error: "User identification required. Please login or provide session ID." }, 401);
-    }
+    // Get userId from headers - supports anonymous session-based engagement
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id') || 'anonymous';
 
     const result = await services.authorProfileService.toggleSourceFollow(userId, sourceId);
 
