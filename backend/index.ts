@@ -668,9 +668,10 @@ app.get("/api/feeds", async (c) => {
     const queryParams: (string | number)[] = [];
 
     // Get articles directly from database
+    // Note: country_id removed from SELECT - column may not exist in all deployments
     let articlesQuery = `
       SELECT id, title, slug, description, content_snippet, author, source, source_id,
-             published_at, image_url, original_url, category_id, country_id, view_count,
+             published_at, image_url, original_url, category_id, view_count,
              like_count, bookmark_count
       FROM articles
       WHERE status = 'published'
@@ -684,13 +685,14 @@ app.get("/api/feeds", async (c) => {
       queryParams.push(category);
     }
 
-    // Pan-African: filter by countries
-    if (countries && countries.length > 0) {
-      const placeholders = countries.map(() => '?').join(',');
-      articlesQuery += ` AND country_id IN (${placeholders})`;
-      countQuery += ` AND country_id IN (${placeholders})`;
-      queryParams.push(...countries);
-    }
+    // Pan-African country filtering disabled - country_id column needs migration
+    // TODO: Re-enable after running ALTER TABLE articles ADD COLUMN country_id TEXT
+    // if (countries && countries.length > 0) {
+    //   const placeholders = countries.map(() => '?').join(',');
+    //   articlesQuery += ` AND country_id IN (${placeholders})`;
+    //   countQuery += ` AND country_id IN (${placeholders})`;
+    //   queryParams.push(...countries);
+    // }
 
     // Apply sorting based on sort parameter
     let orderClause: string;
@@ -723,19 +725,24 @@ app.get("/api/feeds", async (c) => {
 
     const totalCount = totalResult?.total || 0;
 
-    // Fetch keywords for each article
+    // Fetch keywords for each article (optional - gracefully handle if tables don't exist)
     const articles = articlesResult.results || [];
     for (const article of articles as any[]) {
-      const keywordsResult = await c.env.DB.prepare(`
-        SELECT k.id, k.name, k.slug
-        FROM keywords k
-        INNER JOIN article_keyword_links akl ON k.id = akl.keyword_id
-        WHERE akl.article_id = ?
-        ORDER BY akl.relevance_score DESC
-        LIMIT 8
-      `).bind(article.id).all();
+      try {
+        const keywordsResult = await c.env.DB.prepare(`
+          SELECT k.id, k.name, k.slug
+          FROM keywords k
+          INNER JOIN article_keyword_links akl ON k.id = akl.keyword_id
+          WHERE akl.article_id = ?
+          ORDER BY akl.relevance_score DESC
+          LIMIT 8
+        `).bind(article.id).all();
 
-      article.keywords = keywordsResult.results || [];
+        article.keywords = keywordsResult.results || [];
+      } catch (keywordError) {
+        // Keywords table may not exist or be empty - continue without keywords
+        article.keywords = [];
+      }
     }
 
     return c.json({
@@ -746,9 +753,12 @@ app.get("/api/feeds", async (c) => {
       hasMore: offset + limit < totalCount,
       countries: countries || undefined,  // Pan-African: return countries used for filtering
     });
-  } catch (error) {
-    console.error("Error fetching articles:", error);
-    return c.json({ error: "Failed to fetch articles" }, 500);
+  } catch (error: any) {
+    console.error("Error fetching articles:", error?.message || error);
+    return c.json({
+      error: "Failed to fetch articles",
+      details: error?.message || String(error)
+    }, 500);
   }
 });
 
