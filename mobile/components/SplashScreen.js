@@ -26,15 +26,10 @@ import {
 } from 'react-native';
 import { Text, ActivityIndicator, useTheme as usePaperTheme, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { spacing, typography } from '../styles/globalStyles';
 import mukokoTheme from '../theme';
 import { countries as countriesAPI, categories as categoriesAPI } from '../api/client';
-
-// Storage keys for guest preferences
-const GUEST_COUNTRIES_KEY = '@mukoko_guest_countries';
-const GUEST_CATEGORIES_KEY = '@mukoko_guest_categories';
-const SPLASH_SHOWN_KEY = '@mukoko_splash_shown';
+import localPreferences from '../services/LocalPreferencesService';
 
 // Logo asset
 const MukokoLogo = require('../assets/mukoko-logo-compact.png');
@@ -279,16 +274,18 @@ export default function SplashScreen({
           setCategories(categoriesResult.data.categories);
         }
 
+        // Load stored preferences using LocalPreferencesService for consistent storage keys
+        await localPreferences.init();
         const [storedCountries, storedCategories] = await Promise.all([
-          AsyncStorage.getItem(GUEST_COUNTRIES_KEY),
-          AsyncStorage.getItem(GUEST_CATEGORIES_KEY),
+          localPreferences.getSelectedCountries(),
+          localPreferences.getSelectedCategories(),
         ]);
 
-        if (storedCountries) {
-          setSelectedCountries(JSON.parse(storedCountries));
+        if (storedCountries && storedCountries.length > 0) {
+          setSelectedCountries(storedCountries);
         }
-        if (storedCategories) {
-          setSelectedCategories(JSON.parse(storedCategories));
+        if (storedCategories && storedCategories.length > 0) {
+          setSelectedCategories(storedCategories);
         }
 
         setDataLoaded(true);
@@ -378,10 +375,11 @@ export default function SplashScreen({
 
   const handleClose = useCallback(async () => {
     try {
+      // Save preferences using LocalPreferencesService for consistent storage keys
       await Promise.all([
-        AsyncStorage.setItem(GUEST_COUNTRIES_KEY, JSON.stringify(selectedCountries)),
-        AsyncStorage.setItem(GUEST_CATEGORIES_KEY, JSON.stringify(selectedCategories)),
-        AsyncStorage.setItem(SPLASH_SHOWN_KEY, 'true'),
+        localPreferences.setSelectedCountries(selectedCountries),
+        localPreferences.setSelectedCategories(selectedCategories),
+        localPreferences.setOnboardingCompleted(true),
       ]);
     } catch (error) {
       console.error('[SplashScreen] Failed to save preferences:', error);
