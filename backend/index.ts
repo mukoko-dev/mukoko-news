@@ -3759,6 +3759,188 @@ app.post("/api/auth/login", async (c) => {
   }, 400);
 });
 
+// OIDC Callback - Exchange authorization code for tokens
+// Called by mobile/web after redirect from id.mukoko.com
+app.post("/api/auth/oidc/callback", async (c) => {
+  try {
+    const { code, redirect_uri } = await c.req.json();
+
+    if (!code || !redirect_uri) {
+      return c.json({ error: "Missing code or redirect_uri" }, 400);
+    }
+
+    // Exchange code for tokens with id.mukoko.com
+    const tokenResponse = await fetch("https://id.mukoko.com/oauth/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri,
+        client_id: "mukoko-news",
+        // client_secret would be added in production
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.text();
+      console.error("[OIDC] Token exchange failed:", errorData);
+      return c.json({ error: "Token exchange failed" }, 401);
+    }
+
+    const tokens = await tokenResponse.json() as {
+      access_token: string;
+      id_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+      token_type?: string;
+    };
+
+    // Decode ID token to get claims (JWT payload is base64url encoded)
+    let claims: any = {};
+    if (tokens.id_token) {
+      try {
+        const [, payload] = tokens.id_token.split('.');
+        const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+        claims = JSON.parse(decoded);
+      } catch (e) {
+        console.error("[OIDC] Failed to decode ID token:", e);
+      }
+    }
+
+    // If no ID token, fetch userinfo
+    if (!claims.sub && tokens.access_token) {
+      const userInfoResponse = await fetch("https://id.mukoko.com/oauth/userinfo", {
+        headers: {
+          Authorization: `Bearer ${tokens.access_token}`,
+        },
+      });
+      if (userInfoResponse.ok) {
+        claims = await userInfoResponse.json();
+      }
+    }
+
+    if (!claims.sub) {
+      return c.json({ error: "Could not get user identity from OIDC provider" }, 401);
+    }
+
+    // Authenticate with our service
+    const authService = new AuthProviderService({
+      DB: c.env.DB,
+      AUTH_STORAGE: c.env.AUTH_STORAGE as any
+    });
+
+    const result = await authService.authenticateWithOIDC(claims, "mukoko");
+
+    if (!result.success) {
+      return c.json({ error: result.error || "Authentication failed" }, 401);
+    }
+
+    // Set cookie and return session
+    const cookieValue = `auth_token=${result.session_token}; Domain=.mukoko.com; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`;
+
+    return new Response(JSON.stringify({
+      access_token: result.session_token,
+      user: result.user,
+      is_new_user: result.is_new_user,
+      refresh_token: tokens.refresh_token || null
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': cookieValue
+      }
+    });
+  } catch (error: any) {
+    console.error("[OIDC] Callback error:", error);
+    return c.json({ error: "Authentication failed" }, 500);
+  }
+});
+
+// Refresh access token
+// Called when the current token is about to expire
+app.post("/api/auth/refresh", async (c) => {
+  try {
+    const { refresh_token } = await c.req.json();
+
+    if (!refresh_token) {
+      return c.json({ error: "Missing refresh_token" }, 400);
+    }
+
+    // Exchange refresh token with id.mukoko.com
+    const tokenResponse = await fetch("https://id.mukoko.com/oauth/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token,
+        client_id: "mukoko-news",
+      }).toString(),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorData = await tokenResponse.text();
+      console.error("[OIDC] Token refresh failed:", errorData);
+      return c.json({ error: "Token refresh failed" }, 401);
+    }
+
+    const tokens = await tokenResponse.json() as {
+      access_token: string;
+      id_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+    };
+
+    // Decode ID token to get claims
+    let claims: any = {};
+    if (tokens.id_token) {
+      try {
+        const [, payload] = tokens.id_token.split('.');
+        const decoded = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+        claims = JSON.parse(decoded);
+      } catch (e) {
+        console.error("[OIDC] Failed to decode ID token:", e);
+      }
+    }
+
+    if (!claims.sub) {
+      return c.json({ error: "Could not get user identity from refreshed token" }, 401);
+    }
+
+    // Re-authenticate to create new session
+    const authService = new AuthProviderService({
+      DB: c.env.DB,
+      AUTH_STORAGE: c.env.AUTH_STORAGE as any
+    });
+
+    const result = await authService.authenticateWithOIDC(claims, "mukoko");
+
+    if (!result.success) {
+      return c.json({ error: result.error || "Session refresh failed" }, 401);
+    }
+
+    // Set cookie and return new session
+    const cookieValue = `auth_token=${result.session_token}; Domain=.mukoko.com; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`;
+
+    return new Response(JSON.stringify({
+      access_token: result.session_token,
+      user: result.user,
+      refresh_token: tokens.refresh_token || refresh_token
+    }), {
+      headers: {
+        'Content-Type': 'application/json',
+        'Set-Cookie': cookieValue
+      }
+    });
+  } catch (error: any) {
+    console.error("[OIDC] Refresh error:", error);
+    return c.json({ error: "Token refresh failed" }, 500);
+  }
+});
+
 // Get current session - uses AuthProviderService
 app.get("/api/auth/session", async (c) => {
   try {
@@ -3888,7 +4070,7 @@ app.patch("/api/user/me/profile", async (c) => {
       values.push(username);
     }
     if (displayName !== undefined) {
-      updates.push('display_name = ?');
+      updates.push('name = ?');
       values.push(displayName);
     }
     if (bio !== undefined) {
@@ -3896,7 +4078,7 @@ app.patch("/api/user/me/profile", async (c) => {
       values.push(bio);
     }
     if (avatarUrl !== undefined) {
-      updates.push('avatar_url = ?');
+      updates.push('picture = ?');
       values.push(avatarUrl);
     }
 
@@ -3913,7 +4095,7 @@ app.patch("/api/user/me/profile", async (c) => {
 
     // Get updated user
     const updatedUser = await c.env.DB.prepare(`
-      SELECT id, email, username, display_name, bio, avatar_url, user_number, user_uid, role, status, created_at
+      SELECT id, email, username, name, bio, picture, role, status, created_at
       FROM users WHERE id = ?
     `).bind(userId).first() as any;
 
@@ -3978,9 +4160,9 @@ app.get("/api/user/me/auth-providers", async (c) => {
         CASE WHEN wallet_address IS NOT NULL THEN wallet_address ELSE NULL END as wallet_address,
         chain_id, ens_name,
         CASE WHEN mobile_number IS NOT NULL THEN
-          CONCAT(SUBSTR(mobile_number, 1, 4), '****', SUBSTR(mobile_number, -4))
+          SUBSTR(mobile_number, 1, 4) || '****' || SUBSTR(mobile_number, -4)
         ELSE NULL END as mobile_masked,
-        mobile_verified, whatsapp_enabled,
+        mobile_verified,
         is_primary, verified_at, last_used_at, created_at
       FROM user_auth_providers
       WHERE user_id = ?
@@ -4040,12 +4222,12 @@ app.post("/api/user/me/auth-providers/oidc", async (c) => {
       const updates: string[] = [];
       const params: any[] = [];
 
-      if (claims.name && !await hasUserField(c.env.DB, userId, 'display_name')) {
-        updates.push('display_name = ?');
+      if (claims.name && !await hasUserField(c.env.DB, userId, 'name')) {
+        updates.push('name = ?');
         params.push(claims.name);
       }
-      if (claims.picture && !await hasUserField(c.env.DB, userId, 'avatar_url')) {
-        updates.push('avatar_url = ?');
+      if (claims.picture && !await hasUserField(c.env.DB, userId, 'picture')) {
+        updates.push('picture = ?');
         params.push(claims.picture);
       }
       if (claims.email && !await hasUserField(c.env.DB, userId, 'email')) {
@@ -4055,12 +4237,12 @@ app.post("/api/user/me/auth-providers/oidc", async (c) => {
       if (claims.email_verified) {
         updates.push('email_verified = TRUE');
       }
-      if (claims.phone_number && !await hasUserField(c.env.DB, userId, 'mobile_number')) {
-        updates.push('mobile_number = ?');
+      if (claims.phone_number && !await hasUserField(c.env.DB, userId, 'phone_number')) {
+        updates.push('phone_number = ?');
         params.push(claims.phone_number);
       }
       if (claims.phone_number_verified) {
-        updates.push('mobile_verified = TRUE');
+        updates.push('phone_number_verified = TRUE');
       }
 
       if (updates.length > 0) {
@@ -4258,9 +4440,8 @@ app.get("/api/user/me/identity", async (c) => {
 
     // Get user profile
     const user = await c.env.DB.prepare(`
-      SELECT id, email, username, display_name, avatar_url, bio,
-             user_number, user_uid, mobile_number, mobile_verified, mobile_country_code,
-             primary_wallet_address, primary_chain_id,
+      SELECT id, email, username, name, picture, bio,
+             phone_number, phone_number_verified,
              role, status, email_verified,
              created_at, updated_at, last_login_at
       FROM users WHERE id = ?
@@ -4280,39 +4461,32 @@ app.get("/api/user/me/identity", async (c) => {
     const u = user as Record<string, any>;
     const completeness = {
       has_email: !!u.email && u.email_verified,
-      has_mobile: !!u.mobile_number && u.mobile_verified,
-      has_wallet: !!u.primary_wallet_address,
+      has_phone: !!u.phone_number && u.phone_number_verified,
       has_username: !!u.username,
-      has_display_name: !!u.display_name,
-      has_avatar: !!u.avatar_url,
+      has_name: !!u.name,
+      has_picture: !!u.picture,
       provider_count: providers.results?.length || 0,
       score: 0
     };
     completeness.score = [
       completeness.has_email,
-      completeness.has_mobile,
-      completeness.has_wallet,
+      completeness.has_phone,
       completeness.has_username,
-      completeness.has_display_name,
-      completeness.has_avatar
+      completeness.has_name,
+      completeness.has_picture
     ].filter(Boolean).length;
 
     return c.json({
       user: {
         id: u.id,
-        user_uid: u.user_uid,
-        user_number: u.user_number,
         email: u.email,
         email_verified: u.email_verified,
         username: u.username,
-        display_name: u.display_name,
-        avatar_url: u.avatar_url,
+        name: u.name,
+        picture: u.picture,
         bio: u.bio,
-        mobile_number: u.mobile_number ? u.mobile_number.replace(/(\+\d{3})\d+(\d{4})/, '$1****$2') : null,
-        mobile_verified: u.mobile_verified,
-        mobile_country_code: u.mobile_country_code,
-        primary_wallet_address: u.primary_wallet_address,
-        primary_chain_id: u.primary_chain_id,
+        phone_number: u.phone_number ? u.phone_number.replace(/(\+\d{3})\d+(\d{4})/, '$1****$2') : null,
+        phone_number_verified: u.phone_number_verified,
         role: u.role,
         status: u.status,
         created_at: u.created_at,
@@ -4346,13 +4520,14 @@ app.post("/api/user/me/identity/sync-from-oidc", async (c) => {
     const updates: string[] = [];
     const params: any[] = [];
 
-    // Map OIDC standard claims to user fields
+    // Map OIDC standard claims to user fields (1:1 mapping now)
     const fieldMapping: Record<string, string> = {
-      name: 'display_name',
-      given_name: 'display_name',  // Fallback
-      picture: 'avatar_url',
+      name: 'name',
+      given_name: 'given_name',
+      family_name: 'family_name',
+      picture: 'picture',
       email: 'email',
-      phone_number: 'mobile_number'
+      phone_number: 'phone_number'
     };
 
     for (const [claimKey, userField] of Object.entries(fieldMapping)) {
@@ -4369,7 +4544,7 @@ app.post("/api/user/me/identity/sync-from-oidc", async (c) => {
       updates.push('email_verified = TRUE');
     }
     if (claims.phone_number_verified === true) {
-      updates.push('mobile_verified = TRUE');
+      updates.push('phone_number_verified = TRUE');
     }
 
     if (updates.length > 0) {
@@ -4451,7 +4626,7 @@ app.get("/api/admin/users", async (c) => {
     const search = c.req.query("search") || "";
 
     let query = `
-      SELECT id, email, username, display_name, user_number, user_uid, role, status, email_verified,
+      SELECT id, email, username, name, picture, role, status, email_verified,
              created_at, updated_at, last_login_at, login_count
       FROM users
     `;
@@ -4459,19 +4634,19 @@ app.get("/api/admin/users", async (c) => {
     let params: any[] = [];
 
     if (search) {
-      query += ` WHERE email LIKE ? OR display_name LIKE ? OR username LIKE ? OR user_number LIKE ? OR user_uid LIKE ?`;
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+      query += ` WHERE email LIKE ? OR name LIKE ? OR username LIKE ?`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
-    query += ` ORDER BY user_number ASC LIMIT ? OFFSET ?`;
+    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
     params.push(limit, offset);
 
     const users = await c.env.DB.prepare(query).bind(...params).all();
     const totalResult = await c.env.DB.prepare(
       search
-        ? `SELECT COUNT(*) as total FROM users WHERE email LIKE ? OR display_name LIKE ? OR username LIKE ? OR user_number LIKE ? OR user_uid LIKE ?`
+        ? `SELECT COUNT(*) as total FROM users WHERE email LIKE ? OR name LIKE ? OR username LIKE ?`
         : `SELECT COUNT(*) as total FROM users`
-    ).bind(...(search ? [`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`] : [])).first();
+    ).bind(...(search ? [`%${search}%`, `%${search}%`, `%${search}%`] : [])).first();
 
     return c.json({
       users: users.results,
@@ -4673,8 +4848,8 @@ app.get("/api/user/:username", async (c) => {
     return c.json({
       id: user.id,
       username: user.username,
-      display_name: user.display_name,
-      avatar_url: user.avatar_url,
+      name: user.name,
+      picture: user.picture,
       bio: user.bio,
       role: user.role,
       created_at: user.created_at
@@ -4736,13 +4911,13 @@ app.put("/api/user/me/profile", async (c) => {
       return c.json({ error: "Invalid session" }, 401);
     }
 
-    const { display_name, bio, avatar_url } = await c.req.json();
+    const { name, bio, picture } = await c.req.json();
 
     await c.env.DB.prepare(`
       UPDATE users
-      SET display_name = ?, bio = ?, avatar_url = ?, updated_at = CURRENT_TIMESTAMP
+      SET name = ?, bio = ?, picture = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(display_name || null, bio || null, avatar_url || null, session.user_id || session.id).run();
+    `).bind(name || null, bio || null, picture || null, session.user_id || session.id).run();
 
     return c.json({ message: "Profile updated successfully" });
   } catch (error: any) {
