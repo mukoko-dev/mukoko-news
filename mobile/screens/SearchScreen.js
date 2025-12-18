@@ -1,3 +1,23 @@
+/**
+ * SearchScreen - Premium AI-Enhanced Search Experience
+ *
+ * Purpose: Find + Insights (AI-enhanced search)
+ * Design: Apple News + The Athletic inspired
+ *
+ * Features:
+ * - Premium search bar with AI indicator
+ * - AI-powered suggestions when empty
+ * - Trending searches with rank badges
+ * - Top authors with avatars
+ * - Platform stats display
+ * - Subtle AI indicators throughout
+ *
+ * UX Principles:
+ * - Search bar is THE primary focus (lives here, not elsewhere)
+ * - AI enhances but doesn't overwhelm
+ * - Clean, premium feel
+ */
+
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
   View,
@@ -11,7 +31,6 @@ import {
 } from 'react-native';
 import {
   Text,
-  Searchbar,
   Chip,
   ActivityIndicator,
   Surface,
@@ -21,8 +40,10 @@ import {
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
-import CategoryChips from '../components/CategoryChips';
 import { useLayout } from '../components/layout';
+import CategoryChips from '../components/CategoryChips';
+import { CuratedLabel, AISparkleIcon, AIShimmerEffect } from '../components/ai';
+import { EnhancedSearchBar, TrendingSearches, AuthorResultCard } from '../components/search';
 import {
   search as searchAPI,
   categories as categoriesAPI,
@@ -30,32 +51,6 @@ import {
 } from '../api/client';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-
-// Category emojis
-const CATEGORY_EMOJIS = {
-  politics: '🏛️',
-  business: '💼',
-  sports: '⚽',
-  entertainment: '🎬',
-  technology: '💻',
-  health: '🏥',
-  world: '🌍',
-  local: '📍',
-  opinion: '💭',
-  breaking: '⚡',
-  crime: '🚨',
-  education: '📚',
-  environment: '🌱',
-  lifestyle: '✨',
-  agriculture: '🌾',
-  mining: '⛏️',
-  tourism: '✈️',
-  finance: '💰',
-  culture: '🎭',
-  general: '📰',
-};
-
-const getEmoji = (name) => CATEGORY_EMOJIS[(name || '').toLowerCase()] || '📰';
 
 /**
  * Memoized Search Result Card
@@ -87,7 +82,16 @@ const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
       onPress={() => onPress(article)}
       style={styles.resultCard}
     >
-      <Surface style={[styles.card, { backgroundColor: paperTheme.colors.surface }]} elevation={1}>
+      <Surface
+        style={[
+          styles.card,
+          {
+            backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
+            borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+          },
+        ]}
+        elevation={1}
+      >
         <View style={styles.cardRow}>
           {hasImage && (
             <View style={styles.cardImageContainer}>
@@ -118,8 +122,6 @@ const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
 
 /**
  * SearchScreen - Search + Insights combined
- * When empty: shows insights (stats, trending, journalists)
- * When searching: shows search results
  */
 export default function SearchScreen({ navigation, route }) {
   const { isDark } = useTheme();
@@ -146,6 +148,7 @@ export default function SearchScreen({ navigation, route }) {
   const [stats, setStats] = useState(null);
   const [trending, setTrending] = useState([]);
   const [authors, setAuthors] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
 
   // Handle incoming search query from route params
   useEffect(() => {
@@ -157,7 +160,6 @@ export default function SearchScreen({ navigation, route }) {
 
   useEffect(() => {
     loadInsightsData();
-    // Cleanup debounce timer on unmount
     return () => {
       if (debounceTimer) clearTimeout(debounceTimer);
     };
@@ -174,18 +176,24 @@ export default function SearchScreen({ navigation, route }) {
       ]);
 
       if (results[0].status === 'fulfilled' && results[0].value.data?.categories) {
-        // Filter out 'all' category since CategoryChips adds its own
         const filteredCategories = results[0].value.data.categories.filter(
           cat => cat.id !== 'all' && cat.slug !== 'all'
         );
         setCategories(filteredCategories);
+
+        // Create AI suggestions from top categories
+        const topCategories = filteredCategories.slice(0, 4);
+        setSuggestions(topCategories.map(c => c.name || c.slug));
       }
+
       if (results[1].status === 'fulfilled' && results[1].value.data?.database) {
         setStats(results[1].value.data.database);
       }
+
       if (results[2].status === 'fulfilled' && results[2].value.data?.trending) {
         setTrending(results[2].value.data.trending);
       }
+
       if (results[3].status === 'fulfilled' && results[3].value.data?.trending_authors) {
         setAuthors(results[3].value.data.trending_authors);
       }
@@ -252,9 +260,9 @@ export default function SearchScreen({ navigation, route }) {
     setDebounceTimer(timer);
   };
 
-  const handleSearchSubmit = () => {
-    if (searchQuery.trim().length > 0) {
-      performSearch(searchQuery, selectedCategory);
+  const handleSearchSubmit = (query) => {
+    if (query && query.trim().length > 0) {
+      performSearch(query, selectedCategory);
     }
   };
 
@@ -288,8 +296,16 @@ export default function SearchScreen({ navigation, route }) {
     });
   }, [navigation]);
 
-  const handleTopicPress = (topic) => {
-    const query = topic.name || topic.category_name;
+  const handleSuggestionPress = async (suggestion) => {
+    if (Platform.OS !== 'web') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setSearchQuery(suggestion);
+    performSearch(suggestion);
+  };
+
+  const handleTrendingPress = (topic) => {
+    const query = topic.name || topic.category_name || topic.query;
     setSearchQuery(query);
     performSearch(query);
   };
@@ -311,25 +327,20 @@ export default function SearchScreen({ navigation, route }) {
     cardBorder: paperTheme.colors.glassBorder || paperTheme.colors.outline,
   };
 
-  // Card width for 2-column grid
-  const cardWidth = (SCREEN_WIDTH - mukokoTheme.spacing.md * 2 - mukokoTheme.spacing.sm) / 2;
-
   const isSearchMode = activeQuery.length > 0;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      {/* Search Bar - Always visible */}
-      <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        <Searchbar
-          placeholder="Search African news..."
+      {/* Premium Search Bar */}
+      <View style={[styles.searchContainer, { backgroundColor: colors.surface }]}>
+        <EnhancedSearchBar
           value={searchQuery}
           onChangeText={handleSearchChange}
-          onSubmitEditing={handleSearchSubmit}
-          style={[styles.searchbar, { backgroundColor: paperTheme.colors.surfaceVariant }]}
-          inputStyle={styles.searchInput}
-          iconColor={colors.primary}
+          onSubmit={handleSearchSubmit}
+          onClear={handleClearSearch}
+          placeholder="Search African news..."
           loading={loading}
-          onClearIconPress={handleClearSearch}
+          showAIIndicator={true}
         />
       </View>
 
@@ -344,13 +355,21 @@ export default function SearchScreen({ navigation, route }) {
         />
       )}
 
-      {/* Results Info - Search mode */}
+      {/* AI Results Info - Search mode */}
       {isSearchMode && !loading && (
-        <View style={[styles.resultsInfo, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-          <Text style={[styles.resultsInfoText, { color: colors.textMuted }]}>
-            {total} result{total !== 1 ? 's' : ''} for "{activeQuery}"
-          </Text>
-        </View>
+        <AIShimmerEffect enabled={results.length > 0}>
+          <View style={[styles.resultsInfo, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+            <View style={styles.resultsRow}>
+              <AISparkleIcon size={14} animated={false} />
+              <Text style={[styles.resultsInfoText, { color: colors.textMuted }]}>
+                AI found {total} result{total !== 1 ? 's' : ''}
+              </Text>
+            </View>
+            <Text style={[styles.resultsSubtext, { color: colors.textMuted }]}>
+              Most relevant first
+            </Text>
+          </View>
+        </AIShimmerEffect>
       )}
 
       {/* Error State */}
@@ -365,7 +384,9 @@ export default function SearchScreen({ navigation, route }) {
       {loading && (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Searching...</Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+            Searching with AI...
+          </Text>
         </View>
       )}
 
@@ -392,9 +413,9 @@ export default function SearchScreen({ navigation, route }) {
       {isSearchMode && !loading && results.length === 0 && !error && (
         <View style={styles.emptyState}>
           <Text style={styles.emptyEmoji}>📭</Text>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No results</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No results found</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-            Try a different search term
+            Try a different search term or category
           </Text>
           <TouchableOpacity
             style={[styles.clearButton, { borderColor: colors.primary }]}
@@ -425,99 +446,118 @@ export default function SearchScreen({ navigation, route }) {
             </View>
           ) : (
             <>
-              {/* Stats Row */}
-              {stats && (
-                <View style={styles.statsRow}>
-                  <View style={styles.stat}>
-                    <Text style={[styles.statValue, { color: colors.primary }]}>
-                      {(stats.total_articles || 0).toLocaleString()}
+              {/* AI Suggestions */}
+              {suggestions.length > 0 && (
+                <View style={styles.suggestionsSection}>
+                  <View style={styles.sectionHeader}>
+                    <AISparkleIcon size={14} />
+                    <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                      AI-POWERED SUGGESTIONS
                     </Text>
-                    <Text style={[styles.statLabel, { color: colors.textMuted }]}>Articles</Text>
                   </View>
-                  <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-                  <View style={styles.stat}>
-                    <Text style={[styles.statValue, { color: colors.primary }]}>
-                      {stats.active_sources || 0}
-                    </Text>
-                    <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sources</Text>
-                  </View>
-                  <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-                  <View style={styles.stat}>
-                    <Text style={[styles.statValue, { color: colors.primary }]}>
-                      {stats.categories || 0}
-                    </Text>
-                    <Text style={[styles.statLabel, { color: colors.textMuted }]}>Topics</Text>
+                  <Text style={[styles.suggestionsSubtext, { color: colors.textMuted }]}>
+                    Based on trending topics
+                  </Text>
+                  <View style={styles.suggestionsRow}>
+                    {suggestions.map((suggestion, i) => (
+                      <Chip
+                        key={i}
+                        mode="outlined"
+                        onPress={() => handleSuggestionPress(suggestion)}
+                        style={[styles.suggestionChip, { borderColor: colors.primary }]}
+                        textStyle={[styles.suggestionText, { color: colors.primary }]}
+                      >
+                        {suggestion}
+                      </Chip>
+                    ))}
                   </View>
                 </View>
               )}
 
-              {/* Trending Topics */}
+              {/* Trending Searches */}
               {trending.length > 0 && (
-                <>
-                  <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
-                    🔥 Trending Now
-                  </Text>
-                  <View style={styles.topicsGrid}>
-                    {trending.map((topic, i) => (
-                      <TouchableOpacity
-                        key={topic.id || i}
-                        style={[styles.topicCard, { backgroundColor: colors.card, borderColor: colors.cardBorder, width: cardWidth }]}
-                        onPress={() => handleTopicPress(topic)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={styles.topicRow}>
-                          <Text style={styles.topicEmoji}>{getEmoji(topic.name || topic.category_name)}</Text>
-                          {i < 3 && (
-                            <View style={[styles.hotBadge, { backgroundColor: mukokoTheme.colors.accent }]}>
-                              <Text style={styles.hotBadgeText}>{i + 1}</Text>
-                            </View>
-                          )}
-                        </View>
-                        <Text style={[styles.topicName, { color: colors.text }]} numberOfLines={1}>
-                          {topic.name || topic.category_name}
-                        </Text>
-                        <Text style={[styles.topicCount, { color: colors.textMuted }]}>
-                          {topic.article_count || 0} articles
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                </>
+                <TrendingSearches
+                  searches={trending}
+                  onSearchPress={handleTrendingPress}
+                  title="TRENDING SEARCHES"
+                  showAILabel={true}
+                  maxItems={6}
+                />
               )}
 
-              {/* Top Journalists */}
+              {/* Top Authors */}
               {authors.length > 0 && (
-                <>
-                  <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
-                    ✍️ Top Journalists
-                  </Text>
-                  <View style={styles.authorsList}>
+                <View style={styles.authorsSection}>
+                  <View style={styles.sectionHeader}>
+                    <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                      TOP AUTHORS
+                    </Text>
+                    <CuratedLabel variant="popular" size="small" showIcon={false} />
+                  </View>
+                  <View
+                    style={[
+                      styles.authorsList,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.cardBorder,
+                      },
+                    ]}
+                  >
                     {authors.map((author, i) => (
-                      <TouchableOpacity
+                      <AuthorResultCard
                         key={author.id || i}
-                        style={[styles.authorRow, { borderBottomColor: colors.border }]}
+                        author={author}
+                        rank={i + 1}
                         onPress={() => handleAuthorPress(author)}
-                        activeOpacity={0.7}
-                      >
-                        <View style={[
-                          styles.rank,
-                          { backgroundColor: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : colors.card }
-                        ]}>
-                          <Text style={[styles.rankText, { color: i < 3 ? '#FFF' : colors.text }]}>{i + 1}</Text>
-                        </View>
-                        <View style={styles.authorInfo}>
-                          <Text style={[styles.authorName, { color: colors.text }]} numberOfLines={1}>
-                            {author.name}
-                          </Text>
-                          <Text style={[styles.authorMeta, { color: colors.textMuted }]}>
-                            {author.article_count || 0} articles
-                          </Text>
-                        </View>
-                        <Icon source="chevron-right" size={18} color={colors.textMuted} />
-                      </TouchableOpacity>
+                        variant="list"
+                      />
                     ))}
                   </View>
-                </>
+                </View>
+              )}
+
+              {/* Platform Stats */}
+              {stats && (
+                <View style={styles.statsSection}>
+                  <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                    PLATFORM STATS
+                  </Text>
+                  <View
+                    style={[
+                      styles.statsCard,
+                      {
+                        backgroundColor: colors.card,
+                        borderColor: colors.cardBorder,
+                      },
+                    ]}
+                  >
+                    <View style={styles.statsRow}>
+                      <View style={styles.stat}>
+                        <Text style={[styles.statEmoji]}>📰</Text>
+                        <Text style={[styles.statValue, { color: colors.primary }]}>
+                          {(stats.total_articles || 0).toLocaleString()}
+                        </Text>
+                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>Articles</Text>
+                      </View>
+                      <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                      <View style={styles.stat}>
+                        <Text style={[styles.statEmoji]}>📡</Text>
+                        <Text style={[styles.statValue, { color: colors.primary }]}>
+                          {stats.active_sources || 0}
+                        </Text>
+                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sources</Text>
+                      </View>
+                      <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
+                      <View style={styles.stat}>
+                        <Text style={[styles.statEmoji]}>🗂️</Text>
+                        <Text style={[styles.statValue, { color: colors.primary }]}>
+                          {stats.categories || 0}
+                        </Text>
+                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>Topics</Text>
+                      </View>
+                    </View>
+                  </View>
+                </View>
               )}
 
               {/* No Data */}
@@ -526,7 +566,7 @@ export default function SearchScreen({ navigation, route }) {
                   <Text style={styles.emptyEmoji}>🔍</Text>
                   <Text style={[styles.emptyTitle, { color: colors.text }]}>Search African News</Text>
                   <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-                    Find articles from trusted sources
+                    Find articles from trusted sources across Africa
                   </Text>
                 </View>
               )}
@@ -545,17 +585,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Search Bar
+  // Search Bar Container
   searchContainer: {
     padding: mukokoTheme.spacing.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  searchbar: {
-    borderRadius: mukokoTheme.roundness,
-    elevation: 0,
-  },
-  searchInput: {
-    fontSize: 16,
   },
 
   // Results Info
@@ -564,8 +596,18 @@ const styles = StyleSheet.create({
     paddingVertical: mukokoTheme.spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  resultsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.xs,
+  },
   resultsInfoText: {
     fontSize: 13,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+  resultsSubtext: {
+    fontSize: 11,
+    marginTop: 2,
   },
 
   // Error
@@ -588,6 +630,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 14,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
 
   // Results
@@ -602,6 +645,7 @@ const styles = StyleSheet.create({
   },
   card: {
     borderRadius: mukokoTheme.roundness,
+    borderWidth: 1,
     overflow: 'hidden',
   },
   cardRow: {
@@ -628,19 +672,19 @@ const styles = StyleSheet.create({
   },
   cardSource: {
     fontSize: 10,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   cardTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 13,
-    lineHeight: 17,
+    fontSize: 14,
+    lineHeight: 18,
     marginBottom: 2,
   },
   cardDate: {
-    fontSize: 10,
+    fontSize: 11,
   },
 
   // Empty State
@@ -662,6 +706,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
     marginBottom: mukokoTheme.spacing.md,
+    lineHeight: 20,
   },
   clearButton: {
     paddingVertical: mukokoTheme.spacing.sm,
@@ -675,20 +720,76 @@ const styles = StyleSheet.create({
     padding: mukokoTheme.spacing.md,
   },
 
-  // Stats Row
+  // Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: mukokoTheme.spacing.xs,
+    marginBottom: mukokoTheme.spacing.xs,
+  },
+  sectionLabel: {
+    fontSize: 12,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+
+  // AI Suggestions
+  suggestionsSection: {
+    marginBottom: mukokoTheme.spacing.lg,
+  },
+  suggestionsSubtext: {
+    fontSize: 12,
+    marginBottom: mukokoTheme.spacing.sm,
+  },
+  suggestionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: mukokoTheme.spacing.xs,
+  },
+  suggestionChip: {
+    borderRadius: 20,
+  },
+  suggestionText: {
+    fontSize: 12,
+  },
+
+  // Authors Section
+  authorsSection: {
+    marginBottom: mukokoTheme.spacing.lg,
+  },
+  authorsList: {
+    borderRadius: mukokoTheme.roundness,
+    borderWidth: 1,
+    overflow: 'hidden',
+    marginTop: mukokoTheme.spacing.sm,
+  },
+
+  // Stats Section
+  statsSection: {
+    marginBottom: mukokoTheme.spacing.lg,
+  },
+  statsCard: {
+    borderRadius: mukokoTheme.roundness,
+    borderWidth: 1,
+    padding: mukokoTheme.spacing.md,
+    marginTop: mukokoTheme.spacing.sm,
+  },
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingVertical: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.md,
   },
   stat: {
     alignItems: 'center',
     flex: 1,
   },
+  statEmoji: {
+    fontSize: 20,
+    marginBottom: mukokoTheme.spacing.xs,
+  },
   statValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
   },
   statLabel: {
@@ -697,95 +798,6 @@ const styles = StyleSheet.create({
   },
   statDivider: {
     width: 1,
-    height: 28,
-  },
-
-  // Section Labels
-  sectionLabel: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    marginBottom: mukokoTheme.spacing.sm,
-    marginTop: mukokoTheme.spacing.sm,
-  },
-
-  // Topics Grid
-  topicsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  topicCard: {
-    padding: mukokoTheme.spacing.sm,
-    borderRadius: mukokoTheme.roundness,
-    borderWidth: 1,
-  },
-  topicRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  topicEmoji: {
-    fontSize: 22,
-  },
-  hotBadge: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  hotBadgeText: {
-    color: '#FFF',
-    fontSize: 9,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  topicName: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    marginBottom: 2,
-  },
-  topicCount: {
-    fontSize: 10,
-  },
-
-  // Authors List
-  authorsList: {
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  authorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  rank: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: mukokoTheme.spacing.sm,
-  },
-  rankText: {
-    fontSize: 10,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  authorInfo: {
-    flex: 1,
-  },
-  authorName: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-  authorMeta: {
-    fontSize: 10,
-    marginTop: 1,
-  },
-
-  // Bottom padding
-  bottomPadding: {
-    height: 100,
+    height: 40,
   },
 });
