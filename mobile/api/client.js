@@ -206,8 +206,9 @@ export const articles = {
    * @param {number} options.offset - Offset for pagination
    * @param {string|null} options.category - Category filter
    * @param {string} options.sort - Sort order: 'latest', 'trending', 'popular'
+   * @param {string[]|null} options.countries - Pan-African: filter by country codes (e.g., ['ZW', 'SA'])
    */
-  async getFeed({ limit = 20, offset = 0, category = null, sort = 'latest' } = {}) {
+  async getFeed({ limit = 20, offset = 0, category = null, sort = 'latest', countries = null } = {}) {
     const params = new URLSearchParams({
       limit: limit.toString(),
       offset: offset.toString(),
@@ -218,26 +219,37 @@ export const articles = {
       params.append('category', category);
     }
 
+    // Pan-African: add country filter
+    if (countries && countries.length > 0) {
+      params.append('countries', countries.join(','));
+    }
+
     return apiRequest(`/api/feeds?${params.toString()}`);
   },
 
   /**
    * Get personalized feed (For You)
-   * Uses user preferences, reading history, and follows to curate articles
+   * Uses user preferences, reading history, follows, and country preferences to curate articles
    * Falls back to trending for anonymous users
    * @param {Object} options
    * @param {number} options.limit - Number of articles to fetch
    * @param {number} options.offset - Offset for pagination
    * @param {boolean} options.excludeRead - Exclude already read articles
    * @param {number} options.diversity - Diversity factor 0-1 (higher = more diverse categories)
+   * @param {string[]|null} options.countries - Pan-African: override country filter (uses user preferences if null)
    */
-  async getPersonalizedFeed({ limit = 30, offset = 0, excludeRead = true, diversity = 0.3 } = {}) {
+  async getPersonalizedFeed({ limit = 30, offset = 0, excludeRead = true, diversity = 0.3, countries = null } = {}) {
     const params = new URLSearchParams({
       limit: limit.toString(),
       offset: offset.toString(),
       excludeRead: excludeRead.toString(),
       diversity: diversity.toString(),
     });
+
+    // Pan-African: add country filter override
+    if (countries && countries.length > 0) {
+      params.append('countries', countries.join(','));
+    }
 
     return apiRequest(`/api/feeds/personalized?${params.toString()}`);
   },
@@ -301,6 +313,97 @@ export const categories = {
    */
   async getAll() {
     return apiRequest('/api/categories');
+  },
+};
+
+/**
+ * Countries API (Pan-African Support)
+ */
+export const countries = {
+  /**
+   * Get all available countries
+   * @param {Object} options
+   * @param {boolean} options.withStats - Include article/source counts per country
+   */
+  async getAll({ withStats = false } = {}) {
+    const params = new URLSearchParams();
+    if (withStats) {
+      params.append('withStats', 'true');
+    }
+    return apiRequest(`/api/countries?${params.toString()}`);
+  },
+
+  /**
+   * Get country details with sources and category breakdown
+   * @param {string} countryId - ISO 3166-1 alpha-2 code (e.g., 'ZW', 'SA')
+   */
+  async getDetails(countryId) {
+    return apiRequest(`/api/countries/${countryId}`);
+  },
+
+  /**
+   * Get article counts grouped by country
+   * @param {Object} options
+   * @param {string} options.since - Filter articles published since this date
+   */
+  async getArticleStats({ since = null } = {}) {
+    const params = new URLSearchParams();
+    if (since) {
+      params.append('since', since);
+    }
+    return apiRequest(`/api/countries/stats/articles?${params.toString()}`);
+  },
+
+  /**
+   * Get user's country preferences
+   */
+  async getUserPreferences() {
+    return apiRequest('/api/user/me/countries');
+  },
+
+  /**
+   * Set user's country preferences (replaces all existing)
+   * @param {Array<{countryId: string, isPrimary?: boolean, notifyBreaking?: boolean}>} countriesList
+   */
+  async setUserPreferences(countriesList) {
+    return apiRequest('/api/user/me/countries', {
+      method: 'PUT',
+      body: JSON.stringify({ countries: countriesList }),
+    });
+  },
+
+  /**
+   * Add a country to user's preferences
+   * @param {string} countryId - ISO 3166-1 alpha-2 code
+   * @param {Object} options
+   * @param {boolean} options.isPrimary - Set as primary/home country
+   * @param {boolean} options.notifyBreaking - Receive breaking news notifications
+   */
+  async addToPreferences(countryId, { isPrimary = false, notifyBreaking = true } = {}) {
+    return apiRequest('/api/user/me/countries', {
+      method: 'POST',
+      body: JSON.stringify({ countryId, isPrimary, notifyBreaking }),
+    });
+  },
+
+  /**
+   * Remove a country from user's preferences
+   * @param {string} countryId - ISO 3166-1 alpha-2 code
+   */
+  async removeFromPreferences(countryId) {
+    return apiRequest(`/api/user/me/countries/${countryId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  /**
+   * Set user's primary/home country
+   * @param {string} countryId - ISO 3166-1 alpha-2 code
+   */
+  async setPrimary(countryId) {
+    return apiRequest(`/api/user/me/countries/${countryId}/primary`, {
+      method: 'PUT',
+    });
   },
 };
 
@@ -739,6 +842,7 @@ export default {
   auth,
   articles,
   categories,
+  countries,  // Pan-African support
   user,
   comments,
   newsBytes,

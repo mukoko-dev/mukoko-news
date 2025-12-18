@@ -9,6 +9,8 @@ interface UserPreferences {
   followedSources: string[];
   followedAuthors: string[];
   followedCategories: string[];
+  preferredCountries: string[];  // Pan-African support: user's country preferences
+  primaryCountry: string | null; // User's primary/home country
   categoryInterests: Map<string, number>; // category -> interest score
   recentlyRead: Set<number>; // article IDs read recently
 }
@@ -26,6 +28,7 @@ interface ScoredArticle {
   image_url: string;
   original_url: string;
   category_id: string;
+  country_id: string;  // Pan-African support
   view_count: number;
   like_count: number;
   bookmark_count: number;
@@ -35,6 +38,7 @@ interface ScoredArticle {
     followedAuthor: number;
     followedCategory: number;
     categoryInterest: number;
+    primaryCountry: number;  // Pan-African support
     recency: number;
     engagement: number;
     diversity: number;
@@ -47,6 +51,7 @@ interface PersonalizedFeedOptions {
   excludeRead?: boolean;
   diversityFactor?: number; // 0-1, higher = more diverse categories
   recencyWeight?: number; // How much to weight recent articles
+  countries?: string[] | null; // Pan-African support: override user's country preferences
 }
 
 // Scoring weights
@@ -54,6 +59,7 @@ const WEIGHTS = {
   FOLLOWED_SOURCE: 50,      // Strong boost for followed sources
   FOLLOWED_AUTHOR: 40,      // Strong boost for followed authors
   FOLLOWED_CATEGORY: 30,    // Medium boost for followed categories
+  PRIMARY_COUNTRY: 35,      // Pan-African: boost for user's primary country
   CATEGORY_INTEREST: 20,    // Based on reading history
   RECENCY: 25,              // Recent articles get boost
   ENGAGEMENT: 15,           // Popular articles get boost
@@ -80,6 +86,7 @@ export class PersonalizedFeedService {
     articles: ScoredArticle[];
     total: number;
     isPersonalized: boolean;
+    countries?: string[];  // Pan-African: which countries were used for filtering
   }> {
     const {
       limit = 30,
@@ -87,33 +94,39 @@ export class PersonalizedFeedService {
       excludeRead = true,
       diversityFactor = 0.3,
       recencyWeight = 1.0,
+      countries = null,  // Pan-African: optional country filter override
     } = options;
 
-    // If no user, return trending feed
+    // If no user, return trending feed (optionally filtered by countries)
     if (!userId) {
-      return this.getTrendingFeed(limit, offset);
+      return this.getTrendingFeed(limit, offset, countries);
     }
 
     // Get user preferences
     const preferences = await this.getUserPreferences(userId);
+
+    // Determine which countries to use: override > user preferences > all
+    const effectiveCountries = countries || preferences.preferredCountries;
 
     // Check if user has any preferences/history
     const hasPreferences =
       preferences.followedSources.length > 0 ||
       preferences.followedAuthors.length > 0 ||
       preferences.followedCategories.length > 0 ||
-      preferences.categoryInterests.size > 0;
+      preferences.categoryInterests.size > 0 ||
+      preferences.preferredCountries.length > 0;  // Pan-African: include country preferences
 
     if (!hasPreferences) {
-      // New user with no preferences, return trending
-      return this.getTrendingFeed(limit, offset);
+      // New user with no preferences, return trending (filtered by countries if provided)
+      return this.getTrendingFeed(limit, offset, effectiveCountries.length > 0 ? effectiveCountries : null);
     }
 
     // Get candidate articles (more than we need for scoring)
     const candidateLimit = Math.min(limit * 5, 200);
     const candidates = await this.getCandidateArticles(
       candidateLimit,
-      excludeRead ? preferences.recentlyRead : new Set()
+      excludeRead ? preferences.recentlyRead : new Set(),
+      effectiveCountries.length > 0 ? effectiveCountries : null  // Pan-African: pass countries
     );
 
     // Score and rank articles
@@ -127,15 +140,23 @@ export class PersonalizedFeedService {
     // Apply pagination
     const paginatedArticles = scoredArticles.slice(offset, offset + limit);
 
-    // Get total count
-    const totalResult = await this.db.prepare(`
-      SELECT COUNT(*) as total FROM articles WHERE status = 'published'
-    `).first();
+    // Get total count (filtered by countries if applicable)
+    let countQuery = 'SELECT COUNT(*) as total FROM articles WHERE status = \'published\'';
+    const countParams: string[] = [];
+    if (effectiveCountries.length > 0) {
+      const placeholders = effectiveCountries.map(() => '?').join(',');
+      countQuery += ` AND country_id IN (${placeholders})`;
+      countParams.push(...effectiveCountries);
+    }
+    const totalResult = countParams.length > 0
+      ? await this.db.prepare(countQuery).bind(...countParams).first()
+      : await this.db.prepare(countQuery).first();
 
     return {
       articles: paginatedArticles,
       total: totalResult?.total as number || 0,
       isPersonalized: true,
+      countries: effectiveCountries.length > 0 ? effectiveCountries : undefined,
     };
   }
 
@@ -163,6 +184,16 @@ export class PersonalizedFeedService {
       WHERE user_id = ? AND follow_type = 'category'
     `).bind(userId).all();
     const followedCategories = (categoriesResult.results || []).map((r: any) => r.follow_id);
+
+    // Pan-African: Get user's country preferences
+    const countriesResult = await this.db.prepare(`
+      SELECT country_id, is_primary FROM user_country_preferences
+      WHERE user_id = ?
+      ORDER BY is_primary DESC, priority DESC
+    `).bind(userId).all();
+    const preferredCountries = (countriesResult.results || []).map((r: any) => r.country_id);
+    const primaryCountryRow = (countriesResult.results || []).find((r: any) => r.is_primary);
+    const primaryCountry = primaryCountryRow ? (primaryCountryRow as any).country_id : null;
 
     // Get category interests from reading history (last 30 days)
     const historyResult = await this.db.prepare(`
@@ -201,6 +232,8 @@ export class PersonalizedFeedService {
       followedSources,
       followedAuthors,
       followedCategories,
+      preferredCountries,
+      primaryCountry,
       categoryInterests,
       recentlyRead,
     };
@@ -211,19 +244,31 @@ export class PersonalizedFeedService {
    */
   private async getCandidateArticles(
     limit: number,
-    excludeIds: Set<number>
+    excludeIds: Set<number>,
+    countries: string[] | null = null  // Pan-African: filter by countries
   ): Promise<ScoredArticle[]> {
-    // Get recent articles (last 14 days for personalization pool)
-    const result = await this.db.prepare(`
+    // Build query with optional country filter
+    let query = `
       SELECT id, title, slug, description, content_snippet, author, source, source_id,
-             published_at, image_url, original_url, category_id, view_count,
+             published_at, image_url, original_url, category_id, country_id, view_count,
              like_count, bookmark_count
       FROM articles
       WHERE status = 'published'
         AND published_at > datetime('now', '-14 days')
-      ORDER BY published_at DESC
-      LIMIT ?
-    `).bind(limit).all();
+    `;
+    const params: (string | number)[] = [];
+
+    // Pan-African: filter by countries if provided
+    if (countries && countries.length > 0) {
+      const placeholders = countries.map(() => '?').join(',');
+      query += ` AND country_id IN (${placeholders})`;
+      params.push(...countries);
+    }
+
+    query += ` ORDER BY published_at DESC LIMIT ?`;
+    params.push(limit);
+
+    const result = await this.db.prepare(query).bind(...params).all();
 
     const articles = (result.results || []) as unknown as ScoredArticle[];
 
@@ -255,6 +300,7 @@ export class PersonalizedFeedService {
         followedAuthor: 0,
         followedCategory: 0,
         categoryInterest: 0,
+        primaryCountry: 0,  // Pan-African
         recency: 0,
         engagement: 0,
         diversity: 0,
@@ -276,6 +322,12 @@ export class PersonalizedFeedService {
       if (preferences.followedCategories.includes(article.category_id)) {
         breakdown.followedCategory = WEIGHTS.FOLLOWED_CATEGORY;
         score += breakdown.followedCategory;
+      }
+
+      // Pan-African: Primary country boost
+      if (preferences.primaryCountry && article.country_id === preferences.primaryCountry) {
+        breakdown.primaryCountry = WEIGHTS.PRIMARY_COUNTRY;
+        score += breakdown.primaryCountry;
       }
 
       // Category interest from reading history
@@ -333,32 +385,58 @@ export class PersonalizedFeedService {
    */
   private async getTrendingFeed(
     limit: number,
-    offset: number
+    offset: number,
+    countries: string[] | null = null  // Pan-African: optional country filter
   ): Promise<{
     articles: ScoredArticle[];
     total: number;
     isPersonalized: boolean;
+    countries?: string[];
   }> {
-    const result = await this.db.prepare(`
+    // Build query with optional country filter
+    let query = `
       SELECT id, title, slug, description, content_snippet, author, source, source_id,
-             published_at, image_url, original_url, category_id, view_count,
+             published_at, image_url, original_url, category_id, country_id, view_count,
              like_count, bookmark_count
       FROM articles
       WHERE status = 'published'
         AND published_at > datetime('now', '-7 days')
-      ORDER BY (view_count + like_count * 3 + bookmark_count * 2) DESC, published_at DESC
-      LIMIT ? OFFSET ?
-    `).bind(limit, offset).all();
+    `;
+    const params: (string | number)[] = [];
 
-    const totalResult = await this.db.prepare(`
-      SELECT COUNT(*) as total FROM articles
-      WHERE status = 'published' AND published_at > datetime('now', '-7 days')
-    `).first();
+    // Pan-African: filter by countries if provided
+    if (countries && countries.length > 0) {
+      const placeholders = countries.map(() => '?').join(',');
+      query += ` AND country_id IN (${placeholders})`;
+      params.push(...countries);
+    }
+
+    query += ` ORDER BY (view_count + like_count * 3 + bookmark_count * 2) DESC, published_at DESC
+      LIMIT ? OFFSET ?`;
+    params.push(limit, offset);
+
+    const result = await this.db.prepare(query).bind(...params).all();
+
+    // Build count query with same country filter
+    let countQuery = `SELECT COUNT(*) as total FROM articles
+      WHERE status = 'published' AND published_at > datetime('now', '-7 days')`;
+    const countParams: string[] = [];
+
+    if (countries && countries.length > 0) {
+      const placeholders = countries.map(() => '?').join(',');
+      countQuery += ` AND country_id IN (${placeholders})`;
+      countParams.push(...countries);
+    }
+
+    const totalResult = countParams.length > 0
+      ? await this.db.prepare(countQuery).bind(...countParams).first()
+      : await this.db.prepare(countQuery).first();
 
     return {
       articles: (result.results || []).map(a => ({ ...a, score: 0 } as ScoredArticle)),
       total: totalResult?.total as number || 0,
       isPersonalized: false,
+      countries: countries && countries.length > 0 ? countries : undefined,
     };
   }
 

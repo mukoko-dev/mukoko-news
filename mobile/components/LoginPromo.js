@@ -232,7 +232,7 @@ export default function LoginPromo({
         Unlock Unlimited News
       </Text>
       <Text style={[styles.subtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
-        You're viewing {articleLimit} free articles. Sign up to access all stories from 30+ Zimbabwe news sources.
+        You're viewing {articleLimit} free articles. Sign up to access all stories from 50+ African news sources.
       </Text>
 
       {/* Benefits */}

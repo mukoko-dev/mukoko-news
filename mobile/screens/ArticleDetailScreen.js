@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import Markdown from 'react-native-markdown-display';
 import mukokoTheme, { paperTheme, paperThemeDark } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI } from '../api/client';
@@ -87,6 +88,137 @@ export default function ArticleDetailScreen({ route, navigation }) {
       color: currentTheme.colors.onPrimary,
     },
   };
+
+  // Markdown styles for article content
+  const markdownStyles = useMemo(() => ({
+    body: {
+      color: currentTheme.colors.onSurface,
+      fontSize: 16,
+      lineHeight: 26,
+      fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    },
+    heading1: {
+      color: currentTheme.colors.onSurface,
+      fontSize: 24,
+      fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+      marginTop: 24,
+      marginBottom: 12,
+      lineHeight: 32,
+    },
+    heading2: {
+      color: currentTheme.colors.onSurface,
+      fontSize: 20,
+      fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+      marginTop: 20,
+      marginBottom: 10,
+      lineHeight: 28,
+    },
+    heading3: {
+      color: currentTheme.colors.onSurface,
+      fontSize: 18,
+      fontFamily: mukokoTheme.fonts.bold.fontFamily,
+      marginTop: 16,
+      marginBottom: 8,
+      lineHeight: 26,
+    },
+    paragraph: {
+      marginTop: 0,
+      marginBottom: 16,
+    },
+    strong: {
+      fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    },
+    em: {
+      fontStyle: 'italic',
+    },
+    link: {
+      color: currentTheme.colors.primary,
+      textDecorationLine: 'underline',
+    },
+    blockquote: {
+      backgroundColor: currentTheme.colors.surfaceVariant,
+      borderLeftColor: currentTheme.colors.primary,
+      borderLeftWidth: 4,
+      paddingLeft: 16,
+      paddingVertical: 8,
+      marginVertical: 12,
+      borderRadius: 4,
+    },
+    code_inline: {
+      backgroundColor: currentTheme.colors.surfaceVariant,
+      color: currentTheme.colors.onSurface,
+      fontFamily: 'monospace',
+      fontSize: 14,
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 4,
+    },
+    code_block: {
+      backgroundColor: currentTheme.colors.surfaceVariant,
+      color: currentTheme.colors.onSurface,
+      fontFamily: 'monospace',
+      fontSize: 14,
+      padding: 12,
+      borderRadius: 8,
+      marginVertical: 12,
+    },
+    fence: {
+      backgroundColor: currentTheme.colors.surfaceVariant,
+      color: currentTheme.colors.onSurface,
+      fontFamily: 'monospace',
+      fontSize: 14,
+      padding: 12,
+      borderRadius: 8,
+      marginVertical: 12,
+    },
+    bullet_list: {
+      marginVertical: 8,
+    },
+    ordered_list: {
+      marginVertical: 8,
+    },
+    list_item: {
+      marginVertical: 4,
+    },
+    bullet_list_icon: {
+      color: currentTheme.colors.primary,
+      marginRight: 8,
+    },
+    ordered_list_icon: {
+      color: currentTheme.colors.primary,
+      marginRight: 8,
+    },
+    hr: {
+      backgroundColor: currentTheme.colors.outline,
+      height: 1,
+      marginVertical: 16,
+    },
+    image: {
+      width: '100%',
+      borderRadius: 8,
+      marginVertical: 12,
+    },
+    table: {
+      borderColor: currentTheme.colors.outline,
+      borderWidth: 1,
+      borderRadius: 8,
+      marginVertical: 12,
+    },
+    thead: {
+      backgroundColor: currentTheme.colors.surfaceVariant,
+    },
+    th: {
+      color: currentTheme.colors.onSurface,
+      fontFamily: mukokoTheme.fonts.bold.fontFamily,
+      padding: 8,
+    },
+    td: {
+      color: currentTheme.colors.onSurface,
+      padding: 8,
+      borderTopColor: currentTheme.colors.outline,
+      borderTopWidth: 1,
+    },
+  }), [currentTheme.colors]);
 
   useEffect(() => {
     loadArticle();
@@ -391,17 +523,18 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 </Text>
               )}
 
-              {/* Full Content */}
+              {/* Full Content - Markdown Rendering */}
               {article.content && (
                 <View style={styles.contentContainer}>
-                  {article.content.split('\n\n').map((paragraph, index) => {
-                    const trimmed = paragraph.trim();
-                    return trimmed ? (
-                      <Text key={index} style={[styles.contentParagraph, dynamicStyles.contentParagraph]}>
-                        {trimmed}
-                      </Text>
-                    ) : null;
-                  })}
+                  <Markdown
+                    style={markdownStyles}
+                    onLinkPress={(url) => {
+                      Linking.openURL(url);
+                      return false;
+                    }}
+                  >
+                    {article.content}
+                  </Markdown>
                 </View>
               )}
 

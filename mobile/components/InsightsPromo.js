@@ -192,7 +192,7 @@ export default function InsightsPromo({
 
       {/* Title */}
       <Text style={[styles.title, { color: paperTheme.colors.onSurface }]}>
-        Zimbabwe News at a Glance
+        African News at a Glance
       </Text>
       <Text style={[styles.subtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
         Real-time coverage from trusted sources

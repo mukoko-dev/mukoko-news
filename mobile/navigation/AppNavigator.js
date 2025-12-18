@@ -322,7 +322,7 @@ export default function AppNavigator() {
 
           switch (routeName) {
             case 'BytesFeed':
-              return `${baseTitle} - Zimbabwe's News, Your Way`;
+              return `${baseTitle} - Africa's News, Your Way`;
             case 'ArticleDetail':
               return options?.title ? `${options.title} | ${baseTitle}` : baseTitle;
             case 'DiscoverFeed':

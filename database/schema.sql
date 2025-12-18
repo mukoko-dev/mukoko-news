@@ -109,6 +109,7 @@ CREATE TABLE IF NOT EXISTS rss_sources (
     name TEXT NOT NULL,
     url TEXT NOT NULL,
     category TEXT DEFAULT 'general',
+    country_id TEXT DEFAULT 'ZW' REFERENCES countries(id),  -- Pan-African support
     enabled INTEGER DEFAULT 1,
     priority INTEGER DEFAULT 3,
     metadata TEXT,
@@ -127,7 +128,8 @@ CREATE TABLE IF NOT EXISTS news_sources (
     rss_feed_url TEXT NOT NULL,
     logo_url TEXT,
     description TEXT,
-    country TEXT DEFAULT 'Zimbabwe',
+    country TEXT DEFAULT 'Zimbabwe',           -- Legacy field for display
+    country_id TEXT DEFAULT 'ZW' REFERENCES countries(id),  -- Pan-African support
     language TEXT DEFAULT 'en',
     category_id TEXT REFERENCES categories(id),
 
@@ -224,6 +226,7 @@ CREATE TABLE IF NOT EXISTS articles (
     -- Categorization
     category TEXT,
     category_id TEXT REFERENCES categories(id),
+    country_id TEXT DEFAULT 'ZW' REFERENCES countries(id),  -- Pan-African support
     tags TEXT,
     content_type TEXT DEFAULT 'article',
 
@@ -718,8 +721,83 @@ CREATE TABLE IF NOT EXISTS cron_execution_log (
 );
 
 -- ================================================
+-- COUNTRIES (Pan-African support)
+-- ================================================
+
+CREATE TABLE IF NOT EXISTS countries (
+    id TEXT PRIMARY KEY NOT NULL,           -- ISO 3166-1 alpha-2 code (e.g., "ZW", "SA", "KE")
+    name TEXT NOT NULL,                     -- Full name (e.g., "Zimbabwe")
+    code TEXT UNIQUE NOT NULL,              -- Same as id, for clarity
+    emoji TEXT,                             -- Flag emoji (e.g., "🇿🇼")
+
+    -- Localization
+    language TEXT DEFAULT 'en',             -- Primary language
+    timezone TEXT,                          -- Default timezone
+
+    -- Configuration
+    enabled BOOLEAN DEFAULT TRUE,           -- Whether country is active
+    priority INTEGER DEFAULT 0,             -- Display order (higher = first)
+
+    -- Country-specific settings
+    keywords TEXT,                          -- JSON array of country-specific keywords for categorization
+
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User country preferences (which countries a user wants news from)
+CREATE TABLE IF NOT EXISTS user_country_preferences (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    country_id TEXT NOT NULL REFERENCES countries(id) ON DELETE CASCADE,
+
+    -- Preference settings
+    is_primary BOOLEAN DEFAULT FALSE,       -- User's primary/home country
+    priority INTEGER DEFAULT 0,             -- Order preference (higher = more prominent)
+    notify_breaking BOOLEAN DEFAULT TRUE,   -- Notify on breaking news from this country
+
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE(user_id, country_id)
+);
+
+-- Country-specific keywords for content categorization
+CREATE TABLE IF NOT EXISTS country_keywords (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    country_id TEXT NOT NULL REFERENCES countries(id) ON DELETE CASCADE,
+    keyword TEXT NOT NULL,
+    category_id TEXT REFERENCES categories(id),
+
+    -- Keyword configuration
+    priority INTEGER DEFAULT 0,             -- Higher priority = stronger match
+    keyword_type TEXT DEFAULT 'general' CHECK (keyword_type IN ('general', 'politics', 'sports', 'business', 'location', 'person', 'organization')),
+
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE(country_id, keyword, category_id)
+);
+
+-- ================================================
 -- INDEXES
 -- ================================================
+
+-- Countries
+CREATE INDEX IF NOT EXISTS idx_countries_enabled ON countries(enabled);
+CREATE INDEX IF NOT EXISTS idx_countries_priority ON countries(priority DESC);
+
+-- User country preferences
+CREATE INDEX IF NOT EXISTS idx_user_country_preferences_user ON user_country_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_country_preferences_country ON user_country_preferences(country_id);
+CREATE INDEX IF NOT EXISTS idx_user_country_preferences_primary ON user_country_preferences(user_id, is_primary);
+
+-- Country keywords
+CREATE INDEX IF NOT EXISTS idx_country_keywords_country ON country_keywords(country_id);
+CREATE INDEX IF NOT EXISTS idx_country_keywords_keyword ON country_keywords(keyword);
+CREATE INDEX IF NOT EXISTS idx_country_keywords_category ON country_keywords(category_id);
 
 -- Users
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -739,6 +817,10 @@ CREATE INDEX IF NOT EXISTS idx_articles_byline ON articles(byline);
 CREATE INDEX IF NOT EXISTS idx_articles_content_type ON articles(content_type);
 CREATE INDEX IF NOT EXISTS idx_articles_trending_score ON articles(trending_score DESC);
 CREATE INDEX IF NOT EXISTS idx_articles_reading_time ON articles(reading_time);
+-- Country-based queries (Pan-African support)
+CREATE INDEX IF NOT EXISTS idx_articles_country ON articles(country_id);
+CREATE INDEX IF NOT EXISTS idx_articles_country_published ON articles(country_id, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_country_category ON articles(country_id, category_id);
 
 -- Authors
 CREATE INDEX IF NOT EXISTS idx_authors_normalized_name ON authors(normalized_name);
@@ -777,7 +859,9 @@ CREATE INDEX IF NOT EXISTS idx_user_follows_composite ON user_follows(user_id, f
 CREATE INDEX IF NOT EXISTS idx_categories_enabled ON categories(enabled);
 CREATE INDEX IF NOT EXISTS idx_news_sources_enabled ON news_sources(enabled);
 CREATE INDEX IF NOT EXISTS idx_news_sources_category_id ON news_sources(category_id);
+CREATE INDEX IF NOT EXISTS idx_news_sources_country ON news_sources(country_id);
 CREATE INDEX IF NOT EXISTS idx_rss_sources_enabled ON rss_sources(enabled);
+CREATE INDEX IF NOT EXISTS idx_rss_sources_country ON rss_sources(country_id);
 
 -- Keywords
 CREATE INDEX IF NOT EXISTS idx_keywords_name ON keywords(name);
