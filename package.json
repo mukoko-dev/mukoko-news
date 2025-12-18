@@ -27,6 +27,9 @@
     "mobile:install": "cd mobile && npm install",
     "mobile:deploy": "cd mobile && npx vercel --prod"
   },
+  "overrides": {
+    "esbuild": "^0.25.0"
+  },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "eslint": "^9.39.2",
