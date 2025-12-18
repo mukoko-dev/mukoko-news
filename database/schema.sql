@@ -18,8 +18,8 @@ CREATE TABLE IF NOT EXISTS users (
     avatar_url TEXT,
     bio TEXT,
 
-    -- Role management
-    role TEXT NOT NULL DEFAULT 'creator' CHECK (role IN ('creator', 'business-creator', 'moderator', 'admin', 'super_admin')),
+    -- Role management (admin, moderator, support, author, user)
+    role TEXT NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'moderator', 'support', 'author', 'user')),
 
     -- Account status
     email_verified BOOLEAN DEFAULT FALSE,
