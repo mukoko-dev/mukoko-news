@@ -746,6 +746,25 @@ CREATE TABLE IF NOT EXISTS countries (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Seed African countries
+INSERT OR IGNORE INTO countries (id, name, code, emoji, language, timezone, enabled, priority) VALUES
+    ('ZW', 'Zimbabwe', 'ZW', '🇿🇼', 'en', 'Africa/Harare', 1, 100),
+    ('ZA', 'South Africa', 'ZA', '🇿🇦', 'en', 'Africa/Johannesburg', 1, 90),
+    ('KE', 'Kenya', 'KE', '🇰🇪', 'en', 'Africa/Nairobi', 1, 85),
+    ('NG', 'Nigeria', 'NG', '🇳🇬', 'en', 'Africa/Lagos', 1, 80),
+    ('GH', 'Ghana', 'GH', '🇬🇭', 'en', 'Africa/Accra', 1, 75),
+    ('TZ', 'Tanzania', 'TZ', '🇹🇿', 'en', 'Africa/Dar_es_Salaam', 1, 70),
+    ('UG', 'Uganda', 'UG', '🇺🇬', 'en', 'Africa/Kampala', 1, 65),
+    ('RW', 'Rwanda', 'RW', '🇷🇼', 'en', 'Africa/Kigali', 1, 60),
+    ('ZM', 'Zambia', 'ZM', '🇿🇲', 'en', 'Africa/Lusaka', 1, 55),
+    ('BW', 'Botswana', 'BW', '🇧🇼', 'en', 'Africa/Gaborone', 1, 50),
+    ('MW', 'Malawi', 'MW', '🇲🇼', 'en', 'Africa/Blantyre', 1, 45),
+    ('MZ', 'Mozambique', 'MZ', '🇲🇿', 'pt', 'Africa/Maputo', 1, 40),
+    ('NA', 'Namibia', 'NA', '🇳🇦', 'en', 'Africa/Windhoek', 1, 35),
+    ('ET', 'Ethiopia', 'ET', '🇪🇹', 'am', 'Africa/Addis_Ababa', 1, 30),
+    ('EG', 'Egypt', 'EG', '🇪🇬', 'ar', 'Africa/Cairo', 1, 25),
+    ('MA', 'Morocco', 'MA', '🇲🇦', 'ar', 'Africa/Casablanca', 1, 20);
+
 -- User country preferences (which countries a user wants news from)
 CREATE TABLE IF NOT EXISTS user_country_preferences (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
