@@ -47,14 +47,18 @@ const MIN_TOUCH_TARGET = 44;
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// Modal height (70% of screen)
-const MODAL_HEIGHT = SCREEN_HEIGHT * 0.75;
+// Modal dimensions
+const MODAL_HEIGHT = SCREEN_HEIGHT * 0.72;
+const MODAL_MAX_WIDTH = 480;  // Max width for responsive design on large screens
+const MODAL_BOTTOM_MARGIN = 24; // Lift modal up from bottom edge
 
 /**
  * CountrySelectionGrid - Grid of countries for selection
  */
 function CountrySelectionGrid({ countries, selectedCountries, onToggle, theme }) {
-  const cardWidth = (SCREEN_WIDTH - spacing.xl * 2 - spacing.sm * 2) / 3;
+  // Use modal max width for responsive calculations on large screens
+  const containerWidth = Math.min(SCREEN_WIDTH, MODAL_MAX_WIDTH);
+  const cardWidth = (containerWidth - spacing.xl * 2 - spacing.sm * 2) / 3;
 
   return (
     <View
@@ -112,7 +116,9 @@ function CountrySelectionGrid({ countries, selectedCountries, onToggle, theme })
  * CategorySelectionGrid - Grid of categories for selection
  */
 function CategorySelectionGrid({ categories, selectedCategories, onToggle, theme }) {
-  const cardWidth = (SCREEN_WIDTH - spacing.xl * 2 - spacing.sm) / 2;
+  // Use modal max width for responsive calculations on large screens
+  const containerWidth = Math.min(SCREEN_WIDTH, MODAL_MAX_WIDTH);
+  const cardWidth = (containerWidth - spacing.xl * 2 - spacing.sm) / 2;
 
   return (
     <View
@@ -195,12 +201,13 @@ function ProgressIndicator({ currentStep, totalSteps }) {
 
 /**
  * FeatureItem - Feature list item with icon
+ * Uses brighter icon colors for visibility on dark background
  */
-function FeatureItem({ icon, text, color }) {
+function FeatureItem({ icon, text, iconColor }) {
   return (
     <View style={styles.featureItem}>
-      <View style={[styles.featureIcon, { backgroundColor: `${color}20` }]}>
-        <MaterialCommunityIcons name={icon} size={20} color={color} />
+      <View style={[styles.featureIcon, { backgroundColor: 'rgba(255, 255, 255, 0.12)' }]}>
+        <MaterialCommunityIcons name={icon} size={22} color={iconColor} />
       </View>
       <Text style={styles.featureText}>{text}</Text>
     </View>
@@ -506,22 +513,22 @@ export default function SplashScreen({
                 Personalize Your{'\n'}News Feed
               </Text>
 
-              {/* Features */}
+              {/* Features - using bright colors for dark mode visibility */}
               <View style={styles.featureList}>
                 <FeatureItem
                   icon="earth"
                   text="Choose countries you want news from"
-                  color={mukokoTheme.colors.primary}
+                  iconColor="#B388FF"  // Tanzanite light for dark mode
                 />
                 <FeatureItem
                   icon="star-outline"
                   text="Discover stories that matter to you"
-                  color={mukokoTheme.colors.accent}
+                  iconColor="#FFD740"  // Gold light for dark mode
                 />
                 <FeatureItem
                   icon="lightning-bolt"
                   text="Or quickly browse all African news"
-                  color={mukokoTheme.colors.success}
+                  iconColor="#69F0AE"  // Success green for dark mode
                 />
               </View>
             </View>
@@ -666,16 +673,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // Modal container
+  // Modal container - centered with max-width for large screens
   modalContainer: {
     position: 'absolute',
-    bottom: 0,
+    bottom: MODAL_BOTTOM_MARGIN,
     left: 0,
     right: 0,
+    marginHorizontal: Platform.OS === 'web' ? 'auto' : 0,
+    maxWidth: MODAL_MAX_WIDTH,
+    width: Platform.OS === 'web' ? '100%' : undefined,
     height: MODAL_HEIGHT,
-    backgroundColor: '#1a1a2e',
+    backgroundColor: '#1A0033',  // Tanzanite dark (on-brand)
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    borderBottomLeftRadius: Platform.OS === 'web' ? 24 : 0,
+    borderBottomRightRadius: Platform.OS === 'web' ? 24 : 0,
     overflow: 'hidden',
   },
 
@@ -754,9 +766,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   featureIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -899,7 +911,7 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#1a1a2e',
+    color: '#1A0033',  // Tanzanite dark (on-brand)
   },
   backButton: {
     flex: 0.4,
@@ -916,12 +928,14 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     alignSelf: 'center',
-    paddingVertical: spacing.md,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.xl,
     minHeight: MIN_TOUCH_TARGET,
     justifyContent: 'center',
   },
   skipButtonText: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    fontSize: 16,
+    fontWeight: '500',
+    color: 'rgba(255, 255, 255, 0.7)',
   },
 });
