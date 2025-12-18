@@ -28,7 +28,7 @@ import { mukokoTheme } from '../theme';
 import { categories as categoriesAPI, countries as countriesAPI, user as userAPI } from '../api/client';
 
 // Logo asset
-const MukokoLogo = require('../assets/mukoko-logo-compact.png');
+const MukokoLogo = require('../assets/mukoko-icon-dark.png');
 
 // Minimum touch target size for WCAG compliance (44x44 dp)
 const MIN_TOUCH_TARGET = 44;
