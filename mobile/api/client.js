@@ -98,38 +98,40 @@ async function removeAuthToken() {
 }
 
 /**
- * Authentication API
+ * Authentication API - OIDC-based
+ * Authentication is handled by id.mukoko.com (OIDC provider)
  */
 export const auth = {
   /**
-   * Sign in with email and password
+   * Exchange OIDC authorization code for tokens
+   * Called after OIDC redirect callback
    */
-  async signIn(email, password) {
-    const result = await apiRequest('/api/auth/login', {
+  async exchangeOIDCCode(code, redirectUri) {
+    const result = await apiRequest('/api/auth/oidc/callback', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ code, redirect_uri: redirectUri }),
     });
 
-    // Store token on successful login
-    if (result.data && result.data.session && result.data.session.access_token) {
-      await saveAuthToken(result.data.session.access_token);
+    // Store token on successful exchange
+    if (result.data && result.data.access_token) {
+      await saveAuthToken(result.data.access_token);
     }
 
     return result;
   },
 
   /**
-   * Register new user
+   * Refresh access token
    */
-  async signUp(email, password, displayName) {
-    const result = await apiRequest('/api/auth/register', {
+  async refreshToken(refreshToken) {
+    const result = await apiRequest('/api/auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({ email, password, displayName }),
+      body: JSON.stringify({ refresh_token: refreshToken }),
     });
 
-    // Automatically log in after registration
-    if (result.data && !result.error) {
-      return await auth.signIn(email, password);
+    // Update stored token
+    if (result.data && result.data.access_token) {
+      await saveAuthToken(result.data.access_token);
     }
 
     return result;
@@ -168,30 +170,20 @@ export const auth = {
   },
 
   /**
-   * Request password reset code
-   */
-  async forgotPassword(email) {
-    return apiRequest('/api/auth/forgot-password', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    });
-  },
-
-  /**
-   * Reset password with code
-   */
-  async resetPassword(email, code, newPassword) {
-    return apiRequest('/api/auth/reset-password', {
-      method: 'POST',
-      body: JSON.stringify({ email, code, newPassword }),
-    });
-  },
-
-  /**
    * Check username availability
    */
   async checkUsername(username) {
     return apiRequest(`/api/auth/check-username?username=${encodeURIComponent(username)}`);
+  },
+
+  /**
+   * Get OIDC configuration info
+   */
+  getOIDCConfig() {
+    return {
+      issuer: 'https://id.mukoko.com',
+      clientId: 'mukoko-news-mobile',
+    };
   },
 };
 

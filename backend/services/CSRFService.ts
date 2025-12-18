@@ -1,5 +1,5 @@
 /**
- * CSRF Protection Service for Harare Metro
+ * CSRF Protection Service for Mukoko News
  * Generates and validates CSRF tokens to prevent cross-site request forgery attacks
  *
  * Security Features:
@@ -8,8 +8,6 @@
  * - Time-based token expiration (1 hour)
  * - Constant-time token comparison
  */
-
-import { PasswordHashService } from './PasswordHashService';
 
 export interface CSRFTokenData {
   token: string;
@@ -26,12 +24,23 @@ export class CSRFService {
   }
 
   /**
+   * Generate cryptographically secure token
+   */
+  private static generateSecureToken(bytes: number = 32): string {
+    const buffer = new Uint8Array(bytes);
+    crypto.getRandomValues(buffer);
+    return Array.from(buffer)
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
+  /**
    * Generate a new CSRF token for a session
    * Token is bound to the session ID and stored in KV
    */
   async generateToken(sessionId: string): Promise<string> {
     // Generate cryptographically secure token
-    const token = PasswordHashService.generateSecureToken(32);
+    const token = CSRFService.generateSecureToken(32);
     const expiresAt = new Date(Date.now() + CSRFService.TOKEN_EXPIRY_MS);
 
     // Store token in KV with session binding

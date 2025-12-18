@@ -15,12 +15,9 @@ import { NewsSourceService } from "./services/NewsSourceService.js";
 import { NewsSourceManager } from "./services/NewsSourceManager.js";
 import { SimpleRSSService } from "./services/SimpleRSSService.js";
 import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
-// OIDC Auth - ready for id.mukoko.com integration
+// OIDC Auth - using id.mukoko.com for authentication
 import { OIDCAuthService } from "./services/OIDCAuthService.js";
 import { oidcAuth, requireAuth, requireAdmin as requireAdminRole, getCurrentUser, getCurrentUserId, isAuthenticated } from "./middleware/oidcAuth.js";
-// Legacy auth - to be removed when id.mukoko.com is ready
-import { OpenAuthService } from "./services/OpenAuthService.js";
-import { PasswordHashService } from "./services/PasswordHashService.js";
 import { EmailService } from "./services/EmailService.js";
 // Additional enhancement services
 import { CategoryManager } from "./services/CategoryManager.js";
@@ -175,15 +172,7 @@ function getSessionSecret(env: Bindings): string {
   return secret;
 }
 
-// Helper function to hash password using PasswordHashService (static methods)
-async function hashPassword(password: string): Promise<string> {
-  return await PasswordHashService.hashPassword(password);
-}
-
-// Helper function to verify password (static method)
-async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  return await PasswordHashService.verifyPassword(password, hash);
-}
+// Legacy password functions removed - authentication now handled by OIDC (id.mukoko.com)
 
 // Helper function to create session token
 async function createSessionToken(email: string, env: Bindings): Promise<string> {
@@ -3740,96 +3729,37 @@ app.get("/api/user/stats", async (c) => {
 // - Persistent, reliable storage
 // - Single source of truth for all user data
 
-// Register new user - D1-first architecture
+// Register - Redirects to OIDC provider
+// Authentication is handled by id.mukoko.com
 app.post("/api/auth/register", async (c) => {
-  try {
-    const { email, password, displayName, username } = await c.req.json();
-
-    if (!email || !password) {
-      return c.json({ error: "Email and password are required" }, 400);
+  return c.json({
+    error: "Direct registration is disabled",
+    message: "Please use Mukoko ID to create an account",
+    oidc: {
+      issuer: "https://id.mukoko.com",
+      authorize_endpoint: "https://id.mukoko.com/authorize",
+      client_id: "mukoko-news",
+      action: "register"
     }
-
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
-
-    // Create user with password in D1 (password stored in users.password_hash)
-    const result = await authService.createUserWithPassword(email, password, {
-      username,
-      displayName,
-      ip_address: c.req.header('CF-Connecting-IP')
-    });
-
-    if (!result.success) {
-      return c.json({ error: result.error }, 400);
-    }
-
-    return c.json({
-      user: {
-        id: result.user.id,
-        email: result.user.email,
-        username: result.user.username,
-        display_name: result.user.display_name,
-        role: result.user.role
-      }
-    }, 201);
-  } catch (error: any) {
-    console.error("[AUTH] Registration error:", error);
-    return c.json({ error: "Registration failed" }, 500);
-  }
+  }, 400);
 });
 
-// Login - D1-first architecture
+// Login - Redirects to OIDC provider
+// Authentication is handled by id.mukoko.com
 app.post("/api/auth/login", async (c) => {
-  try {
-    const { email, password } = await c.req.json();
-
-    if (!email || !password) {
-      return c.json({ error: "Email and password are required" }, 400);
+  return c.json({
+    error: "Direct login is disabled",
+    message: "Please use Mukoko ID to sign in",
+    oidc: {
+      issuer: "https://id.mukoko.com",
+      authorize_endpoint: "https://id.mukoko.com/authorize",
+      client_id: "mukoko-news",
+      action: "login"
     }
-
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
-
-    // Authenticate user (validates password from users.password_hash in D1)
-    const authResult = await authService.authenticateUser(email, password);
-
-    if (!authResult.success) {
-      return c.json({ error: authResult.error || "Invalid credentials" }, 401);
-    }
-
-    const user = authResult.user;
-
-    // Create session in D1
-    const sessionToken = await authService.createSession(user.id, {
-      ip_address: c.req.header('CF-Connecting-IP'),
-      user_agent: c.req.header('User-Agent'),
-      device_type: 'web',
-      browser: 'unknown',
-      os: 'unknown'
-    });
-
-    // Set cookie with proper domain for cross-worker sharing
-    return new Response(JSON.stringify({
-      session: { access_token: sessionToken },
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        display_name: user.display_name,
-        role: user.role
-      }
-    }), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Set-Cookie': `auth_token=${sessionToken}; Domain=.mukoko.com; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=604800`
-      }
-    });
-  } catch (error: any) {
-    console.error("[AUTH] Login error:", error);
-    return c.json({ error: "Login failed" }, 500);
-  }
+  }, 400);
 });
 
-// Get current session
+// Get current session - uses AuthProviderService
 app.get("/api/auth/session", async (c) => {
   try {
     // Try to get token from cookie first, then Authorization header
@@ -3844,20 +3774,25 @@ app.get("/api/auth/session", async (c) => {
       token = authHeader.substring(7);
     }
 
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({
+      DB: c.env.DB,
+      AUTH_STORAGE: c.env.AUTH_STORAGE as any // Type compatibility workaround
+    });
 
     const session = await authService.validateSession(token);
     if (!session) {
       return c.json({ session: null, user: null });
     }
 
+    // Fetch full user data if needed
+    const user = await authService.getUserById(session.user_id);
+
     return c.json({
       session: { access_token: token },
-      user: {
-        id: session.user_id || session.id,
+      user: user || {
+        id: session.user_id,
         email: session.email,
         username: session.username,
-        display_name: session.display_name,
         role: session.role
       }
     });
@@ -3867,7 +3802,7 @@ app.get("/api/auth/session", async (c) => {
   }
 });
 
-// Logout
+// Logout - uses AuthProviderService
 app.post("/api/auth/logout", async (c) => {
   try {
     // Try to get token from cookie first, then Authorization header
@@ -3882,8 +3817,11 @@ app.post("/api/auth/logout", async (c) => {
     }
 
     if (token) {
-      const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
-      await authService.revokeSession(token);
+      const authService = new AuthProviderService({
+        DB: c.env.DB,
+        AUTH_STORAGE: c.env.AUTH_STORAGE as any // Type compatibility workaround
+      });
+      await authService.invalidateSession(token);
     }
 
     // Clear the cookie by setting it with Max-Age=0
@@ -4501,7 +4439,7 @@ app.get("/api/admin/users", async (c) => {
     }
 
     const token = authHeader.substring(7);
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const session = await authService.validateSession(token);
 
     if (!session || session.role !== 'admin') {
@@ -4556,7 +4494,7 @@ app.get("/api/admin/user-stats", async (c) => {
     }
 
     const token = authHeader.substring(7);
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const session = await authService.validateSession(token);
 
     if (!session || session.role !== 'admin') {
@@ -4581,7 +4519,7 @@ app.put("/api/admin/users/:userId/role", async (c) => {
     }
 
     const token = authHeader.substring(7);
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const session = await authService.validateSession(token);
 
     if (!session || session.role !== 'admin') {
@@ -4614,7 +4552,7 @@ app.put("/api/admin/users/:userId/status", async (c) => {
     }
 
     const token = authHeader.substring(7);
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const session = await authService.validateSession(token);
 
     if (!session || session.role !== 'admin') {
@@ -4653,7 +4591,7 @@ app.delete("/api/admin/users/:userId", async (c) => {
     }
 
     const token = authHeader.substring(7);
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const session = await authService.validateSession(token);
 
     if (!session || session.role !== 'admin') {
@@ -4679,160 +4617,43 @@ app.delete("/api/admin/users/:userId", async (c) => {
 
 // ===== PASSWORD RECOVERY =====
 
-// Request password reset
+// Password reset - Redirects to OIDC provider
+// Password management is handled by id.mukoko.com
 app.post("/api/auth/forgot-password", async (c) => {
-  try {
-    const { email } = await c.req.json();
-
-    if (!email) {
-      return c.json({ error: "Email is required" }, 400);
+  return c.json({
+    error: "Password reset is handled by Mukoko ID",
+    message: "Please visit id.mukoko.com to reset your password",
+    oidc: {
+      issuer: "https://id.mukoko.com",
+      password_reset_endpoint: "https://id.mukoko.com/forgot-password"
     }
-
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
-
-    // Check if user exists
-    const user = await authService.getUserByEmail(email);
-    if (!user) {
-      // Don't reveal if email exists (security best practice)
-      return c.json({ message: "If the email exists, a reset code has been sent" });
-    }
-
-    // Generate reset token (6-digit code)
-    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Store reset code in KV with 15-minute expiry
-    await c.env.AUTH_STORAGE.put(`reset:${email}`, resetCode, { expirationTtl: 900 });
-
-    // Send email with reset code
-    const emailService = new EmailService({
-      RESEND_API_KEY: c.env.RESEND_API_KEY,
-      EMAIL_FROM: c.env.EMAIL_FROM,
-    });
-
-    if (emailService.isConfigured()) {
-      const emailResult = await emailService.sendPasswordResetCode(email, resetCode);
-      if (!emailResult.success) {
-        console.error("[AUTH] Failed to send reset email:", emailResult.error);
-        // Still return success to user (don't reveal email issues)
-      } else {
-        console.log(`[AUTH] Password reset email sent to ${email}`);
-      }
-    } else {
-      // Fallback for development - log to console
-      console.log(`[AUTH] Password reset code for ${email}: ${resetCode} (email service not configured)`);
-    }
-
-    return c.json({ message: "If the email exists, a reset code has been sent" });
-  } catch (error: any) {
-    console.error("[AUTH] Forgot password error:", error);
-    return c.json({ error: "Failed to process request" }, 500);
-  }
+  }, 400);
 });
 
-// Reset password with code
+// Reset password - Redirects to OIDC provider
+// Password management is handled by id.mukoko.com
 app.post("/api/auth/reset-password", async (c) => {
-  try {
-    const { email, code, newPassword } = await c.req.json();
-
-    if (!email || !code || !newPassword) {
-      return c.json({ error: "Email, code, and new password are required" }, 400);
+  return c.json({
+    error: "Password reset is handled by Mukoko ID",
+    message: "Please visit id.mukoko.com to reset your password",
+    oidc: {
+      issuer: "https://id.mukoko.com",
+      password_reset_endpoint: "https://id.mukoko.com/forgot-password"
     }
-
-    // Verify reset code from KV
-    const storedCode = await c.env.AUTH_STORAGE.get(`reset:${email}`);
-    if (!storedCode || storedCode !== code) {
-      return c.json({ error: "Invalid or expired reset code" }, 400);
-    }
-
-    // Validate password strength
-    const passwordValidation = PasswordHashService.validatePasswordStrength(newPassword);
-    if (!passwordValidation.valid) {
-      return c.json({ error: passwordValidation.issues[0] }, 400);
-    }
-
-    // Get user from D1 database
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
-    const user = await authService.getUserByEmail(email);
-    if (!user) {
-      return c.json({ error: "User not found" }, 404);
-    }
-
-    // Hash new password using scrypt (same as registration)
-    const passwordHash = await PasswordHashService.hashPassword(newPassword);
-
-    // Update password in D1 database (where login reads from)
-    await c.env.DB.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .bind(passwordHash, user.id)
-      .run();
-
-    // Delete reset code from KV
-    await c.env.AUTH_STORAGE.delete(`reset:${email}`);
-
-    // Invalidate all existing sessions for this user
-    await c.env.DB.prepare('DELETE FROM user_sessions WHERE user_id = ?').bind(user.id).run();
-
-    console.log(`[AUTH] Password reset successful for user: ${email}`);
-    return c.json({ message: "Password reset successful" });
-  } catch (error: any) {
-    console.error("[AUTH] Reset password error:", error);
-    return c.json({ error: "Failed to reset password" }, 500);
-  }
+  }, 400);
 });
 
-// Change password (authenticated)
+// Change password - Redirects to OIDC provider
+// Password management is handled by id.mukoko.com
 app.post("/api/auth/change-password", async (c) => {
-  try {
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return c.json({ error: "Authentication required" }, 401);
+  return c.json({
+    error: "Password change is handled by Mukoko ID",
+    message: "Please visit id.mukoko.com to change your password",
+    oidc: {
+      issuer: "https://id.mukoko.com",
+      account_settings_endpoint: "https://id.mukoko.com/settings"
     }
-
-    const token = authHeader.substring(7);
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
-    const session = await authService.validateSession(token);
-
-    if (!session) {
-      return c.json({ error: "Invalid session" }, 401);
-    }
-
-    const { currentPassword, newPassword } = await c.req.json();
-
-    if (!currentPassword || !newPassword) {
-      return c.json({ error: "Current and new passwords are required" }, 400);
-    }
-
-    // Get user from D1 database to get stored password hash
-    const user = await authService.getUserByEmail(session.email);
-    if (!user || !user.password_hash) {
-      return c.json({ error: "User not found or password not set" }, 400);
-    }
-
-    // Verify current password using PasswordHashService (supports both scrypt and legacy SHA-256)
-    const isCurrentPasswordValid = await PasswordHashService.verifyPassword(currentPassword, user.password_hash);
-    if (!isCurrentPasswordValid) {
-      return c.json({ error: "Current password is incorrect" }, 400);
-    }
-
-    // Validate new password strength
-    const passwordValidation = PasswordHashService.validatePasswordStrength(newPassword);
-    if (!passwordValidation.valid) {
-      return c.json({ error: passwordValidation.issues[0] }, 400);
-    }
-
-    // Hash new password using scrypt
-    const newPasswordHash = await PasswordHashService.hashPassword(newPassword);
-
-    // Update password in D1 database
-    await c.env.DB.prepare('UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .bind(newPasswordHash, user.id)
-      .run();
-
-    console.log(`[AUTH] Password changed successfully for user: ${session.email}`);
-    return c.json({ message: "Password changed successfully" });
-  } catch (error: any) {
-    console.error("[AUTH] Change password error:", error);
-    return c.json({ error: "Failed to change password" }, 500);
-  }
+  }, 400);
 });
 
 // ===== USER PROFILE ENDPOINTS =====
@@ -4841,7 +4662,7 @@ app.post("/api/auth/change-password", async (c) => {
 app.get("/api/user/:username", async (c) => {
   try {
     const username = c.req.param("username");
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
 
     const user = await authService.getUserByUsername(username);
     if (!user) {
@@ -4873,7 +4694,7 @@ app.put("/api/user/me/username", async (c) => {
     }
 
     const token = authHeader.substring(7);
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const session = await authService.validateSession(token);
 
     if (!session) {
@@ -4908,7 +4729,7 @@ app.put("/api/user/me/profile", async (c) => {
     }
 
     const token = authHeader.substring(7);
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const session = await authService.validateSession(token);
 
     if (!session) {
@@ -4937,7 +4758,7 @@ app.get("/api/user/:username/bookmarks", async (c) => {
     const limit = parseInt(c.req.query("limit") || "20");
     const offset = parseInt(c.req.query("offset") || "0");
 
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const user = await authService.getUserByUsername(username);
 
     if (!user) {
@@ -4992,7 +4813,7 @@ app.get("/api/user/:username/likes", async (c) => {
     const limit = parseInt(c.req.query("limit") || "20");
     const offset = parseInt(c.req.query("offset") || "0");
 
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const user = await authService.getUserByUsername(username);
 
     if (!user) {
@@ -5047,7 +4868,7 @@ app.get("/api/user/:username/history", async (c) => {
     const limit = parseInt(c.req.query("limit") || "20");
     const offset = parseInt(c.req.query("offset") || "0");
 
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const user = await authService.getUserByUsername(username);
 
     if (!user) {
@@ -5100,7 +4921,7 @@ app.get("/api/user/:username/history", async (c) => {
 app.get("/api/user/:username/stats", async (c) => {
   try {
     const username = c.req.param("username");
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const user = await authService.getUserByUsername(username);
 
     if (!user) {

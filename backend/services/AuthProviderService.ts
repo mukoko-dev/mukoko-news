@@ -588,6 +588,30 @@ export class AuthProviderService {
   }
 
   /**
+   * Get user by username
+   */
+  async getUserByUsername(username: string): Promise<User | null> {
+    const result = await this.db.prepare(`
+      SELECT * FROM users WHERE username = ?
+    `).bind(username).first()
+
+    if (!result) return null
+    return result as unknown as User
+  }
+
+  /**
+   * Get user by email
+   */
+  async getUserByEmail(email: string): Promise<User | null> {
+    const result = await this.db.prepare(`
+      SELECT * FROM users WHERE email = ?
+    `).bind(email).first()
+
+    if (!result) return null
+    return result as unknown as User
+  }
+
+  /**
    * Get user's auth providers
    */
   async getUserProviders(userId: string): Promise<AuthProvider[]> {

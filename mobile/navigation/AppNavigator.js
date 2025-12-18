@@ -17,9 +17,6 @@ import linking from './linking';
 
 // Screens
 import NewsBytesScreen from '../screens/NewsBytesScreen';
-import LoginScreen from '../screens/LoginScreen';
-import RegisterScreen from '../screens/RegisterScreen';
-import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import ProfileSettingsScreen from '../screens/ProfileSettingsScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
@@ -27,7 +24,7 @@ import ArticleDetailScreen from '../screens/ArticleDetailScreen';
 import SearchScreen from '../screens/SearchScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
 import HomeScreen from '../screens/HomeScreen';
-// InsightsScreen removed - insights now integrated into SearchScreen
+// Auth screens removed - authentication handled by OIDC (id.mukoko.com)
 
 // Admin Screens
 import {
@@ -83,14 +80,11 @@ function PulseStack() {
   );
 }
 
-// Profile/Auth Stack
+// Profile Stack (auth handled by OIDC - id.mukoko.com)
 function ProfileStack() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
-      <Stack.Screen name="Login" component={LoginScreen} />
-      <Stack.Screen name="Register" component={RegisterScreen} />
-      <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="Onboarding" component={OnboardingScreen} />
       <Stack.Screen name="ProfileSettings" component={ProfileSettingsScreen} />
     </Stack.Navigator>
@@ -336,10 +330,7 @@ export default function AppNavigator() {
             // InsightsFeed removed - insights now in SearchFeed
             case 'SearchFeed':
               return `Search | ${baseTitle}`;
-            case 'Login':
-              return `Sign In | ${baseTitle}`;
-            case 'Register':
-              return `Create Account | ${baseTitle}`;
+            // Auth screens removed - handled by OIDC
             case 'AdminDashboard':
               return `Admin Dashboard | ${baseTitle}`;
             default:
