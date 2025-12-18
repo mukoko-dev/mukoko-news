@@ -38,24 +38,30 @@ export type UserRole = 'admin' | 'moderator' | 'support' | 'author' | 'user'
 
 export interface User {
   id: string
-  email: string | null
-  username: string | null
-  display_name: string | null
-  avatar_url: string | null
+  // OIDC Standard Claims
+  sub: string | null              // OIDC subject identifier
+  email: string | null            // email claim
+  email_verified: boolean         // email_verified claim
+  name: string | null             // name claim (full display name)
+  given_name: string | null       // given_name claim
+  family_name: string | null      // family_name claim
+  picture: string | null          // picture claim (avatar URL)
+  phone_number: string | null     // phone_number claim (E.164)
+  phone_number_verified: boolean  // phone_number_verified claim
+  // Platform-specific
+  username: string | null         // @username for social
   bio: string | null
-  user_number: string | null
-  user_uid: string | null
-  mobile_number: string | null
-  mobile_verified: boolean
-  mobile_country_code: string | null
-  primary_wallet_address: string | null
-  primary_chain_id: number | null
+  locale: string | null           // locale claim
+  zoneinfo: string | null         // zoneinfo claim (timezone)
+  // RBAC
   role: UserRole
   status: 'active' | 'suspended' | 'deleted'
-  email_verified: boolean
+  // Activity
+  last_login_at: string | null
+  login_count: number
+  // Timestamps
   created_at: string
   updated_at: string
-  last_login_at: string | null
 }
 
 export interface AuthProvider {
@@ -259,19 +265,26 @@ export class AuthProviderService {
       // Sync profile from claims
       await this.syncProfileFromOIDC(userId, claims, false)
     } else {
-      // Create new user
+      // Create new user with OIDC standard claims
       userId = this.generateUserId()
       isNewUser = true
 
       await this.db.prepare(`
-        INSERT INTO users (id, email, email_verified, display_name, avatar_url, role, status)
-        VALUES (?, ?, ?, ?, ?, 'user', 'active')
+        INSERT INTO users (
+          id, sub, email, email_verified, name, given_name, family_name,
+          picture, phone_number, phone_number_verified, role, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'user', 'active')
       `).bind(
         userId,
+        claims.sub,
         claims.email || null,
         claims.email_verified || false,
-        claims.name || claims.given_name || null,
-        claims.picture || null
+        claims.name || null,
+        claims.given_name || null,
+        claims.family_name || null,
+        claims.picture || null,
+        claims.phone_number || null,
+        claims.phone_number_verified || false
       ).run()
 
       // Link provider
@@ -282,7 +295,7 @@ export class AuthProviderService {
         ) VALUES (?, 'oidc', ?, ?, ?, TRUE, CURRENT_TIMESTAMP, ?)
       `).bind(userId, providerName, claims.sub, issuer, JSON.stringify(claims)).run()
 
-      // Sync profile
+      // Sync additional profile data
       await this.syncProfileFromOIDC(userId, claims, true)
     }
 
@@ -300,17 +313,22 @@ export class AuthProviderService {
   }
 
   /**
-   * Sync user profile from OIDC claims
+   * Sync user profile from OIDC claims (OpenID Connect standard)
    */
   async syncProfileFromOIDC(userId: string, claims: OIDCClaims, overwrite: boolean = false): Promise<void> {
     const updates: string[] = []
     const params: any[] = []
 
+    // OIDC standard claim mappings (1:1 with schema)
     const mapping: Record<string, string> = {
-      name: 'display_name',
-      picture: 'avatar_url',
+      name: 'name',
+      given_name: 'given_name',
+      family_name: 'family_name',
+      picture: 'picture',
       email: 'email',
-      phone_number: 'mobile_number'
+      phone_number: 'phone_number',
+      locale: 'locale',
+      zoneinfo: 'zoneinfo'
     }
 
     for (const [claim, field] of Object.entries(mapping)) {
@@ -323,7 +341,7 @@ export class AuthProviderService {
     }
 
     if (claims.email_verified) updates.push('email_verified = TRUE')
-    if (claims.phone_number_verified) updates.push('mobile_verified = TRUE')
+    if (claims.phone_number_verified) updates.push('phone_number_verified = TRUE')
 
     if (updates.length > 0) {
       params.push(userId)
@@ -439,9 +457,9 @@ export class AuthProviderService {
       isNewUser = true
 
       await this.db.prepare(`
-        INSERT INTO users (id, mobile_number, mobile_verified, mobile_country_code, role, status)
-        VALUES (?, ?, TRUE, ?, 'user', 'active')
-      `).bind(userId, normalized, countryCode).run()
+        INSERT INTO users (id, phone_number, phone_number_verified, role, status)
+        VALUES (?, ?, TRUE, 'user', 'active')
+      `).bind(userId, normalized).run()
     }
 
     // Update provider
@@ -454,11 +472,11 @@ export class AuthProviderService {
       WHERE provider_type = 'mobile' AND mobile_number = ?
     `).bind(userId, normalized).run()
 
-    // Update user
+    // Update user with OIDC-standard phone claims
     await this.db.prepare(`
-      UPDATE users SET mobile_verified = TRUE, mobile_number = ?, mobile_country_code = ?
-      WHERE id = ? AND (mobile_number IS NULL OR mobile_number = ?)
-    `).bind(normalized, countryCode, userId, normalized).run()
+      UPDATE users SET phone_number_verified = TRUE, phone_number = ?
+      WHERE id = ? AND (phone_number IS NULL OR phone_number = ?)
+    `).bind(normalized, userId, normalized).run()
 
     // Create session
     const { token, session } = await this.createSession(userId, 'mobile', 'sms')
