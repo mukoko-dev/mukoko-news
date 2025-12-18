@@ -11,6 +11,7 @@ interface ScraperConfig {
 interface ArticleFilters {
   category?: string;
   source?: string;
+  countries?: string[];  // Pan-African support: filter by country IDs
   limit?: number;
   offset?: number;
   orderBy?: string;
@@ -177,9 +178,9 @@ export class ArticleService {
       if (existingArticle) {
         // Update existing article
         const result = await this.db.prepare(`
-          UPDATE articles SET 
+          UPDATE articles SET
             title = ?, description = ?, content = ?, author = ?,
-            source = ?, source_url = ?, category = ?, tags = ?,
+            source = ?, source_url = ?, category = ?, country_id = ?, tags = ?,
             published_at = ?, updated_at = ?, word_count = ?, reading_time = ?,
             image_url = ?, optimized_image_url = ?, status = ?, priority = ?,
             original_url = ?, content_search = ?
@@ -192,6 +193,7 @@ export class ArticleService {
           articleData.source || '',
           articleData.source_url || '',
           articleData.category || 'general',
+          articleData.country_id || 'ZW',  // Pan-African support: default to Zimbabwe
           articleData.tags || '',
           articleData.published_at || now,
           now,
@@ -217,10 +219,10 @@ export class ArticleService {
         const result = await this.db.prepare(`
           INSERT INTO articles (
             slug, title, description, content, author, source, source_url,
-            category, tags, published_at, created_at, updated_at, word_count,
+            category, country_id, tags, published_at, created_at, updated_at, word_count,
             reading_time, image_url, optimized_image_url, status, priority,
             original_url, rss_guid, content_search
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `).bind(
           slug,
           articleData.title,
@@ -230,6 +232,7 @@ export class ArticleService {
           articleData.source || '',
           articleData.source_url || '',
           articleData.category || 'general',
+          articleData.country_id || 'ZW',  // Pan-African support: default to Zimbabwe
           articleData.tags || '',
           articleData.published_at || now,
           now,
@@ -288,6 +291,7 @@ export class ArticleService {
   async getArticles(options: {
     category?: string | null;
     source?: string | null;
+    countries?: string[] | null;  // Pan-African support: filter by country IDs
     limit?: number;
     offset?: number;
     orderBy?: string;
@@ -299,6 +303,7 @@ export class ArticleService {
       const {
         category = null,
         source = null,
+        countries = null,
         limit = 25,
         offset = 0,
         orderBy = 'published_at',
@@ -318,6 +323,13 @@ export class ArticleService {
       if (source) {
         query += ' AND source = ?'
         params.push(source)
+      }
+
+      // Pan-African support: filter by countries
+      if (countries && countries.length > 0) {
+        const placeholders = countries.map(() => '?').join(',')
+        query += ` AND country_id IN (${placeholders})`
+        params.push(...countries)
       }
 
       if (search) {
