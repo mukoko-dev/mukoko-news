@@ -1,6 +1,7 @@
 /**
- * ProfileSettingsScreen - Modern settings design
- * Clean, grouped settings with profile card header
+ * ProfileSettingsScreen - Clean modern settings design
+ * Inspired by iOS/Android settings patterns
+ * Features: Grouped sections, clean list items with icons and values
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -11,7 +12,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Image,
 } from 'react-native';
 import {
   Text,
@@ -21,7 +21,6 @@ import {
   useTheme as usePaperTheme,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { mukokoTheme } from '../theme';
@@ -29,8 +28,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLayout } from '../components/layout';
 import { user as userAPI } from '../api/client';
-
-const AVATAR_SIZE = 80;
 
 export default function ProfileSettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
@@ -57,12 +54,14 @@ export default function ProfileSettingsScreen({ navigation }) {
   const [editingProfile, setEditingProfile] = useState(false);
   const [editingUsername, setEditingUsername] = useState(false);
 
+  // Settings toggles
+  const [hapticFeedback, setHapticFeedback] = useState(true);
+
   // Ref to track message timeout for cleanup
   const messageTimeoutRef = useRef(null);
 
   useEffect(() => {
     loadProfile();
-    // Cleanup message timeout on unmount
     return () => {
       if (messageTimeoutRef.current) {
         clearTimeout(messageTimeoutRef.current);
@@ -91,7 +90,6 @@ export default function ProfileSettingsScreen({ navigation }) {
   };
 
   const showMessage = (type, text) => {
-    // Clear any existing timeout
     if (messageTimeoutRef.current) {
       clearTimeout(messageTimeoutRef.current);
     }
@@ -101,7 +99,7 @@ export default function ProfileSettingsScreen({ navigation }) {
 
   const handleUpdateProfile = async () => {
     setSaving(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const result = await userAPI.updateProfile({
         displayName: displayName || undefined,
@@ -127,7 +125,7 @@ export default function ProfileSettingsScreen({ navigation }) {
       return;
     }
     setSaving(true);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       const result = await userAPI.updateUsername(newUsername);
       if (result.error) {
@@ -146,19 +144,19 @@ export default function ProfileSettingsScreen({ navigation }) {
   };
 
   const handleThemeToggle = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     toggleTheme();
   };
 
-  const handleSignOut = async () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    await signOut();
-    navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] });
+  const handleHapticToggle = (value) => {
+    if (value) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setHapticFeedback(value);
   };
 
-  const getInitials = (name) => {
-    if (!name) return '?';
-    return name.charAt(0).toUpperCase();
+  const handleSignOut = async () => {
+    if (hapticFeedback) Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    await signOut();
+    navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] });
   };
 
   // Dynamic styles
@@ -170,6 +168,7 @@ export default function ProfileSettingsScreen({ navigation }) {
       backgroundColor: paperTheme.colors.surface,
       borderColor: paperTheme.colors.outline,
     },
+    divider: { backgroundColor: paperTheme.colors.outline },
     input: {
       backgroundColor: paperTheme.colors.surfaceVariant,
       color: paperTheme.colors.onSurface,
@@ -186,7 +185,7 @@ export default function ProfileSettingsScreen({ navigation }) {
 
   if (error) {
     return (
-      <View style={[styles.loadingContainer, dynamicStyles.container]}>
+      <View style={[styles.errorContainer, dynamicStyles.container]}>
         <MaterialCommunityIcons
           name="alert-circle-outline"
           size={48}
@@ -206,8 +205,41 @@ export default function ProfileSettingsScreen({ navigation }) {
     );
   }
 
-  const displayNameValue = profile?.display_name || profile?.displayName || profile?.username || '';
-  const avatarUrl = profile?.avatar_url || profile?.avatarUrl;
+  const email = profile?.email || '';
+
+  // Setting item component
+  const SettingItem = ({ icon, iconColor, label, value, onPress, rightElement, showChevron = true }) => (
+    <TouchableOpacity
+      style={styles.settingItem}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress}
+    >
+      <View style={[styles.settingIcon, { backgroundColor: `${iconColor}15` }]}>
+        <MaterialCommunityIcons name={icon} size={20} color={iconColor} />
+      </View>
+      <View style={styles.settingContent}>
+        <Text style={[styles.settingLabel, dynamicStyles.text]}>{label}</Text>
+      </View>
+      {value && (
+        <Text style={[styles.settingValue, dynamicStyles.textMuted]}>{value}</Text>
+      )}
+      {rightElement}
+      {showChevron && onPress && (
+        <MaterialCommunityIcons
+          name="chevron-right"
+          size={22}
+          color={paperTheme.colors.onSurfaceVariant}
+          style={styles.chevron}
+        />
+      )}
+    </TouchableOpacity>
+  );
+
+  // Divider between sections
+  const SectionDivider = () => (
+    <View style={[styles.sectionDivider, dynamicStyles.divider]} />
+  );
 
   return (
     <KeyboardAvoidingView
@@ -222,13 +254,22 @@ export default function ProfileSettingsScreen({ navigation }) {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <MaterialCommunityIcons
-            name="arrow-left"
+            name="close"
             size={24}
             color={paperTheme.colors.onSurface}
           />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, dynamicStyles.text]}>Settings</Text>
-        <View style={styles.headerButton} />
+        <TouchableOpacity
+          style={styles.headerButton}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <MaterialCommunityIcons
+            name="information-outline"
+            size={24}
+            color={paperTheme.colors.onSurface}
+          />
+        </TouchableOpacity>
       </View>
 
       {/* Toast Message */}
@@ -256,69 +297,23 @@ export default function ProfileSettingsScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Profile Card */}
-        <View style={[styles.profileCard, dynamicStyles.card]}>
-          <View style={styles.profileHeader}>
-            <View style={styles.avatarContainer}>
-              <LinearGradient
-                colors={[paperTheme.colors.primary, paperTheme.colors.tertiary]}
-                style={styles.avatarRing}
-              >
-                {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={styles.avatar} />
-                ) : (
-                  <View style={[styles.avatarPlaceholder, { backgroundColor: paperTheme.colors.primaryContainer }]}>
-                    <Text style={[styles.avatarInitials, { color: paperTheme.colors.primary }]}>
-                      {getInitials(displayNameValue)}
-                    </Text>
-                  </View>
-                )}
-              </LinearGradient>
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={[styles.profileName, dynamicStyles.text]}>
-                {displayNameValue}
-              </Text>
-              <Text style={[styles.profileUsername, dynamicStyles.textMuted]}>
-                @{profile?.username}
-              </Text>
-            </View>
-          </View>
+        {/* Email Display */}
+        <View style={[styles.emailContainer, dynamicStyles.card]}>
+          <Text style={[styles.emailText, dynamicStyles.text]}>{email}</Text>
         </View>
 
-        {/* Account Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.textMuted]}>ACCOUNT</Text>
-
-          {/* Edit Profile */}
-          <TouchableOpacity
-            style={[styles.settingItem, dynamicStyles.card]}
+        {/* Profile Section */}
+        <View style={[styles.sectionCard, dynamicStyles.card]}>
+          <SettingItem
+            icon="account-outline"
+            iconColor={paperTheme.colors.primary}
+            label="Profile"
             onPress={() => setEditingProfile(!editingProfile)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.settingIcon}>
-              <MaterialCommunityIcons
-                name="account-edit-outline"
-                size={22}
-                color={paperTheme.colors.primary}
-              />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingLabel, dynamicStyles.text]}>Edit Profile</Text>
-              <Text style={[styles.settingValue, dynamicStyles.textMuted]}>
-                Name and bio
-              </Text>
-            </View>
-            <MaterialCommunityIcons
-              name={editingProfile ? 'chevron-up' : 'chevron-right'}
-              size={24}
-              color={paperTheme.colors.onSurfaceVariant}
-            />
-          </TouchableOpacity>
+          />
 
           {/* Profile Edit Form */}
           {editingProfile && (
-            <View style={[styles.editForm, dynamicStyles.card]}>
+            <View style={styles.editForm}>
               <TextInput
                 mode="flat"
                 label="Display Name"
@@ -327,8 +322,6 @@ export default function ProfileSettingsScreen({ navigation }) {
                 style={[styles.input, dynamicStyles.input]}
                 underlineColor="transparent"
                 activeUnderlineColor={paperTheme.colors.primary}
-                selectionColor={paperTheme.colors.primary}
-                cursorColor={paperTheme.colors.primary}
               />
               <TextInput
                 mode="flat"
@@ -341,8 +334,6 @@ export default function ProfileSettingsScreen({ navigation }) {
                 style={[styles.input, styles.bioInput, dynamicStyles.input]}
                 underlineColor="transparent"
                 activeUnderlineColor={paperTheme.colors.primary}
-                selectionColor={paperTheme.colors.primary}
-                cursorColor={paperTheme.colors.primary}
               />
               <Text style={[styles.charCount, dynamicStyles.textMuted]}>
                 {bio.length}/160
@@ -362,35 +353,19 @@ export default function ProfileSettingsScreen({ navigation }) {
             </View>
           )}
 
-          {/* Change Username */}
-          <TouchableOpacity
-            style={[styles.settingItem, dynamicStyles.card]}
+          <View style={[styles.itemDivider, dynamicStyles.divider]} />
+
+          <SettingItem
+            icon="at"
+            iconColor="#00B0FF"
+            label="Username"
+            value={`@${profile?.username || ''}`}
             onPress={() => setEditingUsername(!editingUsername)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.settingIcon}>
-              <MaterialCommunityIcons
-                name="at"
-                size={22}
-                color={paperTheme.colors.tertiary}
-              />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingLabel, dynamicStyles.text]}>Username</Text>
-              <Text style={[styles.settingValue, dynamicStyles.textMuted]}>
-                @{profile?.username}
-              </Text>
-            </View>
-            <MaterialCommunityIcons
-              name={editingUsername ? 'chevron-up' : 'chevron-right'}
-              size={24}
-              color={paperTheme.colors.onSurfaceVariant}
-            />
-          </TouchableOpacity>
+          />
 
           {/* Username Edit Form */}
           {editingUsername && (
-            <View style={[styles.editForm, dynamicStyles.card]}>
+            <View style={styles.editForm}>
               <View style={[styles.warningBox, { backgroundColor: `${mukokoTheme.colors.warning}15` }]}>
                 <MaterialCommunityIcons
                   name="alert-outline"
@@ -410,8 +385,6 @@ export default function ProfileSettingsScreen({ navigation }) {
                 style={[styles.input, dynamicStyles.input]}
                 underlineColor="transparent"
                 activeUnderlineColor={paperTheme.colors.primary}
-                selectionColor={paperTheme.colors.primary}
-                cursorColor={paperTheme.colors.primary}
                 left={<TextInput.Affix text="@" />}
               />
               <TouchableOpacity
@@ -430,142 +403,97 @@ export default function ProfileSettingsScreen({ navigation }) {
           )}
         </View>
 
-        {/* Preferences Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.textMuted]}>PREFERENCES</Text>
+        <SectionDivider />
 
-          {/* Dark Mode */}
-          <View style={[styles.settingItem, dynamicStyles.card]}>
-            <View style={styles.settingIcon}>
-              <MaterialCommunityIcons
-                name={isDark ? 'moon-waning-crescent' : 'white-balance-sunny'}
-                size={22}
-                color={isDark ? '#7C83FD' : '#FFB74D'}
-              />
+        {/* Preferences Section */}
+        <View style={[styles.sectionCard, dynamicStyles.card]}>
+          <SettingItem
+            icon={isDark ? 'moon-waning-crescent' : 'white-balance-sunny'}
+            iconColor={isDark ? '#7C83FD' : '#FFB74D'}
+            label="Appearance"
+            value={isDark ? 'Dark' : 'System'}
+            onPress={handleThemeToggle}
+            showChevron={false}
+            rightElement={
+              <View style={styles.dropdownIcon}>
+                <MaterialCommunityIcons
+                  name="unfold-more-horizontal"
+                  size={20}
+                  color={paperTheme.colors.onSurfaceVariant}
+                />
+              </View>
+            }
+          />
+
+          <View style={[styles.itemDivider, dynamicStyles.divider]} />
+
+          <SettingItem
+            icon="bell-outline"
+            iconColor="#FF7043"
+            label="Notifications"
+            onPress={() => {}}
+          />
+
+          <View style={[styles.itemDivider, dynamicStyles.divider]} />
+
+          <SettingItem
+            icon="shield-lock-outline"
+            iconColor="#26A69A"
+            label="Privacy"
+            onPress={() => {}}
+          />
+
+          <View style={[styles.itemDivider, dynamicStyles.divider]} />
+
+          <SettingItem
+            icon="link-variant"
+            iconColor="#5C6BC0"
+            label="Shared links"
+            onPress={() => {}}
+          />
+        </View>
+
+        <SectionDivider />
+
+        {/* Haptic Feedback */}
+        <View style={[styles.sectionCard, dynamicStyles.card]}>
+          <View style={styles.settingItem}>
+            <View style={[styles.settingIcon, { backgroundColor: 'rgba(156, 39, 176, 0.15)' }]}>
+              <MaterialCommunityIcons name="vibrate" size={20} color="#9C27B0" />
             </View>
             <View style={styles.settingContent}>
-              <Text style={[styles.settingLabel, dynamicStyles.text]}>Dark Mode</Text>
-              <Text style={[styles.settingValue, dynamicStyles.textMuted]}>
-                {isDark ? 'On' : 'Off'}
-              </Text>
+              <Text style={[styles.settingLabel, dynamicStyles.text]}>Haptic feedback</Text>
             </View>
             <Switch
-              value={isDark}
-              onValueChange={handleThemeToggle}
+              value={hapticFeedback}
+              onValueChange={handleHapticToggle}
               color={paperTheme.colors.primary}
             />
           </View>
-
-          {/* Notifications - Placeholder */}
-          <TouchableOpacity
-            style={[styles.settingItem, dynamicStyles.card]}
-            activeOpacity={0.7}
-          >
-            <View style={styles.settingIcon}>
-              <MaterialCommunityIcons
-                name="bell-outline"
-                size={22}
-                color={paperTheme.colors.primary}
-              />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingLabel, dynamicStyles.text]}>Notifications</Text>
-              <Text style={[styles.settingValue, dynamicStyles.textMuted]}>
-                Coming soon
-              </Text>
-            </View>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={24}
-              color={paperTheme.colors.onSurfaceVariant}
-            />
-          </TouchableOpacity>
         </View>
 
-        {/* About Section */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, dynamicStyles.textMuted]}>ABOUT</Text>
+        <SectionDivider />
 
+        {/* Log Out */}
+        <View style={[styles.sectionCard, dynamicStyles.card]}>
           <TouchableOpacity
-            style={[styles.settingItem, dynamicStyles.card]}
+            style={styles.settingItem}
+            onPress={handleSignOut}
             activeOpacity={0.7}
           >
-            <View style={styles.settingIcon}>
-              <MaterialCommunityIcons
-                name="shield-check-outline"
-                size={22}
-                color={paperTheme.colors.primary}
-              />
+            <View style={[styles.settingIcon, { backgroundColor: 'rgba(244, 67, 54, 0.15)' }]}>
+              <MaterialCommunityIcons name="logout" size={20} color={mukokoTheme.colors.error} />
             </View>
             <View style={styles.settingContent}>
-              <Text style={[styles.settingLabel, dynamicStyles.text]}>Privacy Policy</Text>
+              <Text style={[styles.settingLabel, { color: mukokoTheme.colors.error }]}>Log out</Text>
             </View>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={24}
-              color={paperTheme.colors.onSurfaceVariant}
-            />
           </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.settingItem, dynamicStyles.card]}
-            activeOpacity={0.7}
-          >
-            <View style={styles.settingIcon}>
-              <MaterialCommunityIcons
-                name="file-document-outline"
-                size={22}
-                color={paperTheme.colors.primary}
-              />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingLabel, dynamicStyles.text]}>Terms of Service</Text>
-            </View>
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={24}
-              color={paperTheme.colors.onSurfaceVariant}
-            />
-          </TouchableOpacity>
-
-          <View style={[styles.settingItem, dynamicStyles.card]}>
-            <View style={styles.settingIcon}>
-              <MaterialCommunityIcons
-                name="information-outline"
-                size={22}
-                color={paperTheme.colors.onSurfaceVariant}
-              />
-            </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingLabel, dynamicStyles.text]}>Version</Text>
-              <Text style={[styles.settingValue, dynamicStyles.textMuted]}>1.0.0</Text>
-            </View>
-          </View>
         </View>
-
-        {/* Sign Out */}
-        <TouchableOpacity
-          style={[styles.signOutButton, { borderColor: mukokoTheme.colors.error }]}
-          onPress={handleSignOut}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons
-            name="logout"
-            size={20}
-            color={mukokoTheme.colors.error}
-          />
-          <Text style={[styles.signOutText, { color: mukokoTheme.colors.error }]}>
-            Sign Out
-          </Text>
-        </TouchableOpacity>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.footerText, dynamicStyles.textMuted]}>
-            Mukoko News
-          </Text>
-          <Text style={[styles.footerSubtext, dynamicStyles.textMuted]}>
-            Zimbabwe's News Platform
+          <Text style={[styles.versionText, dynamicStyles.textMuted]}>
+            Version 1.0.0
           </Text>
         </View>
       </ScrollView>
@@ -582,6 +510,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  errorContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 12,
+    marginBottom: 12,
+    paddingHorizontal: 24,
+  },
+  retryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  retryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
 
   // Header
   header: {
@@ -594,12 +548,14 @@ const styles = StyleSheet.create({
   headerButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    letterSpacing: 0.3,
   },
 
   // Toast
@@ -626,87 +582,44 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    padding: 16,
-    // paddingBottom is set dynamically based on layout (tab bar visibility)
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
 
-  // Profile Card
-  profileCard: {
-    borderRadius: 16,
-    padding: 20,
+  // Email Container
+  emailContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
     marginBottom: 24,
     borderWidth: 1,
   },
-  profileHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  avatarContainer: {},
-  avatarRing: {
-    width: AVATAR_SIZE + 4,
-    height: AVATAR_SIZE + 4,
-    borderRadius: (AVATAR_SIZE + 4) / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
-    borderWidth: 2,
-    borderColor: '#fff',
-  },
-  avatarPlaceholder: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
-    borderWidth: 2,
-    borderColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontSize: 32,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 20,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    marginBottom: 2,
-  },
-  profileUsername: {
-    fontSize: 14,
+  emailText: {
+    fontSize: 15,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
 
-  // Sections
-  section: {
-    marginBottom: 24,
+  // Section Card
+  sectionCard: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    borderWidth: 1,
   },
-  sectionTitle: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    paddingHorizontal: 4,
+  sectionDivider: {
+    height: 24,
   },
 
-  // Setting Items
+  // Setting Item
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   settingIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -716,20 +629,28 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 16,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
   settingValue: {
-    fontSize: 13,
-    marginTop: 2,
+    fontSize: 15,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    marginRight: 4,
+  },
+  chevron: {
+    marginLeft: 4,
+  },
+  dropdownIcon: {
+    marginLeft: 8,
+  },
+  itemDivider: {
+    height: 1,
+    marginLeft: 60,
   },
 
   // Edit Form
   editForm: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-    marginTop: -4,
-    borderWidth: 1,
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
   input: {
     marginBottom: 12,
@@ -769,56 +690,13 @@ const styles = StyleSheet.create({
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
 
-  // Sign Out
-  signOutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    marginBottom: 24,
-  },
-  signOutText: {
-    fontSize: 16,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-
   // Footer
   footer: {
     alignItems: 'center',
-    paddingVertical: 16,
+    paddingVertical: 24,
   },
-  footerText: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  footerSubtext: {
-    fontSize: 12,
-    marginTop: 4,
-  },
-
-  // Error state styles
-  errorText: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginTop: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.md,
-    paddingHorizontal: mukokoTheme.spacing.xl,
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
-    paddingVertical: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    marginTop: mukokoTheme.spacing.sm,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  versionText: {
+    fontSize: 13,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
 });
