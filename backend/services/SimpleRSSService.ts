@@ -713,6 +713,9 @@ export class SimpleRSSService {
   /**
    * Convert HTML to Markdown, preserving formatting
    * Filters out ad links but keeps image links
+   *
+   * Note: Turndown handles HTML entity decoding internally, so we don't
+   * need additional entity replacement which could cause double-unescaping
    */
   private htmlToMarkdown(html: string): string {
     if (!html || typeof html !== 'string') {
@@ -720,26 +723,15 @@ export class SimpleRSSService {
     }
 
     try {
-      // First decode HTML entities
-      let decoded = this.decodeHtmlEntities(html);
-
       // Convert HTML to Markdown using turndown
-      let markdown = turndownService.turndown(decoded);
+      // Turndown handles entity decoding internally
+      let markdown = turndownService.turndown(html);
 
       // Clean up excessive whitespace while preserving paragraph breaks
       markdown = markdown
         .replace(/\n{3,}/g, '\n\n')  // Max 2 newlines (paragraph break)
         .replace(/[ \t]+/g, ' ')      // Normalize spaces
         .trim();
-
-      // Remove any remaining HTML entities that might have slipped through
-      markdown = markdown
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'");
 
       return markdown;
     } catch (error) {
