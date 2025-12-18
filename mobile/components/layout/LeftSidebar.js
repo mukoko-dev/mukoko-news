@@ -127,7 +127,7 @@ export default function LeftSidebar({ currentRoute }) {
           accessibilityLabel="Go to home"
           accessibilityRole="button"
         >
-          <Logo size="default" theme={isDark ? 'light' : 'dark'} />
+          <Logo size="md" theme={isDark ? 'light' : 'dark'} />
         </TouchableOpacity>
       </View>
 
