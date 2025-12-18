@@ -172,9 +172,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    letterSpacing: -0.5,
+    fontWeight: '700',
+    letterSpacing: -0.3,
   },
   rightSection: {
     flexDirection: 'row',

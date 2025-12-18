@@ -162,18 +162,19 @@ function MainTabs({ currentRoute }) {
         tabBarInactiveTintColor: paperTheme.colors.onSurfaceVariant,
         tabBarStyle: getTabBarStyle(),
         tabBarItemStyle: {
-          paddingVertical: 2,
+          flex: 1,
+          paddingVertical: 4,
           justifyContent: 'center',
           alignItems: 'center',
         },
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontFamily: mukokoTheme.fonts.medium.fontFamily,
           marginTop: 2,
-          marginBottom: 0,
+          marginBottom: 2,
         },
         tabBarIconStyle: {
-          marginTop: 0,
+          marginTop: 2,
         },
       }}
     >
@@ -186,14 +187,30 @@ function MainTabs({ currentRoute }) {
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
               name={focused ? 'lightning-bolt' : 'lightning-bolt-outline'}
-              size={26}
+              size={24}
               color={focused ? mukokoTheme.colors.accent : color}
             />
           ),
         }}
       />
 
-      {/* 2. Search (includes Insights when empty) */}
+      {/* 2. Pulse - Personalized feed */}
+      <Tab.Screen
+        name="Pulse"
+        component={PulseStack}
+        options={{
+          tabBarLabel: 'Pulse',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? 'newspaper-variant' : 'newspaper-variant-outline'}
+              size={24}
+              color={focused ? mukokoTheme.colors.accent : color}
+            />
+          ),
+        }}
+      />
+
+      {/* 3. Search (includes Insights when empty) */}
       <Tab.Screen
         name="Search"
         component={SearchStack}
@@ -209,7 +226,7 @@ function MainTabs({ currentRoute }) {
         }}
       />
 
-      {/* 3. Profile */}
+      {/* 4. Profile */}
       <Tab.Screen
         name="Profile"
         component={ProfileStack}
@@ -225,7 +242,7 @@ function MainTabs({ currentRoute }) {
         }}
       />
 
-      {/* 4. Discover - Hidden tab for navigation purposes */}
+      {/* Discover - Hidden tab for navigation purposes (header access only) */}
       <Tab.Screen
         name="Discover"
         component={DiscoverStack}
@@ -234,16 +251,7 @@ function MainTabs({ currentRoute }) {
         }}
       />
 
-      {/* 5. Pulse - Hidden tab for personalized feed */}
-      <Tab.Screen
-        name="Pulse"
-        component={PulseStack}
-        options={{
-          tabBarButton: () => null, // Hide from tab bar
-        }}
-      />
-
-      {/* 6. Admin (admins only) */}
+      {/* Admin (admins only) */}
       {isAdmin && (
         <Tab.Screen
           name="Admin"
