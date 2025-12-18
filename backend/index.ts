@@ -515,7 +515,7 @@ app.get("/api/feeds", async (c) => {
 
     // Fetch keywords for each article
     const articles = articlesResult.results || [];
-    for (const article of articles) {
+    for (const article of articles as any[]) {
       const keywordsResult = await c.env.DB.prepare(`
         SELECT k.id, k.name, k.slug
         FROM keywords k
@@ -617,6 +617,117 @@ app.get("/api/feeds/personalized/explain", async (c) => {
   } catch (error) {
     console.error("Error getting feed explanation:", error);
     return c.json({ error: "Failed to get feed explanation" }, 500);
+  }
+});
+
+// Debug endpoint to test single RSS feed fetch
+app.get("/api/test-feed", async (c) => {
+  const { XMLParser } = await import('fast-xml-parser');
+  const feedUrl = c.req.query('url') || 'https://www.techzim.co.zw/feed/';
+  try {
+    const response = await fetch(feedUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+        'Accept-Language': 'en-US,en;q=0.9'
+      },
+      redirect: 'follow'
+    });
+
+    const text = await response.text();
+    const contentType = response.headers.get('content-type');
+    const isXML = text.trim().startsWith('<?xml') || text.trim().startsWith('<rss');
+
+    let parseResult: any = null;
+    let itemCount = 0;
+    let firstItemTitle = null;
+
+    if (isXML) {
+      try {
+        const parser = new XMLParser({
+          ignoreAttributes: false,
+          attributeNamePrefix: '@_',
+          textNodeName: '#text'
+        });
+        const feed = parser.parse(text);
+        parseResult = {
+          keys: Object.keys(feed),
+          hasRss: !!feed.rss,
+          hasChannel: !!feed.rss?.channel,
+          channelKeys: feed.rss?.channel ? Object.keys(feed.rss.channel) : [],
+          hasItems: !!feed.rss?.channel?.item
+        };
+        if (feed.rss?.channel?.item) {
+          const items = Array.isArray(feed.rss.channel.item)
+            ? feed.rss.channel.item
+            : [feed.rss.channel.item];
+          itemCount = items.length;
+          firstItemTitle = items[0]?.title;
+        }
+      } catch (parseErr: any) {
+        parseResult = { error: parseErr.message };
+      }
+    }
+
+    return c.json({
+      url: feedUrl,
+      status: response.status,
+      contentType,
+      textLength: text.length,
+      first500: text.substring(0, 500),
+      isXML,
+      isHTML: text.trim().startsWith('<!DOCTYPE') || text.trim().startsWith('<html'),
+      parseResult,
+      itemCount,
+      firstItemTitle
+    });
+  } catch (error: any) {
+    return c.json({
+      url: feedUrl,
+      error: error.message
+    }, 500);
+  }
+});
+
+// Debug endpoint to test storing one article
+app.get("/api/test-store", async (c) => {
+  try {
+    const slug = `test-article-${Date.now()}`;
+    await c.env.DB.prepare(`
+      INSERT INTO articles (
+        title, slug, description, content, author, source, source_id, source_url,
+        category_id, published_at, image_url, original_url, rss_guid,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+    `).bind(
+      'Test Article Title',
+      slug,
+      'Test description',
+      'Test content',
+      'Test Author',
+      'Techzim',
+      'techzim',
+      'techzim',
+      'technology',
+      new Date().toISOString(),
+      null,
+      `https://example.com/test-${Date.now()}`,
+      `guid-${Date.now()}`
+    ).run();
+
+    const count = await c.env.DB.prepare('SELECT COUNT(*) as count FROM articles').first() as { count: number };
+
+    return c.json({
+      success: true,
+      slug,
+      articleCount: count?.count
+    });
+  } catch (error: any) {
+    return c.json({
+      success: false,
+      error: error.message,
+      stack: error.stack
+    }, 500);
   }
 });
 
