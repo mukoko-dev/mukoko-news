@@ -1,6 +1,6 @@
--- Harare Metro Database Schema
--- D1 Database: hararemetro_db - Complete news platform with authentication
--- Replaces Supabase with full Cloudflare stack
+-- Mukoko News Database Schema
+-- D1 Database: mukoko-news-db - News articles and analytics
+-- Auth handled separately via mukoko-auth-db
 
 -- Articles table with slugs for sharing
 CREATE TABLE IF NOT EXISTS articles (
