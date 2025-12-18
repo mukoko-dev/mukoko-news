@@ -11,6 +11,62 @@
  */
 
 import { XMLParser } from 'fast-xml-parser';
+import TurndownService from 'turndown';
+
+// Initialize Turndown for HTML to Markdown conversion
+const turndownService = new TurndownService({
+  headingStyle: 'atx',
+  codeBlockStyle: 'fenced',
+  bulletListMarker: '-',
+});
+
+// Common ad/tracking domains to filter out
+const AD_DOMAINS = [
+  'doubleclick.net',
+  'googlesyndication.com',
+  'googleadservices.com',
+  'facebook.com/tr',
+  'amazon-adsystem.com',
+  'adnxs.com',
+  'outbrain.com',
+  'taboola.com',
+  'criteo.com',
+  'adsrvr.org',
+  'rubiconproject.com',
+  'pubmatic.com',
+  'advertising.com',
+  'adroll.com',
+  'mathtag.com',
+  'bidswitch.net',
+  'sharethis.com',
+  'addthis.com',
+];
+
+// Configure turndown to filter ad links but keep image links
+turndownService.addRule('filterAdLinks', {
+  filter: (node) => {
+    if (node.nodeName !== 'A') return false;
+    const href = node.getAttribute('href') || '';
+    // Check if it's an ad link
+    return AD_DOMAINS.some(domain => href.includes(domain));
+  },
+  replacement: () => '', // Remove ad links entirely
+});
+
+// Keep image links and render them as markdown images
+turndownService.addRule('imageLinkToImage', {
+  filter: (node) => {
+    if (node.nodeName !== 'A') return false;
+    const href = node.getAttribute('href') || '';
+    // Check if link points to an image
+    return /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(href);
+  },
+  replacement: (content, node) => {
+    const href = (node as HTMLAnchorElement).getAttribute('href') || '';
+    const alt = content || 'Image';
+    return `![${alt}](${href})`;
+  },
+});
 
 // Comprehensive list of trusted image domains for Zimbabwe news sites
 const TRUSTED_IMAGE_DOMAINS = [
@@ -345,7 +401,7 @@ export class SimpleRSSService {
       return {
         title: this.cleanText(title),
         description: description ? this.cleanText(description.substring(0, 500)) : undefined,
-        content: content ? this.cleanText(content) : undefined,
+        content: content ? this.htmlToMarkdown(content) : undefined,
         author: author ? this.cleanText(author) : undefined,
         source: source.name,
         source_id: source.id,
@@ -652,6 +708,45 @@ export class SimpleRSSService {
       .replace(/&#8221;/g, '"')
       .replace(/&#038;/g, '&')
       .trim();
+  }
+
+  /**
+   * Convert HTML to Markdown, preserving formatting
+   * Filters out ad links but keeps image links
+   */
+  private htmlToMarkdown(html: string): string {
+    if (!html || typeof html !== 'string') {
+      return '';
+    }
+
+    try {
+      // First decode HTML entities
+      let decoded = this.decodeHtmlEntities(html);
+
+      // Convert HTML to Markdown using turndown
+      let markdown = turndownService.turndown(decoded);
+
+      // Clean up excessive whitespace while preserving paragraph breaks
+      markdown = markdown
+        .replace(/\n{3,}/g, '\n\n')  // Max 2 newlines (paragraph break)
+        .replace(/[ \t]+/g, ' ')      // Normalize spaces
+        .trim();
+
+      // Remove any remaining HTML entities that might have slipped through
+      markdown = markdown
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'");
+
+      return markdown;
+    } catch (error) {
+      console.error('[SIMPLE-RSS] Error converting HTML to markdown:', error);
+      // Fallback to clean text if markdown conversion fails
+      return this.cleanText(html);
+    }
   }
 
   /**
