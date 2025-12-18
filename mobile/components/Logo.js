@@ -31,7 +31,7 @@ export default function Logo({
   // Icon size implies no text
   const shouldShowText = size === 'icon' ? false : showText;
 
-  const { logoSize, fontSize, spacing } = sizes[size];
+  const { logoSize, fontSize, spacing } = sizes[size] || sizes.md;
 
   // Use theme prop if provided for backwards compatibility, otherwise use textStyle
   const effectiveStyle = theme || textStyle;
