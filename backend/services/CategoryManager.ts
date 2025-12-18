@@ -327,12 +327,51 @@ export class CategoryManager {
 
   /**
    * Get trending categories (highest engagement growth)
+   * Falls back to categories with most articles if no engagement data exists
    */
   async getTrendingCategories(limit: number = 5): Promise<CategoryTrend[]> {
+    // First try engagement-based trends
     const trends = await this.getCategoryTrends(7);
-    return trends
-      .filter(trend => trend.trend_direction === 'up')
-      .slice(0, limit);
+    const upTrends = trends.filter(trend => trend.trend_direction === 'up');
+
+    if (upTrends.length > 0) {
+      return upTrends.slice(0, limit);
+    }
+
+    // Fallback: Use categories with most recent articles as "trending"
+    try {
+      const result = await this.db
+        .prepare(`
+          SELECT
+            c.id as category_id,
+            c.name as category_name,
+            COUNT(a.id) as article_count,
+            COUNT(CASE WHEN a.published_at >= datetime('now', '-7 days') THEN 1 END) as recent_articles
+          FROM categories c
+          LEFT JOIN articles a ON a.category = c.id
+          WHERE c.id != 'all' AND c.id != 'general' AND c.enabled = 1
+          GROUP BY c.id, c.name
+          HAVING recent_articles > 0
+          ORDER BY recent_articles DESC, article_count DESC
+          LIMIT ?
+        `)
+        .bind(limit)
+        .all();
+
+      return result.results.map((row: any) => ({
+        category_id: row.category_id,
+        category_name: row.category_name,
+        trend_direction: 'up' as const,
+        growth_rate: Math.round((row.recent_articles / Math.max(row.article_count, 1)) * 100),
+        period_days: 7,
+        current_engagement: row.recent_articles,
+        previous_engagement: 0,
+        article_count: row.article_count
+      }));
+    } catch (error) {
+      console.error('[CategoryManager] Error getting fallback trending:', error);
+      return [];
+    }
   }
 
   // ===============================================================
