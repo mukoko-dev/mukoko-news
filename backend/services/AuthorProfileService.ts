@@ -321,7 +321,7 @@ export class AuthorProfileService {
   /**
    * Follow/unfollow an author
    */
-  async toggleAuthorFollow(userId: number, authorId: number): Promise<FollowResult> {
+  async toggleAuthorFollow(userId: string | number, authorId: number): Promise<FollowResult> {
     try {
       // Check if already following
       const existingFollow = await this.d1Service.db.prepare(`
@@ -374,7 +374,7 @@ export class AuthorProfileService {
   /**
    * Follow/unfollow a news source
    */
-  async toggleSourceFollow(userId: number, sourceId: string): Promise<FollowResult> {
+  async toggleSourceFollow(userId: string | number, sourceId: string): Promise<FollowResult> {
     try {
       const existingFollow = await this.d1Service.db.prepare(`
         SELECT id FROM user_source_follows 

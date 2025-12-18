@@ -33,6 +33,8 @@ import { RealtimeAnalyticsDO } from "./services/RealtimeAnalyticsDO.js";
 import { ArticleInteractionsDO } from "./services/ArticleInteractionsDO.js";
 import { UserBehaviorDO } from "./services/UserBehaviorDO.js";
 import { RealtimeCountersDO } from "./services/RealtimeCountersDO.js";
+// Unified Auth Provider Service (Single Auth Wrapper with RBAC)
+import { AuthProviderService } from "./services/AuthProviderService.js";
 
 // Import admin interface
 import { getAdminHTML, getLoginHTML } from "./admin/index.js";
@@ -203,57 +205,113 @@ function getCookie(cookieHeader: string | null, name: string): string | null {
 }
 
 // Authentication middleware - protect admin routes
-// Uses shared auth_token cookie from frontend
+// Uses AuthProviderService with RBAC - Admin auth is ALWAYS required (locked)
 const requireAdmin = async (c: any, next: any) => {
   const cookieHeader = c.req.header('cookie');
-  const sessionToken = getCookie(cookieHeader, 'auth_token');
+  const sessionToken = getCookie(cookieHeader, 'auth_token') ||
+                       c.req.header('authorization')?.replace('Bearer ', '') ||
+                       c.req.header('x-session-token');
   const isApiRequest = c.req.path.startsWith('/api/');
 
-  if (!sessionToken) {
-    // No session - redirect to frontend login
-    if (isApiRequest) {
-      return c.json({ error: 'Authentication required' }, 401);
-    }
-    return c.redirect('https://news.mukoko.com/auth/login', 302);
-  }
-
-  // Validate session from D1 database using OpenAuthService
+  // Use AuthProviderService for admin access validation
   try {
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
-    const session = await authService.validateSession(sessionToken);
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const result = await authService.validateAdminAccess(sessionToken);
 
-    if (!session || !session.user_id) {
-      // Invalid or expired session - redirect to frontend login
+    if (!result.allowed) {
+      console.log('[AUTH] Admin access denied:', result.reason);
       if (isApiRequest) {
-        return c.json({ error: 'Session expired or invalid' }, 401);
+        const status = !sessionToken ? 401 : 403;
+        return c.json({ error: result.reason || 'Admin access required' }, status);
       }
       return c.redirect('https://news.mukoko.com/auth/login', 302);
     }
 
-    // Check if user has admin role
-    const adminRoles = c.env.ADMIN_ROLES?.split(',') || ['admin', 'super_admin', 'moderator'];
-    if (!adminRoles.includes(session.role)) {
-      if (isApiRequest) {
-        return c.json({ error: 'Admin access required' }, 403);
-      }
-      return c.redirect('https://news.mukoko.com', 302); // Redirect to homepage
-    }
-
     // Session valid and user is admin, continue
     c.set('user', {
-      userId: session.user_id,
-      email: session.email,
-      username: session.username,
-      role: session.role
+      userId: result.user!.id,
+      email: result.user!.email,
+      username: result.user!.username,
+      role: result.user!.role
     });
     await next();
   } catch (error) {
-    console.error('[AUTH] Session validation error:', error);
+    console.error('[AUTH] Admin validation error:', error);
     if (isApiRequest) {
       return c.json({ error: 'Authentication error' }, 401);
     }
     return c.redirect('https://news.mukoko.com/auth/login', 302);
   }
+};
+
+// RBAC Middleware for role-based access
+// Use for routes that need specific role levels but may not require admin
+const requireRole = (requiredRole: 'admin' | 'moderator' | 'support' | 'author' | 'user') => {
+  return async (c: any, next: any) => {
+    const cookieHeader = c.req.header('cookie');
+    const sessionToken = getCookie(cookieHeader, 'auth_token') ||
+                         c.req.header('authorization')?.replace('Bearer ', '') ||
+                         c.req.header('x-session-token');
+    const isApiRequest = c.req.path.startsWith('/api/');
+
+    try {
+      const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+      const result = await authService.validateAccess(sessionToken, requiredRole);
+
+      if (!result.allowed) {
+        console.log(`[AUTH] ${requiredRole} access denied:`, result.reason);
+        if (isApiRequest) {
+          const status = !sessionToken ? 401 : 403;
+          return c.json({ error: result.reason || `${requiredRole} access required` }, status);
+        }
+        return c.redirect('https://news.mukoko.com/auth/login', 302);
+      }
+
+      // Set user context if available
+      if (result.user) {
+        c.set('user', {
+          userId: result.user.id,
+          email: result.user.email,
+          username: result.user.username,
+          role: result.user.role
+        });
+      }
+      await next();
+    } catch (error) {
+      console.error(`[AUTH] ${requiredRole} validation error:`, error);
+      if (isApiRequest) {
+        return c.json({ error: 'Authentication error' }, 401);
+      }
+      return c.redirect('https://news.mukoko.com/auth/login', 302);
+    }
+  };
+};
+
+// Optional auth middleware - doesn't require auth but sets user context if available
+const optionalAuth = async (c: any, next: any) => {
+  const cookieHeader = c.req.header('cookie');
+  const sessionToken = getCookie(cookieHeader, 'auth_token') ||
+                       c.req.header('authorization')?.replace('Bearer ', '') ||
+                       c.req.header('x-session-token');
+
+  if (sessionToken) {
+    try {
+      const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+      const user = await authService.getUserFromHeaders(c.req.raw.headers);
+      if (user) {
+        c.set('user', {
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+          role: user.role
+        });
+      }
+    } catch (error) {
+      // Ignore errors - auth is optional
+      console.log('[AUTH] Optional auth failed:', error);
+    }
+  }
+  await next();
 };
 
 // Login page - redirect to frontend
@@ -279,8 +337,8 @@ app.post("/api/admin/login", async (c) => {
       return c.json({ error: "Invalid email or password" }, 401);
     }
 
-    // Check if user has admin role
-    const adminRoles = c.env.ADMIN_ROLES?.split(',') || ['admin', 'super_admin', 'moderator'];
+    // Check if user has admin role - only 'admin' role can access admin panel
+    const adminRoles = c.env.ADMIN_ROLES?.split(',') || ['admin'];
     if (!adminRoles.includes(user.role)) {
       console.log('[AUTH] Login denied - user lacks admin role:', { email, role: user.role, requiredRoles: adminRoles });
       return c.json({ error: "Insufficient permissions - admin access required" }, 403);
@@ -437,7 +495,7 @@ app.get("/api/categories", async (c) => {
   try {
     const services = initializeServices(c.env);
     const categories = await services.d1Service.getCategories();
-    
+
     // Add statistics for each category
     const categoriesWithStats = await Promise.all(
       categories.map(async (cat) => {
@@ -448,13 +506,52 @@ app.get("/api/categories", async (c) => {
         };
       })
     );
-    
+
     return c.json({
       categories: categoriesWithStats
     });
   } catch (error) {
     console.error("Error fetching categories:", error);
     return c.json({ error: "Failed to fetch categories" }, 500);
+  }
+});
+
+// Public stats endpoint - safe aggregate data for Insights feature
+// This is separate from /api/admin/stats which may contain sensitive data
+app.get("/api/stats", async (c) => {
+  try {
+    const services = initializeServices(c.env);
+
+    // Get basic database statistics - all public, aggregate data
+    const totalArticles = await services.d1Service.getArticleCount();
+
+    // Get RSS source count
+    const sourcesResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM rss_sources WHERE enabled = 1'
+    ).first();
+    const activeSources = sourcesResult?.count || 0;
+
+    // Get categories count
+    const categoriesResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM categories WHERE enabled = 1'
+    ).first();
+    const categoriesCount = categoriesResult?.count || 0;
+
+    // Get today's article count
+    const todayArticles = await services.d1Service.getArticleCount({ today: true });
+
+    return c.json({
+      database: {
+        total_articles: totalArticles,
+        active_sources: activeSources,
+        categories: categoriesCount,
+        today_articles: todayArticles
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Error fetching public stats:", error);
+    return c.json({ error: "Failed to fetch stats" }, 500);
   }
 });
 
@@ -1289,6 +1386,233 @@ app.get("/api/article/:id", async (c) => {
   }
 });
 
+// Get related/similar articles for a given article
+app.get("/api/article/:id/related", async (c) => {
+  try {
+    const articleId = c.req.param("id");
+    const limit = parseInt(c.req.query("limit") || "6");
+
+    // Get the source article's details
+    const sourceArticle = await c.env.DB.prepare(`
+      SELECT id, title, category_id, source_id, published_at,
+             (SELECT GROUP_CONCAT(k.name) FROM keywords k
+              INNER JOIN article_keyword_links akl ON k.id = akl.keyword_id
+              WHERE akl.article_id = articles.id LIMIT 5) as keywords
+      FROM articles WHERE id = ? AND status = 'published'
+    `).bind(articleId).first();
+
+    if (!sourceArticle) {
+      return c.json({ error: "Article not found" }, 404);
+    }
+
+    // Find related articles using multiple criteria:
+    // 1. Same category
+    // 2. Shared keywords
+    // 3. Similar time period (recent articles on same topic)
+    // 4. Different source (cross-source coverage)
+    const relatedResult = await c.env.DB.prepare(`
+      WITH article_keywords AS (
+        SELECT keyword_id FROM article_keyword_links WHERE article_id = ?
+      ),
+      scored_articles AS (
+        SELECT
+          a.id, a.title, a.slug, a.description, a.source, a.source_id,
+          a.published_at, a.image_url, a.category_id, a.view_count,
+          -- Scoring: same category = 3pts, shared keywords = 2pts each, different source = 1pt, recency bonus
+          (CASE WHEN a.category_id = ? THEN 3 ELSE 0 END) +
+          (SELECT COUNT(*) * 2 FROM article_keyword_links akl
+           WHERE akl.article_id = a.id AND akl.keyword_id IN (SELECT keyword_id FROM article_keywords)) +
+          (CASE WHEN a.source_id != ? THEN 1 ELSE 0 END) +
+          (CASE WHEN a.published_at > datetime('now', '-7 days') THEN 2 ELSE 0 END)
+          AS relevance_score,
+          -- Flag if from different source (for "same story, different source" detection)
+          (CASE WHEN a.source_id != ? THEN 1 ELSE 0 END) AS is_cross_source
+        FROM articles a
+        WHERE a.id != ?
+          AND a.status = 'published'
+          AND a.published_at > datetime('now', '-30 days')
+      )
+      SELECT id, title, slug, description, source, source_id, published_at,
+             image_url, category_id, view_count, relevance_score, is_cross_source
+      FROM scored_articles
+      WHERE relevance_score > 0
+      ORDER BY relevance_score DESC, published_at DESC
+      LIMIT ?
+    `).bind(
+      articleId,
+      sourceArticle.category_id,
+      sourceArticle.source_id,
+      sourceArticle.source_id,
+      articleId,
+      limit
+    ).all();
+
+    return c.json({
+      related: relatedResult.results || [],
+      source_article_id: articleId
+    });
+  } catch (error) {
+    console.error("[RELATED_ARTICLES] Error:", error);
+    return c.json({ error: "Failed to fetch related articles" }, 500);
+  }
+});
+
+// Get story cluster - same story reported by multiple sources
+app.get("/api/stories/cluster/:articleId", async (c) => {
+  try {
+    const articleId = c.req.param("articleId");
+
+    // Get the source article
+    const sourceArticle = await c.env.DB.prepare(`
+      SELECT id, title, category_id, source_id, published_at, content_hash
+      FROM articles WHERE id = ? AND status = 'published'
+    `).bind(articleId).first();
+
+    if (!sourceArticle) {
+      return c.json({ error: "Article not found" }, 404);
+    }
+
+    // Find articles that are likely about the same story:
+    // 1. Exact content hash match (duplicates)
+    // 2. Same category + shared keywords + similar time window
+    // 3. Different sources to show cross-coverage
+    const clusterResult = await c.env.DB.prepare(`
+      WITH source_keywords AS (
+        SELECT keyword_id FROM article_keyword_links WHERE article_id = ?
+      ),
+      potential_matches AS (
+        SELECT
+          a.id, a.title, a.slug, a.description, a.source, a.source_id,
+          a.published_at, a.image_url, a.category_id, a.view_count, a.content_hash,
+          -- Count shared keywords
+          (SELECT COUNT(*) FROM article_keyword_links akl
+           WHERE akl.article_id = a.id AND akl.keyword_id IN (SELECT keyword_id FROM source_keywords)) AS shared_keywords,
+          -- Is this from a different source?
+          (CASE WHEN a.source_id != ? THEN 1 ELSE 0 END) AS is_different_source
+        FROM articles a
+        WHERE a.id != ?
+          AND a.status = 'published'
+          AND a.category_id = ?
+          AND a.published_at BETWEEN datetime(?, '-3 days') AND datetime(?, '+3 days')
+      )
+      SELECT id, title, slug, description, source, source_id, published_at,
+             image_url, category_id, view_count, shared_keywords, is_different_source,
+             (CASE WHEN content_hash = ? THEN 'duplicate' ELSE 'related' END) AS match_type
+      FROM potential_matches
+      WHERE shared_keywords >= 2 OR content_hash = ?
+      ORDER BY
+        CASE WHEN content_hash = ? THEN 0 ELSE 1 END,
+        shared_keywords DESC,
+        is_different_source DESC,
+        published_at DESC
+      LIMIT 10
+    `).bind(
+      articleId,
+      sourceArticle.source_id,
+      articleId,
+      sourceArticle.category_id,
+      sourceArticle.published_at,
+      sourceArticle.published_at,
+      sourceArticle.content_hash,
+      sourceArticle.content_hash,
+      sourceArticle.content_hash
+    ).all();
+
+    // Group by source for the response
+    const bySource: Record<string, unknown[]> = {};
+    for (const article of clusterResult.results || []) {
+      const a = article as { source: string };
+      if (!bySource[a.source]) bySource[a.source] = [];
+      bySource[a.source].push(article);
+    }
+
+    return c.json({
+      cluster: {
+        source_article: sourceArticle,
+        related_coverage: clusterResult.results || [],
+        by_source: bySource,
+        source_count: Object.keys(bySource).length,
+        total_articles: (clusterResult.results || []).length
+      }
+    });
+  } catch (error) {
+    console.error("[STORY_CLUSTER] Error:", error);
+    return c.json({ error: "Failed to fetch story cluster" }, 500);
+  }
+});
+
+// Get trending stories (clustered by topic)
+app.get("/api/stories/trending", async (c) => {
+  try {
+    const limit = parseInt(c.req.query("limit") || "10");
+    const hours = parseInt(c.req.query("hours") || "24");
+
+    // Find articles with the most cross-source coverage (same story, multiple outlets)
+    const trendingResult = await c.env.DB.prepare(`
+      WITH recent_articles AS (
+        SELECT
+          a.id, a.title, a.slug, a.description, a.source, a.source_id,
+          a.published_at, a.image_url, a.category_id, a.view_count,
+          a.like_count, a.bookmark_count
+        FROM articles a
+        WHERE a.status = 'published'
+          AND a.published_at > datetime('now', '-' || ? || ' hours')
+      ),
+      keyword_groups AS (
+        SELECT
+          akl.keyword_id,
+          k.name as keyword_name,
+          COUNT(DISTINCT ra.source_id) as source_count,
+          COUNT(DISTINCT ra.id) as article_count,
+          SUM(ra.view_count) as total_views,
+          GROUP_CONCAT(DISTINCT ra.id) as article_ids
+        FROM recent_articles ra
+        JOIN article_keyword_links akl ON ra.id = akl.article_id
+        JOIN keywords k ON akl.keyword_id = k.id
+        WHERE k.category != 'meta'
+        GROUP BY akl.keyword_id
+        HAVING source_count >= 2
+      )
+      SELECT
+        keyword_id, keyword_name, source_count, article_count,
+        total_views, article_ids
+      FROM keyword_groups
+      ORDER BY source_count DESC, article_count DESC, total_views DESC
+      LIMIT ?
+    `).bind(hours, limit).all();
+
+    // Fetch details for each trending story cluster
+    const trendingStories = [];
+    for (const trend of trendingResult.results || []) {
+      const t = trend as { keyword_id: number; keyword_name: string; source_count: number; article_count: number; total_views: number; article_ids: string };
+      const articleIds = t.article_ids.split(',').slice(0, 5);
+
+      const articlesResult = await c.env.DB.prepare(`
+        SELECT id, title, slug, source, source_id, published_at, image_url
+        FROM articles
+        WHERE id IN (${articleIds.map(() => '?').join(',')})
+        ORDER BY published_at DESC
+      `).bind(...articleIds).all();
+
+      trendingStories.push({
+        topic: t.keyword_name,
+        source_count: t.source_count,
+        article_count: t.article_count,
+        total_views: t.total_views,
+        articles: articlesResult.results || []
+      });
+    }
+
+    return c.json({
+      trending: trendingStories,
+      period_hours: hours
+    });
+  } catch (error) {
+    console.error("[TRENDING_STORIES] Error:", error);
+    return c.json({ error: "Failed to fetch trending stories" }, 500);
+  }
+});
+
 // ===== PHASE 1: PUBLIC USER-FACING ENDPOINTS =====
 
 // News Bytes - Articles with images only (TikTok-like feed)
@@ -1969,6 +2293,135 @@ app.delete("/api/user/me/follows/:type/:id", async (c) => {
   }
 });
 
+// Get user's followed authors
+app.get("/api/user/me/follows/authors", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ authors: [], message: "No user session" });
+    }
+
+    const limit = parseInt(c.req.query("limit") || "50");
+    const offset = parseInt(c.req.query("offset") || "0");
+
+    const result = await c.env.DB.prepare(`
+      SELECT a.id, a.name, a.slug, a.normalized_name, a.bio, a.profile_image_url,
+             a.follower_count, a.article_count, a.is_verified,
+             uf.followed_at
+      FROM user_follows uf
+      JOIN authors a ON uf.follow_id = CAST(a.id AS TEXT)
+      WHERE uf.user_id = ? AND uf.follow_type = 'author'
+      ORDER BY uf.followed_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(userId, limit, offset).all();
+
+    return c.json({
+      authors: result.results || [],
+      total: result.results?.length || 0,
+      limit,
+      offset
+    });
+  } catch (error) {
+    console.error("[FOLLOWS_AUTHORS] Error:", error);
+    return c.json({ error: "Failed to fetch followed authors" }, 500);
+  }
+});
+
+// Get user's followed sources
+app.get("/api/user/me/follows/sources", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ sources: [], message: "No user session" });
+    }
+
+    const limit = parseInt(c.req.query("limit") || "50");
+    const offset = parseInt(c.req.query("offset") || "0");
+
+    const result = await c.env.DB.prepare(`
+      SELECT ns.id, ns.name, ns.slug, ns.logo_url, ns.website_url,
+             ns.follower_count, ns.article_count, ns.country_id,
+             uf.followed_at
+      FROM user_follows uf
+      JOIN news_sources ns ON uf.follow_id = ns.id
+      WHERE uf.user_id = ? AND uf.follow_type = 'source'
+      ORDER BY uf.followed_at DESC
+      LIMIT ? OFFSET ?
+    `).bind(userId, limit, offset).all();
+
+    return c.json({
+      sources: result.results || [],
+      total: result.results?.length || 0,
+      limit,
+      offset
+    });
+  } catch (error) {
+    console.error("[FOLLOWS_SOURCES] Error:", error);
+    return c.json({ error: "Failed to fetch followed sources" }, 500);
+  }
+});
+
+// Get user's followed categories
+app.get("/api/user/me/follows/categories", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ categories: [], message: "No user session" });
+    }
+
+    const result = await c.env.DB.prepare(`
+      SELECT c.id, c.name, c.emoji, c.color, c.description,
+             uf.followed_at
+      FROM user_follows uf
+      JOIN categories c ON uf.follow_id = c.id
+      WHERE uf.user_id = ? AND uf.follow_type = 'category'
+      ORDER BY uf.followed_at DESC
+    `).bind(userId).all();
+
+    return c.json({
+      categories: result.results || []
+    });
+  } catch (error) {
+    console.error("[FOLLOWS_CATEGORIES] Error:", error);
+    return c.json({ error: "Failed to fetch followed categories" }, 500);
+  }
+});
+
+// Get all user follows (combined)
+app.get("/api/user/me/follows", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ follows: { authors: [], sources: [], categories: [] }, message: "No user session" });
+    }
+
+    const result = await c.env.DB.prepare(`
+      SELECT follow_type, follow_id, followed_at
+      FROM user_follows
+      WHERE user_id = ?
+      ORDER BY followed_at DESC
+    `).bind(userId).all();
+
+    const follows = {
+      authors: [] as string[],
+      sources: [] as string[],
+      categories: [] as string[]
+    };
+
+    for (const row of result.results || []) {
+      const r = row as { follow_type: string; follow_id: string };
+      if (r.follow_type === 'author') follows.authors.push(r.follow_id);
+      else if (r.follow_type === 'source') follows.sources.push(r.follow_id);
+      else if (r.follow_type === 'category') follows.categories.push(r.follow_id);
+    }
+
+    return c.json({ follows });
+  } catch (error) {
+    console.error("[FOLLOWS_ALL] Error:", error);
+    return c.json({ error: "Failed to fetch follows" }, 500);
+  }
+});
+
 // ===== COUNTRY ENDPOINTS (Pan-African Support) =====
 
 // Get all available countries
@@ -2619,12 +3072,12 @@ app.post("/api/author/:authorId/follow", async (c) => {
   try {
     const services = initializeServices(c.env);
     const authorId = parseInt(c.req.param("authorId"));
-    
-    // TODO: Get userId from authentication
-    const userId = 1; // Placeholder - would come from auth middleware
-    
+
+    // Get userId from headers - supports anonymous session-based engagement
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id') || 'anonymous';
+
     const result = await services.authorProfileService.toggleAuthorFollow(userId, authorId);
-    
+
     return c.json(result);
   } catch (error) {
     console.error("Error toggling author follow:", error);
@@ -2637,12 +3090,12 @@ app.post("/api/source/:sourceId/follow", async (c) => {
   try {
     const services = initializeServices(c.env);
     const sourceId = c.req.param("sourceId");
-    
-    // TODO: Get userId from authentication
-    const userId = 1; // Placeholder - would come from auth middleware
-    
+
+    // Get userId from headers - supports anonymous session-based engagement
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id') || 'anonymous';
+
     const result = await services.authorProfileService.toggleSourceFollow(userId, sourceId);
-    
+
     return c.json(result);
   } catch (error) {
     console.error("Error toggling source follow:", error);
@@ -3461,6 +3914,473 @@ app.get("/api/auth/check-username", async (c) => {
   }
 });
 
+// ===== USER IDENTITY & AUTH PROVIDERS =====
+
+// Get user's linked authentication providers
+app.get("/api/user/me/auth-providers", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const providers = await c.env.DB.prepare(`
+      SELECT
+        id, provider_type, provider_name,
+        CASE WHEN oidc_subject IS NOT NULL THEN 'linked' ELSE NULL END as oidc_status,
+        CASE WHEN wallet_address IS NOT NULL THEN wallet_address ELSE NULL END as wallet_address,
+        chain_id, ens_name,
+        CASE WHEN mobile_number IS NOT NULL THEN
+          CONCAT(SUBSTR(mobile_number, 1, 4), '****', SUBSTR(mobile_number, -4))
+        ELSE NULL END as mobile_masked,
+        mobile_verified, whatsapp_enabled,
+        is_primary, verified_at, last_used_at, created_at
+      FROM user_auth_providers
+      WHERE user_id = ?
+      ORDER BY is_primary DESC, created_at ASC
+    `).bind(userId).all();
+
+    return c.json({
+      providers: providers.results || [],
+      count: providers.results?.length || 0
+    });
+  } catch (error) {
+    console.error("[AUTH_PROVIDERS] Error:", error);
+    return c.json({ error: "Failed to fetch auth providers" }, 500);
+  }
+});
+
+// Link a new authentication provider (OIDC callback handler)
+app.post("/api/user/me/auth-providers/oidc", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { provider_name, oidc_subject, oidc_issuer, claims } = body;
+
+    if (!provider_name || !oidc_subject || !oidc_issuer) {
+      return c.json({ error: "Missing required OIDC fields" }, 400);
+    }
+
+    // Check if this OIDC subject is already linked to another user
+    const existing = await c.env.DB.prepare(`
+      SELECT user_id FROM user_auth_providers
+      WHERE provider_type = 'oidc' AND oidc_subject = ? AND oidc_issuer = ? AND user_id != ?
+    `).bind(oidc_subject, oidc_issuer, userId).first();
+
+    if (existing) {
+      return c.json({ error: "This identity is already linked to another account" }, 409);
+    }
+
+    // Link the provider
+    await c.env.DB.prepare(`
+      INSERT INTO user_auth_providers (
+        user_id, provider_type, provider_name, oidc_subject, oidc_issuer,
+        verified_at, metadata
+      ) VALUES (?, 'oidc', ?, ?, ?, CURRENT_TIMESTAMP, ?)
+      ON CONFLICT(provider_type, provider_name, oidc_subject) DO UPDATE SET
+        user_id = excluded.user_id,
+        verified_at = CURRENT_TIMESTAMP,
+        metadata = excluded.metadata,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(userId, provider_name, oidc_subject, oidc_issuer, JSON.stringify(claims || {})).run();
+
+    // Update user profile from OIDC claims if provided
+    if (claims) {
+      const updates: string[] = [];
+      const params: any[] = [];
+
+      if (claims.name && !await hasUserField(c.env.DB, userId, 'display_name')) {
+        updates.push('display_name = ?');
+        params.push(claims.name);
+      }
+      if (claims.picture && !await hasUserField(c.env.DB, userId, 'avatar_url')) {
+        updates.push('avatar_url = ?');
+        params.push(claims.picture);
+      }
+      if (claims.email && !await hasUserField(c.env.DB, userId, 'email')) {
+        updates.push('email = ?');
+        params.push(claims.email);
+      }
+      if (claims.email_verified) {
+        updates.push('email_verified = TRUE');
+      }
+      if (claims.phone_number && !await hasUserField(c.env.DB, userId, 'mobile_number')) {
+        updates.push('mobile_number = ?');
+        params.push(claims.phone_number);
+      }
+      if (claims.phone_number_verified) {
+        updates.push('mobile_verified = TRUE');
+      }
+
+      if (updates.length > 0) {
+        params.push(userId);
+        await c.env.DB.prepare(`
+          UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        `).bind(...params).run();
+      }
+    }
+
+    return c.json({ success: true, message: "Authentication provider linked" });
+  } catch (error) {
+    console.error("[LINK_OIDC] Error:", error);
+    return c.json({ error: "Failed to link authentication provider" }, 500);
+  }
+});
+
+// Helper function to check if user has a field set
+async function hasUserField(db: D1Database, userId: string, field: string): Promise<boolean> {
+  const result = await db.prepare(`SELECT ${field} FROM users WHERE id = ?`).bind(userId).first();
+  return result && result[field] !== null && result[field] !== '';
+}
+
+// Link mobile number
+app.post("/api/user/me/auth-providers/mobile", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { mobile_number, country_code } = body;
+
+    if (!mobile_number) {
+      return c.json({ error: "Mobile number required" }, 400);
+    }
+
+    // Check if mobile is already linked to another user
+    const existing = await c.env.DB.prepare(`
+      SELECT user_id FROM user_auth_providers
+      WHERE provider_type = 'mobile' AND mobile_number = ? AND user_id != ?
+    `).bind(mobile_number, userId).first();
+
+    if (existing) {
+      return c.json({ error: "This mobile number is already linked to another account" }, 409);
+    }
+
+    // Create provider link (unverified - will need OTP verification)
+    await c.env.DB.prepare(`
+      INSERT INTO user_auth_providers (
+        user_id, provider_type, provider_name, mobile_number, mobile_country_code, mobile_verified
+      ) VALUES (?, 'mobile', 'sms', ?, ?, FALSE)
+      ON CONFLICT(mobile_number) DO UPDATE SET
+        user_id = excluded.user_id,
+        mobile_country_code = excluded.mobile_country_code,
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(userId, mobile_number, country_code || 'ZW').run();
+
+    return c.json({
+      success: true,
+      message: "Mobile number added. Please verify with OTP.",
+      requires_verification: true
+    });
+  } catch (error) {
+    console.error("[LINK_MOBILE] Error:", error);
+    return c.json({ error: "Failed to link mobile number" }, 500);
+  }
+});
+
+// Link Web3 wallet
+app.post("/api/user/me/auth-providers/wallet", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { wallet_address, chain_id, ens_name } = body;
+
+    if (!wallet_address) {
+      return c.json({ error: "Wallet address required" }, 400);
+    }
+
+    const normalizedAddress = wallet_address.toLowerCase();
+
+    // Check if wallet is already linked to another user
+    const existing = await c.env.DB.prepare(`
+      SELECT user_id FROM user_auth_providers
+      WHERE provider_type = 'web3' AND wallet_address = ? AND user_id != ?
+    `).bind(normalizedAddress, userId).first();
+
+    if (existing) {
+      return c.json({ error: "This wallet is already linked to another account" }, 409);
+    }
+
+    // Create provider link (will need signature verification for full verification)
+    await c.env.DB.prepare(`
+      INSERT INTO user_auth_providers (
+        user_id, provider_type, provider_name, wallet_address, chain_id, ens_name
+      ) VALUES (?, 'web3', 'ethereum', ?, ?, ?)
+      ON CONFLICT(wallet_address, chain_id) DO UPDATE SET
+        user_id = excluded.user_id,
+        ens_name = COALESCE(excluded.ens_name, ens_name),
+        updated_at = CURRENT_TIMESTAMP
+    `).bind(userId, normalizedAddress, chain_id || 1, ens_name || null).run();
+
+    return c.json({
+      success: true,
+      message: "Wallet linked. Signature verification recommended.",
+      requires_verification: true
+    });
+  } catch (error) {
+    console.error("[LINK_WALLET] Error:", error);
+    return c.json({ error: "Failed to link wallet" }, 500);
+  }
+});
+
+// Set primary authentication provider
+app.put("/api/user/me/auth-providers/:providerId/primary", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const providerId = c.req.param("providerId");
+
+    // Clear all primary flags for this user
+    await c.env.DB.prepare(`
+      UPDATE user_auth_providers SET is_primary = FALSE WHERE user_id = ?
+    `).bind(userId).run();
+
+    // Set the new primary
+    const result = await c.env.DB.prepare(`
+      UPDATE user_auth_providers
+      SET is_primary = TRUE, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ? AND user_id = ?
+    `).bind(providerId, userId).run();
+
+    if (result.meta.changes === 0) {
+      return c.json({ error: "Provider not found" }, 404);
+    }
+
+    return c.json({ success: true, message: "Primary authentication method updated" });
+  } catch (error) {
+    console.error("[SET_PRIMARY_PROVIDER] Error:", error);
+    return c.json({ error: "Failed to update primary provider" }, 500);
+  }
+});
+
+// Unlink authentication provider
+app.delete("/api/user/me/auth-providers/:providerId", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const providerId = c.req.param("providerId");
+
+    // Check if this is the only auth method
+    const countResult = await c.env.DB.prepare(`
+      SELECT COUNT(*) as count FROM user_auth_providers WHERE user_id = ?
+    `).bind(userId).first<{ count: number }>();
+
+    if ((countResult?.count || 0) <= 1) {
+      return c.json({ error: "Cannot remove your only authentication method" }, 400);
+    }
+
+    // Delete the provider
+    const result = await c.env.DB.prepare(`
+      DELETE FROM user_auth_providers WHERE id = ? AND user_id = ?
+    `).bind(providerId, userId).run();
+
+    if (result.meta.changes === 0) {
+      return c.json({ error: "Provider not found" }, 404);
+    }
+
+    return c.json({ success: true, message: "Authentication provider removed" });
+  } catch (error) {
+    console.error("[UNLINK_PROVIDER] Error:", error);
+    return c.json({ error: "Failed to remove provider" }, 500);
+  }
+});
+
+// Get user identity summary (combines user profile with auth providers)
+app.get("/api/user/me/identity", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    // Get user profile
+    const user = await c.env.DB.prepare(`
+      SELECT id, email, username, display_name, avatar_url, bio,
+             user_number, user_uid, mobile_number, mobile_verified, mobile_country_code,
+             primary_wallet_address, primary_chain_id,
+             role, status, email_verified,
+             created_at, updated_at, last_login_at
+      FROM users WHERE id = ?
+    `).bind(userId).first();
+
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
+    }
+
+    // Get auth providers summary
+    const providers = await c.env.DB.prepare(`
+      SELECT provider_type, provider_name, is_primary, verified_at IS NOT NULL as is_verified
+      FROM user_auth_providers WHERE user_id = ?
+    `).bind(userId).all();
+
+    // Calculate identity completeness
+    const u = user as Record<string, any>;
+    const completeness = {
+      has_email: !!u.email && u.email_verified,
+      has_mobile: !!u.mobile_number && u.mobile_verified,
+      has_wallet: !!u.primary_wallet_address,
+      has_username: !!u.username,
+      has_display_name: !!u.display_name,
+      has_avatar: !!u.avatar_url,
+      provider_count: providers.results?.length || 0,
+      score: 0
+    };
+    completeness.score = [
+      completeness.has_email,
+      completeness.has_mobile,
+      completeness.has_wallet,
+      completeness.has_username,
+      completeness.has_display_name,
+      completeness.has_avatar
+    ].filter(Boolean).length;
+
+    return c.json({
+      user: {
+        id: u.id,
+        user_uid: u.user_uid,
+        user_number: u.user_number,
+        email: u.email,
+        email_verified: u.email_verified,
+        username: u.username,
+        display_name: u.display_name,
+        avatar_url: u.avatar_url,
+        bio: u.bio,
+        mobile_number: u.mobile_number ? u.mobile_number.replace(/(\+\d{3})\d+(\d{4})/, '$1****$2') : null,
+        mobile_verified: u.mobile_verified,
+        mobile_country_code: u.mobile_country_code,
+        primary_wallet_address: u.primary_wallet_address,
+        primary_chain_id: u.primary_chain_id,
+        role: u.role,
+        status: u.status,
+        created_at: u.created_at,
+        last_login_at: u.last_login_at
+      },
+      providers: providers.results || [],
+      completeness
+    });
+  } catch (error) {
+    console.error("[USER_IDENTITY] Error:", error);
+    return c.json({ error: "Failed to fetch user identity" }, 500);
+  }
+});
+
+// Sync user profile from OIDC claims (called after OIDC login)
+app.post("/api/user/me/identity/sync-from-oidc", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+    if (!userId) {
+      return c.json({ error: "User identification required" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { claims, overwrite = false } = body;
+
+    if (!claims) {
+      return c.json({ error: "OIDC claims required" }, 400);
+    }
+
+    // Build update query based on claims
+    const updates: string[] = [];
+    const params: any[] = [];
+
+    // Map OIDC standard claims to user fields
+    const fieldMapping: Record<string, string> = {
+      name: 'display_name',
+      given_name: 'display_name',  // Fallback
+      picture: 'avatar_url',
+      email: 'email',
+      phone_number: 'mobile_number'
+    };
+
+    for (const [claimKey, userField] of Object.entries(fieldMapping)) {
+      if (claims[claimKey]) {
+        if (overwrite || !await hasUserField(c.env.DB, userId, userField)) {
+          updates.push(`${userField} = ?`);
+          params.push(claims[claimKey]);
+        }
+      }
+    }
+
+    // Handle verified flags
+    if (claims.email_verified === true) {
+      updates.push('email_verified = TRUE');
+    }
+    if (claims.phone_number_verified === true) {
+      updates.push('mobile_verified = TRUE');
+    }
+
+    if (updates.length > 0) {
+      params.push(userId);
+      await c.env.DB.prepare(`
+        UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+      `).bind(...params).run();
+    }
+
+    return c.json({
+      success: true,
+      message: "Profile synced from OIDC claims",
+      fields_updated: updates.length
+    });
+  } catch (error) {
+    console.error("[SYNC_OIDC] Error:", error);
+    return c.json({ error: "Failed to sync profile" }, 500);
+  }
+});
+
+// Get available authentication providers
+app.get("/api/auth/providers", async (c) => {
+  try {
+    const countryCode = c.req.query("country") || null;
+
+    let query = `
+      SELECT id, provider_type, display_name, icon_url, sort_order,
+             available_countries, enabled
+      FROM auth_provider_config
+      WHERE enabled = TRUE
+    `;
+
+    const result = await c.env.DB.prepare(query).all();
+
+    // Filter by country if specified
+    let providers = result.results || [];
+    if (countryCode) {
+      providers = providers.filter((p: any) => {
+        if (!p.available_countries) return true;
+        const countries = JSON.parse(p.available_countries);
+        return countries.includes(countryCode);
+      });
+    }
+
+    // Group by type
+    const grouped = {
+      oidc: providers.filter((p: any) => p.provider_type === 'oidc'),
+      mobile: providers.filter((p: any) => p.provider_type === 'mobile'),
+      web3: providers.filter((p: any) => p.provider_type === 'web3')
+    };
+
+    return c.json({ providers: grouped });
+  } catch (error) {
+    console.error("[AUTH_PROVIDERS_LIST] Error:", error);
+    return c.json({ error: "Failed to fetch providers" }, 500);
+  }
+});
+
 // ===== USER MANAGEMENT (ADMIN ONLY) =====
 
 // Get all users (admin only)
@@ -3562,8 +4482,9 @@ app.put("/api/admin/users/:userId/role", async (c) => {
     const userId = c.req.param("userId");
     const { role } = await c.req.json();
 
-    if (!['creator', 'business-creator', 'moderator', 'admin'].includes(role)) {
-      return c.json({ error: "Invalid role" }, 400);
+    // Valid roles: admin, moderator, support, author, user
+    if (!['admin', 'moderator', 'support', 'author', 'user'].includes(role)) {
+      return c.json({ error: "Invalid role. Valid roles: admin, moderator, support, author, user" }, 400);
     }
 
     await authService.updateUserRole(userId, role, session.user_id || session.id);
