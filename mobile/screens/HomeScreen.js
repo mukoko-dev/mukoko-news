@@ -141,10 +141,13 @@ export default function HomeScreen({ navigation }) {
     setError(null);
 
     try {
-      // Load categories
+      // Load categories (filter out 'all' since CategoryChips adds its own)
       const { data: categoriesData } = await categoriesAPI.getAll();
       if (categoriesData?.categories) {
-        setCategoriesList(categoriesData.categories);
+        const filteredCategories = categoriesData.categories.filter(
+          cat => cat.id !== 'all' && cat.slug !== 'all'
+        );
+        setCategoriesList(filteredCategories);
       }
 
       // Load articles
