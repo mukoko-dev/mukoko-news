@@ -34,8 +34,13 @@
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "hararemetro_articles",
-      "database_id": "70d94fe9-4a78-4926-927b-e88e37141a54"
+      "database_name": "mukoko-news-db",
+      "database_id": "2f2222f5-7122-4de1-8597-b12c73a9e3f9"
+    },
+    {
+      "binding": "AUTH_DB",
+      "database_name": "mukoko-auth-db",
+      "database_id": "23df7072-78b8-4b51-a27e-11517278d7e4"
     }
   ],
 
@@ -92,12 +97,11 @@
   "kv_namespaces": [
     {
       "binding": "AUTH_STORAGE",
-      "id": "28448bdb9dd041dcaaefe292a7651c8a",
-      "preview_id": "3e5b3e5d1d0e4369be756471f7fe0661"
+      "id": "d1cc37fc8917405391708987f0181197"
     },
     {
       "binding": "CACHE_STORAGE",
-      "id": "a9c3fa88185949d5a3e81b1865fc16d7"
+      "id": "91721240e81943aa880dfc1b83fa75ff"
     }
   ],
 
