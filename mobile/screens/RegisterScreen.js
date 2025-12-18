@@ -21,6 +21,7 @@ import {
 import { mukokoTheme } from '../theme';
 import { auth } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import AuthMigrationModal, { useAuthMigrationModal } from '../components/AuthMigrationModal';
 
 // Logo asset
 const MukokoLogo = require('../assets/mukoko-logo-compact.png');
@@ -39,6 +40,9 @@ export default function RegisterScreen({ navigation }) {
   const paperTheme = usePaperTheme();
   const { refreshAuth } = useAuth();
 
+  // Auth migration modal
+  const { showModal, dismissModal } = useAuthMigrationModal();
+
   // Form state - simplified to just required fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,6 +55,11 @@ export default function RegisterScreen({ navigation }) {
 
   // Responsive
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+
+  const handleMigrationContinue = () => {
+    dismissModal();
+    navigation.navigate('Bytes');
+  };
 
   useEffect(() => {
     const subscription = Dimensions.addEventListener('change', ({ window }) => {
@@ -391,6 +400,13 @@ export default function RegisterScreen({ navigation }) {
           By creating an account, you agree to our Terms of Service and Privacy Policy.
         </Text>
       </ScrollView>
+
+      {/* Auth Migration Modal */}
+      <AuthMigrationModal
+        visible={showModal}
+        onDismiss={dismissModal}
+        onContinue={handleMigrationContinue}
+      />
     </KeyboardAvoidingView>
   );
 }

@@ -21,6 +21,7 @@ import {
 import { mukokoTheme } from '../theme';
 import { auth } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import AuthMigrationModal, { useAuthMigrationModal } from '../components/AuthMigrationModal';
 
 // Logo asset
 const MukokoLogo = require('../assets/mukoko-logo-compact.png');
@@ -37,6 +38,9 @@ const MukokoLogo = require('../assets/mukoko-logo-compact.png');
 export default function LoginScreen({ navigation, route }) {
   const paperTheme = usePaperTheme();
   const { refreshAuth } = useAuth();
+
+  // Auth migration modal
+  const { showModal, dismissModal } = useAuthMigrationModal();
 
   // Form state
   const [email, setEmail] = useState('');
@@ -125,6 +129,11 @@ export default function LoginScreen({ navigation, route }) {
     } else {
       navigation.navigate('Bytes');
     }
+  };
+
+  const handleMigrationContinue = () => {
+    dismissModal();
+    navigation.navigate('Bytes');
   };
 
   // Dynamic colors
@@ -321,6 +330,13 @@ export default function LoginScreen({ navigation, route }) {
           </View>
         </Surface>
       </ScrollView>
+
+      {/* Auth Migration Modal */}
+      <AuthMigrationModal
+        visible={showModal}
+        onDismiss={dismissModal}
+        onContinue={handleMigrationContinue}
+      />
     </KeyboardAvoidingView>
   );
 }
