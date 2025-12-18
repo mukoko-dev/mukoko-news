@@ -2,7 +2,7 @@
 
 ## Overview
 
-Mukoko News is an open-source news aggregation platform for Zimbabwe. The service aggregates publicly available news content from established Zimbabwean media outlets via RSS feeds.
+Mukoko News is an open-source news aggregation platform for Africa. The service aggregates publicly available news content from established African media outlets via RSS feeds.
 
 ## License & Content Ownership
 
