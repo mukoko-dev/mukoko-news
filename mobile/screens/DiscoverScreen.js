@@ -12,13 +12,13 @@ import {
   Text,
   ActivityIndicator,
   Icon,
-  Chip,
   useTheme as usePaperTheme,
 } from 'react-native-paper';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import ArticleCard from '../components/ArticleCard';
+import CategoryChips from '../components/CategoryChips';
 import { useAuth } from '../contexts/AuthContext';
 import { useLayout } from '../components/layout';
 import {
@@ -275,52 +275,24 @@ export default function DiscoverScreen({ navigation }) {
 
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      {/* Compact category filter - always at top */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
+      {/* Compact category filter - uses shared CategoryChips for consistency */}
+      <CategoryChips
+        categories={categories.slice(0, 12)}
+        selectedCategory={selectedCategory}
+        onCategoryPress={(categorySlug) => {
+          // Find the category object or use null for "All"
+          if (categorySlug === null || categorySlug === 'all') {
+            handleCategoryPress(null);
+          } else {
+            const category = categories.find(c => c.slug === categorySlug || c.id === categorySlug);
+            handleCategoryPress(category || { slug: categorySlug });
+          }
+        }}
+        showAll={true}
+        showCounts={true}
+        showEmojis={true}
         style={styles.categoryBar}
-        contentContainerStyle={styles.categoryBarContent}
-      >
-        <Chip
-          mode={selectedCategory === null ? 'flat' : 'outlined'}
-          selected={selectedCategory === null}
-          onPress={() => handleCategoryPress(null)}
-          style={[
-            styles.categoryChip,
-            selectedCategory === null && { backgroundColor: paperTheme.colors.primary },
-          ]}
-          textStyle={[
-            styles.categoryChipText,
-            selectedCategory === null && { color: '#FFFFFF' },
-          ]}
-          compact
-        >
-          All
-        </Chip>
-        {categories.slice(0, 12).map((category) => (
-          <Chip
-            key={category.id || category.slug}
-            mode={selectedCategory === (category.slug || category.id) ? 'flat' : 'outlined'}
-            selected={selectedCategory === (category.slug || category.id)}
-            onPress={() => handleCategoryPress(category)}
-            style={[
-              styles.categoryChip,
-              selectedCategory === (category.slug || category.id) && {
-                backgroundColor: paperTheme.colors.primary,
-              },
-            ]}
-            textStyle={[
-              styles.categoryChipText,
-              selectedCategory === (category.slug || category.id) && { color: '#FFFFFF' },
-            ]}
-            icon={() => <Text style={styles.chipEmoji}>{getEmoji(category.name)}</Text>}
-            compact
-          >
-            {category.name}
-          </Chip>
-        ))}
-      </ScrollView>
+      />
 
       {/* Content grid */}
       <ScrollView
