@@ -63,8 +63,8 @@ export default function RightSidebar() {
       } catch {
         // Fallback to static trending if API fails
         setTrending([
-          { id: 1, tag: 'Zimbabwe', count: 156 },
-          { id: 2, tag: 'Harare', count: 89 },
+          { id: 1, tag: 'Africa', count: 156 },
+          { id: 2, tag: 'Business', count: 89 },
           { id: 3, tag: 'Economy', count: 67 },
           { id: 4, tag: 'Sports', count: 45 },
           { id: 5, tag: 'Politics', count: 38 },
@@ -241,7 +241,7 @@ export default function RightSidebar() {
           </Text>
         </View>
         <Text style={[styles.footerText, dynamicStyles.textSecondary]}>
-          Zimbabwe's News, Your Way
+          Africa's News, Your Way
         </Text>
         <Text style={[styles.footerCopyright, dynamicStyles.textSecondary]}>
           © 2025 Mukoko News

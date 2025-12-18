@@ -136,7 +136,7 @@ export default function AppFooter() {
             MUKOKO NEWS
           </Text>
           <Text style={[styles.tagline, { color: paperThemeDark.colors.onSurfaceVariant }]}>
-            Zimbabwe's Digital News Platform
+            Africa's Digital News Platform
           </Text>
         </View>
 

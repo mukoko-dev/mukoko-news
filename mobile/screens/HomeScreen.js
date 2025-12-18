@@ -1,9 +1,10 @@
 /**
  * HomeScreen - Main news feed
  * Displays articles in a clean, scannable layout following 2025 news app patterns
+ * Now with Pan-African country filtering and guest preferences
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   FlatList,
@@ -19,6 +20,7 @@ import {
   useTheme as usePaperTheme,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { articles, categories as categoriesAPI } from '../api/client';
 import mukokoTheme from '../theme';
 import ArticleCard from '../components/ArticleCard';
@@ -28,6 +30,14 @@ import LoginPromo from '../components/LoginPromo';
 import SplashScreen from '../components/SplashScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { useLayout } from '../components/layout';
+
+// Storage keys for guest preferences
+const GUEST_COUNTRIES_KEY = '@mukoko_guest_countries';
+const GUEST_CATEGORIES_KEY = '@mukoko_guest_categories';
+const SPLASH_SHOWN_KEY = '@mukoko_splash_shown';
+
+// Article limit for non-authenticated users
+const GUEST_ARTICLE_LIMIT = 50;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -46,9 +56,17 @@ export default function HomeScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
   const [error, setError] = useState(null);
+
+  // Splash screen and guest preferences state
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashShownBefore, setSplashShownBefore] = useState(null);
+  const [guestCountries, setGuestCountries] = useState([]);
+  const [guestCategories, setGuestCategories] = useState([]);
+
   const paperTheme = usePaperTheme();
   const { isAuthenticated } = useAuth();
   const layout = useLayout();
+  const preferencesLoadedRef = useRef(false);
 
   // On tablet/desktop, no bottom tab bar, so reduce padding
   const bottomPadding = layout.isMobile ? 100 : 24;
@@ -66,13 +84,46 @@ export default function HomeScreen({ navigation }) {
 
   const layoutConfig = getLayoutConfig(screenWidth);
 
+  // Check if splash was shown before (on mount)
   useEffect(() => {
-    loadInitialData();
+    const checkSplashStatus = async () => {
+      try {
+        const [shown, storedCountries, storedCategories] = await Promise.all([
+          AsyncStorage.getItem(SPLASH_SHOWN_KEY),
+          AsyncStorage.getItem(GUEST_COUNTRIES_KEY),
+          AsyncStorage.getItem(GUEST_CATEGORIES_KEY),
+        ]);
+
+        setSplashShownBefore(shown === 'true');
+
+        // Load existing guest preferences
+        if (storedCountries) {
+          setGuestCountries(JSON.parse(storedCountries));
+        }
+        if (storedCategories) {
+          setGuestCategories(JSON.parse(storedCategories));
+        }
+
+        preferencesLoadedRef.current = true;
+      } catch (error) {
+        console.error('[Home] Failed to check splash status:', error);
+        setSplashShownBefore(false);
+      }
+    };
+
+    checkSplashStatus();
   }, []);
+
+  // Load initial data when preferences are ready
+  useEffect(() => {
+    if (preferencesLoadedRef.current && splashShownBefore !== null) {
+      loadInitialData();
+    }
+  }, [splashShownBefore]);
 
   // Reload feed when authentication state changes (personalized vs regular feed)
   useEffect(() => {
-    if (!loading) {
+    if (!loading && !showSplash) {
       loadArticles(selectedCategory);
     }
   }, [isAuthenticated]);
@@ -106,25 +157,33 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  const loadArticles = async (category = null) => {
+  const loadArticles = async (category = null, countriesFilter = null) => {
     let data, error;
+
+    // Determine article limit based on authentication
+    const articleLimit = isAuthenticated ? 30 : GUEST_ARTICLE_LIMIT;
+
+    // Get countries filter - use provided or fall back to guest preferences
+    const countriesToFilter = countriesFilter || guestCountries;
 
     // Use personalized feed for authenticated users (no category filter)
     // Fall back to regular feed for guests or when filtering by category
     if (isAuthenticated && !category) {
       const result = await articles.getPersonalizedFeed({
-        limit: 30,
+        limit: articleLimit,
         offset: 0,
         excludeRead: true,
         diversity: 0.3,
+        countries: countriesToFilter.length > 0 ? countriesToFilter : undefined,
       });
       data = result.data;
       error = result.error;
     } else {
       const result = await articles.getFeed({
-        limit: 30,
+        limit: articleLimit,
         offset: 0,
         category,
+        countries: countriesToFilter.length > 0 ? countriesToFilter : undefined,
       });
       data = result.data;
       error = result.error;
@@ -138,6 +197,19 @@ export default function HomeScreen({ navigation }) {
       console.error('Failed to load articles:', error);
     }
   };
+
+  // Handle splash screen close and preferences
+  const handleSplashClose = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
+  const handlePreferencesSet = useCallback(({ countries, categories }) => {
+    setGuestCountries(countries || []);
+    setGuestCategories(categories || []);
+
+    // Reload articles with new preferences
+    loadArticles(selectedCategory, countries);
+  }, [selectedCategory]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -228,12 +300,19 @@ export default function HomeScreen({ navigation }) {
     },
   };
 
-  if (loading) {
+  // Show splash screen for first-time users or during loading
+  // For returning users who have seen splash before, only show during initial load
+  if (showSplash || loading) {
+    // Determine if we should show customization flow
+    const shouldShowCustomization = !isAuthenticated && !splashShownBefore;
+
     return (
       <SplashScreen
-        isLoading={true}
-        loadingMessage="Fetching the latest news..."
-        showFeatures={true}
+        isLoading={loading}
+        loadingMessage="Fetching the latest news from across Africa..."
+        showCustomization={shouldShowCustomization}
+        onClose={handleSplashClose}
+        onPreferencesSet={handlePreferencesSet}
       />
     );
   }
@@ -298,7 +377,7 @@ export default function HomeScreen({ navigation }) {
           !isAuthenticated && articlesList.length > 0 ? (
             <LoginPromo
               variant="compact"
-              articleLimit={20}
+              articleLimit={GUEST_ARTICLE_LIMIT}
               style={styles.loginPromo}
             />
           ) : null

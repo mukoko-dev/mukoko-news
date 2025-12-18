@@ -16,7 +16,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import mukokoTheme from '../theme';
 
-// Suggested search queries for Zimbabwe news
+// Suggested search queries for African news
 const SUGGESTED_QUERIES = [
   { query: 'latest politics', icon: 'magnify' },
   { query: 'business news', icon: 'magnify' },
