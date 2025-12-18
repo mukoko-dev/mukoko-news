@@ -176,9 +176,10 @@ class LocalPreferencesService {
   /**
    * Get selected countries
    * @returns {Promise<string[]>} Array of country codes (e.g., ['ZW', 'SA'])
+   * Returns empty array as default - means "all countries" (no filtering)
    */
   async getSelectedCountries() {
-    return this.get(PREF_KEYS.SELECTED_COUNTRIES, ['ZW']); // Default to Zimbabwe
+    return this.get(PREF_KEYS.SELECTED_COUNTRIES, []); // Default to empty = all countries
   }
 
   /**
