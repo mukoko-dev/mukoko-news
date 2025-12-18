@@ -437,7 +437,7 @@ app.get("/api/categories", async (c) => {
   try {
     const services = initializeServices(c.env);
     const categories = await services.d1Service.getCategories();
-    
+
     // Add statistics for each category
     const categoriesWithStats = await Promise.all(
       categories.map(async (cat) => {
@@ -448,13 +448,52 @@ app.get("/api/categories", async (c) => {
         };
       })
     );
-    
+
     return c.json({
       categories: categoriesWithStats
     });
   } catch (error) {
     console.error("Error fetching categories:", error);
     return c.json({ error: "Failed to fetch categories" }, 500);
+  }
+});
+
+// Public stats endpoint - safe aggregate data for Insights feature
+// This is separate from /api/admin/stats which may contain sensitive data
+app.get("/api/stats", async (c) => {
+  try {
+    const services = initializeServices(c.env);
+
+    // Get basic database statistics - all public, aggregate data
+    const totalArticles = await services.d1Service.getArticleCount();
+
+    // Get RSS source count
+    const sourcesResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM rss_sources WHERE enabled = 1'
+    ).first<{ count: number }>();
+    const activeSources = sourcesResult?.count || 0;
+
+    // Get categories count
+    const categoriesResult = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM categories WHERE enabled = 1'
+    ).first<{ count: number }>();
+    const categoriesCount = categoriesResult?.count || 0;
+
+    // Get today's article count
+    const todayArticles = await services.d1Service.getArticleCount({ today: true });
+
+    return c.json({
+      database: {
+        total_articles: totalArticles,
+        active_sources: activeSources,
+        categories: categoriesCount,
+        today_articles: todayArticles
+      },
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Error fetching public stats:", error);
+    return c.json({ error: "Failed to fetch stats" }, 500);
   }
 });
 
@@ -2619,12 +2658,16 @@ app.post("/api/author/:authorId/follow", async (c) => {
   try {
     const services = initializeServices(c.env);
     const authorId = parseInt(c.req.param("authorId"));
-    
-    // TODO: Get userId from authentication
-    const userId = 1; // Placeholder - would come from auth middleware
-    
+
+    // Get userId from headers - consistent with other user engagement endpoints
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+
+    if (!userId) {
+      return c.json({ error: "User identification required. Please login or provide session ID." }, 401);
+    }
+
     const result = await services.authorProfileService.toggleAuthorFollow(userId, authorId);
-    
+
     return c.json(result);
   } catch (error) {
     console.error("Error toggling author follow:", error);
@@ -2637,12 +2680,16 @@ app.post("/api/source/:sourceId/follow", async (c) => {
   try {
     const services = initializeServices(c.env);
     const sourceId = c.req.param("sourceId");
-    
-    // TODO: Get userId from authentication
-    const userId = 1; // Placeholder - would come from auth middleware
-    
+
+    // Get userId from headers - consistent with other user engagement endpoints
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+
+    if (!userId) {
+      return c.json({ error: "User identification required. Please login or provide session ID." }, 401);
+    }
+
     const result = await services.authorProfileService.toggleSourceFollow(userId, sourceId);
-    
+
     return c.json(result);
   } catch (error) {
     console.error("Error toggling source follow:", error);

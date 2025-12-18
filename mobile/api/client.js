@@ -599,10 +599,10 @@ export const insights = {
   },
 
   /**
-   * Get platform statistics
+   * Get platform statistics (public aggregate data)
    */
   async getStats() {
-    return apiRequest('/api/admin/stats');
+    return apiRequest('/api/stats');
   },
 
   /**
