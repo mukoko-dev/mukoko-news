@@ -317,7 +317,7 @@ export default function SearchScreen({ navigation, route }) {
       {/* Search Bar - Always visible */}
       <View style={[styles.searchContainer, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <Searchbar
-          placeholder="Search Zimbabwe news..."
+          placeholder="Search African news..."
           value={searchQuery}
           onChangeText={handleSearchChange}
           onSubmitEditing={handleSearchSubmit}
@@ -520,7 +520,7 @@ export default function SearchScreen({ navigation, route }) {
               {!stats && trending.length === 0 && authors.length === 0 && (
                 <View style={styles.emptyState}>
                   <Text style={styles.emptyEmoji}>🔍</Text>
-                  <Text style={[styles.emptyTitle, { color: colors.text }]}>Search Zimbabwe News</Text>
+                  <Text style={[styles.emptyTitle, { color: colors.text }]}>Search African News</Text>
                   <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
                     Find articles from trusted sources
                   </Text>

@@ -27,6 +27,7 @@ import { CategoryManager } from "./services/CategoryManager.js";
 import { ObservabilityService } from "./services/ObservabilityService.js";
 import { D1UserService } from "./services/D1UserService.js";
 import { PersonalizedFeedService } from "./services/PersonalizedFeedService.js";
+import { CountryService } from "./services/CountryService.js";
 // Durable Objects for real-time features
 import { RealtimeAnalyticsDO } from "./services/RealtimeAnalyticsDO.js";
 import { ArticleInteractionsDO } from "./services/ArticleInteractionsDO.js";
@@ -464,11 +465,17 @@ app.get("/api/feeds", async (c) => {
     const offset = parseInt(c.req.query("offset") || "0");
     const category = c.req.query("category");
     const sort = c.req.query("sort") || "latest"; // latest, trending, popular
+    // Pan-African support: filter by countries (comma-separated country codes)
+    const countriesParam = c.req.query("countries");
+    const countries = countriesParam ? countriesParam.split(",").filter(c => c.trim()) : null;
+
+    // Build query params array
+    const queryParams: (string | number)[] = [];
 
     // Get articles directly from database
     let articlesQuery = `
       SELECT id, title, slug, description, content_snippet, author, source, source_id,
-             published_at, image_url, original_url, category_id, view_count,
+             published_at, image_url, original_url, category_id, country_id, view_count,
              like_count, bookmark_count
       FROM articles
       WHERE status = 'published'
@@ -479,6 +486,15 @@ app.get("/api/feeds", async (c) => {
     if (category && category !== 'all') {
       articlesQuery += ` AND category_id = ?`;
       countQuery += ` AND category_id = ?`;
+      queryParams.push(category);
+    }
+
+    // Pan-African: filter by countries
+    if (countries && countries.length > 0) {
+      const placeholders = countries.map(() => '?').join(',');
+      articlesQuery += ` AND country_id IN (${placeholders})`;
+      countQuery += ` AND country_id IN (${placeholders})`;
+      queryParams.push(...countries);
     }
 
     // Apply sorting based on sort parameter
@@ -502,14 +518,13 @@ app.get("/api/feeds", async (c) => {
 
     articlesQuery += ` ${orderClause} LIMIT ? OFFSET ?`;
 
-    // Execute queries
-    const articlesResult = category && category !== 'all' ?
-      await c.env.DB.prepare(articlesQuery).bind(category, limit, offset).all() :
-      await c.env.DB.prepare(articlesQuery).bind(limit, offset).all();
+    // Execute queries with all params
+    const articlesResult = await c.env.DB.prepare(articlesQuery)
+      .bind(...queryParams, limit, offset).all();
 
-    const totalResult = category && category !== 'all' ?
-      await c.env.DB.prepare(countQuery).bind(category).first<{ total: number }>() :
-      await c.env.DB.prepare(countQuery).first<{ total: number }>();
+    const totalResult = queryParams.length > 0
+      ? await c.env.DB.prepare(countQuery).bind(...queryParams).first<{ total: number }>()
+      : await c.env.DB.prepare(countQuery).first<{ total: number }>();
 
     const totalCount = totalResult?.total || 0;
 
@@ -533,7 +548,8 @@ app.get("/api/feeds", async (c) => {
       total: totalCount,
       limit,
       offset,
-      hasMore: offset + limit < totalCount
+      hasMore: offset + limit < totalCount,
+      countries: countries || undefined,  // Pan-African: return countries used for filtering
     });
   } catch (error) {
     console.error("Error fetching articles:", error);
@@ -548,6 +564,9 @@ app.get("/api/feeds/personalized", async (c) => {
     const offset = parseInt(c.req.query("offset") || "0");
     const excludeRead = c.req.query("excludeRead") !== "false";
     const diversityFactor = parseFloat(c.req.query("diversity") || "0.3");
+    // Pan-African support: optional country filter override (comma-separated)
+    const countriesParam = c.req.query("countries");
+    const countries = countriesParam ? countriesParam.split(",").filter(c => c.trim()) : null;
 
     // Get user ID from header or session
     const userId = c.req.header("x-user-id") || c.req.header("x-session-id") || null;
@@ -555,12 +574,13 @@ app.get("/api/feeds/personalized", async (c) => {
     // Initialize personalized feed service
     const feedService = new PersonalizedFeedService(c.env.DB);
 
-    // Get personalized feed
+    // Get personalized feed (will use user's country preferences if no override)
     const result = await feedService.getPersonalizedFeed(userId, {
       limit,
       offset,
       excludeRead,
       diversityFactor,
+      countries,  // Pan-African: pass country override
     });
 
     // Fetch keywords for each article
@@ -584,6 +604,7 @@ app.get("/api/feeds/personalized", async (c) => {
       offset,
       hasMore: offset + limit < result.total,
       isPersonalized: result.isPersonalized,
+      countries: result.countries,  // Pan-African: return which countries were used
     });
   } catch (error) {
     console.error("Error fetching personalized feed:", error);
@@ -1945,6 +1966,202 @@ app.delete("/api/user/me/follows/:type/:id", async (c) => {
   } catch (error) {
     console.error("[UNFOLLOW] Error:", error);
     return c.json({ error: "Failed to unfollow" }, 500);
+  }
+});
+
+// ===== COUNTRY ENDPOINTS (Pan-African Support) =====
+
+// Get all available countries
+app.get("/api/countries", async (c) => {
+  try {
+    const withStats = c.req.query("withStats") === "true";
+    const countryService = new CountryService(c.env.DB);
+
+    const countries = await countryService.getCountries({
+      enabledOnly: true,
+      withStats,
+    });
+
+    return c.json({ countries });
+  } catch (error) {
+    console.error("[COUNTRIES] Error fetching countries:", error);
+    return c.json({ error: "Failed to fetch countries" }, 500);
+  }
+});
+
+// Get a single country with details
+app.get("/api/countries/:countryId", async (c) => {
+  try {
+    const countryId = c.req.param("countryId");
+    const countryService = new CountryService(c.env.DB);
+
+    const result = await countryService.getCountryWithDetails(countryId);
+
+    if (!result.country) {
+      return c.json({ error: "Country not found" }, 404);
+    }
+
+    return c.json(result);
+  } catch (error) {
+    console.error("[COUNTRIES] Error fetching country:", error);
+    return c.json({ error: "Failed to fetch country" }, 500);
+  }
+});
+
+// Get user's country preferences
+app.get("/api/user/me/countries", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+
+    if (!userId) {
+      return c.json({ error: "User not authenticated" }, 401);
+    }
+
+    const countryService = new CountryService(c.env.DB);
+    const preferences = await countryService.getUserCountryPreferences(userId);
+
+    return c.json({
+      countries: preferences.countries,
+      primaryCountry: preferences.primaryCountry,
+    });
+  } catch (error) {
+    console.error("[USER_COUNTRIES] Error:", error);
+    return c.json({ error: "Failed to fetch country preferences" }, 500);
+  }
+});
+
+// Set user's country preferences (replaces all)
+app.put("/api/user/me/countries", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+
+    if (!userId) {
+      return c.json({ error: "User not authenticated" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { countries } = body;
+
+    if (!Array.isArray(countries)) {
+      return c.json({ error: "countries must be an array" }, 400);
+    }
+
+    const countryService = new CountryService(c.env.DB);
+    const result = await countryService.setUserCountryPreferences(userId, countries);
+
+    if (!result.success) {
+      return c.json({ error: result.error }, 400);
+    }
+
+    // Track in analytics
+    if (c.env.USER_ANALYTICS) {
+      try {
+        c.env.USER_ANALYTICS.writeDataPoint({
+          blobs: ['country_preferences_updated', userId, JSON.stringify(countries.map(c => c.countryId))],
+          doubles: [Date.now(), countries.length],
+          indexes: ['countries']
+        });
+      } catch (analyticsError) {
+        console.error('[COUNTRIES] Analytics tracking failed:', analyticsError);
+      }
+    }
+
+    return c.json({ success: true, message: "Country preferences updated" });
+  } catch (error) {
+    console.error("[USER_COUNTRIES] Error:", error);
+    return c.json({ error: "Failed to update country preferences" }, 500);
+  }
+});
+
+// Add a country to user's preferences
+app.post("/api/user/me/countries", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+
+    if (!userId) {
+      return c.json({ error: "User not authenticated" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { countryId, isPrimary, notifyBreaking } = body;
+
+    if (!countryId) {
+      return c.json({ error: "countryId is required" }, 400);
+    }
+
+    const countryService = new CountryService(c.env.DB);
+    const result = await countryService.addUserCountry(userId, countryId, {
+      isPrimary,
+      notifyBreaking,
+    });
+
+    if (!result.success) {
+      return c.json({ error: result.error }, 400);
+    }
+
+    return c.json({ success: true, message: `Added ${countryId} to preferences` });
+  } catch (error) {
+    console.error("[USER_COUNTRIES] Error:", error);
+    return c.json({ error: "Failed to add country" }, 500);
+  }
+});
+
+// Remove a country from user's preferences
+app.delete("/api/user/me/countries/:countryId", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+
+    if (!userId) {
+      return c.json({ error: "User not authenticated" }, 401);
+    }
+
+    const countryId = c.req.param("countryId");
+    const countryService = new CountryService(c.env.DB);
+    const result = await countryService.removeUserCountry(userId, countryId);
+
+    return c.json({ success: result.success });
+  } catch (error) {
+    console.error("[USER_COUNTRIES] Error:", error);
+    return c.json({ error: "Failed to remove country" }, 500);
+  }
+});
+
+// Set user's primary country
+app.put("/api/user/me/countries/:countryId/primary", async (c) => {
+  try {
+    const userId = c.req.header('x-user-id') || c.req.header('x-session-id');
+
+    if (!userId) {
+      return c.json({ error: "User not authenticated" }, 401);
+    }
+
+    const countryId = c.req.param("countryId");
+    const countryService = new CountryService(c.env.DB);
+    const result = await countryService.setUserPrimaryCountry(userId, countryId);
+
+    if (!result.success) {
+      return c.json({ error: result.error }, 400);
+    }
+
+    return c.json({ success: true, message: `Set ${countryId} as primary country` });
+  } catch (error) {
+    console.error("[USER_COUNTRIES] Error:", error);
+    return c.json({ error: "Failed to set primary country" }, 500);
+  }
+});
+
+// Get article counts by country (for stats)
+app.get("/api/countries/stats/articles", async (c) => {
+  try {
+    const since = c.req.query("since");
+    const countryService = new CountryService(c.env.DB);
+
+    const stats = await countryService.getArticleCountsByCountry({ since });
+
+    return c.json({ stats });
+  } catch (error) {
+    console.error("[COUNTRIES] Error fetching stats:", error);
+    return c.json({ error: "Failed to fetch country stats" }, 500);
   }
 });
 
