@@ -12,18 +12,20 @@ import {
 import { Text, IconButton, Button, Divider, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import mukokoTheme from '../theme';
+import mukokoTheme, { paperTheme, paperThemeDark } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI } from '../api/client';
+import { useTheme } from '../contexts/ThemeContext';
 
 /**
- * ArticleDetailScreen - Full article view
+ * ArticleDetailScreen - Full article view with hero section
  *
  * Features:
- * - Full article content with image
+ * - Dark hero section with category, title, source, date, keywords
+ * - Full article content
  * - Like, save, share actions
- * - Comments section
  * - Read original link
  * - View tracking
  * - Full dark/light mode support
@@ -31,8 +33,12 @@ import { articles as articlesAPI } from '../api/client';
 export default function ArticleDetailScreen({ route, navigation }) {
   const { articleId, source, slug } = route.params || {};
   const { user, isAuthenticated } = useAuth();
-  const paperTheme = usePaperTheme();
+  const currentTheme = usePaperTheme();
+  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Hero uses inverse theme for contrast (light mode = dark hero, dark mode = light hero)
+  const heroTheme = isDark ? paperTheme : paperThemeDark;
 
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -44,70 +50,41 @@ export default function ArticleDetailScreen({ route, navigation }) {
   // Dynamic styles based on theme
   const dynamicStyles = {
     container: {
-      backgroundColor: paperTheme.colors.background,
-    },
-    backBar: {
-      backgroundColor: paperTheme.colors.background,
-      borderBottomColor: paperTheme.colors.outline,
-    },
-    backIcon: {
-      color: paperTheme.colors.onSurface,
-    },
-    backText: {
-      color: paperTheme.colors.onSurface,
+      backgroundColor: currentTheme.colors.background,
     },
     loadingText: {
-      color: paperTheme.colors.onSurfaceVariant,
+      color: currentTheme.colors.onSurfaceVariant,
     },
     errorCard: {
-      backgroundColor: paperTheme.colors.surface,
-      borderColor: paperTheme.colors.outline,
+      backgroundColor: currentTheme.colors.surface,
+      borderColor: currentTheme.colors.outline,
     },
     errorTitle: {
-      color: paperTheme.colors.onSurface,
+      color: currentTheme.colors.onSurface,
     },
     errorMessage: {
-      color: paperTheme.colors.onSurfaceVariant,
+      color: currentTheme.colors.onSurfaceVariant,
     },
     articleContainer: {
-      backgroundColor: paperTheme.colors.surface,
-      borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
-    },
-    articleImage: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
-    },
-    metaSource: {
-      color: paperTheme.colors.primary,
-    },
-    metaDivider: {
-      color: paperTheme.colors.onSurfaceVariant,
-    },
-    metaDate: {
-      color: paperTheme.colors.onSurfaceVariant,
-    },
-    articleTitle: {
-      color: paperTheme.colors.onSurface,
-    },
-    articleDescription: {
-      color: paperTheme.colors.onSurfaceVariant,
+      backgroundColor: currentTheme.colors.surface,
     },
     contentParagraph: {
-      color: paperTheme.colors.onSurface,
+      color: currentTheme.colors.onSurface,
     },
     actionsDivider: {
-      backgroundColor: paperTheme.colors.outline,
+      backgroundColor: currentTheme.colors.outline,
     },
     actionButton: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
+      backgroundColor: currentTheme.colors.surfaceVariant,
     },
     actionText: {
-      color: paperTheme.colors.onSurface,
+      color: currentTheme.colors.onSurface,
     },
     readOriginalButton: {
-      backgroundColor: paperTheme.colors.primary,
+      backgroundColor: currentTheme.colors.primary,
     },
     readOriginalText: {
-      color: paperTheme.colors.onPrimary,
+      color: currentTheme.colors.onPrimary,
     },
   };
 
@@ -122,10 +99,8 @@ export default function ArticleDetailScreen({ route, navigation }) {
 
       let result;
       if (source && slug) {
-        // Fetch by source and slug
         result = await articlesAPI.getBySourceSlug(source, slug);
       } else if (articleId) {
-        // Fetch by ID (fallback)
         result = await articlesAPI.getById(articleId);
       } else {
         throw new Error('No article identifier provided');
@@ -141,12 +116,10 @@ export default function ArticleDetailScreen({ route, navigation }) {
         setIsSaved(articleData.isSaved || false);
         setLikesCount(articleData.likesCount || 0);
 
-        // Set navigation title for SEO (document title)
         navigation.setOptions({
           title: articleData.title,
         });
 
-        // Track article view
         await articlesAPI.trackView(articleData.id);
       } else {
         setError('Article not found');
@@ -165,27 +138,20 @@ export default function ArticleDetailScreen({ route, navigation }) {
       return;
     }
 
-    // Save original values for rollback
     const wasLiked = isLiked;
     const originalCount = likesCount;
 
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-      // Optimistic update
       setIsLiked(!wasLiked);
       setLikesCount(wasLiked ? originalCount - 1 : originalCount + 1);
 
       const result = await articlesAPI.toggleLike(article.id);
       if (result.error) {
-        // Revert on error using saved values
         setIsLiked(wasLiked);
         setLikesCount(originalCount);
-        console.error('[ArticleDetail] Like error:', result.error);
       }
     } catch (error) {
-      console.error('[ArticleDetail] Like error:', error);
-      // Revert on error using saved values
       setIsLiked(wasLiked);
       setLikesCount(originalCount);
     }
@@ -197,24 +163,17 @@ export default function ArticleDetailScreen({ route, navigation }) {
       return;
     }
 
-    // Save original value for rollback
     const wasSaved = isSaved;
 
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-      // Optimistic update
       setIsSaved(!wasSaved);
 
       const result = await articlesAPI.toggleBookmark(article.id);
       if (result.error) {
-        // Revert on error using saved value
         setIsSaved(wasSaved);
-        console.error('[ArticleDetail] Save error:', result.error);
       }
     } catch (error) {
-      console.error('[ArticleDetail] Save error:', error);
-      // Revert on error using saved value
       setIsSaved(wasSaved);
     }
   };
@@ -224,7 +183,6 @@ export default function ArticleDetailScreen({ route, navigation }) {
 
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
       await Share.share({
         message: `${article.title}\n\nRead on Mukoko News: ${article.original_url}`,
         title: article.title,
@@ -241,11 +199,8 @@ export default function ArticleDetailScreen({ route, navigation }) {
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       const supported = await Linking.canOpenURL(article.original_url);
-
       if (supported) {
         await Linking.openURL(article.original_url);
-      } else {
-        console.error('[ArticleDetail] Cannot open URL:', article.original_url);
       }
     } catch (error) {
       console.error('[ArticleDetail] Open URL error:', error);
@@ -255,9 +210,9 @@ export default function ArticleDetailScreen({ route, navigation }) {
   const formatDate = (dateString) => {
     if (!dateString) return 'Today';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
+    return date.toLocaleDateString('en-US', {
+      month: 'long',
       day: 'numeric',
-      month: 'short',
       year: 'numeric',
     });
   };
@@ -271,41 +226,39 @@ export default function ArticleDetailScreen({ route, navigation }) {
     }
   };
 
+  // Extract keywords/tags from article
+  const getKeywords = () => {
+    const keywords = [];
+    if (article?.category) {
+      keywords.push(article.category);
+    }
+    if (article?.tags && Array.isArray(article.tags)) {
+      keywords.push(...article.tags.slice(0, 4));
+    }
+    // Extract from title if no tags
+    if (keywords.length < 2 && article?.title) {
+      const titleLower = article.title.toLowerCase();
+      const commonKeywords = ['zimbabwe', 'harare', 'bulawayo', 'politics', 'economy', 'sports', 'business'];
+      commonKeywords.forEach(kw => {
+        if (titleLower.includes(kw) && !keywords.includes(kw)) {
+          keywords.push(kw.charAt(0).toUpperCase() + kw.slice(1));
+        }
+      });
+    }
+    return keywords.slice(0, 5);
+  };
+
   return (
     <View style={[styles.container, dynamicStyles.container]}>
-      {/* Back Button Bar */}
-      <View style={[styles.backBar, dynamicStyles.backBar, { paddingTop: insets.top }]}>
-        <TouchableOpacity
-          onPress={handleBack}
-          style={styles.backButton}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons
-            name="arrow-left"
-            size={24}
-            color={dynamicStyles.backIcon.color}
-          />
-          <Text style={[styles.backText, dynamicStyles.backText]}>Back</Text>
-        </TouchableOpacity>
-
-        {/* Header Actions */}
-        <View style={styles.headerActions}>
-          <IconButton
-            icon="share-variant-outline"
-            iconColor={paperTheme.colors.onSurface}
-            size={22}
-            onPress={handleShare}
-            style={styles.headerIcon}
-          />
-        </View>
-      </View>
-
-      {/* Content */}
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Loading State */}
         {loading && (
           <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={paperTheme.colors.primary} />
+            <ActivityIndicator size="large" color={currentTheme.colors.primary} />
             <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Loading article...</Text>
           </View>
         )}
@@ -317,18 +270,15 @@ export default function ArticleDetailScreen({ route, navigation }) {
               <MaterialCommunityIcons
                 name="newspaper-variant-outline"
                 size={64}
-                color={paperTheme.colors.onSurfaceVariant}
+                color={currentTheme.colors.onSurfaceVariant}
               />
-              <Text
-                style={[styles.errorTitle, dynamicStyles.errorTitle]}
-                accessibilityRole="header"
-              >Article Not Found</Text>
+              <Text style={[styles.errorTitle, dynamicStyles.errorTitle]}>Article Not Found</Text>
               <Text style={[styles.errorMessage, dynamicStyles.errorMessage]}>{error}</Text>
               <Button
                 mode="contained"
                 onPress={() => navigation.goBack()}
                 style={styles.errorButton}
-                buttonColor={paperTheme.colors.primary}
+                buttonColor={currentTheme.colors.primary}
               >
                 Go Back
               </Button>
@@ -338,36 +288,110 @@ export default function ArticleDetailScreen({ route, navigation }) {
 
         {/* Article Content */}
         {article && !loading && !error && (
-          <View style={[styles.articleContainer, dynamicStyles.articleContainer]}>
-            {/* Article Image */}
-            {article.image_url && (
-              <Image
-                source={{ uri: article.image_url }}
-                style={[styles.articleImage, dynamicStyles.articleImage]}
-                resizeMode="cover"
-              />
-            )}
+          <>
+            {/* Hero Section - Uses inverse theme for contrast */}
+            <LinearGradient
+              colors={[heroTheme.colors.background, heroTheme.colors.surface]}
+              style={[styles.heroSection, { paddingTop: insets.top + 16 }]}
+            >
+              {/* Back Button */}
+              <TouchableOpacity
+                onPress={handleBack}
+                style={[styles.heroBackButton, { backgroundColor: heroTheme.colors.glass }]}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="arrow-left"
+                  size={24}
+                  color={heroTheme.colors.onSurface}
+                />
+              </TouchableOpacity>
 
-            <View style={styles.articleContent}>
-              {/* Article Meta */}
-              <View style={styles.metaContainer}>
-                <Text style={[styles.metaSource, dynamicStyles.metaSource]}>{article.source || 'Unknown'}</Text>
-                <Text style={[styles.metaDivider, dynamicStyles.metaDivider]}>•</Text>
-                <Text style={[styles.metaDate, dynamicStyles.metaDate]}>{formatDate(article.published_at)}</Text>
-              </View>
+              {/* Share Button */}
+              <TouchableOpacity
+                onPress={handleShare}
+                style={[styles.heroShareButton, { backgroundColor: heroTheme.colors.glass }]}
+                activeOpacity={0.7}
+              >
+                <MaterialCommunityIcons
+                  name="share-variant-outline"
+                  size={22}
+                  color={heroTheme.colors.onSurface}
+                />
+              </TouchableOpacity>
 
-              {/* Article Title */}
-              <Text
-                style={[styles.articleTitle, dynamicStyles.articleTitle]}
-                accessibilityRole="header"
-              >{article.title}</Text>
-
-              {/* Article Description */}
-              {article.description && (
-                <Text style={[styles.articleDescription, dynamicStyles.articleDescription]}>{article.description}</Text>
+              {/* Category Badge */}
+              {article.category && (
+                <View style={styles.categoryContainer}>
+                  <View style={[styles.categoryBadge, {
+                    backgroundColor: heroTheme.colors.glass,
+                    borderColor: heroTheme.colors.glassBorder,
+                  }]}>
+                    <MaterialCommunityIcons
+                      name="tag-outline"
+                      size={14}
+                      color={heroTheme.colors.primary}
+                    />
+                    <Text style={[styles.categoryText, { color: heroTheme.colors.onSurface }]}>
+                      {article.category.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
               )}
 
-              {/* Article Full Content */}
+              {/* Title */}
+              <Text style={[styles.heroTitle, { color: heroTheme.colors.onSurface }]} accessibilityRole="header">
+                {article.title}
+              </Text>
+
+              {/* Source and Date */}
+              <View style={styles.heroMeta}>
+                <Text style={[styles.heroSource, { color: heroTheme.colors.onSurface }]}>
+                  {article.source || 'Unknown Source'}
+                </Text>
+                <Text style={[styles.heroDate, { color: heroTheme.colors.onSurfaceVariant }]}>
+                  {formatDate(article.published_at)}
+                </Text>
+              </View>
+
+              {/* Keywords/Tags */}
+              {getKeywords().length > 0 && (
+                <View style={styles.keywordsContainer}>
+                  {getKeywords().map((keyword, index) => (
+                    <View key={index} style={[styles.keywordTag, {
+                      backgroundColor: heroTheme.colors.glass,
+                      borderColor: heroTheme.colors.glassBorder,
+                    }]}>
+                      <Text style={[styles.keywordText, { color: heroTheme.colors.onSurfaceVariant }]}>
+                        {keyword}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </LinearGradient>
+
+            {/* Article Image (if exists) */}
+            {article.image_url && (
+              <View style={styles.imageContainer}>
+                <Image
+                  source={{ uri: article.image_url }}
+                  style={styles.articleImage}
+                  resizeMode="cover"
+                />
+              </View>
+            )}
+
+            {/* Article Body */}
+            <View style={[styles.articleBody, dynamicStyles.articleContainer]}>
+              {/* Description */}
+              {article.description && (
+                <Text style={[styles.articleDescription, { color: currentTheme.colors.onSurfaceVariant }]}>
+                  {article.description}
+                </Text>
+              )}
+
+              {/* Full Content */}
               {article.content && (
                 <View style={styles.contentContainer}>
                   {article.content.split('\n\n').map((paragraph, index) => {
@@ -391,11 +415,10 @@ export default function ArticleDetailScreen({ route, navigation }) {
                   style={[styles.actionButton, dynamicStyles.actionButton]}
                   activeOpacity={0.7}
                 >
-                  <IconButton
-                    icon={isLiked ? 'heart' : 'heart-outline'}
-                    iconColor={isLiked ? paperTheme.colors.error : paperTheme.colors.onSurface}
-                    size={24}
-                    style={styles.actionIcon}
+                  <MaterialCommunityIcons
+                    name={isLiked ? 'heart' : 'heart-outline'}
+                    size={22}
+                    color={isLiked ? currentTheme.colors.error : currentTheme.colors.onSurface}
                   />
                   <Text style={[styles.actionText, dynamicStyles.actionText]}>
                     {likesCount > 0 ? likesCount : 'Like'}
@@ -408,11 +431,10 @@ export default function ArticleDetailScreen({ route, navigation }) {
                   style={[styles.actionButton, dynamicStyles.actionButton]}
                   activeOpacity={0.7}
                 >
-                  <IconButton
-                    icon={isSaved ? 'bookmark' : 'bookmark-outline'}
-                    iconColor={isSaved ? paperTheme.colors.tertiary : paperTheme.colors.onSurface}
-                    size={24}
-                    style={styles.actionIcon}
+                  <MaterialCommunityIcons
+                    name={isSaved ? 'bookmark' : 'bookmark-outline'}
+                    size={22}
+                    color={isSaved ? currentTheme.colors.tertiary : currentTheme.colors.onSurface}
                   />
                   <Text style={[styles.actionText, dynamicStyles.actionText]}>Save</Text>
                 </TouchableOpacity>
@@ -423,11 +445,10 @@ export default function ArticleDetailScreen({ route, navigation }) {
                   style={[styles.actionButton, dynamicStyles.actionButton]}
                   activeOpacity={0.7}
                 >
-                  <IconButton
-                    icon="share-variant-outline"
-                    iconColor={paperTheme.colors.onSurface}
-                    size={24}
-                    style={styles.actionIcon}
+                  <MaterialCommunityIcons
+                    name="share-variant-outline"
+                    size={22}
+                    color={currentTheme.colors.onSurface}
                   />
                   <Text style={[styles.actionText, dynamicStyles.actionText]}>Share</Text>
                 </TouchableOpacity>
@@ -435,20 +456,21 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 {/* Read Original Button */}
                 <TouchableOpacity
                   onPress={handleReadOriginal}
-                  style={[styles.actionButton, styles.readOriginalButton, dynamicStyles.readOriginalButton]}
+                  style={[styles.readOriginalButton, dynamicStyles.readOriginalButton]}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.readOriginalText, dynamicStyles.readOriginalText]}>Read Original</Text>
-                  <IconButton
-                    icon="open-in-new"
-                    iconColor={paperTheme.colors.onPrimary}
-                    size={20}
-                    style={styles.actionIcon}
+                  <Text style={[styles.readOriginalText, dynamicStyles.readOriginalText]}>
+                    Read Original
+                  </Text>
+                  <MaterialCommunityIcons
+                    name="open-in-new"
+                    size={18}
+                    color={currentTheme.colors.onPrimary}
                   />
                 </TouchableOpacity>
               </View>
             </View>
-          </View>
+          </>
         )}
       </ScrollView>
     </View>
@@ -459,36 +481,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  backBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: mukokoTheme.spacing.sm,
-    paddingBottom: mukokoTheme.spacing.xs,
-    borderBottomWidth: 1,
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: mukokoTheme.spacing.xs,
-    gap: mukokoTheme.spacing.xs,
-  },
-  backText: {
-    fontSize: 16,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerIcon: {
-    margin: 0,
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: mukokoTheme.spacing.xl,
+    paddingBottom: 100,
   },
   centerContainer: {
     flex: 1,
@@ -511,7 +508,6 @@ const styles = StyleSheet.create({
   },
   errorTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontWeight: mukokoTheme.fonts.serifBold.fontWeight,
     fontSize: 20,
     marginTop: mukokoTheme.spacing.md,
   },
@@ -523,48 +519,117 @@ const styles = StyleSheet.create({
   errorButton: {
     borderRadius: 24,
   },
-  articleContainer: {
-    borderRadius: 16,
-    overflow: 'hidden',
-    marginHorizontal: mukokoTheme.spacing.md,
-    marginTop: mukokoTheme.spacing.md,
+
+  // Hero Section
+  heroSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 32,
+    position: 'relative',
+  },
+  heroBackButton: {
+    position: 'absolute',
+    top: 16,
+    left: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  heroShareButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  categoryContainer: {
+    marginTop: 60,
+    marginBottom: 20,
+    flexDirection: 'row',
+  },
+  categoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    letterSpacing: 1.5,
+  },
+  heroTitle: {
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 28,
+    lineHeight: 38,
+    marginBottom: 24,
+    letterSpacing: -0.3,
+  },
+  heroMeta: {
+    marginBottom: 20,
+  },
+  heroSource: {
+    fontSize: 15,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    marginBottom: 4,
+  },
+  heroDate: {
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+  },
+  keywordsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  keywordTag: {
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 16,
+  },
+  keywordText: {
+    fontSize: 13,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+
+  // Image
+  imageContainer: {
+    marginHorizontal: 16,
+    marginTop: -16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
   },
   articleImage: {
     width: '100%',
     aspectRatio: 16 / 9,
   },
-  articleContent: {
-    padding: mukokoTheme.spacing.lg,
-  },
-  metaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  metaSource: {
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    fontWeight: mukokoTheme.fonts.medium.fontWeight,
-    fontSize: 14,
-  },
-  metaDivider: {
-    marginHorizontal: mukokoTheme.spacing.xs,
-    fontSize: 14,
-  },
-  metaDate: {
-    fontSize: 14,
-  },
-  articleTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontWeight: mukokoTheme.fonts.serifBold.fontWeight,
-    fontSize: 28,
-    lineHeight: 36,
-    marginBottom: mukokoTheme.spacing.md,
+
+  // Article Body
+  articleBody: {
+    padding: 20,
+    marginTop: 16,
   },
   articleDescription: {
     fontSize: 18,
     lineHeight: 28,
-    marginBottom: mukokoTheme.spacing.lg,
+    marginBottom: 24,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
   contentContainer: {
     marginBottom: mukokoTheme.spacing.lg,
@@ -573,6 +638,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 26,
     marginBottom: mukokoTheme.spacing.md,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
   actionsDivider: {
     marginVertical: mukokoTheme.spacing.lg,
@@ -580,33 +646,32 @@ const styles = StyleSheet.create({
   actionsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
+    gap: 12,
     alignItems: 'center',
   },
   actionButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
     borderRadius: 24,
-    paddingHorizontal: mukokoTheme.spacing.sm,
-    paddingVertical: mukokoTheme.spacing.xs,
-  },
-  actionIcon: {
-    margin: 0,
-    padding: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   actionText: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    fontWeight: mukokoTheme.fonts.medium.fontWeight,
-    marginLeft: -4,
   },
   readOriginalButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderRadius: 24,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     marginLeft: 'auto',
   },
   readOriginalText: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    fontWeight: mukokoTheme.fonts.medium.fontWeight,
-    marginHorizontal: mukokoTheme.spacing.sm,
   },
 });
