@@ -1,9 +1,9 @@
 /**
  * SplashScreen Component
- * Initial loading screen with Pan-African branding and public customization
+ * Slide-up modal for Pan-African branding and public customization
  *
  * Features:
- * - Mukoko News logo and Pan-African tagline
+ * - Netflix-style slide-up modal
  * - Country selection (step 1)
  * - Category selection (step 2)
  * - Close button for early skip
@@ -20,15 +20,15 @@ import {
   ScrollView,
   TouchableOpacity,
   Dimensions,
-  AccessibilityInfo,
+  Modal,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { Text, ActivityIndicator, useTheme as usePaperTheme, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { spacing, typography, layout } from '../styles/globalStyles';
+import { spacing, typography } from '../styles/globalStyles';
 import mukokoTheme from '../theme';
-import ZimbabweFlagStrip from './ZimbabweFlagStrip';
 import { countries as countriesAPI, categories as categoriesAPI } from '../api/client';
 
 // Storage keys for guest preferences
@@ -45,17 +45,15 @@ const AUTO_CLOSE_TIMEOUT = 60000;
 // Minimum touch target size for WCAG compliance (44x44 dp)
 const MIN_TOUCH_TARGET = 44;
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Modal height (70% of screen)
+const MODAL_HEIGHT = SCREEN_HEIGHT * 0.75;
 
 /**
  * CountrySelectionGrid - Grid of countries for selection
  */
-function CountrySelectionGrid({
-  countries,
-  selectedCountries,
-  onToggle,
-  theme,
-}) {
+function CountrySelectionGrid({ countries, selectedCountries, onToggle, theme }) {
   const cardWidth = (SCREEN_WIDTH - spacing.xl * 2 - spacing.sm * 2) / 3;
 
   return (
@@ -76,10 +74,10 @@ function CountrySelectionGrid({
               {
                 backgroundColor: isSelected
                   ? theme.colors.primary
-                  : theme.colors.glass || 'rgba(94, 87, 114, 0.08)',
+                  : 'rgba(255, 255, 255, 0.1)',
                 borderColor: isSelected
                   ? theme.colors.primary
-                  : theme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
+                  : 'rgba(255, 255, 255, 0.2)',
               },
             ]}
             accessibilityRole="checkbox"
@@ -92,7 +90,7 @@ function CountrySelectionGrid({
             <Text
               style={[
                 styles.gridName,
-                { color: isSelected ? theme.colors.onPrimary : theme.colors.onSurface },
+                { color: isSelected ? theme.colors.onPrimary : '#FFFFFF' },
               ]}
               numberOfLines={1}
             >
@@ -113,13 +111,8 @@ function CountrySelectionGrid({
 /**
  * CategorySelectionGrid - Grid of categories for selection
  */
-function CategorySelectionGrid({
-  categories,
-  selectedCategories,
-  onToggle,
-  theme,
-}) {
-  const cardWidth = (SCREEN_WIDTH - spacing.xl * 2 - spacing.sm * 2) / 2;
+function CategorySelectionGrid({ categories, selectedCategories, onToggle, theme }) {
+  const cardWidth = (SCREEN_WIDTH - spacing.xl * 2 - spacing.sm) / 2;
 
   return (
     <View
@@ -139,10 +132,10 @@ function CategorySelectionGrid({
               {
                 backgroundColor: isSelected
                   ? theme.colors.primary
-                  : theme.colors.glass || 'rgba(94, 87, 114, 0.08)',
+                  : 'rgba(255, 255, 255, 0.1)',
                 borderColor: isSelected
                   ? theme.colors.primary
-                  : theme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
+                  : 'rgba(255, 255, 255, 0.2)',
               },
             ]}
             accessibilityRole="checkbox"
@@ -155,7 +148,7 @@ function CategorySelectionGrid({
             <Text
               style={[
                 styles.categoryName,
-                { color: isSelected ? theme.colors.onPrimary : theme.colors.onSurface },
+                { color: isSelected ? theme.colors.onPrimary : '#FFFFFF' },
               ]}
               numberOfLines={1}
             >
@@ -176,7 +169,7 @@ function CategorySelectionGrid({
 /**
  * ProgressIndicator - Step indicator dots
  */
-function ProgressIndicator({ currentStep, totalSteps, theme }) {
+function ProgressIndicator({ currentStep, totalSteps }) {
   return (
     <View
       style={styles.progressContainer}
@@ -190,9 +183,7 @@ function ProgressIndicator({ currentStep, totalSteps, theme }) {
           style={[
             styles.progressDot,
             {
-              backgroundColor: i < currentStep
-                ? theme.colors.primary
-                : theme.colors.surfaceVariant,
+              backgroundColor: i < currentStep ? '#FFFFFF' : 'rgba(255, 255, 255, 0.3)',
               width: i === currentStep - 1 ? 24 : 8,
             },
           ]}
@@ -203,13 +194,21 @@ function ProgressIndicator({ currentStep, totalSteps, theme }) {
 }
 
 /**
- * SplashScreen - Initial loading screen with Pan-African branding and customization
- *
- * @param {boolean} isLoading - Whether to show loading indicator
- * @param {string} loadingMessage - Custom loading message
- * @param {boolean} showCustomization - Whether to show country/category selection
- * @param {Function} onClose - Callback when user closes or timeout expires
- * @param {Function} onPreferencesSet - Callback when user sets preferences
+ * FeatureItem - Feature list item with icon
+ */
+function FeatureItem({ icon, text, color }) {
+  return (
+    <View style={styles.featureItem}>
+      <View style={[styles.featureIcon, { backgroundColor: `${color}20` }]}>
+        <MaterialCommunityIcons name={icon} size={20} color={color} />
+      </View>
+      <Text style={styles.featureText}>{text}</Text>
+    </View>
+  );
+}
+
+/**
+ * SplashScreen - Slide-up modal with Pan-African branding and customization
  */
 export default function SplashScreen({
   isLoading = true,
@@ -219,10 +218,10 @@ export default function SplashScreen({
   onPreferencesSet,
 }) {
   const paperTheme = usePaperTheme();
-  const [logoAnim] = useState(new Animated.Value(0));
-  const [contentAnim] = useState(new Animated.Value(0));
+  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Step management (0 = loading, 1 = countries, 2 = categories)
+  // Step management (0 = loading/intro, 1 = countries, 2 = categories)
   const [step, setStep] = useState(0);
 
   // Data
@@ -233,53 +232,46 @@ export default function SplashScreen({
 
   // State
   const [dataLoaded, setDataLoaded] = useState(false);
+  const [modalVisible, setModalVisible] = useState(true);
   const [timeRemaining, setTimeRemaining] = useState(AUTO_CLOSE_TIMEOUT / 1000);
 
   // Refs
   const timerRef = useRef(null);
   const countdownRef = useRef(null);
 
-  // Animate logo entrance
+  // Animate modal entrance
   useEffect(() => {
-    Animated.spring(logoAnim, {
-      toValue: 1,
-      tension: 50,
-      friction: 7,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
-
-  // Animate content when step changes
-  useEffect(() => {
-    contentAnim.setValue(0);
-    Animated.timing(contentAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, [step]);
 
   // Load countries and categories
   useEffect(() => {
     const loadData = async () => {
       try {
-        // Load countries
         const countriesResult = await countriesAPI.getAll({ withStats: true });
         if (countriesResult.data?.countries) {
-          // Sort by priority, show enabled only
           const enabledCountries = countriesResult.data.countries
             .filter(c => c.enabled !== false)
             .sort((a, b) => (b.priority || 0) - (a.priority || 0));
           setCountries(enabledCountries);
         }
 
-        // Load categories
         const categoriesResult = await categoriesAPI.getAll();
         if (categoriesResult.data?.categories) {
           setCategories(categoriesResult.data.categories);
         }
 
-        // Check for existing guest preferences
         const [storedCountries, storedCategories] = await Promise.all([
           AsyncStorage.getItem(GUEST_COUNTRIES_KEY),
           AsyncStorage.getItem(GUEST_CATEGORIES_KEY),
@@ -304,17 +296,9 @@ export default function SplashScreen({
     }
   }, [showCustomization]);
 
-  // Move to step 1 when loading is complete and data is loaded
-  useEffect(() => {
-    if (!isLoading && dataLoaded && showCustomization && step === 0) {
-      setStep(1);
-    }
-  }, [isLoading, dataLoaded, showCustomization, step]);
-
   // Auto-close timer
   useEffect(() => {
     if (!isLoading && showCustomization && step > 0) {
-      // Start countdown timer
       countdownRef.current = setInterval(() => {
         setTimeRemaining(prev => {
           if (prev <= 1) {
@@ -326,7 +310,6 @@ export default function SplashScreen({
         });
       }, 1000);
 
-      // Auto-close after timeout
       timerRef.current = setTimeout(() => {
         handleClose();
       }, AUTO_CLOSE_TIMEOUT);
@@ -338,7 +321,6 @@ export default function SplashScreen({
     };
   }, [isLoading, showCustomization, step]);
 
-  // Reset timer when user interacts
   const resetTimer = useCallback(() => {
     setTimeRemaining(AUTO_CLOSE_TIMEOUT / 1000);
     if (timerRef.current) {
@@ -369,8 +351,25 @@ export default function SplashScreen({
     });
   }, [resetTimer]);
 
+  const animateClose = useCallback((callback) => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: SCREEN_HEIGHT,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      setModalVisible(false);
+      if (callback) callback();
+    });
+  }, [slideAnim, fadeAnim]);
+
   const handleClose = useCallback(async () => {
-    // Save preferences to AsyncStorage for guests
     try {
       await Promise.all([
         AsyncStorage.setItem(GUEST_COUNTRIES_KEY, JSON.stringify(selectedCountries)),
@@ -381,21 +380,24 @@ export default function SplashScreen({
       console.error('[SplashScreen] Failed to save preferences:', error);
     }
 
-    // Call callbacks
-    if (onPreferencesSet) {
-      onPreferencesSet({
-        countries: selectedCountries,
-        categories: selectedCategories,
-      });
-    }
-    if (onClose) {
-      onClose();
-    }
-  }, [selectedCountries, selectedCategories, onPreferencesSet, onClose]);
+    animateClose(() => {
+      if (onPreferencesSet) {
+        onPreferencesSet({
+          countries: selectedCountries,
+          categories: selectedCategories,
+        });
+      }
+      if (onClose) {
+        onClose();
+      }
+    });
+  }, [selectedCountries, selectedCategories, onPreferencesSet, onClose, animateClose]);
 
-  const handleNext = useCallback(() => {
+  const handleGetStarted = useCallback(() => {
     resetTimer();
-    if (step === 1) {
+    if (step === 0) {
+      setStep(1);
+    } else if (step === 1) {
       setStep(2);
     } else if (step === 2) {
       handleClose();
@@ -406,330 +408,385 @@ export default function SplashScreen({
     resetTimer();
     if (step === 2) {
       setStep(1);
+    } else if (step === 1) {
+      setStep(0);
     }
   }, [step, resetTimer]);
 
-  const logoScale = logoAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.8, 1],
-  });
-
-  // Render loading state
+  // Render loading state (full screen)
   if (isLoading || (showCustomization && !dataLoaded)) {
     return (
       <View
-        style={[styles.container, { backgroundColor: paperTheme.colors.background }]}
+        style={[styles.loadingContainer, { backgroundColor: paperTheme.colors.background }]}
         accessibilityRole="alert"
         accessibilityLabel="Loading Mukoko News"
         accessibilityLiveRegion="polite"
       >
-        <ZimbabweFlagStrip />
-
-        <View style={styles.content}>
-          <Animated.View
-            style={[
-              styles.logoSection,
-              {
-                opacity: logoAnim,
-                transform: [{ scale: logoScale }],
-              },
-            ]}
-          >
-            <Image
-              source={MukokoLogo}
-              style={styles.logo}
-              resizeMode="contain"
-              accessibilityLabel="Mukoko News logo"
-            />
-            <Text
-              style={[styles.brandName, { color: paperTheme.colors.onSurface }]}
-              accessibilityRole="header"
-            >
-              Mukoko News
-            </Text>
-            <Text
-              style={[styles.tagline, { color: paperTheme.colors.onSurfaceVariant }]}
-            >
-              Africa's News, Your Way
-            </Text>
-          </Animated.View>
-
-          <View style={styles.descriptionSection}>
-            <Text style={[styles.description, { color: paperTheme.colors.onSurfaceVariant }]}>
-              Stay informed with news from 50+ trusted African sources,
-              across 22 countries, all in one place.
-            </Text>
-          </View>
-
-          <View
-            style={styles.loadingSection}
-            accessibilityRole="progressbar"
-            accessibilityLabel={loadingMessage}
-          >
-            <ActivityIndicator
-              size="large"
-              color={paperTheme.colors.primary}
-              accessibilityElementsHidden
-            />
-            <Text style={[styles.loadingText, { color: paperTheme.colors.onSurfaceVariant }]}>
-              {loadingMessage}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={[styles.footerText, { color: paperTheme.colors.onSurfaceVariant }]}>
-            Powered by Nyuchi Tech • Made for Africa 🌍
-          </Text>
-        </View>
+        <Image
+          source={MukokoLogo}
+          style={styles.loadingLogo}
+          resizeMode="contain"
+          accessibilityLabel="Mukoko News logo"
+        />
+        <Text style={[styles.loadingBrand, { color: paperTheme.colors.onSurface }]}>
+          Mukoko News
+        </Text>
+        <Text style={[styles.loadingTagline, { color: paperTheme.colors.onSurfaceVariant }]}>
+          Africa's News, Your Way
+        </Text>
+        <ActivityIndicator
+          size="large"
+          color={paperTheme.colors.primary}
+          style={styles.loadingSpinner}
+        />
+        <Text style={[styles.loadingText, { color: paperTheme.colors.onSurfaceVariant }]}>
+          {loadingMessage}
+        </Text>
       </View>
     );
   }
 
-  // Render customization steps
   return (
-    <View
-      style={[styles.container, { backgroundColor: paperTheme.colors.background }]}
-      accessibilityRole="dialog"
-      accessibilityLabel={step === 1 ? "Select your countries" : "Select your interests"}
+    <Modal
+      visible={modalVisible}
+      transparent
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={handleClose}
     >
-      <ZimbabweFlagStrip />
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
 
-      {/* Close Button */}
-      <TouchableOpacity
-        style={[styles.closeButton, { backgroundColor: paperTheme.colors.surface }]}
-        onPress={handleClose}
-        accessibilityRole="button"
-        accessibilityLabel="Close and continue to news"
-        accessibilityHint="Skips customization and shows all news"
-        hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-      >
-        <MaterialCommunityIcons
-          name="close"
-          size={24}
-          color={paperTheme.colors.onSurface}
-        />
-      </TouchableOpacity>
-
-      {/* Timer indicator */}
-      <View style={styles.timerContainer} accessibilityElementsHidden>
-        <Text style={[styles.timerText, { color: paperTheme.colors.onSurfaceVariant }]}>
-          Auto-continue in {timeRemaining}s
-        </Text>
-      </View>
-
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Header */}
-        <Animated.View
-          style={[
-            styles.headerSection,
-            { opacity: contentAnim },
-          ]}
-        >
-          <Image
-            source={MukokoLogo}
-            style={styles.logoSmall}
-            resizeMode="contain"
-            accessibilityLabel="Mukoko News logo"
-          />
-
-          <ProgressIndicator
-            currentStep={step}
-            totalSteps={2}
-            theme={paperTheme}
-          />
-
-          <Text
-            style={[styles.stepTitle, { color: paperTheme.colors.onSurface }]}
-            accessibilityRole="header"
-          >
-            {step === 1 ? 'Choose Your Countries' : 'Select Your Interests'}
-          </Text>
-          <Text style={[styles.stepSubtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
-            {step === 1
-              ? 'Select countries to see news from (or skip for all Africa)'
-              : 'Pick topics you care about for a personalized feed'}
-          </Text>
-        </Animated.View>
-
-        {/* Step 1: Country Selection */}
-        {step === 1 && (
-          <Animated.View style={{ opacity: contentAnim }}>
-            <CountrySelectionGrid
-              countries={countries}
-              selectedCountries={selectedCountries}
-              onToggle={toggleCountry}
-              theme={paperTheme}
-            />
-
-            <Text style={[styles.selectionHint, { color: paperTheme.colors.onSurfaceVariant }]}>
-              {selectedCountries.length === 0
-                ? 'No selection = news from all of Africa'
-                : `${selectedCountries.length} ${selectedCountries.length === 1 ? 'country' : 'countries'} selected`}
-            </Text>
-          </Animated.View>
-        )}
-
-        {/* Step 2: Category Selection */}
-        {step === 2 && (
-          <Animated.View style={{ opacity: contentAnim }}>
-            <CategorySelectionGrid
-              categories={categories}
-              selectedCategories={selectedCategories}
-              onToggle={toggleCategory}
-              theme={paperTheme}
-            />
-
-            <Text style={[styles.selectionHint, { color: paperTheme.colors.onSurfaceVariant }]}>
-              {selectedCategories.length === 0
-                ? 'No selection = all news topics'
-                : `${selectedCategories.length} ${selectedCategories.length === 1 ? 'topic' : 'topics'} selected`}
-            </Text>
-          </Animated.View>
-        )}
-      </ScrollView>
-
-      {/* Navigation Buttons */}
-      <View style={[styles.buttonContainer, { backgroundColor: paperTheme.colors.background }]}>
-        <View style={styles.buttonRow}>
-          {step > 1 && (
-            <Button
-              mode="outlined"
-              onPress={handleBack}
-              style={[styles.button, styles.buttonBack]}
-              contentStyle={styles.buttonContent}
-              accessibilityLabel="Go back to country selection"
-            >
-              Back
-            </Button>
-          )}
-          <Button
-            mode="contained"
-            onPress={handleNext}
-            style={[styles.button, step === 1 && styles.buttonFull]}
-            contentStyle={styles.buttonContent}
-            icon={step === 2 ? 'check' : 'arrow-right'}
-            accessibilityLabel={step === 1 ? 'Continue to topic selection' : 'Start reading news'}
-          >
-            {step === 1 ? 'Next' : 'Get Started'}
-          </Button>
-        </View>
-
+      {/* Backdrop */}
+      <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
         <TouchableOpacity
+          style={styles.backdropTouchable}
+          activeOpacity={1}
           onPress={handleClose}
-          style={styles.skipLink}
+          accessibilityLabel="Close modal"
           accessibilityRole="button"
-          accessibilityLabel="Skip customization"
-        >
-          <Text style={[styles.skipText, { color: paperTheme.colors.primary }]}>
-            Skip and show all news
-          </Text>
-        </TouchableOpacity>
-      </View>
+        />
+      </Animated.View>
 
-      {/* Footer */}
-      <View style={styles.footerCompact}>
-        <Text style={[styles.footerText, { color: paperTheme.colors.onSurfaceVariant }]}>
-          Powered by Nyuchi Tech • Made for Africa 🌍
-        </Text>
-      </View>
-    </View>
+      {/* Slide-up Modal */}
+      <Animated.View
+        style={[
+          styles.modalContainer,
+          { transform: [{ translateY: slideAnim }] },
+        ]}
+      >
+        {/* Handle bar */}
+        <View style={styles.handleBar} />
+
+        {/* Close Button */}
+        <TouchableOpacity
+          style={styles.closeButton}
+          onPress={handleClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close and continue to news"
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <MaterialCommunityIcons name="close" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+
+        <ScrollView
+          style={styles.modalContent}
+          contentContainerStyle={styles.modalScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Step 0: Intro/Welcome */}
+          {step === 0 && (
+            <View style={styles.introContent}>
+              {/* Beta badge */}
+              <View style={styles.betaBadge}>
+                <Text style={styles.betaText}>NEW</Text>
+              </View>
+
+              {/* Title */}
+              <Text style={styles.modalTitle}>
+                Personalize Your{'\n'}News Feed
+              </Text>
+
+              {/* Features */}
+              <View style={styles.featureList}>
+                <FeatureItem
+                  icon="earth"
+                  text="Choose countries you want news from"
+                  color={mukokoTheme.colors.primary}
+                />
+                <FeatureItem
+                  icon="star-outline"
+                  text="Discover stories that matter to you"
+                  color={mukokoTheme.colors.accent}
+                />
+                <FeatureItem
+                  icon="lightning-bolt"
+                  text="Or quickly browse all African news"
+                  color={mukokoTheme.colors.success}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Step 1: Country Selection */}
+          {step === 1 && (
+            <View style={styles.selectionContent}>
+              <ProgressIndicator currentStep={1} totalSteps={2} />
+              <Text style={styles.selectionTitle}>Choose Your Countries</Text>
+              <Text style={styles.selectionSubtitle}>
+                Select countries to see news from (or skip for all Africa)
+              </Text>
+
+              <CountrySelectionGrid
+                countries={countries}
+                selectedCountries={selectedCountries}
+                onToggle={toggleCountry}
+                theme={paperTheme}
+              />
+
+              <Text style={styles.selectionHint}>
+                {selectedCountries.length === 0
+                  ? 'No selection = news from all of Africa'
+                  : `${selectedCountries.length} ${selectedCountries.length === 1 ? 'country' : 'countries'} selected`}
+              </Text>
+            </View>
+          )}
+
+          {/* Step 2: Category Selection */}
+          {step === 2 && (
+            <View style={styles.selectionContent}>
+              <ProgressIndicator currentStep={2} totalSteps={2} />
+              <Text style={styles.selectionTitle}>Select Your Interests</Text>
+              <Text style={styles.selectionSubtitle}>
+                Pick topics you care about for a personalized feed
+              </Text>
+
+              <CategorySelectionGrid
+                categories={categories}
+                selectedCategories={selectedCategories}
+                onToggle={toggleCategory}
+                theme={paperTheme}
+              />
+
+              <Text style={styles.selectionHint}>
+                {selectedCategories.length === 0
+                  ? 'No selection = all news topics'
+                  : `${selectedCategories.length} ${selectedCategories.length === 1 ? 'topic' : 'topics'} selected`}
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+
+        {/* Bottom Actions */}
+        <View style={styles.bottomActions}>
+          {step > 0 && (
+            <View style={styles.buttonRow}>
+              <TouchableOpacity
+                style={styles.backButton}
+                onPress={handleBack}
+                accessibilityRole="button"
+                accessibilityLabel="Go back"
+              >
+                <Text style={styles.backButtonText}>Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.primaryButton}
+                onPress={handleGetStarted}
+                accessibilityRole="button"
+                accessibilityLabel={step === 2 ? 'Get Started' : 'Next'}
+              >
+                <Text style={styles.primaryButtonText}>
+                  {step === 2 ? 'Get Started' : 'Next'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {step === 0 && (
+            <TouchableOpacity
+              style={styles.primaryButton}
+              onPress={handleGetStarted}
+              accessibilityRole="button"
+              accessibilityLabel="Personalize your feed"
+            >
+              <Text style={styles.primaryButtonText}>Personalize</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={styles.skipButton}
+            onPress={handleClose}
+            accessibilityRole="button"
+            accessibilityLabel="Skip customization"
+          >
+            <Text style={styles.skipButtonText}>
+              {step === 0 ? 'Skip and show all news' : `Auto-continue in ${timeRemaining}s`}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </Animated.View>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  // Loading screen (full screen)
+  loadingContainer: {
     flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: spacing.xl,
     justifyContent: 'center',
-  },
-
-  // Close Button
-  closeButton: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 40,
-    right: spacing.md,
-    zIndex: 100,
-    width: MIN_TOUCH_TARGET,
-    height: MIN_TOUCH_TARGET,
-    borderRadius: MIN_TOUCH_TARGET / 2,
     alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    paddingHorizontal: spacing.xl,
   },
-
-  // Timer
-  timerContainer: {
-    position: 'absolute',
-    top: Platform.OS === 'ios' ? 68 : 48,
-    left: spacing.md,
-    zIndex: 100,
-  },
-  timerText: {
-    ...typography.bodySmall,
-    fontSize: 12,
-  },
-
-  // Logo Section
-  logoSection: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  logo: {
+  loadingLogo: {
     width: 100,
     height: 100,
     marginBottom: spacing.md,
   },
-  logoSmall: {
-    width: 60,
-    height: 60,
+  loadingBrand: {
+    fontSize: 28,
+    fontFamily: mukokoTheme.fonts.serifBold?.fontFamily,
+    marginBottom: spacing.xs,
+  },
+  loadingTagline: {
+    fontSize: 16,
+    marginBottom: spacing.xxl,
+  },
+  loadingSpinner: {
     marginBottom: spacing.md,
   },
-  brandName: {
-    ...typography.displayMedium,
-    marginBottom: spacing.xs,
-  },
-  tagline: {
-    ...typography.titleMedium,
-    textAlign: 'center',
+  loadingText: {
+    fontSize: 14,
   },
 
-  // Header Section (customization)
-  headerSection: {
+  // Modal backdrop
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+  },
+  backdropTouchable: {
+    flex: 1,
+  },
+
+  // Modal container
+  modalContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: MODAL_HEIGHT,
+    backgroundColor: '#1a1a2e',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: 'hidden',
+  },
+
+  // Handle bar
+  handleBar: {
+    width: 40,
+    height: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+
+  // Close button
+  closeButton: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 10,
+    width: MIN_TOUCH_TARGET,
+    height: MIN_TOUCH_TARGET,
+    borderRadius: MIN_TOUCH_TARGET / 2,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  // Modal content
+  modalContent: {
+    flex: 1,
+  },
+  modalScrollContent: {
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+
+  // Intro content
+  introContent: {
+    paddingTop: spacing.xl,
+  },
+  betaBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderRadius: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     marginBottom: spacing.lg,
   },
-  stepTitle: {
-    ...typography.headlineMedium,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
+  betaText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 1,
   },
-  stepSubtitle: {
-    ...typography.bodyMedium,
-    textAlign: 'center',
-    maxWidth: 300,
+  modalTitle: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    lineHeight: 40,
+    marginBottom: spacing.xl,
+    fontFamily: mukokoTheme.fonts.serifBold?.fontFamily,
   },
 
-  // Progress Indicator
+  // Feature list
+  featureList: {
+    gap: spacing.lg,
+    marginTop: spacing.md,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  featureIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  featureText: {
+    flex: 1,
+    fontSize: 16,
+    color: '#FFFFFF',
+    lineHeight: 22,
+  },
+
+  // Selection content
+  selectionContent: {
+    paddingTop: spacing.md,
+  },
+  selectionTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+    fontFamily: mukokoTheme.fonts.serifBold?.fontFamily,
+  },
+  selectionSubtitle: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+
+  // Progress indicator
   progressContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -742,19 +799,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 
-  // Description
-  descriptionSection: {
-    alignItems: 'center',
-    marginBottom: spacing.xxl,
-  },
-  description: {
-    ...typography.bodyLarge,
-    textAlign: 'center',
-    maxWidth: 320,
-    lineHeight: 26,
-  },
-
-  // Selection Grids
+  // Selection grids
   selectionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -764,7 +809,7 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     padding: spacing.sm,
-    borderRadius: mukokoTheme.roundness.md || 12,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     minHeight: MIN_TOUCH_TARGET,
@@ -777,7 +822,7 @@ const styles = StyleSheet.create({
   },
   gridName: {
     fontSize: 11,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontWeight: '600',
     textAlign: 'center',
   },
   gridCheck: {
@@ -787,15 +832,15 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Category Items (larger)
+  // Category items
   categoryItem: {
     padding: spacing.md,
-    borderRadius: mukokoTheme.roundness.md || 12,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     minHeight: 70,
@@ -808,7 +853,7 @@ const styles = StyleSheet.create({
   },
   categoryName: {
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontWeight: '600',
     textAlign: 'center',
   },
   categoryCheck: {
@@ -818,73 +863,65 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     alignItems: 'center',
     justifyContent: 'center',
   },
 
-  // Selection Hint
+  // Selection hint
   selectionHint: {
-    ...typography.bodySmall,
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
     marginTop: spacing.sm,
   },
 
-  // Loading Section
-  loadingSection: {
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  loadingText: {
-    ...typography.bodyMedium,
-  },
-
-  // Button Container
-  buttonContainer: {
+  // Bottom actions
+  bottomActions: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.sm,
+    paddingBottom: Platform.OS === 'ios' ? 34 : spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.06)',
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   buttonRow: {
     flexDirection: 'row',
     gap: spacing.sm,
   },
-  button: {
+  primaryButton: {
     flex: 1,
-  },
-  buttonFull: {
-    flex: 1,
-  },
-  buttonBack: {
-    flex: 0.4,
-  },
-  buttonContent: {
-    paddingVertical: spacing.sm,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
+    paddingVertical: 16,
+    alignItems: 'center',
     minHeight: MIN_TOUCH_TARGET,
   },
-  skipLink: {
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a2e',
+  },
+  backButton: {
+    flex: 0.4,
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    borderRadius: 28,
+    paddingVertical: 16,
+    alignItems: 'center',
+    minHeight: MIN_TOUCH_TARGET,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  skipButton: {
     alignSelf: 'center',
     paddingVertical: spacing.md,
     minHeight: MIN_TOUCH_TARGET,
     justifyContent: 'center',
   },
-  skipText: {
-    ...typography.bodyMedium,
-    fontWeight: '500',
-  },
-
-  // Footer
-  footer: {
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-  },
-  footerCompact: {
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-  },
-  footerText: {
-    ...typography.bodySmall,
+  skipButtonText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
 });
