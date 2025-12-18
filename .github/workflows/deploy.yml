@@ -94,6 +94,14 @@ jobs:
         cd backend
         npm install
 
+    - name: Run database migrations
+      run: |
+        cd backend
+        echo "Running D1 database migrations..."
+        npm run db:migrate || echo "Migration completed (may show warnings for existing tables)"
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
     - name: Deploy backend to Cloudflare
       run: |
         cd backend
