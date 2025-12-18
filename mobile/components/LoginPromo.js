@@ -1,6 +1,6 @@
 /**
  * LoginPromo Component
- * Encourages users to sign up/login to access unlimited articles
+ * Large, attention-grabbing promo to encourage sign up via OIDC (id.mukoko.com)
  * Uses ACCENT color (terracotta) for promo identity
  */
 
@@ -9,48 +9,70 @@ import {
   View,
   StyleSheet,
   TouchableOpacity,
+  Linking,
+  Platform,
 } from 'react-native';
 import { Text, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import mukokoTheme from '../theme';
 
+// OIDC Configuration
+const OIDC_CONFIG = {
+  issuer: 'https://id.mukoko.com',
+  clientId: 'mukoko-news-mobile',
+  redirectUri: Platform.select({
+    web: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : 'https://news.mukoko.com/auth/callback',
+    default: 'mukoko-news://auth/callback',
+  }),
+};
+
 /**
- * LoginPromo - Encourages user registration/login
- * Uses ACCENT (terracotta) color for unique promo identity
+ * LoginPromo - Large promotional component for user registration/login via OIDC
+ * Designed to STAND OUT and capture attention
  *
- * @param {string} variant - 'full' | 'compact' | 'minimal' | 'banner'
+ * @param {string} variant - 'hero' | 'card' | 'banner' | 'minimal'
  * @param {Function} onLoginPress - Optional callback when login is pressed
  * @param {Function} onSignUpPress - Optional callback when sign up is pressed
  * @param {number} articleLimit - Number of free articles (default: 20)
  */
 export default function LoginPromo({
-  variant = 'full',
+  variant = 'hero',
   onLoginPress,
   onSignUpPress,
   articleLimit = 20,
   style,
 }) {
-  const navigation = useNavigation();
   const paperTheme = usePaperTheme();
 
-  // Accent-tinted glass colors (terracotta) for promo identity
-  const accentGlass = {
-    background: paperTheme.colors.glassAccentCard || paperTheme.colors.surface,
-    border: paperTheme.colors.glassAccentBorder || paperTheme.colors.outline,
-    chip: paperTheme.colors.glassAccent || 'rgba(212, 99, 74, 0.08)',
-    chipBorder: paperTheme.colors.glassAccentBorder || 'rgba(212, 99, 74, 0.15)',
-  };
+  // Bold accent colors for prominence
+  const accentColor = paperTheme.colors.tertiary || '#D4634A';
+  const accentDark = '#B84D38';
 
-  // Use accent/tertiary color for buttons
-  const accentColor = paperTheme.colors.tertiary || paperTheme.colors.accent;
+  // Redirect to OIDC provider for authentication
+  const redirectToOIDC = async (prompt = 'login') => {
+    const params = new URLSearchParams({
+      client_id: OIDC_CONFIG.clientId,
+      redirect_uri: OIDC_CONFIG.redirectUri,
+      response_type: 'code',
+      scope: 'openid profile email',
+      prompt: prompt,
+    });
+
+    const authUrl = `${OIDC_CONFIG.issuer}/authorize?${params.toString()}`;
+
+    try {
+      await Linking.openURL(authUrl);
+    } catch (error) {
+      console.error('Failed to open OIDC auth URL:', error);
+    }
+  };
 
   const handleLogin = () => {
     if (onLoginPress) {
       onLoginPress();
     } else {
-      // Navigate to Profile tab, then Login screen (nested navigation)
-      navigation.navigate('Profile', { screen: 'Login' });
+      redirectToOIDC('login');
     }
   };
 
@@ -58,410 +80,508 @@ export default function LoginPromo({
     if (onSignUpPress) {
       onSignUpPress();
     } else {
-      // Navigate to Profile tab, then Register screen (nested navigation)
-      navigation.navigate('Profile', { screen: 'Register' });
+      redirectToOIDC('create');
     }
   };
 
-  // Banner variant - slim banner at bottom of feed
-  if (variant === 'banner') {
+  // HERO variant - Full-width attention-grabbing promo
+  if (variant === 'hero') {
     return (
-      <View style={[
-        styles.bannerContainer,
-        {
-          backgroundColor: accentColor,
-        },
-        style
-      ]}>
-        <View style={styles.bannerContent}>
-          <MaterialCommunityIcons
-            name="lock-open-outline"
-            size={20}
-            color={paperTheme.colors.onTertiary}
-          />
-          <Text style={[styles.bannerText, { color: paperTheme.colors.onTertiary }]}>
-            Sign up for unlimited access
-          </Text>
-        </View>
-        <TouchableOpacity
-          style={[styles.bannerButton, { backgroundColor: 'rgba(255,255,255,0.25)' }]}
-          onPress={handleSignUp}
-          activeOpacity={0.7}
-          accessibilityLabel="Join for free"
-          accessibilityRole="button"
-          accessibilityHint="Create a free account for unlimited access"
+      <View style={[styles.heroContainer, style]}>
+        <LinearGradient
+          colors={[accentColor, accentDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroGradient}
         >
-          <Text style={[styles.bannerButtonText, { color: paperTheme.colors.onTertiary }]}>
-            Join Free
-          </Text>
-        </TouchableOpacity>
+          {/* Decorative elements */}
+          <View style={styles.heroDecorativeCircle} />
+          <View style={styles.heroDecorativeCircle2} />
+
+          {/* Content */}
+          <View style={styles.heroContent}>
+            {/* Badge */}
+            <View style={styles.heroBadge}>
+              <MaterialCommunityIcons name="gift" size={16} color="#FFFFFF" />
+              <Text style={styles.heroBadgeText}>FREE FOREVER</Text>
+            </View>
+
+            {/* Headline */}
+            <Text style={styles.heroHeadline}>
+              Join Africa's{'\n'}News Community
+            </Text>
+
+            <Text style={styles.heroSubheadline}>
+              Get unlimited access to 50+ African news sources.
+              Personalized. Real-time. Free.
+            </Text>
+
+            {/* Benefits grid */}
+            <View style={styles.heroBenefits}>
+              {[
+                { icon: 'infinity', label: 'Unlimited' },
+                { icon: 'lightning-bolt', label: 'Real-time' },
+                { icon: 'tune-variant', label: 'Personalized' },
+                { icon: 'bell-ring', label: 'Alerts' },
+              ].map((benefit, index) => (
+                <View key={index} style={styles.heroBenefitItem}>
+                  <MaterialCommunityIcons name={benefit.icon} size={24} color="#FFFFFF" />
+                  <Text style={styles.heroBenefitText}>{benefit.label}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* CTA Buttons */}
+            <TouchableOpacity
+              style={styles.heroPrimaryButton}
+              onPress={handleSignUp}
+              activeOpacity={0.9}
+              accessibilityLabel="Create free account"
+              accessibilityRole="button"
+            >
+              <MaterialCommunityIcons name="account-plus" size={24} color={accentColor} />
+              <Text style={[styles.heroPrimaryButtonText, { color: accentColor }]}>
+                Create Free Account
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.heroSecondaryButton}
+              onPress={handleLogin}
+              activeOpacity={0.7}
+              accessibilityLabel="Sign in"
+              accessibilityRole="button"
+            >
+              <Text style={styles.heroSecondaryButtonText}>
+                Already have an account? Sign In
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
       </View>
     );
   }
 
-  // Minimal variant - inline prompt
+  // CARD variant - Large card with visual impact
+  if (variant === 'card') {
+    return (
+      <View style={[styles.cardContainer, { backgroundColor: paperTheme.colors.surface }, style]}>
+        {/* Accent header strip */}
+        <View style={[styles.cardHeader, { backgroundColor: accentColor }]}>
+          <MaterialCommunityIcons name="star-circle" size={28} color="#FFFFFF" />
+          <Text style={styles.cardHeaderText}>UNLOCK PREMIUM ACCESS</Text>
+        </View>
+
+        {/* Main content */}
+        <View style={styles.cardContent}>
+          <View style={styles.cardIconContainer}>
+            <LinearGradient
+              colors={[accentColor, accentDark]}
+              style={styles.cardIconGradient}
+            >
+              <MaterialCommunityIcons name="newspaper-variant-multiple" size={48} color="#FFFFFF" />
+            </LinearGradient>
+          </View>
+
+          <Text style={[styles.cardTitle, { color: paperTheme.colors.onSurface }]}>
+            Your Free News Pass
+          </Text>
+
+          <Text style={[styles.cardDescription, { color: paperTheme.colors.onSurfaceVariant }]}>
+            You're viewing {articleLimit} free articles. Create a free account for unlimited access to all stories.
+          </Text>
+
+          {/* Benefits */}
+          <View style={styles.cardBenefits}>
+            {[
+              { icon: 'check-circle', text: 'Unlimited articles from 50+ sources' },
+              { icon: 'check-circle', text: 'Personalized news feed' },
+              { icon: 'check-circle', text: 'Save articles to read later' },
+              { icon: 'check-circle', text: 'Breaking news alerts' },
+            ].map((benefit, index) => (
+              <View key={index} style={styles.cardBenefitRow}>
+                <MaterialCommunityIcons name={benefit.icon} size={22} color={accentColor} />
+                <Text style={[styles.cardBenefitText, { color: paperTheme.colors.onSurface }]}>
+                  {benefit.text}
+                </Text>
+              </View>
+            ))}
+          </View>
+
+          {/* CTA */}
+          <TouchableOpacity
+            style={[styles.cardPrimaryButton, { backgroundColor: accentColor }]}
+            onPress={handleSignUp}
+            activeOpacity={0.9}
+            accessibilityLabel="Get free access"
+            accessibilityRole="button"
+          >
+            <MaterialCommunityIcons name="rocket-launch" size={22} color="#FFFFFF" />
+            <Text style={styles.cardPrimaryButtonText}>Get Free Access</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.cardSecondaryButton}
+            onPress={handleLogin}
+            activeOpacity={0.7}
+            accessibilityLabel="Sign in"
+            accessibilityRole="button"
+          >
+            <Text style={[styles.cardSecondaryButtonText, { color: accentColor }]}>
+              Sign In
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
+  // BANNER variant - Prominent horizontal banner
+  if (variant === 'banner') {
+    return (
+      <TouchableOpacity
+        style={[styles.bannerContainer, style]}
+        onPress={handleSignUp}
+        activeOpacity={0.9}
+        accessibilityLabel="Sign up for unlimited access"
+        accessibilityRole="button"
+      >
+        <LinearGradient
+          colors={[accentColor, accentDark]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.bannerGradient}
+        >
+          <View style={styles.bannerContent}>
+            <View style={styles.bannerLeft}>
+              <View style={styles.bannerIconBg}>
+                <MaterialCommunityIcons name="lock-open-variant" size={22} color="#FFFFFF" />
+              </View>
+              <View style={styles.bannerTextContainer}>
+                <Text style={styles.bannerTitle}>Unlock Unlimited Access</Text>
+                <Text style={styles.bannerSubtitle}>Create a free account now</Text>
+              </View>
+            </View>
+            <View style={styles.bannerButton}>
+              <Text style={[styles.bannerButtonText, { color: accentColor }]}>Join Free</Text>
+              <MaterialCommunityIcons name="arrow-right" size={18} color={accentColor} />
+            </View>
+          </View>
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  }
+
+  // MINIMAL variant - Subtle but noticeable
   if (variant === 'minimal') {
     return (
       <TouchableOpacity
         style={[
           styles.minimalContainer,
           {
-            backgroundColor: accentGlass.chip,
-            borderWidth: 1,
-            borderColor: accentGlass.chipBorder,
+            backgroundColor: `${accentColor}15`,
+            borderColor: `${accentColor}30`,
           },
-          style
+          style,
         ]}
         onPress={handleSignUp}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
         accessibilityLabel="Create account for unlimited articles"
         accessibilityRole="button"
-        accessibilityHint="Sign up to access unlimited news articles"
       >
-        <MaterialCommunityIcons
-          name="account-plus"
-          size={20}
-          color={accentColor}
-        />
-        <Text style={[styles.minimalText, { color: paperTheme.colors.onSurfaceVariant }]}>
-          Create account for unlimited articles
-        </Text>
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={20}
-          color={paperTheme.colors.onSurfaceVariant}
-        />
+        <MaterialCommunityIcons name="account-plus" size={24} color={accentColor} />
+        <View style={styles.minimalTextContainer}>
+          <Text style={[styles.minimalTitle, { color: paperTheme.colors.onSurface }]}>
+            Create a free account
+          </Text>
+          <Text style={[styles.minimalSubtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
+            Get unlimited articles
+          </Text>
+        </View>
+        <View style={[styles.minimalArrow, { backgroundColor: accentColor }]}>
+          <MaterialCommunityIcons name="arrow-right" size={18} color="#FFFFFF" />
+        </View>
       </TouchableOpacity>
     );
   }
 
-  // Compact variant - card with stats
-  if (variant === 'compact') {
-    return (
-      <View style={[
-        styles.compactContainer,
-        {
-          backgroundColor: accentGlass.background,
-          borderWidth: 1,
-          borderColor: accentGlass.border,
-        },
-        style
-      ]}>
-        <View style={styles.compactHeader}>
-          <MaterialCommunityIcons
-            name="newspaper-variant-multiple"
-            size={28}
-            color={accentColor}
-          />
-          <View style={styles.compactHeaderText}>
-            <Text style={[styles.compactTitle, { color: paperTheme.colors.onSurface }]}>
-              You've reached your free limit
-            </Text>
-            <Text style={[styles.compactSubtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
-              {articleLimit} articles available to guests
-            </Text>
-          </View>
-        </View>
-        <View style={styles.compactButtons}>
-          <TouchableOpacity
-            style={[styles.compactButtonPrimary, { backgroundColor: accentColor }]}
-            onPress={handleSignUp}
-            activeOpacity={0.7}
-            accessibilityLabel="Sign up for free"
-            accessibilityRole="button"
-            accessibilityHint="Create a free account to access unlimited articles"
-          >
-            <Text style={[styles.compactButtonText, { color: paperTheme.colors.onTertiary }]}>
-              Sign Up Free
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.compactButtonSecondary, { borderColor: accentColor }]}
-            onPress={handleLogin}
-            activeOpacity={0.7}
-            accessibilityLabel="Log in to your account"
-            accessibilityRole="button"
-            accessibilityHint="Sign in to your existing account"
-          >
-            <Text style={[styles.compactButtonTextSecondary, { color: accentColor }]}>
-              Log In
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-    );
-  }
-
-  // Full variant - promotional card
-  return (
-    <View style={[
-      styles.container,
-      {
-        backgroundColor: accentGlass.background,
-        borderWidth: 1,
-        borderColor: accentGlass.border,
-      },
-      style
-    ]}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={[styles.badge, { backgroundColor: accentGlass.chip }]}>
-          <MaterialCommunityIcons
-            name="gift-outline"
-            size={16}
-            color={accentColor}
-          />
-          <Text style={[styles.badgeText, { color: accentColor }]}>FREE ACCOUNT</Text>
-        </View>
-      </View>
-
-      {/* Icon */}
-      <View style={[styles.iconContainer, { backgroundColor: accentGlass.chip }]}>
-        <MaterialCommunityIcons
-          name="newspaper-variant-multiple-outline"
-          size={48}
-          color={accentColor}
-        />
-      </View>
-
-      {/* Title */}
-      <Text
-        style={[styles.title, { color: paperTheme.colors.onSurface }]}
-        accessibilityRole="header"
-      >
-        Unlock Unlimited News
-      </Text>
-      <Text style={[styles.subtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
-        You're viewing {articleLimit} free articles. Sign up to access all stories from 50+ African news sources.
-      </Text>
-
-      {/* Benefits */}
-      <View style={styles.benefits}>
-        {[
-          { icon: 'infinity', text: 'Unlimited articles' },
-          { icon: 'bookmark-multiple', text: 'Save articles to read later' },
-          { icon: 'bell-outline', text: 'Breaking news alerts' },
-          { icon: 'tune', text: 'Personalized feed' },
-        ].map((benefit, index) => (
-          <View key={index} style={styles.benefitRow}>
-            <MaterialCommunityIcons
-              name={benefit.icon}
-              size={20}
-              color={accentColor}
-            />
-            <Text style={[styles.benefitText, { color: paperTheme.colors.onSurface }]}>
-              {benefit.text}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      {/* CTA Buttons */}
-      <View style={styles.buttons}>
-        <TouchableOpacity
-          style={[styles.primaryButton, { backgroundColor: accentColor }]}
-          onPress={handleSignUp}
-          activeOpacity={0.7}
-          accessibilityLabel="Create free account"
-          accessibilityRole="button"
-          accessibilityHint="Sign up for unlimited access to news articles"
-        >
-          <MaterialCommunityIcons
-            name="account-plus"
-            size={22}
-            color={paperTheme.colors.onTertiary}
-          />
-          <Text style={[styles.primaryButtonText, { color: paperTheme.colors.onTertiary }]}>
-            Create Free Account
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.secondaryButton}
-          onPress={handleLogin}
-          activeOpacity={0.7}
-          accessibilityLabel="Log in to existing account"
-          accessibilityRole="button"
-          accessibilityHint="Sign in if you already have an account"
-        >
-          <Text style={[styles.secondaryButtonText, { color: accentColor }]}>
-            Already have an account? Log In
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  // Default fallback to hero
+  return null;
 }
 
 const styles = StyleSheet.create({
-  // ============ FULL VARIANT ============
-  container: {
+  // ============ HERO VARIANT ============
+  heroContainer: {
+    marginHorizontal: 12,
+    marginVertical: 16,
+    borderRadius: 24,
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#D4634A',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+  },
+  heroGradient: {
+    paddingHorizontal: 24,
+    paddingVertical: 32,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  heroDecorativeCircle: {
+    position: 'absolute',
+    top: -60,
+    right: -60,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  heroDecorativeCircle2: {
+    position: 'absolute',
+    bottom: -40,
+    left: -40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  heroContent: {
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  heroBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 16,
-    padding: mukokoTheme.spacing.lg,
-    marginHorizontal: mukokoTheme.spacing.md,
-    marginVertical: mukokoTheme.spacing.sm,
+    gap: 6,
+    marginBottom: 16,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: mukokoTheme.spacing.sm,
-    paddingVertical: 4,
-    borderRadius: 12,
-    gap: 4,
-  },
-  badgeText: {
-    fontSize: 12, // Increased from 11 for WCAG readability
+  heroBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 12,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    letterSpacing: 0.5,
+    letterSpacing: 1,
   },
-  iconContainer: {
-    alignSelf: 'center',
-    padding: mukokoTheme.spacing.lg,
-    borderRadius: 50,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  title: {
-    fontSize: 24,
+  heroHeadline: {
+    color: '#FFFFFF',
+    fontSize: 32,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
     textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.xs,
+    lineHeight: 40,
+    marginBottom: 12,
   },
-  subtitle: {
-    fontSize: 14,
+  heroSubheadline: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 16,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: mukokoTheme.spacing.md,
+    lineHeight: 24,
+    marginBottom: 24,
+    maxWidth: 320,
   },
-  benefits: {
-    marginBottom: mukokoTheme.spacing.lg,
-    gap: mukokoTheme.spacing.sm,
-  },
-  benefitRow: {
+  heroBenefits: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 20,
+    marginBottom: 28,
+  },
+  heroBenefitItem: {
     alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
+    gap: 6,
+    width: 70,
   },
-  benefitText: {
-    fontSize: 14,
+  heroBenefitText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 12,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    textAlign: 'center',
   },
-  buttons: {
-    gap: mukokoTheme.spacing.md,
-  },
-  primaryButton: {
+  heroPrimaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,  // Accessibility: minimum 48px touch target
-    paddingVertical: mukokoTheme.spacing.md,
-    paddingHorizontal: mukokoTheme.spacing.xl,
-    borderRadius: 26,
-    gap: mukokoTheme.spacing.sm,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 28,
+    gap: 10,
+    width: '100%',
+    maxWidth: 300,
+    marginBottom: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
   },
-  primaryButtonText: {
+  heroPrimaryButtonText: {
+    fontSize: 18,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+  heroSecondaryButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+  },
+  heroSecondaryButtonText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 15,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    textDecorationLine: 'underline',
+  },
+
+  // ============ CARD VARIANT ============
+  cardContainer: {
+    marginHorizontal: 12,
+    marginVertical: 16,
+    borderRadius: 20,
+    overflow: 'hidden',
+    elevation: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+  },
+  cardHeaderText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    letterSpacing: 1,
+  },
+  cardContent: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  cardIconContainer: {
+    marginBottom: 16,
+  },
+  cardIconGradient: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitle: {
+    fontSize: 26,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  cardDescription: {
+    fontSize: 15,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 20,
+    maxWidth: 300,
+  },
+  cardBenefits: {
+    width: '100%',
+    marginBottom: 24,
+    gap: 12,
+  },
+  cardBenefitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  cardBenefitText: {
+    fontSize: 15,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    flex: 1,
+  },
+  cardPrimaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: 28,
+    gap: 10,
+    width: '100%',
+    marginBottom: 12,
+  },
+  cardPrimaryButtonText: {
+    color: '#FFFFFF',
     fontSize: 17,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
-  secondaryButton: {
-    alignItems: 'center',
-    minHeight: 48,  // Accessibility: minimum touch target
-    justifyContent: 'center',
-    paddingVertical: mukokoTheme.spacing.md,
+  cardSecondaryButton: {
+    paddingVertical: 12,
   },
-  secondaryButtonText: {
+  cardSecondaryButtonText: {
     fontSize: 15,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-
-  // ============ COMPACT VARIANT ============
-  compactContainer: {
-    borderRadius: 12,
-    padding: mukokoTheme.spacing.md,
-    marginHorizontal: mukokoTheme.spacing.md,
-    marginVertical: mukokoTheme.spacing.sm,
-  },
-  compactHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  compactHeaderText: {
-    flex: 1,
-  },
-  compactTitle: {
-    fontSize: 16,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  compactSubtitle: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
-  compactButtons: {
-    flexDirection: 'row',
-    gap: mukokoTheme.spacing.md,
-  },
-  compactButtonPrimary: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,  // Accessibility: minimum touch target
-    paddingVertical: mukokoTheme.spacing.md,
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    borderRadius: 24,
-  },
-  compactButtonSecondary: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: 48,  // Accessibility: minimum touch target
-    paddingVertical: mukokoTheme.spacing.md,
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    borderRadius: 24,
-    borderWidth: 2,
-  },
-  compactButtonText: {
-    fontSize: 15,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  compactButtonTextSecondary: {
-    fontSize: 15,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
 
   // ============ BANNER VARIANT ============
   bannerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 56,  // Accessibility: comfortable touch target
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    paddingVertical: mukokoTheme.spacing.md,
-    marginHorizontal: mukokoTheme.spacing.md,
-    marginVertical: mukokoTheme.spacing.sm,
+    marginHorizontal: 12,
+    marginVertical: 12,
     borderRadius: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#D4634A',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  bannerGradient: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   bannerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
+    justifyContent: 'space-between',
+  },
+  bannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
     flex: 1,
   },
-  bannerText: {
-    fontSize: 15,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  bannerIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bannerTextContainer: {
+    flex: 1,
+  },
+  bannerTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+  bannerSubtitle: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 13,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
   bannerButton: {
-    minHeight: 40,
-    justifyContent: 'center',
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    paddingVertical: mukokoTheme.spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 20,
+    gap: 4,
   },
   bannerButtonText: {
     fontSize: 14,
@@ -472,16 +592,30 @@ const styles = StyleSheet.create({
   minimalContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 52,  // Accessibility: comfortable touch target
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    paddingVertical: mukokoTheme.spacing.md,
-    borderRadius: 26,
-    marginHorizontal: mukokoTheme.spacing.md,
-    gap: mukokoTheme.spacing.md,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    marginHorizontal: 12,
+    marginVertical: 8,
+    borderWidth: 2,
+    gap: 14,
   },
-  minimalText: {
+  minimalTextContainer: {
     flex: 1,
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+  minimalTitle: {
+    fontSize: 15,
+    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+  },
+  minimalSubtitle: {
+    fontSize: 13,
+    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+  },
+  minimalArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
