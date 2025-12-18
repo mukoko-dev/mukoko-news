@@ -17,19 +17,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import mukokoTheme from '../theme';
-
-// Dark footer color palette
-const FOOTER_COLORS = {
-  background: '#0A0A14', // Deep dark navy/purple
-  surface: '#141420', // Slightly lighter surface
-  text: '#F5F5F5', // Light text
-  textMuted: '#A0A0A8', // Muted gray text
-  border: 'rgba(255, 255, 255, 0.08)', // Subtle border
-  accent: mukokoTheme.colors.primary, // Brand tanzanite
-  accentLight: '#B388FF', // Light tanzanite for dark mode
-  inputBg: 'rgba(255, 255, 255, 0.06)', // Subtle input background
-};
+import mukokoTheme, { paperThemeDark } from '../theme';
 
 export default function AppFooter() {
   const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
@@ -97,15 +85,21 @@ export default function AppFooter() {
   ];
 
   return (
-    <View style={styles.footer}>
+    <View style={[styles.footer, { backgroundColor: paperThemeDark.colors.background }]}>
       {/* Newsletter Section */}
       <View style={styles.newsletterSection}>
-        <Text style={styles.newsletterTitle}>Subscribe to Mukoko News</Text>
+        <Text style={[styles.newsletterTitle, { color: paperThemeDark.colors.onSurface }]}>
+          Subscribe to Mukoko News
+        </Text>
         <View style={styles.newsletterForm}>
           <TextInput
-            style={styles.emailInput}
+            style={[styles.emailInput, {
+              backgroundColor: paperThemeDark.colors.glass,
+              borderColor: paperThemeDark.colors.glassBorder,
+              color: paperThemeDark.colors.onSurface,
+            }]}
             placeholder="Your email"
-            placeholderTextColor={FOOTER_COLORS.textMuted}
+            placeholderTextColor={paperThemeDark.colors.onSurfaceVariant}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -113,17 +107,19 @@ export default function AppFooter() {
             autoCorrect={false}
           />
           <TouchableOpacity
-            style={styles.signUpButton}
+            style={[styles.signUpButton, { backgroundColor: paperThemeDark.colors.primary }]}
             onPress={handleNewsletterSubmit}
             activeOpacity={0.8}
           >
-            <Text style={styles.signUpButtonText}>SIGN UP</Text>
+            <Text style={[styles.signUpButtonText, { color: paperThemeDark.colors.onPrimary }]}>
+              SIGN UP
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Divider */}
-      <View style={styles.divider} />
+      <View style={[styles.divider, { backgroundColor: paperThemeDark.colors.outline }]} />
 
       {/* Main Footer Content */}
       <View style={styles.mainContent}>
@@ -133,11 +129,15 @@ export default function AppFooter() {
             <MaterialCommunityIcons
               name="hexagon-multiple"
               size={40}
-              color={FOOTER_COLORS.accentLight}
+              color={paperThemeDark.colors.primary}
             />
           </View>
-          <Text style={styles.brandName}>MUKOKO NEWS</Text>
-          <Text style={styles.tagline}>Zimbabwe's Digital News Platform</Text>
+          <Text style={[styles.brandName, { color: paperThemeDark.colors.onSurface }]}>
+            MUKOKO NEWS
+          </Text>
+          <Text style={[styles.tagline, { color: paperThemeDark.colors.onSurfaceVariant }]}>
+            Zimbabwe's Digital News Platform
+          </Text>
         </View>
 
         {/* Navigation Columns */}
@@ -151,7 +151,9 @@ export default function AppFooter() {
                 style={styles.navLink}
                 activeOpacity={0.7}
               >
-                <Text style={styles.navLinkText}>{link.label}</Text>
+                <Text style={[styles.navLinkText, { color: paperThemeDark.colors.onSurfaceVariant }]}>
+                  {link.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -165,7 +167,9 @@ export default function AppFooter() {
                 style={styles.navLink}
                 activeOpacity={0.7}
               >
-                <Text style={styles.navLinkText}>{link.label}</Text>
+                <Text style={[styles.navLinkText, { color: paperThemeDark.colors.onSurfaceVariant }]}>
+                  {link.label}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -173,27 +177,27 @@ export default function AppFooter() {
       </View>
 
       {/* Bottom Section */}
-      <View style={styles.bottomSection}>
+      <View style={[styles.bottomSection, { borderTopColor: paperThemeDark.colors.outline }]}>
         {/* Social Links */}
         <View style={styles.socialLinks}>
           {socialLinks.map((social, index) => (
             <TouchableOpacity
               key={index}
               onPress={() => handleExternalLink(social.url)}
-              style={styles.socialButton}
+              style={[styles.socialButton, { backgroundColor: paperThemeDark.colors.surface }]}
               activeOpacity={0.7}
             >
               <MaterialCommunityIcons
                 name={social.icon}
                 size={22}
-                color={FOOTER_COLORS.text}
+                color={paperThemeDark.colors.onSurface}
               />
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Copyright */}
-        <Text style={styles.copyright}>
+        <Text style={[styles.copyright, { color: paperThemeDark.colors.onSurfaceVariant }]}>
           © 2025 Mukoko News. All rights reserved.
         </Text>
       </View>
@@ -203,7 +207,6 @@ export default function AppFooter() {
 
 const styles = StyleSheet.create({
   footer: {
-    backgroundColor: FOOTER_COLORS.background,
     paddingTop: 40,
     paddingBottom: 32,
     paddingHorizontal: 24,
@@ -217,7 +220,6 @@ const styles = StyleSheet.create({
   newsletterTitle: {
     fontSize: 18,
     fontFamily: mukokoTheme.fonts.serif.fontFamily,
-    color: FOOTER_COLORS.text,
     marginBottom: 16,
     letterSpacing: 0.5,
   },
@@ -231,20 +233,16 @@ const styles = StyleSheet.create({
   emailInput: {
     flex: 1,
     height: 48,
-    backgroundColor: FOOTER_COLORS.inputBg,
     borderWidth: 1,
-    borderColor: FOOTER_COLORS.border,
     borderTopLeftRadius: 8,
     borderBottomLeftRadius: 8,
     paddingHorizontal: 16,
     fontSize: 15,
-    color: FOOTER_COLORS.text,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
   signUpButton: {
     height: 48,
     paddingHorizontal: 24,
-    backgroundColor: FOOTER_COLORS.accentLight,
     borderTopRightRadius: 8,
     borderBottomRightRadius: 8,
     justifyContent: 'center',
@@ -253,14 +251,12 @@ const styles = StyleSheet.create({
   signUpButtonText: {
     fontSize: 13,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    color: '#1A0033',
     letterSpacing: 1,
   },
 
   // Divider
   divider: {
     height: 1,
-    backgroundColor: FOOTER_COLORS.border,
     marginBottom: 40,
   },
 
@@ -285,14 +281,12 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: 20,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    color: FOOTER_COLORS.text,
     letterSpacing: 2,
     marginBottom: 4,
   },
   tagline: {
     fontSize: 12,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    color: FOOTER_COLORS.textMuted,
     letterSpacing: 0.5,
   },
 
@@ -310,7 +304,6 @@ const styles = StyleSheet.create({
   navLinkText: {
     fontSize: 13,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: FOOTER_COLORS.textMuted,
     letterSpacing: 1.5,
   },
 
@@ -320,7 +313,6 @@ const styles = StyleSheet.create({
     gap: 20,
     paddingTop: 24,
     borderTopWidth: 1,
-    borderTopColor: FOOTER_COLORS.border,
   },
   socialLinks: {
     flexDirection: 'row',
@@ -330,14 +322,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: FOOTER_COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   copyright: {
     fontSize: 12,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    color: FOOTER_COLORS.textMuted,
     letterSpacing: 0.3,
   },
 });
