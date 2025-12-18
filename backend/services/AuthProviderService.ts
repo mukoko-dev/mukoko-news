@@ -738,25 +738,147 @@ export class AuthProviderService {
   // ===========================================================================
 
   /**
-   * Role-based authentication configuration
-   * Set to true to require auth for the role, false to allow without auth
+   * Default auth settings (used if database not available)
    * Admin is ALWAYS required (locked) - cannot be disabled
    */
-  static AUTH_ENABLED: Record<UserRole, boolean> = {
+  static DEFAULT_AUTH_SETTINGS: Record<UserRole, boolean> = {
     admin: true,      // LOCKED: Always requires authentication
-    moderator: false, // Currently disabled - can be enabled per deployment
-    support: false,   // Currently disabled - can be enabled per deployment
-    author: false,    // Currently disabled - can be enabled per deployment
-    user: false,      // Currently disabled - can be enabled per deployment
+    moderator: false, // Disabled during OIDC migration
+    support: false,   // Disabled during OIDC migration
+    author: false,    // Disabled during OIDC migration
+    user: false,      // Disabled during OIDC migration
+  }
+
+  // Cache key for auth settings
+  private static AUTH_SETTINGS_CACHE_KEY = 'auth_settings:config'
+  private static AUTH_SETTINGS_CACHE_TTL = 300 // 5 minutes
+
+  /**
+   * Get auth settings from database (with KV caching)
+   */
+  async getAuthSettings(): Promise<Record<UserRole, { auth_required: boolean; locked: boolean }>> {
+    // Try cache first
+    const cached = await this.kv.get(AuthProviderService.AUTH_SETTINGS_CACHE_KEY)
+    if (cached) {
+      return JSON.parse(cached)
+    }
+
+    // Load from database
+    const result = await this.db.prepare(`
+      SELECT role, auth_required, locked FROM auth_settings
+    `).all()
+
+    const settings: Record<string, { auth_required: boolean; locked: boolean }> = {}
+
+    // Set defaults first
+    for (const role of Object.keys(ROLES)) {
+      settings[role] = {
+        auth_required: AuthProviderService.DEFAULT_AUTH_SETTINGS[role as UserRole],
+        locked: role === 'admin'
+      }
+    }
+
+    // Override with database values
+    if (result.results) {
+      for (const row of result.results as any[]) {
+        settings[row.role] = {
+          auth_required: Boolean(row.auth_required),
+          locked: Boolean(row.locked)
+        }
+      }
+    }
+
+    // Cache the settings
+    await this.kv.put(
+      AuthProviderService.AUTH_SETTINGS_CACHE_KEY,
+      JSON.stringify(settings),
+      { expirationTtl: AuthProviderService.AUTH_SETTINGS_CACHE_TTL }
+    )
+
+    return settings as Record<UserRole, { auth_required: boolean; locked: boolean }>
+  }
+
+  /**
+   * Update auth setting for a role (admin only)
+   * Returns false if role is locked or update fails
+   */
+  async updateAuthSetting(
+    role: UserRole,
+    authRequired: boolean,
+    adminUserId: string,
+    reason?: string
+  ): Promise<{ success: boolean; error?: string }> {
+    // Admin auth is always locked
+    if (role === 'admin') {
+      return { success: false, error: 'Admin authentication cannot be disabled' }
+    }
+
+    // Check if setting is locked
+    const current = await this.db.prepare(`
+      SELECT auth_required, locked FROM auth_settings WHERE role = ?
+    `).bind(role).first<{ auth_required: boolean; locked: boolean }>()
+
+    if (current?.locked) {
+      return { success: false, error: `Auth setting for ${role} is locked` }
+    }
+
+    const oldValue = current?.auth_required ?? false
+
+    // Update the setting
+    await this.db.prepare(`
+      UPDATE auth_settings
+      SET auth_required = ?, updated_at = datetime('now'), updated_by = ?
+      WHERE role = ?
+    `).bind(authRequired, adminUserId, role).run()
+
+    // Log the change
+    await this.db.prepare(`
+      INSERT INTO auth_settings_log (role, auth_required_old, auth_required_new, changed_by, reason)
+      VALUES (?, ?, ?, ?, ?)
+    `).bind(role, oldValue, authRequired, adminUserId, reason || null).run()
+
+    // Clear cache
+    await this.kv.delete(AuthProviderService.AUTH_SETTINGS_CACHE_KEY)
+
+    return { success: true }
+  }
+
+  /**
+   * Get auth settings change history
+   */
+  async getAuthSettingsHistory(limit: number = 50): Promise<any[]> {
+    const result = await this.db.prepare(`
+      SELECT
+        l.*,
+        u.email as changed_by_email,
+        u.display_name as changed_by_name
+      FROM auth_settings_log l
+      LEFT JOIN users u ON l.changed_by = u.id
+      ORDER BY l.changed_at DESC
+      LIMIT ?
+    `).bind(limit).all()
+
+    return result.results || []
   }
 
   /**
    * Check if authentication is required for a specific role
    * Admin is always required regardless of configuration
    */
-  static isAuthRequired(role: UserRole): boolean {
+  async isAuthRequired(role: UserRole): Promise<boolean> {
     if (role === 'admin') return true // Admin auth is LOCKED
-    return AuthProviderService.AUTH_ENABLED[role]
+
+    const settings = await this.getAuthSettings()
+    return settings[role]?.auth_required ?? false
+  }
+
+  /**
+   * Static check (uses defaults, for middleware that can't be async)
+   * Prefer the async isAuthRequired() method when possible
+   */
+  static isAuthRequiredSync(role: UserRole): boolean {
+    if (role === 'admin') return true // Admin auth is LOCKED
+    return AuthProviderService.DEFAULT_AUTH_SETTINGS[role]
   }
 
   /**
@@ -789,8 +911,9 @@ export class AuthProviderService {
       return { allowed: true, user }
     }
 
-    // Check if auth is required for this role
-    if (!AuthProviderService.isAuthRequired(requiredRole)) {
+    // Check if auth is required for this role (async database lookup)
+    const authRequired = await this.isAuthRequired(requiredRole)
+    if (!authRequired) {
       // Auth disabled for this role - allow access without authentication
       // Optionally still validate session if provided
       if (sessionToken) {

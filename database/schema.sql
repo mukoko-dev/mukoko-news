@@ -925,3 +925,38 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_actor_user_id ON audit_log(actor_user_i
 CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log(created_at);
 CREATE INDEX IF NOT EXISTS idx_cron_execution_log_type ON cron_execution_log(cron_type);
 CREATE INDEX IF NOT EXISTS idx_cron_execution_log_status ON cron_execution_log(status);
+
+-- ================================================
+-- AUTH SETTINGS (Role-based authentication config)
+-- ================================================
+
+CREATE TABLE IF NOT EXISTS auth_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL UNIQUE CHECK (role IN ('admin', 'moderator', 'support', 'author', 'user')),
+    auth_required BOOLEAN NOT NULL DEFAULT FALSE,
+    locked BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_by TEXT REFERENCES users(id) ON DELETE SET NULL
+);
+
+CREATE TABLE IF NOT EXISTS auth_settings_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    role TEXT NOT NULL,
+    auth_required_old BOOLEAN,
+    auth_required_new BOOLEAN NOT NULL,
+    changed_by TEXT REFERENCES users(id) ON DELETE SET NULL,
+    changed_at TEXT NOT NULL DEFAULT (datetime('now')),
+    reason TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_auth_settings_role ON auth_settings(role);
+CREATE INDEX IF NOT EXISTS idx_auth_settings_log_role ON auth_settings_log(role);
+CREATE INDEX IF NOT EXISTS idx_auth_settings_log_changed_at ON auth_settings_log(changed_at);
+
+-- Seed default auth settings
+INSERT OR IGNORE INTO auth_settings (role, auth_required, locked) VALUES
+    ('admin', TRUE, TRUE),
+    ('moderator', FALSE, FALSE),
+    ('support', FALSE, FALSE),
+    ('author', FALSE, FALSE),
+    ('user', FALSE, FALSE);

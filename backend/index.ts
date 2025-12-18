@@ -34,7 +34,7 @@ import { ArticleInteractionsDO } from "./services/ArticleInteractionsDO.js";
 import { UserBehaviorDO } from "./services/UserBehaviorDO.js";
 import { RealtimeCountersDO } from "./services/RealtimeCountersDO.js";
 // Unified Auth Provider Service (Single Auth Wrapper with RBAC)
-import { AuthProviderService } from "./services/AuthProviderService.js";
+import { AuthProviderService, UserRole } from "./services/AuthProviderService.js";
 
 // Import admin interface
 import { getAdminHTML, getLoginHTML } from "./admin/index.js";
@@ -397,6 +397,115 @@ app.post("/api/admin/logout", async (c) => {
   }
 
   return c.json({ success: true });
+});
+
+// =============================================================================
+// AUTH SETTINGS API - Manage role-based authentication requirements
+// =============================================================================
+
+// Get current auth settings for all roles
+app.get("/api/admin/auth-settings", async (c) => {
+  try {
+    const authService = new AuthProviderService({
+      DB: c.env.DB,
+      AUTH_STORAGE: c.env.AUTH_STORAGE
+    });
+
+    const settings = await authService.getAuthSettings();
+    const history = await authService.getAuthSettingsHistory(10);
+
+    return c.json({
+      success: true,
+      settings,
+      recent_changes: history,
+      note: "Admin authentication is locked and cannot be disabled"
+    });
+  } catch (error) {
+    console.error('[AUTH-SETTINGS] Error fetching settings:', error);
+    return c.json({ error: "Failed to fetch auth settings" }, 500);
+  }
+});
+
+// Update auth setting for a specific role
+app.put("/api/admin/auth-settings/:role", async (c) => {
+  try {
+    const role = c.req.param('role') as UserRole;
+    const validRoles = ['admin', 'moderator', 'support', 'author', 'user'];
+
+    if (!validRoles.includes(role)) {
+      return c.json({ error: "Invalid role" }, 400);
+    }
+
+    const body = await c.req.json();
+    const { auth_required, reason } = body;
+
+    if (typeof auth_required !== 'boolean') {
+      return c.json({ error: "auth_required must be a boolean" }, 400);
+    }
+
+    // Get admin user from session
+    const cookieHeader = c.req.header('cookie');
+    const sessionToken = getCookie(cookieHeader, 'auth_token');
+
+    if (!sessionToken) {
+      return c.json({ error: "Authentication required" }, 401);
+    }
+
+    const authService = new AuthProviderService({
+      DB: c.env.DB,
+      AUTH_STORAGE: c.env.AUTH_STORAGE
+    });
+
+    const session = await authService.validateSession(sessionToken);
+    if (!session || session.role !== 'admin') {
+      return c.json({ error: "Admin access required" }, 403);
+    }
+
+    const result = await authService.updateAuthSetting(
+      role,
+      auth_required,
+      session.user_id,
+      reason
+    );
+
+    if (!result.success) {
+      return c.json({ error: result.error }, 400);
+    }
+
+    // Fetch updated settings
+    const settings = await authService.getAuthSettings();
+
+    return c.json({
+      success: true,
+      message: `Auth setting for ${role} updated to ${auth_required ? 'enabled' : 'disabled'}`,
+      settings
+    });
+  } catch (error) {
+    console.error('[AUTH-SETTINGS] Error updating setting:', error);
+    return c.json({ error: "Failed to update auth setting" }, 500);
+  }
+});
+
+// Get auth settings change history
+app.get("/api/admin/auth-settings/history", async (c) => {
+  try {
+    const limit = parseInt(c.req.query('limit') || '50');
+
+    const authService = new AuthProviderService({
+      DB: c.env.DB,
+      AUTH_STORAGE: c.env.AUTH_STORAGE
+    });
+
+    const history = await authService.getAuthSettingsHistory(limit);
+
+    return c.json({
+      success: true,
+      history
+    });
+  } catch (error) {
+    console.error('[AUTH-SETTINGS] Error fetching history:', error);
+    return c.json({ error: "Failed to fetch auth settings history" }, 500);
+  }
 });
 
 // User management redirects - all redirect to frontend
