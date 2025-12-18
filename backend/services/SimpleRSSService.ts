@@ -211,10 +211,12 @@ export class SimpleRSSService {
     try {
       const response = await fetch(source.url, {
         headers: {
-          'User-Agent': 'Harare Metro News Aggregator/2.0 (https://www.hararemetro.co.zw)',
-          'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+          'Accept-Language': 'en-US,en;q=0.9'
         },
-        signal: controller.signal
+        signal: controller.signal,
+        redirect: 'follow'
       });
 
       clearTimeout(timeoutId);
@@ -224,13 +226,27 @@ export class SimpleRSSService {
       }
 
       const xmlText = await response.text();
+      const contentType = response.headers.get('content-type') || 'unknown';
+      console.log(`[SIMPLE-RSS] ${source.name}: Content-Type: ${contentType}, Length: ${xmlText.length}`);
 
       if (!xmlText || xmlText.trim().length === 0) {
         throw new Error('Empty response from RSS feed');
       }
 
+      // Check if response is HTML instead of XML (common issue with redirects)
+      if (xmlText.trim().startsWith('<!DOCTYPE') || xmlText.trim().startsWith('<html')) {
+        console.warn(`[SIMPLE-RSS] ${source.name}: Received HTML instead of RSS feed`);
+        throw new Error('Received HTML page instead of RSS feed');
+      }
+
       // Parse XML
       const feed = this.parser.parse(xmlText);
+
+      // Debug: Log parsed feed structure
+      console.log(`[SIMPLE-RSS] ${source.name}: Feed structure keys:`, Object.keys(feed));
+      if (feed.rss) {
+        console.log(`[SIMPLE-RSS] ${source.name}: rss.channel keys:`, feed.rss.channel ? Object.keys(feed.rss.channel) : 'no channel');
+      }
 
       // Extract items from RSS 2.0 or Atom feed
       let items = [];
@@ -239,19 +255,24 @@ export class SimpleRSSService {
         items = Array.isArray(feed.rss.channel.item)
           ? feed.rss.channel.item
           : [feed.rss.channel.item];
+        console.log(`[SIMPLE-RSS] ${source.name}: Found ${items.length} items in rss.channel.item`);
       } else if (feed.feed?.entry) {
         items = Array.isArray(feed.feed.entry)
           ? feed.feed.entry
           : [feed.feed.entry];
+        console.log(`[SIMPLE-RSS] ${source.name}: Found ${items.length} items in feed.entry`);
       } else {
-        console.warn(`[SIMPLE-RSS] No items found in feed from ${source.name}`);
+        console.warn(`[SIMPLE-RSS] ${source.name}: No items found in feed structure`);
         return [];
       }
 
       // Convert items to articles (limit to 20 most recent)
       const articles = items.slice(0, 20).map(item => this.parseItem(item, source));
+      const validArticles = articles.filter(a => a !== null) as Article[];
 
-      return articles.filter(a => a !== null) as Article[];
+      console.log(`[SIMPLE-RSS] ${source.name}: Parsed ${validArticles.length} valid articles from ${items.length} items`);
+
+      return validArticles;
 
     } catch (error: any) {
       clearTimeout(timeoutId);
@@ -818,7 +839,7 @@ export class SimpleRSSService {
             .run();
         }
 
-        // Link keyword to article (using article_keyword_links table)
+        // Link keyword to article
         await this.db
           .prepare(`
             INSERT INTO article_keyword_links (article_id, keyword_id, relevance_score, source, created_at)
