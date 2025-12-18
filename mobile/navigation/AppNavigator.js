@@ -140,10 +140,11 @@ function MainTabs({ currentRoute }) {
       left: 16,
       right: 16,
       backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-      borderRadius: 20,
+      borderRadius: 28,
       height: 64,
       paddingBottom: 6,
       paddingTop: 6,
+      paddingHorizontal: 8,
       borderWidth: 1,
       borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
       elevation: 4,
@@ -151,6 +152,9 @@ function MainTabs({ currentRoute }) {
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: isDark ? 0.3 : 0.1,
       shadowRadius: 12,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
     };
   };
 
@@ -218,9 +222,9 @@ function MainTabs({ currentRoute }) {
           tabBarLabel: 'Search',
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
-              name="magnify"
+              name={focused ? 'magnify' : 'magnify'}
               size={24}
-              color={color}
+              color={focused ? mukokoTheme.colors.accent : color}
             />
           ),
         }}
@@ -236,7 +240,7 @@ function MainTabs({ currentRoute }) {
             <MaterialCommunityIcons
               name={focused ? 'account' : 'account-outline'}
               size={24}
-              color={color}
+              color={focused ? mukokoTheme.colors.accent : color}
             />
           ),
         }}

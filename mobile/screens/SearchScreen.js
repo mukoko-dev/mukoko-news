@@ -174,7 +174,11 @@ export default function SearchScreen({ navigation, route }) {
       ]);
 
       if (results[0].status === 'fulfilled' && results[0].value.data?.categories) {
-        setCategories(results[0].value.data.categories);
+        // Filter out 'all' category since CategoryChips adds its own
+        const filteredCategories = results[0].value.data.categories.filter(
+          cat => cat.id !== 'all' && cat.slug !== 'all'
+        );
+        setCategories(filteredCategories);
       }
       if (results[1].status === 'fulfilled' && results[1].value.data?.database) {
         setStats(results[1].value.data.database);

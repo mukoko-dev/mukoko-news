@@ -6,6 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>Mukoko News</title>
 
+    <!-- Google Analytics (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-38BFSVZRQJ"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-38BFSVZRQJ');
+    </script>
+
     <!-- CRITICAL: Service worker cleanup - runs BEFORE any other JS -->
     <!-- This fixes blank page issues caused by stale cached service workers -->
     <script>
