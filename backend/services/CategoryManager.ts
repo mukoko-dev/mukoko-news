@@ -348,7 +348,7 @@ export class CategoryManager {
             COUNT(a.id) as article_count,
             COUNT(CASE WHEN a.published_at >= datetime('now', '-7 days') THEN 1 END) as recent_articles
           FROM categories c
-          LEFT JOIN articles a ON a.category = c.id
+          LEFT JOIN articles a ON a.category_id = c.id
           WHERE c.id != 'all' AND c.id != 'general' AND c.enabled = 1
           GROUP BY c.id, c.name
           HAVING recent_articles > 0
