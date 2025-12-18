@@ -25,7 +25,8 @@
     "CREATOR_ROLES": "creator,business-creator,author",
     "CLOUDFLARE_ACCOUNT_ID": "125a2dfbc21f76a25c980609609e8218",
     "AI_INSIGHTS_ENABLED": "true",
-    "AI_SEARCH_ENABLED": "true"
+    "AI_SEARCH_ENABLED": "true",
+    "AUTH_ISSUER_URL": "https://id.mukoko.com"
   },
 
   /**
@@ -36,11 +37,6 @@
       "binding": "DB",
       "database_name": "mukoko-news-db",
       "database_id": "2f2222f5-7122-4de1-8597-b12c73a9e3f9"
-    },
-    {
-      "binding": "AUTH_DB",
-      "database_name": "mukoko-auth-db",
-      "database_id": "23df7072-78b8-4b51-a27e-11517278d7e4"
     }
   ],
 

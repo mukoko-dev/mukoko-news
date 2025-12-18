@@ -15,6 +15,10 @@ import { NewsSourceService } from "./services/NewsSourceService.js";
 import { NewsSourceManager } from "./services/NewsSourceManager.js";
 import { SimpleRSSService } from "./services/SimpleRSSService.js";
 import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
+// OIDC Auth - ready for id.mukoko.com integration
+import { OIDCAuthService } from "./services/OIDCAuthService.js";
+import { oidcAuth, requireAuth, requireAdmin as requireAdminRole, getCurrentUser, getCurrentUserId, isAuthenticated } from "./middleware/oidcAuth.js";
+// Legacy auth - to be removed when id.mukoko.com is ready
 import { OpenAuthService } from "./services/OpenAuthService.js";
 import { PasswordHashService } from "./services/PasswordHashService.js";
 import { EmailService } from "./services/EmailService.js";
@@ -61,6 +65,7 @@ type Bindings = {
   ADMIN_SESSION_SECRET: string; // Set via wrangler secret
   AI_INSIGHTS_ENABLED: string;
   AI_SEARCH_ENABLED: string;
+  AUTH_ISSUER_URL: string; // OIDC issuer URL (id.mukoko.com)
   RESEND_API_KEY?: string; // Set via wrangler secret for email
   EMAIL_FROM?: string; // Default sender email address
 };
