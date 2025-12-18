@@ -20,7 +20,6 @@ import {
   useTheme as usePaperTheme,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { articles, categories as categoriesAPI } from '../api/client';
 import mukokoTheme from '../theme';
 import ArticleCard from '../components/ArticleCard';
@@ -30,11 +29,7 @@ import LoginPromo from '../components/LoginPromo';
 import SplashScreen from '../components/SplashScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { useLayout } from '../components/layout';
-
-// Storage keys for guest preferences
-const GUEST_COUNTRIES_KEY = '@mukoko_guest_countries';
-const GUEST_CATEGORIES_KEY = '@mukoko_guest_categories';
-const SPLASH_SHOWN_KEY = '@mukoko_splash_shown';
+import localPreferences, { PREF_KEYS } from '../services/LocalPreferencesService';
 
 // Article limit for non-authenticated users
 const GUEST_ARTICLE_LIMIT = 50;
@@ -88,20 +83,22 @@ export default function HomeScreen({ navigation }) {
   useEffect(() => {
     const checkSplashStatus = async () => {
       try {
-        const [shown, storedCountries, storedCategories] = await Promise.all([
-          AsyncStorage.getItem(SPLASH_SHOWN_KEY),
-          AsyncStorage.getItem(GUEST_COUNTRIES_KEY),
-          AsyncStorage.getItem(GUEST_CATEGORIES_KEY),
+        await localPreferences.init();
+
+        const [onboardingDone, storedCountries, storedCategories] = await Promise.all([
+          localPreferences.isOnboardingCompleted(),
+          localPreferences.getSelectedCountries(),
+          localPreferences.getSelectedCategories(),
         ]);
 
-        setSplashShownBefore(shown === 'true');
+        setSplashShownBefore(onboardingDone);
 
         // Load existing guest preferences
-        if (storedCountries) {
-          setGuestCountries(JSON.parse(storedCountries));
+        if (storedCountries && storedCountries.length > 0) {
+          setGuestCountries(storedCountries);
         }
-        if (storedCategories) {
-          setGuestCategories(JSON.parse(storedCategories));
+        if (storedCategories && storedCategories.length > 0) {
+          setGuestCategories(storedCategories);
         }
 
         preferencesLoadedRef.current = true;
@@ -206,9 +203,22 @@ export default function HomeScreen({ navigation }) {
     setShowSplash(false);
   }, []);
 
-  const handlePreferencesSet = useCallback(({ countries, categories }) => {
+  const handlePreferencesSet = useCallback(async ({ countries, categories }) => {
     setGuestCountries(countries || []);
     setGuestCategories(categories || []);
+
+    // Save to LocalPreferencesService
+    try {
+      if (countries && countries.length > 0) {
+        await localPreferences.setSelectedCountries(countries);
+      }
+      if (categories && categories.length > 0) {
+        await localPreferences.setSelectedCategories(categories);
+      }
+      await localPreferences.setOnboardingCompleted(true);
+    } catch (error) {
+      console.error('[Home] Failed to save preferences:', error);
+    }
 
     // Reload articles with new preferences
     loadArticles(selectedCategory, countries);

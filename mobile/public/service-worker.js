@@ -9,7 +9,7 @@
  * - Images: Cache-first with network fallback
  */
 
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAMES = {
   STATIC: `mukoko-static-${CACHE_VERSION}`,
   API: `mukoko-api-${CACHE_VERSION}`,
@@ -18,10 +18,25 @@ const CACHE_NAMES = {
 
 // Cache expiration times
 const CACHE_TTL = {
-  API_FEEDS: 5 * 60 * 1000,      // 5 minutes for article feeds
-  API_CATEGORIES: 60 * 60 * 1000, // 1 hour for categories
+  API_FEEDS: 2 * 60 * 1000,      // 2 minutes for article feeds (shorter for freshness)
+  API_CATEGORIES: 30 * 60 * 1000, // 30 minutes for categories
   IMAGES: 7 * 24 * 60 * 60 * 1000, // 7 days for images
 };
+
+// API paths that should use network-first (critical for freshness)
+const NETWORK_FIRST_PATHS = [
+  '/api/feeds',
+  '/api/categories',
+  '/api/search',
+  '/api/trending',
+];
+
+// API paths that should NEVER be cached (user-specific, real-time)
+const NO_CACHE_PATHS = [
+  '/api/auth',
+  '/api/user',
+  '/api/admin',
+];
 
 // Static assets to precache (only fingerprinted/immutable files)
 // DO NOT add index.html or / here - that causes blank page issues
@@ -166,46 +181,79 @@ async function handleHtmlRequest(request) {
 }
 
 /**
- * API: Stale-while-revalidate (instant load + fresh content)
- * Perfect for news feeds - show cached immediately, update in background
+ * API: Network-first for feeds, skip cache for user-specific paths
+ * Ensures fresh content while providing offline fallback
  */
 async function handleApiRequest(request) {
   const url = new URL(request.url);
-  console.log('[SW] API request (stale-while-revalidate):', url.pathname);
+  const pathname = url.pathname;
+  console.log('[SW] API request:', pathname);
+
+  // Never cache user-specific or auth paths
+  if (NO_CACHE_PATHS.some(path => pathname.startsWith(path))) {
+    console.log('[SW] API bypassing cache (no-cache path):', pathname);
+    try {
+      return await fetch(request);
+    } catch (error) {
+      return new Response(
+        JSON.stringify({ error: 'Network error', message: 'Please check your connection' }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
 
   const cache = await caches.open(CACHE_NAMES.API);
+
+  // Network-first for critical paths (feeds, categories, search)
+  if (NETWORK_FIRST_PATHS.some(path => pathname.startsWith(path))) {
+    console.log('[SW] API network-first:', pathname);
+    try {
+      const networkResponse = await fetch(request);
+      if (networkResponse.ok) {
+        // Cache the fresh response
+        const responseToCache = networkResponse.clone();
+        await cache.put(request, responseToCache);
+        console.log('[SW] API cached fresh data:', pathname);
+      }
+      return networkResponse;
+    } catch (error) {
+      console.log('[SW] API network failed, trying cache:', pathname);
+      const cachedResponse = await cache.match(request);
+      if (cachedResponse) {
+        console.log('[SW] API serving from cache (offline):', pathname);
+        return cachedResponse;
+      }
+      return new Response(
+        JSON.stringify({ error: 'Offline', message: 'Unable to fetch data', offline: true }),
+        { status: 503, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+  }
+
+  // Stale-while-revalidate for other API paths
+  console.log('[SW] API stale-while-revalidate:', pathname);
   const cachedResponse = await cache.match(request);
 
-  // Start network fetch immediately (for background update)
+  // Start network fetch for background update
   const networkPromise = fetch(request)
     .then(async (networkResponse) => {
       if (networkResponse.ok) {
-        // Clone and cache the fresh response
         const responseToCache = networkResponse.clone();
         await cache.put(request, responseToCache);
-        console.log('[SW] API cached:', url.pathname);
       }
       return networkResponse;
     })
-    .catch((error) => {
-      console.log('[SW] API network failed:', error);
-      return null;
-    });
+    .catch(() => null);
 
-  // Return cached response immediately if available
   if (cachedResponse) {
-    console.log('[SW] API serving from cache:', url.pathname);
-    // Background update happens via networkPromise
     return cachedResponse;
   }
 
-  // No cache, wait for network
   const networkResponse = await networkPromise;
   if (networkResponse) {
     return networkResponse;
   }
 
-  // Both cache and network failed
   return new Response(
     JSON.stringify({ error: 'Offline', message: 'Unable to fetch data' }),
     { status: 503, headers: { 'Content-Type': 'application/json' } }
@@ -356,4 +404,4 @@ async function getCacheSize() {
   return totalSize;
 }
 
-console.log('[SW] Service worker loaded - v' + CACHE_VERSION);
+console.log('[SW] Mukoko News service worker loaded - ' + CACHE_VERSION + ' (network-first for feeds)');
