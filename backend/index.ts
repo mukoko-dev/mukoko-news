@@ -204,7 +204,7 @@ const requireAdmin = async (c: any, next: any) => {
 
   // Use AuthProviderService for admin access validation
   try {
-    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
     const result = await authService.validateAdminAccess(sessionToken);
 
     if (!result.allowed) {
@@ -244,7 +244,7 @@ const requireRole = (requiredRole: 'admin' | 'moderator' | 'support' | 'author' 
     const isApiRequest = c.req.path.startsWith('/api/');
 
     try {
-      const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+      const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
       const result = await authService.validateAccess(sessionToken, requiredRole);
 
       if (!result.allowed) {
@@ -285,7 +285,7 @@ const optionalAuth = async (c: any, next: any) => {
 
   if (sessionToken) {
     try {
-      const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+      const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE as any });
       const user = await authService.getUserFromHeaders(c.req.raw.headers);
       if (user) {
         c.set('user', {
@@ -308,69 +308,71 @@ app.get("/login", (c) => {
   return c.redirect("https://news.mukoko.com/auth/login", 302);
 });
 
-// Login API endpoint - uses D1 users table with role-based access
+// Admin login - validates OIDC session and checks admin role
+// The actual authentication happens via OIDC (/api/auth/oidc/callback)
+// This endpoint validates the existing session has admin privileges
 app.post("/api/admin/login", async (c) => {
   try {
-    const { email, password } = await c.req.json();
+    // Check for existing session token
+    const cookieHeader = c.req.header('cookie');
+    const sessionToken = getCookie(cookieHeader, 'auth_token');
 
-    // Initialize OpenAuthService
-    const openAuthService = new OpenAuthService({
-      DB: c.env.DB,
-      AUTH_STORAGE: c.env.AUTH_STORAGE
-    });
-
-    // Get user from D1 database
-    const user = await openAuthService.getUserByEmail(email);
-
-    if (!user) {
-      return c.json({ error: "Invalid email or password" }, 401);
+    if (!sessionToken) {
+      // Return OIDC login URL for redirect
+      const issuerUrl = c.env.AUTH_ISSUER_URL || 'https://id.mukoko.com';
+      return c.json({
+        error: "No session found",
+        oidc_url: `${issuerUrl}/oauth/authorize`,
+        requires_auth: true
+      }, 401);
     }
 
-    // Check if user has admin role - only 'admin' role can access admin panel
+    // Validate session
+    const authService = new AuthProviderService({
+      DB: c.env.DB,
+      AUTH_STORAGE: c.env.AUTH_STORAGE as any
+    });
+
+    const session = await authService.validateSession(sessionToken);
+    if (!session) {
+      return c.json({
+        error: "Invalid or expired session",
+        requires_auth: true
+      }, 401);
+    }
+
+    // Check if user has admin role
     const adminRoles = c.env.ADMIN_ROLES?.split(',') || ['admin'];
-    if (!adminRoles.includes(user.role)) {
-      console.log('[AUTH] Login denied - user lacks admin role:', { email, role: user.role, requiredRoles: adminRoles });
+    if (!adminRoles.includes(session.role)) {
+      console.log('[AUTH] Admin login denied - user lacks admin role:', {
+        email: session.email,
+        role: session.role,
+        requiredRoles: adminRoles
+      });
       return c.json({ error: "Insufficient permissions - admin access required" }, 403);
     }
 
-    // Validate password using scrypt-based verification
-    const storedPasswordHash = user.password_hash;
-    if (!storedPasswordHash) {
-      return c.json({ error: "Invalid email or password" }, 401);
+    // Get full user data
+    const user = await authService.getUserById(session.user_id);
+    if (!user) {
+      return c.json({ error: "User not found" }, 404);
     }
 
-    const isPasswordValid = await verifyPassword(password, storedPasswordHash);
-    if (!isPasswordValid) {
-      return c.json({ error: "Invalid email or password" }, 401);
-    }
+    console.log('[AUTH] Admin session validated:', { email: session.email, role: session.role });
 
-    // Create session token
-    const sessionToken = await createSessionToken(email, c.env);
-
-    // Store session in KV (expires in 7 days)
-    await c.env.AUTH_STORAGE.put(
-      `session:${sessionToken}`,
-      JSON.stringify({
+    return c.json({
+      success: true,
+      user: {
+        id: user.id,
         email: user.email,
-        userId: user.id,
+        name: user.name,
         username: user.username,
         role: user.role,
-        loginAt: new Date().toISOString()
-      }),
-      { expirationTtl: 7 * 24 * 60 * 60 }
-    );
-
-    // Update user last login timestamp
-    await c.env.DB
-      .prepare('UPDATE users SET last_login_at = CURRENT_TIMESTAMP, login_count = login_count + 1 WHERE id = ?')
-      .bind(user.id)
-      .run();
-
-    console.log('[AUTH] Admin login successful:', { email, role: user.role, userId: user.id });
-
-    return c.json({ success: true, token: sessionToken });
+        picture: user.picture
+      }
+    });
   } catch (error: any) {
-    console.error('[AUTH] Login error:', error);
+    console.error('[AUTH] Admin login error:', error);
     return c.json({ error: "Login failed" }, 500);
   }
 });
@@ -397,7 +399,7 @@ app.get("/api/admin/auth-settings", async (c) => {
   try {
     const authService = new AuthProviderService({
       DB: c.env.DB,
-      AUTH_STORAGE: c.env.AUTH_STORAGE
+      AUTH_STORAGE: c.env.AUTH_STORAGE as any
     });
 
     const settings = await authService.getAuthSettings();
@@ -442,7 +444,7 @@ app.put("/api/admin/auth-settings/:role", async (c) => {
 
     const authService = new AuthProviderService({
       DB: c.env.DB,
-      AUTH_STORAGE: c.env.AUTH_STORAGE
+      AUTH_STORAGE: c.env.AUTH_STORAGE as any
     });
 
     const session = await authService.validateSession(sessionToken);
@@ -482,7 +484,7 @@ app.get("/api/admin/auth-settings/history", async (c) => {
 
     const authService = new AuthProviderService({
       DB: c.env.DB,
-      AUTH_STORAGE: c.env.AUTH_STORAGE
+      AUTH_STORAGE: c.env.AUTH_STORAGE as any
     });
 
     const history = await authService.getAuthSettingsHistory(limit);
@@ -668,10 +670,9 @@ app.get("/api/feeds", async (c) => {
     const queryParams: (string | number)[] = [];
 
     // Get articles directly from database
-    // Note: country_id removed from SELECT - column may not exist in all deployments
     let articlesQuery = `
       SELECT id, title, slug, description, content_snippet, author, source, source_id,
-             published_at, image_url, original_url, category_id, view_count,
+             published_at, image_url, original_url, category_id, country_id, view_count,
              like_count, bookmark_count
       FROM articles
       WHERE status = 'published'
@@ -685,14 +686,13 @@ app.get("/api/feeds", async (c) => {
       queryParams.push(category);
     }
 
-    // Pan-African country filtering disabled - country_id column needs migration
-    // TODO: Re-enable after running ALTER TABLE articles ADD COLUMN country_id TEXT
-    // if (countries && countries.length > 0) {
-    //   const placeholders = countries.map(() => '?').join(',');
-    //   articlesQuery += ` AND country_id IN (${placeholders})`;
-    //   countQuery += ` AND country_id IN (${placeholders})`;
-    //   queryParams.push(...countries);
-    // }
+    // Pan-African: filter by countries
+    if (countries && countries.length > 0) {
+      const placeholders = countries.map(() => '?').join(',');
+      articlesQuery += ` AND country_id IN (${placeholders})`;
+      countQuery += ` AND country_id IN (${placeholders})`;
+      queryParams.push(...countries);
+    }
 
     // Apply sorting based on sort parameter
     let orderClause: string;
@@ -4686,7 +4686,20 @@ app.get("/api/admin/user-stats", async (c) => {
       return c.json({ error: "Admin access required" }, 403);
     }
 
-    const stats = await authService.getUserStats();
+    // Get user statistics directly from DB
+    const totalResult = await c.env.DB.prepare('SELECT COUNT(*) as count FROM users').first<{ count: number }>();
+    const activeResult = await c.env.DB.prepare("SELECT COUNT(*) as count FROM users WHERE status = 'active'").first<{ count: number }>();
+    const suspendedResult = await c.env.DB.prepare("SELECT COUNT(*) as count FROM users WHERE status = 'suspended'").first<{ count: number }>();
+    const roleStats = await c.env.DB.prepare(`
+      SELECT role, COUNT(*) as count FROM users GROUP BY role
+    `).all<{ role: string; count: number }>();
+
+    const stats = {
+      total: totalResult?.count || 0,
+      active: activeResult?.count || 0,
+      suspended: suspendedResult?.count || 0,
+      by_role: Object.fromEntries((roleStats.results || []).map(r => [r.role, r.count]))
+    };
 
     return c.json(stats);
   } catch (error: any) {
@@ -4719,7 +4732,7 @@ app.put("/api/admin/users/:userId/role", async (c) => {
       return c.json({ error: "Invalid role. Valid roles: admin, moderator, support, author, user" }, 400);
     }
 
-    await authService.updateUserRole(userId, role, session.user_id || session.id);
+    await authService.updateUserRole(userId, role, session.user_id);
 
     return c.json({ message: "User role updated successfully" });
   } catch (error: any) {
@@ -4892,13 +4905,26 @@ app.put("/api/user/me/username", async (c) => {
       return c.json({ error: "Username is required" }, 400);
     }
 
-    const result = await authService.updateUsername(session.user_id || session.id, username);
-
-    if (!result.success) {
-      return c.json({ error: result.error || "Failed to update username" }, 400);
+    // Validate username format (alphanumeric, underscore, 3-30 chars)
+    if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+      return c.json({ error: "Username must be 3-30 characters, alphanumeric or underscore only" }, 400);
     }
 
-    return c.json({ message: "Username updated successfully", username });
+    // Check if username is taken
+    const existing = await c.env.DB.prepare(
+      'SELECT id FROM users WHERE username = ? AND id != ?'
+    ).bind(username.toLowerCase(), session.user_id).first();
+
+    if (existing) {
+      return c.json({ error: "Username is already taken" }, 400);
+    }
+
+    // Update username
+    await c.env.DB.prepare(
+      'UPDATE users SET username = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(username.toLowerCase(), session.user_id).run();
+
+    return c.json({ message: "Username updated successfully", username: username.toLowerCase() });
   } catch (error: any) {
     console.error("[USER] Update username error:", error);
     return c.json({ error: "Failed to update username" }, 500);
@@ -4927,7 +4953,7 @@ app.put("/api/user/me/profile", async (c) => {
       UPDATE users
       SET name = ?, bio = ?, picture = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
-    `).bind(name || null, bio || null, picture || null, session.user_id || session.id).run();
+    `).bind(name || null, bio || null, picture || null, session.user_id).run();
 
     return c.json({ message: "Profile updated successfully" });
   } catch (error: any) {
@@ -4957,7 +4983,7 @@ app.get("/api/user/:username/bookmarks", async (c) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       const session = await authService.validateSession(token);
-      canView = session && (session.user_id === user.id || session.id === user.id);
+      canView = session && (session.user_id === user.id);
     }
 
     if (!canView) {
@@ -5012,7 +5038,7 @@ app.get("/api/user/:username/likes", async (c) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       const session = await authService.validateSession(token);
-      canView = session && (session.user_id === user.id || session.id === user.id);
+      canView = session && (session.user_id === user.id);
     }
 
     if (!canView) {
@@ -5067,7 +5093,7 @@ app.get("/api/user/:username/history", async (c) => {
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       const session = await authService.validateSession(token);
-      canView = session && (session.user_id === user.id || session.id === user.id);
+      canView = session && (session.user_id === user.id);
     }
 
     if (!canView) {

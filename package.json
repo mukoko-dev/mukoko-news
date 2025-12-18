@@ -25,7 +25,8 @@
     "mobile:ios": "cd mobile && npm run ios",
     "mobile:android": "cd mobile && npm run android",
     "mobile:install": "cd mobile && npm install",
-    "mobile:deploy": "cd mobile && npx vercel --prod"
+    "mobile:deploy": "cd mobile && npx vercel --prod",
+    "prepare": "husky"
   },
   "overrides": {
     "esbuild": "^0.25.0"
@@ -37,6 +38,7 @@
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
+    "husky": "^9.1.7",
     "wrangler": "^4.55.0"
   }
 }
