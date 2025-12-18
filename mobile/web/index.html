@@ -15,38 +15,24 @@
       gtag('config', 'G-38BFSVZRQJ');
     </script>
 
-    <!-- CRITICAL: Service worker cleanup - runs BEFORE any other JS -->
-    <!-- This fixes blank page issues caused by stale cached service workers -->
+    <!-- Service worker version check - only cleans up outdated caches -->
     <script>
       (function() {
-        console.log('[Mukoko] Startup script running...');
+        var CURRENT_SW_VERSION = 'v3';
+        console.log('[Mukoko] Checking service worker version...');
 
-        // Force unregister ALL service workers immediately
-        if ('serviceWorker' in navigator) {
-          navigator.serviceWorker.getRegistrations().then(function(registrations) {
-            console.log('[Mukoko] Found ' + registrations.length + ' service worker(s)');
-            for (var i = 0; i < registrations.length; i++) {
-              registrations[i].unregister().then(function() {
-                console.log('[Mukoko] Service worker unregistered');
-              });
-            }
-          }).catch(function(err) {
-            console.log('[Mukoko] SW unregister error:', err);
-          });
-        }
-
-        // Force clear ALL caches
+        // Only clean up old version caches, not all caches
         if ('caches' in window) {
           caches.keys().then(function(names) {
-            console.log('[Mukoko] Found ' + names.length + ' cache(s)');
-            for (var i = 0; i < names.length; i++) {
-              caches.delete(names[i]);
-              console.log('[Mukoko] Deleted cache:', names[i]);
-            }
+            names.forEach(function(name) {
+              // Only delete caches from older versions (v1, v2)
+              if (name.startsWith('mukoko-') && !name.includes(CURRENT_SW_VERSION)) {
+                caches.delete(name);
+                console.log('[Mukoko] Cleaned old cache:', name);
+              }
+            });
           }).catch(function() {});
         }
-
-        console.log('[Mukoko] Cleanup complete, loading app...');
       })();
     </script>
 
