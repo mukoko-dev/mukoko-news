@@ -33,6 +33,8 @@ import { RealtimeAnalyticsDO } from "./services/RealtimeAnalyticsDO.js";
 import { ArticleInteractionsDO } from "./services/ArticleInteractionsDO.js";
 import { UserBehaviorDO } from "./services/UserBehaviorDO.js";
 import { RealtimeCountersDO } from "./services/RealtimeCountersDO.js";
+// Unified Auth Provider Service (Single Auth Wrapper with RBAC)
+import { AuthProviderService } from "./services/AuthProviderService.js";
 
 // Import admin interface
 import { getAdminHTML, getLoginHTML } from "./admin/index.js";
@@ -203,57 +205,113 @@ function getCookie(cookieHeader: string | null, name: string): string | null {
 }
 
 // Authentication middleware - protect admin routes
-// Uses shared auth_token cookie from frontend
+// Uses AuthProviderService with RBAC - Admin auth is ALWAYS required (locked)
 const requireAdmin = async (c: any, next: any) => {
   const cookieHeader = c.req.header('cookie');
-  const sessionToken = getCookie(cookieHeader, 'auth_token');
+  const sessionToken = getCookie(cookieHeader, 'auth_token') ||
+                       c.req.header('authorization')?.replace('Bearer ', '') ||
+                       c.req.header('x-session-token');
   const isApiRequest = c.req.path.startsWith('/api/');
 
-  if (!sessionToken) {
-    // No session - redirect to frontend login
-    if (isApiRequest) {
-      return c.json({ error: 'Authentication required' }, 401);
-    }
-    return c.redirect('https://news.mukoko.com/auth/login', 302);
-  }
-
-  // Validate session from D1 database using OpenAuthService
+  // Use AuthProviderService for admin access validation
   try {
-    const authService = new OpenAuthService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
-    const session = await authService.validateSession(sessionToken);
+    const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+    const result = await authService.validateAdminAccess(sessionToken);
 
-    if (!session || !session.user_id) {
-      // Invalid or expired session - redirect to frontend login
+    if (!result.allowed) {
+      console.log('[AUTH] Admin access denied:', result.reason);
       if (isApiRequest) {
-        return c.json({ error: 'Session expired or invalid' }, 401);
+        const status = !sessionToken ? 401 : 403;
+        return c.json({ error: result.reason || 'Admin access required' }, status);
       }
       return c.redirect('https://news.mukoko.com/auth/login', 302);
     }
 
-    // Check if user has admin role
-    const adminRoles = c.env.ADMIN_ROLES?.split(',') || ['admin', 'super_admin', 'moderator'];
-    if (!adminRoles.includes(session.role)) {
-      if (isApiRequest) {
-        return c.json({ error: 'Admin access required' }, 403);
-      }
-      return c.redirect('https://news.mukoko.com', 302); // Redirect to homepage
-    }
-
     // Session valid and user is admin, continue
     c.set('user', {
-      userId: session.user_id,
-      email: session.email,
-      username: session.username,
-      role: session.role
+      userId: result.user!.id,
+      email: result.user!.email,
+      username: result.user!.username,
+      role: result.user!.role
     });
     await next();
   } catch (error) {
-    console.error('[AUTH] Session validation error:', error);
+    console.error('[AUTH] Admin validation error:', error);
     if (isApiRequest) {
       return c.json({ error: 'Authentication error' }, 401);
     }
     return c.redirect('https://news.mukoko.com/auth/login', 302);
   }
+};
+
+// RBAC Middleware for role-based access
+// Use for routes that need specific role levels but may not require admin
+const requireRole = (requiredRole: 'admin' | 'moderator' | 'support' | 'author' | 'user') => {
+  return async (c: any, next: any) => {
+    const cookieHeader = c.req.header('cookie');
+    const sessionToken = getCookie(cookieHeader, 'auth_token') ||
+                         c.req.header('authorization')?.replace('Bearer ', '') ||
+                         c.req.header('x-session-token');
+    const isApiRequest = c.req.path.startsWith('/api/');
+
+    try {
+      const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+      const result = await authService.validateAccess(sessionToken, requiredRole);
+
+      if (!result.allowed) {
+        console.log(`[AUTH] ${requiredRole} access denied:`, result.reason);
+        if (isApiRequest) {
+          const status = !sessionToken ? 401 : 403;
+          return c.json({ error: result.reason || `${requiredRole} access required` }, status);
+        }
+        return c.redirect('https://news.mukoko.com/auth/login', 302);
+      }
+
+      // Set user context if available
+      if (result.user) {
+        c.set('user', {
+          userId: result.user.id,
+          email: result.user.email,
+          username: result.user.username,
+          role: result.user.role
+        });
+      }
+      await next();
+    } catch (error) {
+      console.error(`[AUTH] ${requiredRole} validation error:`, error);
+      if (isApiRequest) {
+        return c.json({ error: 'Authentication error' }, 401);
+      }
+      return c.redirect('https://news.mukoko.com/auth/login', 302);
+    }
+  };
+};
+
+// Optional auth middleware - doesn't require auth but sets user context if available
+const optionalAuth = async (c: any, next: any) => {
+  const cookieHeader = c.req.header('cookie');
+  const sessionToken = getCookie(cookieHeader, 'auth_token') ||
+                       c.req.header('authorization')?.replace('Bearer ', '') ||
+                       c.req.header('x-session-token');
+
+  if (sessionToken) {
+    try {
+      const authService = new AuthProviderService({ DB: c.env.DB, AUTH_STORAGE: c.env.AUTH_STORAGE });
+      const user = await authService.getUserFromHeaders(c.req.raw.headers);
+      if (user) {
+        c.set('user', {
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+          role: user.role
+        });
+      }
+    } catch (error) {
+      // Ignore errors - auth is optional
+      console.log('[AUTH] Optional auth failed:', error);
+    }
+  }
+  await next();
 };
 
 // Login page - redirect to frontend
@@ -279,8 +337,8 @@ app.post("/api/admin/login", async (c) => {
       return c.json({ error: "Invalid email or password" }, 401);
     }
 
-    // Check if user has admin role
-    const adminRoles = c.env.ADMIN_ROLES?.split(',') || ['admin', 'super_admin', 'moderator'];
+    // Check if user has admin role - only 'admin' role can access admin panel
+    const adminRoles = c.env.ADMIN_ROLES?.split(',') || ['admin'];
     if (!adminRoles.includes(user.role)) {
       console.log('[AUTH] Login denied - user lacks admin role:', { email, role: user.role, requiredRoles: adminRoles });
       return c.json({ error: "Insufficient permissions - admin access required" }, 403);
@@ -4424,8 +4482,9 @@ app.put("/api/admin/users/:userId/role", async (c) => {
     const userId = c.req.param("userId");
     const { role } = await c.req.json();
 
-    if (!['creator', 'business-creator', 'moderator', 'admin'].includes(role)) {
-      return c.json({ error: "Invalid role" }, 400);
+    // Valid roles: admin, moderator, support, author, user
+    if (!['admin', 'moderator', 'support', 'author', 'user'].includes(role)) {
+      return c.json({ error: "Invalid role. Valid roles: admin, moderator, support, author, user" }, 400);
     }
 
     await authService.updateUserRole(userId, role, session.user_id || session.id);
