@@ -14,9 +14,10 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import mukokoTheme, { paperThemeDark } from '../theme';
+import mukokoTheme, { paperTheme, paperThemeDark } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI } from '../api/client';
+import { useTheme } from '../contexts/ThemeContext';
 
 /**
  * ArticleDetailScreen - Full article view with hero section
@@ -32,8 +33,12 @@ import { articles as articlesAPI } from '../api/client';
 export default function ArticleDetailScreen({ route, navigation }) {
   const { articleId, source, slug } = route.params || {};
   const { user, isAuthenticated } = useAuth();
-  const paperTheme = usePaperTheme();
+  const currentTheme = usePaperTheme();
+  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
+
+  // Hero uses inverse theme for contrast (light mode = dark hero, dark mode = light hero)
+  const heroTheme = isDark ? paperTheme : paperThemeDark;
 
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,41 +50,41 @@ export default function ArticleDetailScreen({ route, navigation }) {
   // Dynamic styles based on theme
   const dynamicStyles = {
     container: {
-      backgroundColor: paperTheme.colors.background,
+      backgroundColor: currentTheme.colors.background,
     },
     loadingText: {
-      color: paperTheme.colors.onSurfaceVariant,
+      color: currentTheme.colors.onSurfaceVariant,
     },
     errorCard: {
-      backgroundColor: paperTheme.colors.surface,
-      borderColor: paperTheme.colors.outline,
+      backgroundColor: currentTheme.colors.surface,
+      borderColor: currentTheme.colors.outline,
     },
     errorTitle: {
-      color: paperTheme.colors.onSurface,
+      color: currentTheme.colors.onSurface,
     },
     errorMessage: {
-      color: paperTheme.colors.onSurfaceVariant,
+      color: currentTheme.colors.onSurfaceVariant,
     },
     articleContainer: {
-      backgroundColor: paperTheme.colors.surface,
+      backgroundColor: currentTheme.colors.surface,
     },
     contentParagraph: {
-      color: paperTheme.colors.onSurface,
+      color: currentTheme.colors.onSurface,
     },
     actionsDivider: {
-      backgroundColor: paperTheme.colors.outline,
+      backgroundColor: currentTheme.colors.outline,
     },
     actionButton: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
+      backgroundColor: currentTheme.colors.surfaceVariant,
     },
     actionText: {
-      color: paperTheme.colors.onSurface,
+      color: currentTheme.colors.onSurface,
     },
     readOriginalButton: {
-      backgroundColor: paperTheme.colors.primary,
+      backgroundColor: currentTheme.colors.primary,
     },
     readOriginalText: {
-      color: paperTheme.colors.onPrimary,
+      color: currentTheme.colors.onPrimary,
     },
   };
 
@@ -253,7 +258,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
         {/* Loading State */}
         {loading && (
           <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={paperTheme.colors.primary} />
+            <ActivityIndicator size="large" color={currentTheme.colors.primary} />
             <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Loading article...</Text>
           </View>
         )}
@@ -265,7 +270,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
               <MaterialCommunityIcons
                 name="newspaper-variant-outline"
                 size={64}
-                color={paperTheme.colors.onSurfaceVariant}
+                color={currentTheme.colors.onSurfaceVariant}
               />
               <Text style={[styles.errorTitle, dynamicStyles.errorTitle]}>Article Not Found</Text>
               <Text style={[styles.errorMessage, dynamicStyles.errorMessage]}>{error}</Text>
@@ -273,7 +278,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 mode="contained"
                 onPress={() => navigation.goBack()}
                 style={styles.errorButton}
-                buttonColor={paperTheme.colors.primary}
+                buttonColor={currentTheme.colors.primary}
               >
                 Go Back
               </Button>
@@ -284,34 +289,34 @@ export default function ArticleDetailScreen({ route, navigation }) {
         {/* Article Content */}
         {article && !loading && !error && (
           <>
-            {/* Hero Section - Uses dark theme colors */}
+            {/* Hero Section - Uses inverse theme for contrast */}
             <LinearGradient
-              colors={[paperThemeDark.colors.background, paperThemeDark.colors.surface]}
+              colors={[heroTheme.colors.background, heroTheme.colors.surface]}
               style={[styles.heroSection, { paddingTop: insets.top + 16 }]}
             >
               {/* Back Button */}
               <TouchableOpacity
                 onPress={handleBack}
-                style={[styles.heroBackButton, { backgroundColor: paperThemeDark.colors.glass }]}
+                style={[styles.heroBackButton, { backgroundColor: heroTheme.colors.glass }]}
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons
                   name="arrow-left"
                   size={24}
-                  color={paperThemeDark.colors.onSurface}
+                  color={heroTheme.colors.onSurface}
                 />
               </TouchableOpacity>
 
               {/* Share Button */}
               <TouchableOpacity
                 onPress={handleShare}
-                style={[styles.heroShareButton, { backgroundColor: paperThemeDark.colors.glass }]}
+                style={[styles.heroShareButton, { backgroundColor: heroTheme.colors.glass }]}
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons
                   name="share-variant-outline"
                   size={22}
-                  color={paperThemeDark.colors.onSurface}
+                  color={heroTheme.colors.onSurface}
                 />
               </TouchableOpacity>
 
@@ -319,15 +324,15 @@ export default function ArticleDetailScreen({ route, navigation }) {
               {article.category && (
                 <View style={styles.categoryContainer}>
                   <View style={[styles.categoryBadge, {
-                    backgroundColor: paperThemeDark.colors.glass,
-                    borderColor: paperThemeDark.colors.glassBorder,
+                    backgroundColor: heroTheme.colors.glass,
+                    borderColor: heroTheme.colors.glassBorder,
                   }]}>
                     <MaterialCommunityIcons
                       name="tag-outline"
                       size={14}
-                      color={paperThemeDark.colors.primary}
+                      color={heroTheme.colors.primary}
                     />
-                    <Text style={[styles.categoryText, { color: paperThemeDark.colors.onSurface }]}>
+                    <Text style={[styles.categoryText, { color: heroTheme.colors.onSurface }]}>
                       {article.category.toUpperCase()}
                     </Text>
                   </View>
@@ -335,16 +340,16 @@ export default function ArticleDetailScreen({ route, navigation }) {
               )}
 
               {/* Title */}
-              <Text style={[styles.heroTitle, { color: paperThemeDark.colors.onSurface }]} accessibilityRole="header">
+              <Text style={[styles.heroTitle, { color: heroTheme.colors.onSurface }]} accessibilityRole="header">
                 {article.title}
               </Text>
 
               {/* Source and Date */}
               <View style={styles.heroMeta}>
-                <Text style={[styles.heroSource, { color: paperThemeDark.colors.onSurface }]}>
+                <Text style={[styles.heroSource, { color: heroTheme.colors.onSurface }]}>
                   {article.source || 'Unknown Source'}
                 </Text>
-                <Text style={[styles.heroDate, { color: paperThemeDark.colors.onSurfaceVariant }]}>
+                <Text style={[styles.heroDate, { color: heroTheme.colors.onSurfaceVariant }]}>
                   {formatDate(article.published_at)}
                 </Text>
               </View>
@@ -354,10 +359,10 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 <View style={styles.keywordsContainer}>
                   {getKeywords().map((keyword, index) => (
                     <View key={index} style={[styles.keywordTag, {
-                      backgroundColor: paperThemeDark.colors.glass,
-                      borderColor: paperThemeDark.colors.glassBorder,
+                      backgroundColor: heroTheme.colors.glass,
+                      borderColor: heroTheme.colors.glassBorder,
                     }]}>
-                      <Text style={[styles.keywordText, { color: paperThemeDark.colors.onSurfaceVariant }]}>
+                      <Text style={[styles.keywordText, { color: heroTheme.colors.onSurfaceVariant }]}>
                         {keyword}
                       </Text>
                     </View>
@@ -381,7 +386,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
             <View style={[styles.articleBody, dynamicStyles.articleContainer]}>
               {/* Description */}
               {article.description && (
-                <Text style={[styles.articleDescription, { color: paperTheme.colors.onSurfaceVariant }]}>
+                <Text style={[styles.articleDescription, { color: currentTheme.colors.onSurfaceVariant }]}>
                   {article.description}
                 </Text>
               )}
@@ -413,7 +418,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                   <MaterialCommunityIcons
                     name={isLiked ? 'heart' : 'heart-outline'}
                     size={22}
-                    color={isLiked ? paperTheme.colors.error : paperTheme.colors.onSurface}
+                    color={isLiked ? currentTheme.colors.error : currentTheme.colors.onSurface}
                   />
                   <Text style={[styles.actionText, dynamicStyles.actionText]}>
                     {likesCount > 0 ? likesCount : 'Like'}
@@ -429,7 +434,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                   <MaterialCommunityIcons
                     name={isSaved ? 'bookmark' : 'bookmark-outline'}
                     size={22}
-                    color={isSaved ? paperTheme.colors.tertiary : paperTheme.colors.onSurface}
+                    color={isSaved ? currentTheme.colors.tertiary : currentTheme.colors.onSurface}
                   />
                   <Text style={[styles.actionText, dynamicStyles.actionText]}>Save</Text>
                 </TouchableOpacity>
@@ -443,7 +448,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                   <MaterialCommunityIcons
                     name="share-variant-outline"
                     size={22}
-                    color={paperTheme.colors.onSurface}
+                    color={currentTheme.colors.onSurface}
                   />
                   <Text style={[styles.actionText, dynamicStyles.actionText]}>Share</Text>
                 </TouchableOpacity>
@@ -460,7 +465,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                   <MaterialCommunityIcons
                     name="open-in-new"
                     size={18}
-                    color={paperTheme.colors.onPrimary}
+                    color={currentTheme.colors.onPrimary}
                   />
                 </TouchableOpacity>
               </View>
