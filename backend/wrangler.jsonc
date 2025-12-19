@@ -13,7 +13,9 @@
 
   /**
    * Environment Variables
-   * Note: ADMIN_SESSION_SECRET should be set via `wrangler secret put ADMIN_SESSION_SECRET`
+   * Secrets should be set via `wrangler secret put SECRET_NAME`:
+   * - ADMIN_SESSION_SECRET: Admin session authentication
+   * - API_SECRET: Bearer token for frontend (Vercel) to backend API authentication
    */
   "vars": {
     "NODE_ENV": "production",

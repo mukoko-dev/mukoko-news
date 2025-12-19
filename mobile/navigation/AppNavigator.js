@@ -11,9 +11,12 @@ import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
 import AppHeader from '../components/AppHeader';
 import ZimbabweFlagStrip from '../components/ZimbabweFlagStrip';
+import CountryPickerButton from '../components/CountryPickerButton';
 import { ResponsiveLayout, LeftSidebar, RightSidebar, BREAKPOINTS } from '../components/layout';
 import { navigationRef } from './navigationRef';
 import linking from './linking';
+import SplashScreen from '../components/SplashScreen';
+import localPreferences from '../services/LocalPreferencesService';
 
 // Screens
 import NewsBytesScreen from '../screens/NewsBytesScreen';
@@ -129,50 +132,47 @@ function MainTabs({ currentRoute }) {
       return { display: 'none' };
     }
     return {
-      position: 'absolute',
-      bottom: 16,
-      left: 16,
-      right: 16,
-      backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-      borderRadius: 28,
-      height: 64,
-      paddingBottom: 6,
-      paddingTop: 6,
-      paddingHorizontal: 8,
-      borderWidth: 1,
-      borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
-      elevation: 4,
+      position: 'relative',
+      backgroundColor: paperTheme.colors.surface,
+      borderTopWidth: 1,
+      borderTopColor: paperTheme.colors.outline,
+      height: 60,
+      paddingBottom: 8,
+      paddingTop: 8,
+      paddingHorizontal: 0,
+      elevation: 8,
       shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: isDark ? 0.3 : 0.1,
-      shadowRadius: 12,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: isDark ? 0.2 : 0.1,
+      shadowRadius: 8,
     };
   };
+
+  // Use consistent icon color with header (inverse theme color)
+  const iconColor = isDark ? '#FFFFFF' : '#000000';
 
   return (
     <Tab.Navigator
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: paperTheme.colors.primary,
+        tabBarActiveTintColor: iconColor,
         tabBarInactiveTintColor: paperTheme.colors.onSurfaceVariant,
         tabBarStyle: getTabBarStyle(),
         tabBarItemStyle: {
           flex: 1,
-          paddingVertical: 4,
+          paddingVertical: 0,
           justifyContent: 'center',
           alignItems: 'center',
         },
         tabBarLabelStyle: {
-          fontSize: 10,
+          fontSize: 11,
           fontFamily: mukokoTheme.fonts.medium.fontFamily,
-          marginTop: 2,
-          marginBottom: 2,
+          marginTop: 4,
+          marginBottom: 0,
         },
         tabBarIconStyle: {
-          marginTop: 2,
+          marginTop: 4,
+          marginBottom: 0,
         },
       }}
     >
@@ -186,13 +186,13 @@ function MainTabs({ currentRoute }) {
             <MaterialCommunityIcons
               name={focused ? 'lightning-bolt' : 'lightning-bolt-outline'}
               size={24}
-              color={focused ? mukokoTheme.colors.accent : color}
+              color={color}
             />
           ),
         }}
       />
 
-      {/* 2. Pulse - Personalized feed */}
+      {/* 2. Pulse - Country-specific feed */}
       <Tab.Screen
         name="Pulse"
         component={PulseStack}
@@ -200,9 +200,9 @@ function MainTabs({ currentRoute }) {
           tabBarLabel: 'Pulse',
           tabBarIcon: ({ color, focused }) => (
             <MaterialCommunityIcons
-              name={focused ? 'newspaper-variant' : 'newspaper-variant-outline'}
+              name={focused ? 'earth' : 'earth'}
               size={24}
-              color={focused ? mukokoTheme.colors.accent : color}
+              color={color}
             />
           ),
         }}
@@ -218,34 +218,41 @@ function MainTabs({ currentRoute }) {
             <MaterialCommunityIcons
               name={focused ? 'magnify' : 'magnify'}
               size={24}
-              color={focused ? mukokoTheme.colors.accent : color}
+              color={color}
             />
           ),
         }}
       />
 
-      {/* 4. Profile */}
-      <Tab.Screen
-        name="Profile"
-        component={ProfileStack}
-        options={{
-          tabBarLabel: 'Me',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'account' : 'account-outline'}
-              size={24}
-              color={focused ? mukokoTheme.colors.accent : color}
-            />
-          ),
-        }}
-      />
-
-      {/* Discover - Hidden tab for navigation purposes (header access only) */}
+      {/* 4. Discover - Now visible in tab bar */}
       <Tab.Screen
         name="Discover"
         component={DiscoverStack}
         options={{
-          tabBarButton: () => null, // Hide from tab bar
+          tabBarLabel: 'Discover',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? 'compass' : 'compass-outline'}
+              size={24}
+              color={color}
+            />
+          ),
+        }}
+      />
+
+      {/* 5. Profile */}
+      <Tab.Screen
+        name="Profile"
+        component={ProfileStack}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ color, focused }) => (
+            <MaterialCommunityIcons
+              name={focused ? 'account' : 'account-outline'}
+              size={24}
+              color={color}
+            />
+          ),
         }}
       />
 
@@ -260,7 +267,7 @@ function MainTabs({ currentRoute }) {
               <MaterialCommunityIcons
                 name={focused ? 'shield-crown' : 'shield-crown-outline'}
                 size={24}
-                color={focused ? mukokoTheme.colors.accent : color}
+                color={color}
               />
             ),
           }}
@@ -280,9 +287,39 @@ function getRouteFromState(state) {
 // Root Navigator
 export default function AppNavigator() {
   const paperTheme = usePaperTheme();
+  const { isAuthenticated } = useAuth();
   const [isNavigationReady, setIsNavigationReady] = useState(false);
   const [currentRoute, setCurrentRoute] = useState('Bytes');
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
+
+  // Global splash screen state
+  const [showSplash, setShowSplash] = useState(true);
+  const [splashShownBefore, setSplashShownBefore] = useState(null);
+  const [splashLoading, setSplashLoading] = useState(true);
+
+  // Check if splash was shown before on mount
+  useEffect(() => {
+    const checkSplashStatus = async () => {
+      try {
+        await localPreferences.init();
+        const onboardingDone = await localPreferences.isOnboardingCompleted();
+        setSplashShownBefore(onboardingDone);
+
+        // If onboarding was already done, don't show splash
+        if (onboardingDone) {
+          setShowSplash(false);
+        }
+
+        setSplashLoading(false);
+      } catch (error) {
+        console.error('[AppNavigator] Failed to check splash status:', error);
+        setSplashShownBefore(false);
+        setSplashLoading(false);
+      }
+    };
+
+    checkSplashStatus();
+  }, []);
 
   // Track screen width for responsive layout
   useEffect(() => {
@@ -300,6 +337,32 @@ export default function AppNavigator() {
       setCurrentRoute(getRouteFromState(state));
     }
   }, []);
+
+  // Handle splash close
+  const handleSplashClose = useCallback(() => {
+    setShowSplash(false);
+  }, []);
+
+  // Handle preferences set from splash
+  const handlePreferencesSet = useCallback(async (preferences) => {
+    console.log('[AppNavigator] User preferences set:', preferences);
+    // Preferences are already saved by SplashScreen component
+  }, []);
+
+  // Show global splash screen for first-time users
+  if (showSplash && !splashLoading) {
+    const shouldShowCustomization = !isAuthenticated && !splashShownBefore;
+
+    return (
+      <SplashScreen
+        isLoading={splashLoading}
+        loadingMessage="Loading Mukoko News..."
+        showCustomization={shouldShowCustomization}
+        onClose={handleSplashClose}
+        onPreferencesSet={handlePreferencesSet}
+      />
+    );
+  }
 
   return (
     <NavigationContainer

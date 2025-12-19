@@ -695,6 +695,142 @@ export class NewsSourceManager {
       };
     }
   }
+
+  /**
+   * Add RSS sources for all African countries
+   * Adds curated news sources for each of the 15 supported countries
+   */
+  async addPanAfricanNewsSources(): Promise<{ added: number; failed: number; details: string[] }> {
+    const panAfricanSources = [
+      // South Africa (ZA)
+      { name: "News24", url: "https://www.news24.com/feeds/rss/news24/topstories", country_id: "ZA", category: "general", priority: 5 },
+      { name: "Daily Maverick", url: "https://www.dailymaverick.co.za/dmrss/", country_id: "ZA", category: "general", priority: 5 },
+      { name: "Times LIVE", url: "https://www.timeslive.co.za/rss/", country_id: "ZA", category: "general", priority: 4 },
+      { name: "IOL", url: "https://www.iol.co.za/rss", country_id: "ZA", category: "general", priority: 4 },
+      { name: "BusinessTech", url: "https://businesstech.co.za/news/feed/", country_id: "ZA", category: "finance_investing", priority: 4 },
+
+      // Kenya (KE)
+      { name: "Nation Africa Kenya", url: "https://nation.africa/kenya/rss", country_id: "KE", category: "general", priority: 5 },
+      { name: "The Standard Kenya", url: "https://www.standardmedia.co.ke/rss/headlines.php", country_id: "KE", category: "general", priority: 5 },
+      { name: "Capital FM Kenya", url: "https://www.capitalfm.co.ke/news/feed/", country_id: "KE", category: "general", priority: 4 },
+      { name: "Business Daily Africa", url: "https://www.businessdailyafrica.com/bd/rss", country_id: "KE", category: "finance_investing", priority: 4 },
+      { name: "KTN News", url: "https://www.standardmedia.co.ke/ktnnews/rss/top-stories.php", country_id: "KE", category: "general", priority: 4 },
+
+      // Nigeria (NG)
+      { name: "Premium Times", url: "https://www.premiumtimesng.com/feed", country_id: "NG", category: "general", priority: 5 },
+      { name: "The Guardian Nigeria", url: "https://guardian.ng/feed/", country_id: "NG", category: "general", priority: 5 },
+      { name: "Punch Nigeria", url: "https://punchng.com/feed/", country_id: "NG", category: "general", priority: 5 },
+      { name: "Vanguard Nigeria", url: "https://www.vanguardngr.com/feed/", country_id: "NG", category: "general", priority: 4 },
+      { name: "ThisDay", url: "https://www.thisdaylive.com/index.php/feed/", country_id: "NG", category: "general", priority: 4 },
+      { name: "Nairametrics", url: "https://nairametrics.com/feed/", country_id: "NG", category: "finance_investing", priority: 4 },
+
+      // Ghana (GH)
+      { name: "GhanaWeb", url: "https://www.ghanaweb.com/GhanaHomePage/rss/news.xml", country_id: "GH", category: "general", priority: 5 },
+      { name: "Graphic Online", url: "https://www.graphic.com.gh/feeds/news.xml", country_id: "GH", category: "general", priority: 5 },
+      { name: "Joy News", url: "https://www.myjoyonline.com/feed/", country_id: "GH", category: "general", priority: 4 },
+      { name: "Citinewsroom", url: "https://citinewsroom.com/feed/", country_id: "GH", category: "general", priority: 4 },
+      { name: "Business Ghana", url: "https://www.businessghana.com/site/feed", country_id: "GH", category: "finance_investing", priority: 3 },
+
+      // Tanzania (TZ)
+      { name: "The Citizen Tanzania", url: "https://www.thecitizen.co.tz/tanzania/news/rss", country_id: "TZ", category: "general", priority: 5 },
+      { name: "Daily News Tanzania", url: "https://dailynews.co.tz/feed/", country_id: "TZ", category: "general", priority: 4 },
+      { name: "Mwananchi", url: "https://www.mwananchi.co.tz/mw/rss", country_id: "TZ", category: "general", priority: 4 },
+      { name: "IPP Media", url: "https://ippmedia.com/en/rss.xml", country_id: "TZ", category: "general", priority: 3 },
+
+      // Uganda (UG)
+      { name: "Daily Monitor", url: "https://www.monitor.co.ug/uganda/rss", country_id: "UG", category: "general", priority: 5 },
+      { name: "New Vision", url: "https://www.newvision.co.ug/rss.xml", country_id: "UG", category: "general", priority: 5 },
+      { name: "The Observer Uganda", url: "https://www.observer.ug/feed", country_id: "UG", category: "general", priority: 4 },
+      { name: "ChimpReports", url: "https://chimpreports.com/feed/", country_id: "UG", category: "general", priority: 3 },
+
+      // Rwanda (RW)
+      { name: "The New Times Rwanda", url: "https://www.newtimes.co.rw/rss", country_id: "RW", category: "general", priority: 5 },
+      { name: "KT Press", url: "https://www.ktpress.rw/feed/", country_id: "RW", category: "general", priority: 4 },
+      { name: "Rwanda Today", url: "https://rwandatoday.africa/feed/", country_id: "RW", category: "general", priority: 3 },
+
+      // Zambia (ZM)
+      { name: "Lusaka Times", url: "https://www.lusakatimes.com/feed/", country_id: "ZM", category: "general", priority: 5 },
+      { name: "Zambia Daily Mail", url: "https://www.daily-mail.co.zm/feed/", country_id: "ZM", category: "general", priority: 4 },
+      { name: "Mwebantu", url: "https://www.mwebantu.com/feed/", country_id: "ZM", category: "general", priority: 4 },
+
+      // Botswana (BW)
+      { name: "Mmegi Online", url: "https://www.mmegi.bw/rss.xml", country_id: "BW", category: "general", priority: 5 },
+      { name: "The Voice Botswana", url: "https://www.thevoicebw.com/feed/", country_id: "BW", category: "general", priority: 4 },
+      { name: "Sunday Standard Botswana", url: "https://www.sundaystandard.info/feed/", country_id: "BW", category: "general", priority: 3 },
+
+      // Malawi (MW)
+      { name: "Nyasa Times", url: "https://www.nyasatimes.com/feed/", country_id: "MW", category: "general", priority: 5 },
+      { name: "The Nation Malawi", url: "https://mwnation.com/feed/", country_id: "MW", category: "general", priority: 4 },
+      { name: "Malawi24", url: "https://malawi24.com/feed/", country_id: "MW", category: "general", priority: 4 },
+
+      // Mozambique (MZ)
+      { name: "Club of Mozambique", url: "https://clubofmozambique.com/feed/", country_id: "MZ", category: "general", priority: 5 },
+      { name: "AllAfrica Mozambique", url: "https://allafrica.com/mozambique/rss.xml", country_id: "MZ", category: "general", priority: 4 },
+
+      // Namibia (NA)
+      { name: "The Namibian", url: "https://www.namibian.com.na/rss/index.rss", country_id: "NA", category: "general", priority: 5 },
+      { name: "New Era Namibia", url: "https://neweralive.na/feed", country_id: "NA", category: "general", priority: 4 },
+      { name: "Informante", url: "https://informante.web.na/feed/", country_id: "NA", category: "general", priority: 3 },
+
+      // Ethiopia (ET)
+      { name: "Ethiopian News Agency", url: "https://www.ena.et/en/feed/", country_id: "ET", category: "general", priority: 5 },
+      { name: "Addis Standard", url: "https://addisstandard.com/feed/", country_id: "ET", category: "general", priority: 5 },
+      { name: "Ethiopian Monitor", url: "https://ethiopianmonitor.com/feed/", country_id: "ET", category: "general", priority: 4 },
+
+      // Egypt (EG)
+      { name: "Ahram Online", url: "https://english.ahram.org.eg/rss.aspx", country_id: "EG", category: "general", priority: 5 },
+      { name: "Egypt Independent", url: "https://www.egyptindependent.com/feed/", country_id: "EG", category: "general", priority: 5 },
+      { name: "Daily News Egypt", url: "https://dailynewssegypt.com/feed/", country_id: "EG", category: "general", priority: 4 },
+      { name: "Egypt Today", url: "https://www.egypttoday.com/RSS", country_id: "EG", category: "general", priority: 4 },
+
+      // Morocco (MA)
+      { name: "Morocco World News", url: "https://www.moroccoworldnews.com/feed/", country_id: "MA", category: "general", priority: 5 },
+      { name: "The North Africa Post", url: "https://northafricapost.com/feed/", country_id: "MA", category: "general", priority: 4 },
+      { name: "Hespress English", url: "https://en.hespress.com/feed", country_id: "MA", category: "general", priority: 4 }
+    ];
+
+    let added = 0;
+    let failed = 0;
+    const details: string[] = [];
+
+    for (const source of panAfricanSources) {
+      try {
+        // Generate a unique ID
+        const sourceId = source.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+        // Check if source already exists
+        const existing = await this.db.prepare(
+          'SELECT id FROM rss_sources WHERE id = ? OR url = ?'
+        ).bind(sourceId, source.url).first();
+
+        if (existing) {
+          details.push(`⏩ Skipped ${source.name} (${source.country_id}): Already exists`);
+          continue;
+        }
+
+        // Insert the RSS source directly
+        await this.db.prepare(`
+          INSERT INTO rss_sources (id, name, url, category, enabled, priority, country_id, created_at, updated_at)
+          VALUES (?, ?, ?, ?, 1, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `).bind(
+          sourceId,
+          source.name,
+          source.url,
+          source.category,
+          source.priority,
+          source.country_id
+        ).run();
+
+        added++;
+        details.push(`✅ Added ${source.name} (${source.country_id})`);
+      } catch (error: any) {
+        failed++;
+        details.push(`❌ Failed ${source.name} (${source.country_id}): ${error.message}`);
+      }
+    }
+
+    return { added, failed, details };
+  }
 }
 
 export default NewsSourceManager;

@@ -17,6 +17,7 @@ import {
   Text,
   ActivityIndicator,
   Button,
+  Snackbar,
   useTheme as usePaperTheme,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -25,10 +26,10 @@ import mukokoTheme from '../theme';
 import ArticleCard from '../components/ArticleCard';
 import CategoryChips from '../components/CategoryChips';
 import LoginPromo from '../components/LoginPromo';
-import SplashScreen from '../components/SplashScreen';
 import { useAuth } from '../contexts/AuthContext';
 import { useLayout } from '../components/layout';
 import localPreferences, { PREF_KEYS } from '../services/LocalPreferencesService';
+import cacheService from '../services/CacheService';
 
 // Article limit for non-authenticated users
 const GUEST_ARTICLE_LIMIT = 50;
@@ -50,10 +51,11 @@ export default function HomeScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [screenWidth, setScreenWidth] = useState(SCREEN_WIDTH);
   const [error, setError] = useState(null);
+  const [collectingFeed, setCollectingFeed] = useState(false);
+  const [snackbarVisible, setSnackbarVisible] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
 
-  // Splash screen and guest preferences state
-  const [showSplash, setShowSplash] = useState(true);
-  const [splashShownBefore, setSplashShownBefore] = useState(null);
+  // Guest preferences state
   const [guestCountries, setGuestCountries] = useState([]);
   const [guestCategories, setGuestCategories] = useState([]);
 
@@ -78,19 +80,16 @@ export default function HomeScreen({ navigation }) {
 
   const layoutConfig = getLayoutConfig(screenWidth);
 
-  // Check if splash was shown before (on mount)
+  // Load guest preferences on mount
   useEffect(() => {
-    const checkSplashStatus = async () => {
+    const loadPreferences = async () => {
       try {
         await localPreferences.init();
 
-        const [onboardingDone, storedCountries, storedCategories] = await Promise.all([
-          localPreferences.isOnboardingCompleted(),
+        const [storedCountries, storedCategories] = await Promise.all([
           localPreferences.getSelectedCountries(),
           localPreferences.getSelectedCategories(),
         ]);
-
-        setSplashShownBefore(onboardingDone);
 
         // Load existing guest preferences
         if (storedCountries && storedCountries.length > 0) {
@@ -101,25 +100,19 @@ export default function HomeScreen({ navigation }) {
         }
 
         preferencesLoadedRef.current = true;
+        loadInitialData();
       } catch (error) {
-        console.error('[Home] Failed to check splash status:', error);
-        setSplashShownBefore(false);
+        console.error('[Home] Failed to load preferences:', error);
+        loadInitialData();
       }
     };
 
-    checkSplashStatus();
+    loadPreferences();
   }, []);
-
-  // Load initial data when preferences are ready
-  useEffect(() => {
-    if (preferencesLoadedRef.current && splashShownBefore !== null) {
-      loadInitialData();
-    }
-  }, [splashShownBefore]);
 
   // Reload feed when authentication state changes (personalized vs regular feed)
   useEffect(() => {
-    if (!loading && !showSplash) {
+    if (!loading) {
       loadArticles(selectedCategory);
     }
   }, [isAuthenticated]);
@@ -190,6 +183,14 @@ export default function HomeScreen({ navigation }) {
 
     if (data?.articles) {
       setArticlesList(data.articles);
+
+      // Cache articles in IndexedDB for offline access
+      try {
+        await cacheService.cacheArticles(data.articles);
+      } catch (cacheError) {
+        console.warn('[Home] Failed to cache articles:', cacheError);
+        // Don't block UI on cache errors
+      }
     }
 
     if (error) {
@@ -197,37 +198,44 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
-  // Handle splash screen close and preferences
-  const handleSplashClose = useCallback(() => {
-    setShowSplash(false);
-  }, []);
-
-  const handlePreferencesSet = useCallback(async ({ countries, categories }) => {
-    setGuestCountries(countries || []);
-    setGuestCategories(categories || []);
-
-    // Save to LocalPreferencesService
-    try {
-      if (countries && countries.length > 0) {
-        await localPreferences.setSelectedCountries(countries);
-      }
-      if (categories && categories.length > 0) {
-        await localPreferences.setSelectedCategories(categories);
-      }
-      await localPreferences.setOnboardingCompleted(true);
-    } catch (error) {
-      console.error('[Home] Failed to save preferences:', error);
-    }
-
-    // Reload articles with new preferences
-    loadArticles(selectedCategory, countries);
-  }, [selectedCategory]);
+  // Guest preferences are now handled globally by AppNavigator
 
   const onRefresh = async () => {
     setRefreshing(true);
     setError(null);
+    setCollectingFeed(false);
+
     try {
+      // Step 1: Trigger backend RSS collection (TikTok-style)
+      console.log('[Home] Triggering backend RSS collection...');
+      const collectResult = await articles.collectFeed();
+
+      if (collectResult.data?.success) {
+        const newArticlesCount = collectResult.data.newArticles || 0;
+        console.log(`[Home] Collection complete: ${newArticlesCount} new articles`);
+
+        // Show feedback message
+        if (newArticlesCount > 0) {
+          setSnackbarMessage(`${newArticlesCount} new articles found!`);
+          setSnackbarVisible(true);
+        } else {
+          setSnackbarMessage('No new articles at this time');
+          setSnackbarVisible(true);
+        }
+      } else if (collectResult.error) {
+        // Handle rate limiting or other errors
+        console.log('[Home] Collection info:', collectResult.error);
+
+        // Show rate limit message if applicable
+        if (collectResult.error.includes('wait')) {
+          setSnackbarMessage(collectResult.error);
+          setSnackbarVisible(true);
+        }
+      }
+
+      // Step 2: Fetch fresh articles from backend
       await loadArticles(selectedCategory);
+
     } catch (err) {
       console.error('[Home] Refresh error:', err);
       setError('Failed to refresh. Please try again.');
@@ -312,23 +320,6 @@ export default function HomeScreen({ navigation }) {
     },
   };
 
-  // Show splash screen for first-time users or during loading
-  // For returning users who have seen splash before, only show during initial load
-  if (showSplash || loading) {
-    // Determine if we should show customization flow
-    const shouldShowCustomization = !isAuthenticated && !splashShownBefore;
-
-    return (
-      <SplashScreen
-        isLoading={loading}
-        loadingMessage="Fetching the latest news from across Africa..."
-        showCustomization={shouldShowCustomization}
-        onClose={handleSplashClose}
-        onPreferencesSet={handlePreferencesSet}
-      />
-    );
-  }
-
   if (error) {
     return (
       <View style={[styles.container, dynamicStyles.container, styles.centered]}>
@@ -361,6 +352,20 @@ export default function HomeScreen({ navigation }) {
         onCategoryPress={handleCategoryPress}
         showAll={true}
       />
+
+      {/* Feed Collection Snackbar */}
+      <Snackbar
+        visible={snackbarVisible}
+        onDismiss={() => setSnackbarVisible(false)}
+        duration={3000}
+        style={styles.snackbar}
+        action={{
+          label: 'OK',
+          onPress: () => setSnackbarVisible(false),
+        }}
+      >
+        {snackbarMessage}
+      </Snackbar>
 
       {/* Articles Feed */}
       <FlatList
@@ -485,6 +490,7 @@ const styles = StyleSheet.create({
   emptyButton: {
     marginTop: mukokoTheme.spacing.sm,
     borderRadius: mukokoTheme.roundness,
+    borderWidth: 1,
   },
 
   // Centered layout for error/loading states
@@ -514,10 +520,16 @@ const styles = StyleSheet.create({
     paddingVertical: mukokoTheme.spacing.sm,
     paddingHorizontal: mukokoTheme.spacing.lg,
     borderRadius: mukokoTheme.roundness,
+    borderWidth: 1,
   },
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+
+  // Snackbar
+  snackbar: {
+    marginBottom: mukokoTheme.spacing.xl,
   },
 });

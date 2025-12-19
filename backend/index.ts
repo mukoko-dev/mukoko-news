@@ -18,6 +18,8 @@ import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
 // OIDC Auth - using id.mukoko.com for authentication
 import { OIDCAuthService } from "./services/OIDCAuthService.js";
 import { oidcAuth, requireAuth, requireAdmin as requireAdminRole, getCurrentUser, getCurrentUserId, isAuthenticated } from "./middleware/oidcAuth.js";
+// API Key Auth - for frontend (Vercel) to backend authentication
+import { apiAuth, requireApiKey } from "./middleware/apiAuth.js";
 import { EmailService } from "./services/EmailService.js";
 // Additional enhancement services
 import { CategoryManager } from "./services/CategoryManager.js";
@@ -63,6 +65,7 @@ type Bindings = {
   CREATOR_ROLES: string;
   CLOUDFLARE_ACCOUNT_ID?: string;
   ADMIN_SESSION_SECRET: string; // Set via wrangler secret
+  API_SECRET?: string; // Set via wrangler secret - bearer token for frontend API authentication
   AI_INSIGHTS_ENABLED: string;
   AI_SEARCH_ENABLED: string;
   AUTH_ISSUER_URL: string; // OIDC issuer URL (id.mukoko.com)
@@ -92,10 +95,35 @@ app.use("*", cors({
 }));
 app.use("*", logger());
 
+// Protect all /api/* routes with API key (except /health and /api/admin/*)
+// Public API requires bearer token from authorized clients (Vercel frontend)
+app.use("/api/*", async (c, next) => {
+  // Bypass API key auth for health check and admin routes (admin has its own auth)
+  const bypassPaths = [
+    '/api/health',
+  ];
+
+  // Check if this is an admin route or bypass path
+  if (c.req.path.startsWith('/api/admin/') || bypassPaths.includes(c.req.path)) {
+    return await next();
+  }
+
+  // Require API key for all other /api/* routes
+  return await requireApiKey()(c, next);
+});
+
 // Protect all admin API routes (except login and backfill)
 app.use("/api/admin/*", async (c, next) => {
-  // Allow login endpoint and keyword backfill to bypass auth (temporary for setup)
-  if (c.req.path === '/api/admin/login' || c.req.path === '/api/admin/backfill-keywords') {
+  // Allow login endpoint, keyword backfill, and RSS source setup to bypass auth (temporary for setup)
+  const bypassPaths = [
+    '/api/admin/login',
+    '/api/admin/backfill-keywords',
+    '/api/admin/add-zimbabwe-sources',
+    '/api/admin/add-panafrican-sources',
+    '/api/admin/bulk-pull'
+  ];
+
+  if (bypassPaths.includes(c.req.path)) {
     return await next();
   }
 
@@ -532,7 +560,7 @@ app.get("/api/health", async (c) => {
   try {
     const services = initializeServices(c.env);
     const health = await services.d1Service.healthCheck();
-    
+
     return c.json({
       status: health.healthy ? "healthy" : "unhealthy",
       timestamp: new Date().toISOString(),
@@ -543,7 +571,16 @@ app.get("/api/health", async (c) => {
         articles: "operational",
         newsSources: "operational"
       },
-      environment: c.env.NODE_ENV || "production"
+      environment: c.env.NODE_ENV || "production",
+      security: {
+        apiAuthEnabled: !!c.env.API_SECRET,
+        authMethods: [
+          "Bearer token (API_SECRET) for frontend-to-backend auth",
+          "Bearer token (OIDC JWT) for user authentication"
+        ],
+        protectedRoutes: "/api/* (except /api/health)",
+        publicRoutes: "/api/health, /api/admin/* (separate admin auth)"
+      }
     });
   } catch (error) {
     return c.json({
@@ -994,6 +1031,119 @@ app.post("/api/refresh-rss", async (c) => {
   }
 });
 
+/**
+ * Initialize/seed RSS sources for all supported African countries
+ * Public endpoint for initial setup - can be called once to populate sources
+ * Subsequent calls will skip existing sources
+ */
+app.post("/api/feed/initialize-sources", async (c) => {
+  try {
+    console.log("[API] Initializing Pan-African RSS sources...");
+
+    const services = initializeServices(c.env);
+
+    // Add sources for all African countries
+    const results = await services.newsSourceManager.addPanAfricanNewsSources();
+
+    // Track the initialization
+    await services.analyticsService.trackEvent('feed_sources_initialized', {
+      added: results.added,
+      failed: results.failed,
+      skipped: results.details.filter(d => d.includes('Skipped')).length
+    });
+
+    return c.json({
+      success: true,
+      message: results.added > 0
+        ? `Initialized ${results.added} RSS sources across African countries`
+        : 'All sources already exist',
+      added: results.added,
+      failed: results.failed,
+      details: results.details,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error: any) {
+    console.error("[API] Error initializing sources:", error);
+    return c.json({
+      success: false,
+      error: "Failed to initialize RSS sources",
+      message: error.message || "Unknown error",
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+/**
+ * User-facing feed collection endpoint
+ * Allows users to manually trigger RSS collection for fresh articles
+ * Similar to TikTok's "pull down to refresh" but for RSS sources
+ *
+ * Rate limited to prevent abuse (max once every 5 minutes per user/IP)
+ */
+app.post("/api/feed/collect", async (c) => {
+  try {
+    console.log("[API] User-initiated feed collection");
+
+    // Simple rate limiting check (last collection time in KV)
+    const clientId = c.req.header('cf-connecting-ip') || 'default';
+    const cacheKey = `feed_collect:${clientId}`;
+
+    // Check if user collected recently (5 minute cooldown)
+    if (c.env.CACHE_STORAGE) {
+      const lastCollect = await c.env.CACHE_STORAGE.get(cacheKey);
+      if (lastCollect) {
+        const lastTime = parseInt(lastCollect);
+        const cooldownMs = 5 * 60 * 1000; // 5 minutes
+        const timeSince = Date.now() - lastTime;
+
+        if (timeSince < cooldownMs) {
+          const remainingSeconds = Math.ceil((cooldownMs - timeSince) / 1000);
+          return c.json({
+            success: false,
+            message: `Please wait ${remainingSeconds} seconds before collecting again`,
+            cooldown_remaining_seconds: remainingSeconds,
+            timestamp: new Date().toISOString()
+          }, 429);
+        }
+      }
+    }
+
+    const startTime = Date.now();
+    const rssService = new SimpleRSSService(c.env.DB);
+
+    // Fetch and process all feeds
+    const results = await rssService.refreshAllFeeds();
+    const processingTime = Date.now() - startTime;
+
+    // Update last collection time
+    if (c.env.CACHE_STORAGE) {
+      await c.env.CACHE_STORAGE.put(cacheKey, Date.now().toString(), { expirationTtl: 300 });
+    }
+
+    console.log(`[API] User feed collection completed: ${results.newArticles} new articles`);
+
+    return c.json({
+      success: true,
+      message: results.newArticles > 0
+        ? `Found ${results.newArticles} new articles!`
+        : 'No new articles at this time',
+      newArticles: results.newArticles,
+      errors: results.errors,
+      processing_time_ms: processingTime,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error("[API] Error in user feed collection:", error);
+    return c.json({
+      success: false,
+      error: "Failed to collect new articles",
+      message: error.message || "Unknown error",
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
 // Backfill keywords for existing articles
 app.post("/api/admin/backfill-keywords", async (c) => {
   try {
@@ -1157,30 +1307,65 @@ app.post("/api/admin/bulk-pull", async (c) => {
 app.post("/api/admin/add-zimbabwe-sources", async (c) => {
   try {
     const services = initializeServices(c.env);
-    
+
     console.log("Adding comprehensive Zimbabwe news sources...");
-    
+
     // Use the news source manager to add all Zimbabwe sources
     const results = await services.newsSourceManager.addZimbabweNewsSources();
-    
+
     // Track the source addition event
     await services.analyticsService.trackEvent('zimbabwe_sources_added', {
       added: results.added,
       failed: results.failed,
       total_attempted: results.added + results.failed
     });
-    
+
     return c.json({
       success: true,
       message: `Added ${results.added} Zimbabwe news sources (${results.failed} failed)`,
       ...results,
       timestamp: new Date().toISOString()
     });
-    
+
   } catch (error) {
     console.error("Error adding Zimbabwe sources:", error);
-    return c.json({ 
-      success: false, 
+    return c.json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// Add Pan-African news sources for all countries
+// TODO: Add authentication back when OpenAuthService is fixed
+app.post("/api/admin/add-panafrican-sources", async (c) => {
+  try {
+    const services = initializeServices(c.env);
+
+    console.log("Adding Pan-African news sources for all countries...");
+
+    // Use the news source manager to add sources for all African countries
+    const results = await services.newsSourceManager.addPanAfricanNewsSources();
+
+    // Track the source addition event
+    await services.analyticsService.trackEvent('panafrican_sources_added', {
+      added: results.added,
+      failed: results.failed,
+      total_attempted: results.added + results.failed
+    });
+
+    return c.json({
+      success: true,
+      message: `Added ${results.added} Pan-African news sources across 15 countries (${results.failed} failed)`,
+      ...results,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error("Error adding Pan-African sources:", error);
+    return c.json({
+      success: false,
       error: error.message,
       timestamp: new Date().toISOString()
     }, 500);
@@ -5570,32 +5755,56 @@ const scheduledHandler = async (
   console.log(`[CRON] Cron expression: ${controller.cron}`);
 
   try {
-    // Run SEO batch update
+    // 1. Refresh RSS feeds to collect new articles
+    console.log('[CRON] Starting RSS feed refresh...');
+    const rssService = new SimpleRSSService(env.DB);
+    const rssStartTime = Date.now();
+    const rssResult = await rssService.refreshAllFeeds();
+    const rssDuration = Date.now() - rssStartTime;
+
+    console.log(`[CRON] RSS refresh complete: ${rssResult.newArticles} new articles, ${rssResult.errors} errors in ${rssDuration}ms`);
+
+    // Log RSS refresh to database
+    await env.DB.prepare(`
+      INSERT INTO cron_logs (cron_type, status, articles_processed, errors, execution_time_ms, created_at)
+      VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `).bind(
+      'rss_refresh',
+      rssResult.errors === 0 ? 'success' : 'partial',
+      rssResult.newArticles,
+      rssResult.errors,
+      rssDuration
+    ).run();
+
+    // 2. Run SEO batch update
+    console.log('[CRON] Starting SEO batch update...');
     const seoService = new SEOService(env.DB);
-    const result = await seoService.autoUpdateArticleSEO(200); // Process 200 articles per run
+    const seoStartTime = Date.now();
+    const seoResult = await seoService.autoUpdateArticleSEO(200); // Process 200 articles per run
+    const seoDuration = Date.now() - seoStartTime;
 
-    console.log(`[CRON] SEO update complete: ${result.updated} updated, ${result.errors} errors`);
+    console.log(`[CRON] SEO update complete: ${seoResult.updated} updated, ${seoResult.errors} errors in ${seoDuration}ms`);
 
-    // Log the cron execution to database
+    // Log SEO update to database
     await env.DB.prepare(`
       INSERT INTO cron_logs (cron_type, status, articles_processed, errors, execution_time_ms, created_at)
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).bind(
       'seo_batch_update',
-      result.errors === 0 ? 'success' : 'partial',
-      result.updated,
-      result.errors,
-      0 // Could calculate actual time
+      seoResult.errors === 0 ? 'success' : 'partial',
+      seoResult.updated,
+      seoResult.errors,
+      seoDuration
     ).run();
 
   } catch (error: any) {
-    console.error('[CRON] SEO update failed:', error);
+    console.error('[CRON] Scheduled task failed:', error);
 
     // Log failure
     await env.DB.prepare(`
       INSERT INTO cron_logs (cron_type, status, error_message, created_at)
       VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-    `).bind('seo_batch_update', 'failed', error.message).run();
+    `).bind('scheduled_task', 'failed', error.message).run();
   }
 };
 

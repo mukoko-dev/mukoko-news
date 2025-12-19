@@ -23,6 +23,7 @@ import {
   Modal,
   Platform,
   StatusBar,
+  PanResponder,
 } from 'react-native';
 import { Text, ActivityIndicator, useTheme as usePaperTheme, Button } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -45,7 +46,6 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Modal dimensions
 const MODAL_HEIGHT = SCREEN_HEIGHT * 0.72;
 const MODAL_MAX_WIDTH = 480;  // Max width for responsive design on large screens
-const MODAL_BOTTOM_MARGIN = 24; // Lift modal up from bottom edge
 
 /**
  * CountrySelectionGrid - Grid of countries for selection
@@ -240,6 +240,41 @@ export default function SplashScreen({
   // Refs
   const timerRef = useRef(null);
   const countdownRef = useRef(null);
+  const panY = useRef(new Animated.Value(0)).current;
+
+  // Pan responder for drag-to-dismiss
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only respond to vertical drags (dy > 5)
+        return Math.abs(gestureState.dy) > 5 && Math.abs(gestureState.dy) > Math.abs(gestureState.dx);
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Allow drag down (positive dy) or up to a limit (negative dy)
+        if (gestureState.dy > 0) {
+          panY.setValue(gestureState.dy);
+        } else if (gestureState.dy < 0 && gestureState.dy > -100) {
+          // Allow dragging up slightly to peek at content
+          panY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If dragged down more than 150px, close modal
+        if (gestureState.dy > 150) {
+          handleClose();
+        } else {
+          // Otherwise, spring back to original position
+          Animated.spring(panY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 40,
+            friction: 8,
+          }).start();
+        }
+      },
+    })
+  ).current;
 
   // Animate modal entrance
   useEffect(() => {
@@ -476,11 +511,19 @@ export default function SplashScreen({
       <Animated.View
         style={[
           styles.modalContainer,
-          { transform: [{ translateY: slideAnim }] },
+          {
+            transform: [
+              { translateY: Animated.add(slideAnim, panY) }
+            ]
+          },
         ]}
+        {...panResponder.panHandlers}
       >
-        {/* Handle bar */}
-        <View style={styles.handleBar} />
+        {/* Handle bar - draggable indicator */}
+        <View
+          style={styles.handleBar}
+          {...panResponder.panHandlers}
+        />
 
         {/* Close Button */}
         <TouchableOpacity
@@ -674,7 +717,7 @@ const styles = StyleSheet.create({
   // Modal container - centered with max-width for large screens
   modalContainer: {
     position: 'absolute',
-    bottom: MODAL_BOTTOM_MARGIN,
+    bottom: 0,
     left: 0,
     right: 0,
     marginHorizontal: Platform.OS === 'web' ? 'auto' : 0,
@@ -684,9 +727,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A0033',  // Tanzanite dark (on-brand)
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    borderBottomLeftRadius: Platform.OS === 'web' ? 24 : 0,
-    borderBottomRightRadius: Platform.OS === 'web' ? 24 : 0,
     overflow: 'hidden',
+    paddingBottom: 24, // Lift content up from bottom edge
   },
 
   // Handle bar

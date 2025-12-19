@@ -20,7 +20,6 @@ import {
   useTheme as usePaperTheme,
 } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { mukokoTheme } from '../theme';
@@ -62,28 +61,55 @@ export default function UserProfileScreen({ navigation, route }) {
   }, [activeTab, isOwnProfile]);
 
   const loadProfile = async () => {
-    if (!username) {
-      setError('No username provided');
-      setLoading(false);
-      return;
-    }
     setLoading(true);
     setError(null);
     try {
-      const profileResult = await userAPI.getPublicProfile(username);
-      if (profileResult.error) throw new Error('User not found');
-      setProfile(profileResult.data);
-
-      const statsResult = await userAPI.getPublicStats(username);
-      if (!statsResult.error) setStats(statsResult.data);
-
+      // Check if user has a session
       const sessionResult = await auth.getSession();
-      if (!sessionResult.error && sessionResult.data?.user) {
-        setIsOwnProfile(sessionResult.data.user.username === username);
+
+      if (!sessionResult.error && sessionResult.data?.user && sessionResult.data.user.username) {
+        // Authenticated user - load their profile
+        const actualUsername = username || sessionResult.data.user.username;
+        const profileResult = await userAPI.getPublicProfile(actualUsername);
+        if (profileResult.error) throw new Error('User not found');
+        setProfile(profileResult.data);
+
+        const statsResult = await userAPI.getPublicStats(actualUsername);
+        if (!statsResult.error) setStats(statsResult.data);
+
+        setIsOwnProfile(sessionResult.data.user.username === actualUsername);
+      } else {
+        // Anonymous user - show session info
+        const sessionId = sessionResult.data?.sessionId || 'anonymous';
+        setProfile({
+          username: 'Guest',
+          displayName: 'Guest User',
+          bio: 'Browse and enjoy Mukoko News. Sign in to personalize your experience.',
+          isAnonymous: true,
+          sessionId: sessionId.substring(0, 8), // Show truncated session ID
+        });
+        setStats({
+          articlesRead: 0,
+          bookmarksCount: 0,
+          likesGiven: 0,
+        });
+        setIsOwnProfile(true);
       }
     } catch (err) {
       console.error('Error loading profile:', err);
-      setError('Failed to load profile. Please try again.');
+      // Show anonymous profile on error
+      setProfile({
+        username: 'Guest',
+        displayName: 'Guest User',
+        bio: 'Browse and enjoy Mukoko News.',
+        isAnonymous: true,
+      });
+      setStats({
+        articlesRead: 0,
+        bookmarksCount: 0,
+        likesGiven: 0,
+      });
+      setIsOwnProfile(true);
     } finally {
       setLoading(false);
     }
@@ -211,14 +237,11 @@ export default function UserProfileScreen({ navigation, route }) {
           />
         </View>
       )}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.7)']}
-        style={styles.gridOverlay}
-      >
+      <View style={[styles.gridOverlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
         <Text style={styles.gridTitle} numberOfLines={2}>
           {item.title}
         </Text>
-      </LinearGradient>
+      </View>
     </TouchableOpacity>
   );
 
@@ -274,10 +297,7 @@ export default function UserProfileScreen({ navigation, route }) {
         <View style={styles.profileSection}>
           {/* Avatar */}
           <View style={styles.avatarContainer}>
-            <LinearGradient
-              colors={[paperTheme.colors.primary, paperTheme.colors.tertiary]}
-              style={styles.avatarRing}
-            >
+            <View style={[styles.avatarRing, { borderColor: paperTheme.colors.primary }]}>
               {avatarUrl ? (
                 <Image source={{ uri: avatarUrl }} style={styles.avatar} />
               ) : (
@@ -287,7 +307,7 @@ export default function UserProfileScreen({ navigation, route }) {
                   </Text>
                 </View>
               )}
-            </LinearGradient>
+            </View>
           </View>
 
           {/* Name */}
@@ -526,7 +546,7 @@ const styles = StyleSheet.create({
   profileSection: {
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingTop: 8,
+    paddingTop: 0,
     paddingBottom: 20,
   },
   avatarContainer: {
@@ -538,6 +558,7 @@ const styles = StyleSheet.create({
     borderRadius: (AVATAR_SIZE + 6) / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
   },
   avatar: {
     width: AVATAR_SIZE,
@@ -576,13 +597,16 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-evenly',
     marginBottom: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: 32,
+    gap: 16,
   },
   statItem: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   statValue: {
     fontSize: 18,

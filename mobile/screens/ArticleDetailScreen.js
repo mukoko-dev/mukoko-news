@@ -13,12 +13,15 @@ import { Text, IconButton, Button, Divider, useTheme as usePaperTheme } from 're
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import Markdown from 'react-native-markdown-display';
 import mukokoTheme, { paperTheme, paperThemeDark } from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI } from '../api/client';
 import { useTheme } from '../contexts/ThemeContext';
+import ShareModal from '../components/ShareModal';
+import ArticleEngagementBar from '../components/ArticleEngagementBar';
 
 /**
  * ArticleDetailScreen - Full article view with hero section
@@ -47,6 +50,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
   const [isLiked, setIsLiked] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
+  const [shareModalVisible, setShareModalVisible] = useState(false);
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -244,8 +248,18 @@ export default function ArticleDetailScreen({ route, navigation }) {
       } else if (result.data?.article) {
         const articleData = result.data.article;
         setArticle(articleData);
-        setIsLiked(articleData.isLiked || false);
-        setIsSaved(articleData.isSaved || false);
+
+        // Load liked/saved state from local storage for non-authenticated users
+        if (!isAuthenticated) {
+          const likedArticles = JSON.parse(await AsyncStorage.getItem('likedArticles') || '[]');
+          const savedArticles = JSON.parse(await AsyncStorage.getItem('savedArticles') || '[]');
+          setIsLiked(likedArticles.includes(articleData.id));
+          setIsSaved(savedArticles.includes(articleData.id));
+        } else {
+          setIsLiked(articleData.isLiked || false);
+          setIsSaved(articleData.isSaved || false);
+        }
+
         setLikesCount(articleData.likesCount || 0);
 
         navigation.setOptions({
@@ -265,11 +279,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
   };
 
   const handleLike = async () => {
-    if (!isAuthenticated) {
-      navigation.navigate('Profile');
-      return;
-    }
-
+    // Allow likes without auth - track engagement for all users
     const wasLiked = isLiked;
     const originalCount = likesCount;
 
@@ -277,6 +287,18 @@ export default function ArticleDetailScreen({ route, navigation }) {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setIsLiked(!wasLiked);
       setLikesCount(wasLiked ? originalCount - 1 : originalCount + 1);
+
+      // Store local state in AsyncStorage for non-authenticated users
+      if (!isAuthenticated) {
+        const likedArticles = JSON.parse(await AsyncStorage.getItem('likedArticles') || '[]');
+        if (wasLiked) {
+          const filtered = likedArticles.filter(id => id !== article.id);
+          await AsyncStorage.setItem('likedArticles', JSON.stringify(filtered));
+        } else {
+          likedArticles.push(article.id);
+          await AsyncStorage.setItem('likedArticles', JSON.stringify(likedArticles));
+        }
+      }
 
       const result = await articlesAPI.toggleLike(article.id);
       if (result.error) {
@@ -290,16 +312,25 @@ export default function ArticleDetailScreen({ route, navigation }) {
   };
 
   const handleSave = async () => {
-    if (!isAuthenticated) {
-      navigation.navigate('Profile');
-      return;
-    }
-
+    // Allow bookmarks without auth - store locally
     const wasSaved = isSaved;
 
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setIsSaved(!wasSaved);
+
+      // Store local state in AsyncStorage for non-authenticated users
+      if (!isAuthenticated) {
+        const savedArticles = JSON.parse(await AsyncStorage.getItem('savedArticles') || '[]');
+        if (wasSaved) {
+          const filtered = savedArticles.filter(id => id !== article.id);
+          await AsyncStorage.setItem('savedArticles', JSON.stringify(filtered));
+        } else {
+          savedArticles.push(article.id);
+          await AsyncStorage.setItem('savedArticles', JSON.stringify(savedArticles));
+        }
+        return; // Don't call API for non-authenticated users
+      }
 
       const result = await articlesAPI.toggleBookmark(article.id);
       if (result.error) {
@@ -315,11 +346,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
 
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      await Share.share({
-        message: `${article.title}\n\nRead on Mukoko News: ${article.original_url}`,
-        title: article.title,
-        url: article.original_url,
-      });
+      setShareModalVisible(true);
     } catch (error) {
       console.error('[ArticleDetail] Share error:', error);
     }
@@ -540,51 +567,18 @@ export default function ArticleDetailScreen({ route, navigation }) {
 
               <Divider style={[styles.actionsDivider, dynamicStyles.actionsDivider]} />
 
-              {/* Action Buttons */}
+              {/* Action Buttons - Glass Morphism Effect */}
               <View style={styles.actionsContainer}>
-                {/* Like Button */}
-                <TouchableOpacity
-                  onPress={handleLike}
-                  style={[styles.actionButton, dynamicStyles.actionButton]}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name={isLiked ? 'heart' : 'heart-outline'}
-                    size={22}
-                    color={isLiked ? currentTheme.colors.error : currentTheme.colors.onSurface}
-                  />
-                  <Text style={[styles.actionText, dynamicStyles.actionText]}>
-                    {likesCount > 0 ? likesCount : 'Like'}
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Save Button */}
-                <TouchableOpacity
-                  onPress={handleSave}
-                  style={[styles.actionButton, dynamicStyles.actionButton]}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name={isSaved ? 'bookmark' : 'bookmark-outline'}
-                    size={22}
-                    color={isSaved ? currentTheme.colors.tertiary : currentTheme.colors.onSurface}
-                  />
-                  <Text style={[styles.actionText, dynamicStyles.actionText]}>Save</Text>
-                </TouchableOpacity>
-
-                {/* Share Button */}
-                <TouchableOpacity
-                  onPress={handleShare}
-                  style={[styles.actionButton, dynamicStyles.actionButton]}
-                  activeOpacity={0.7}
-                >
-                  <MaterialCommunityIcons
-                    name="share-variant-outline"
-                    size={22}
-                    color={currentTheme.colors.onSurface}
-                  />
-                  <Text style={[styles.actionText, dynamicStyles.actionText]}>Share</Text>
-                </TouchableOpacity>
+                <ArticleEngagementBar
+                  isLiked={isLiked}
+                  isSaved={isSaved}
+                  likesCount={likesCount}
+                  onLike={handleLike}
+                  onSave={handleSave}
+                  onShare={handleShare}
+                  layout="horizontal"
+                  variant={isDark ? 'dark' : 'light'}
+                />
 
                 {/* Read Original Button */}
                 <TouchableOpacity
@@ -606,6 +600,12 @@ export default function ArticleDetailScreen({ route, navigation }) {
           </>
         )}
       </ScrollView>
+
+      <ShareModal
+        visible={shareModalVisible}
+        onDismiss={() => setShareModalVisible(false)}
+        article={article}
+      />
     </View>
   );
 }
