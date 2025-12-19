@@ -1,0 +1,130 @@
+name: Bug Report
+description: Report a bug or issue with Mukoko News
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this bug! Please fill out the form below.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of Mukoko News is affected?
+      options:
+        - Backend API (Cloudflare Workers)
+        - Mobile App (iOS)
+        - Mobile App (Android)
+        - Mobile App (Web)
+        - Database (D1)
+        - RSS Feed Collection
+        - Authentication (OIDC)
+        - Admin Dashboard
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: What happened?
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: I expected...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: Instead, I saw...
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: If applicable, add screenshots to help explain your problem.
+      placeholder: Drag and drop images here
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: How severe is this bug?
+      options:
+        - Critical (App crashes, data loss, security issue)
+        - High (Major feature broken)
+        - Medium (Feature partially broken)
+        - Low (Minor inconvenience)
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Please provide environment details
+      value: |
+        - **Platform**: [e.g., iOS, Android, Web]
+        - **OS Version**: [e.g., iOS 17, Android 14]
+        - **App Version**: [e.g., 0.1.0]
+        - **Browser** (if web): [e.g., Chrome 120, Safari 17]
+        - **Device**: [e.g., iPhone 15, Samsung Galaxy S24]
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: If applicable, paste any error logs or console output
+      placeholder: |
+        Paste error logs here...
+      render: shell
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here.
+      placeholder: Any other relevant information...
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Before submitting, please verify
+      options:
+        - label: I have searched for similar issues
+          required: true
+        - label: I have included all requested information
+          required: true
+        - label: This is not a security vulnerability (those should be emailed to security@nyuchi.com)
+          required: true

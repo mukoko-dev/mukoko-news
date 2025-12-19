@@ -1,422 +1,146 @@
 # Changelog
 
-All notable changes to Harare Metro will be documented in this file.
+All notable changes to Mukoko News will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
----
-
 ## [Unreleased]
 
-### Phase 2 - User Engagement Features
-- Frontend UI components (in progress)
-- Authentication flow testing
-- User profile pages
-- Integration testing
+### Added
 
----
-
-## [0.9.2] - 2025-12-16
-
-### Changed - Merged Search & Insights into Single Screen
-
-Simplified navigation by combining Search and Insights:
-
-#### SearchScreen (Now with Insights)
-- **Search-first** - Search bar always visible at top
-- **Insights as default content** - When search is empty, shows:
-  - Stats row (articles/sources/topics)
-  - Trending topics in 2-column grid
-  - Top journalists list
-- **Seamless transition** - Insights fade out as search results appear
-- **Single responsibility** - One screen serves both discovery and search
-
-#### Navigation Structure (Simplified)
-- **3-tab layout** - Bytes → Search → Profile
-- **Discover remains header-only** - Compass icon access
-- **Removed Insights tab** - Now integrated into Search
-
----
-
-## [0.9.1] - 2025-12-16
-
-### Improved - Mobile-First Navigation & UX Overhaul
-
-Complete restructure with NewsBytes as the core product:
-
-#### Navigation Structure
-- **Bytes is default landing** - `/` loads NewsBytes (core feature)
-- **Discover is header-only** - Accessible via compass icon in header
-- **Removed Home tab** - Bytes replaces Home as entry point
-
-#### DiscoverScreen (Header Access Only)
-- **Content-first layout** - Articles visible immediately
-- **Compact category bar** - Horizontal scroll filter
-- **2-column grid** - Responsive article layout
-- **Inline topic cards** - Trending categories mixed with articles
-
-#### AppHeader Updates
-- **Logo tap** - Goes to Bytes (default)
-- **Discover icon** - Compass icon for header-only access
-- **Menu order** - Bytes, Discover, Search, Profile
-
----
-
-## [0.9.0] - 2025-12-13
-
-### Added - Admin Dashboard Frontend
-
-- **Complete Admin Web App** - New React + Vite + TypeScript admin interface
-  - Separate frontend app in `admin/` directory
-  - Deployed to Vercel (admin.mukoko.com)
-  - Uses existing backend API endpoints
-
-- **Authentication System**
-  - Login page with email/password authentication
-  - Session-based auth with localStorage token storage
-  - Protected routes with automatic redirect
-  - AuthContext for global auth state management
-
-- **Dashboard Pages**
-  - **Dashboard** - Overview stats, quick actions, system status
-  - **Articles** - Article listing with pagination, category filters, RSS refresh
-  - **Users** - User management with role/status updates, search, delete
-  - **News Sources** - RSS source toggle, add Zimbabwe sources
-  - **Categories** - Category listing with article distribution chart
-  - **Analytics** - Engagement metrics, content quality, category performance
-  - **System Health** - Service status, AI pipeline, cron logs, alerts
-
-- **UI Components**
-  - Layout with sidebar navigation
-  - ErrorBoundary for error handling
-  - Toast notifications for feedback
-  - Loading spinners and page loaders
-  - Responsive tables with pagination
-
-- **Styling**
-  - Tailwind CSS with custom Mukoko brand colors
-  - Zimbabwe flag strip accent
-  - Consistent design system
-
-### Changed
-- Updated root `package.json` with admin scripts:
-  - `npm run admin` - Start admin dev server
-  - `npm run admin:build` - Build admin for production
-  - `npm run admin:deploy` - Deploy to Vercel
-  - `npm run install:admin` - Install admin dependencies
-
-### Technical
-- Vite for fast development and optimized builds
-- React Router DOM for client-side routing
-- TypeScript for type safety
-- Lazy loading for code splitting
-- Recharts ready for chart components
-
----
-
-## [0.8.0] - 2025-12-11
-
-### Added - Mobile UI Improvements
-
-- **ArticleCard component** - New reusable article card with multiple variants
-  - `default` - Standard vertical card with image on top
-  - `horizontal` - Compact horizontal layout for quick scanning
-  - `compact` - Minimal card for dense lists
-  - `featured` - Large hero-style card for top stories
-  - Image error handling with automatic fallback placeholders
-  - Loading states for images
-  - Relative time formatting (e.g., "2h ago")
-
-- **CategoryChips component** - Horizontal scrollable category filters
-  - Pills-style selection with clear active states
-  - Optional icons and article counts
-  - "All" option for showing all categories
-  - Alternative CategoryPills wrapper layout
-
-- **Responsive HomeScreen** - Complete redesign following 2025 news app patterns
-  - Featured card for hero story on mobile
-  - Horizontal cards for quick-scan section (items 1-4)
-  - Responsive grid layout: 1 column (mobile), 2 columns (tablet), 3 columns (desktop)
-  - Breakpoints at 600px, 900px, 1200px
-  - Empty state with refresh button
-
-- **Responsive NewsBytesScreen** - Fixed layout and positioning issues
-  - Dynamic safe area positioning using useSafeAreaInsets
-  - Screen dimension listener for responsive updates
-  - ActionButton sub-component with proper styling
-  - "Read Full Article" button with navigation
-  - Better gradient overlay for text readability
+- TikTok-style pull-to-refresh RSS collection with real-time feedback
+- Bearer token API authentication (API_SECRET and OIDC JWT)
+- Comprehensive API authentication documentation ([API_SECRET_SETUP.md](API_SECRET_SETUP.md))
+- New endpoints: `/api/feed/collect` and `/api/feed/initialize-sources`
+- 56+ Pan-African RSS sources across 16 countries
+- Country picker UI improvements for better visibility
+- Article engagement bar component
+- Share modal component
+- Security policy documentation ([SECURITY.md](SECURITY.md))
+- Contributing guidelines ([CONTRIBUTING.md](CONTRIBUTING.md))
+- GitHub issue templates
 
 ### Changed
 
-- **Backend wrangler.jsonc** - Updated for Cloudflare free plan compatibility
-  - Added CACHE_STORAGE KV namespace (id: a9c3fa88185949d5a3e81b1865fc16d7)
-  - Changed Durable Objects migrations from `new_classes` to `new_sqlite_classes`
+- API base URL updated to `https://api.news.mukoko.com`
+- All `/api/*` endpoints now require bearer token authentication (except `/api/health`)
+- Tab bar icon colors fixed for better visibility
+- Mobile app now includes API_SECRET in authorization headers
+- Updated README.md with comprehensive project documentation
+- Updated CLAUDE.md with security and authentication information
 
 ### Fixed
 
-- **Hardcoded pixel values** - Replaced with dynamic theme-based spacing
-- **Image loading errors** - Added onError handlers with placeholder fallbacks
-- **Component overlaps** - Fixed with proper safe area insets
-- **Typography inconsistencies** - Standardized to theme fonts throughout
-- **Responsive positioning** - Content now adapts to screen dimensions
+- TypeScript import error in `apiAuth.ts` middleware
+- Markdown linting issues in documentation files
+- Country picker visibility issues
+- Tab bar icon color inconsistencies
+- Trending categories fallback when no engagement data exists
+- Category ID field usage in trending categories query
 
-### Technical
+### Security
 
-- Mobile app build verified successful (754 modules bundled)
-- All new components follow Material Design 3 patterns via React Native Paper
-- Theme values used consistently for spacing, colors, and typography
+- Implemented bearer token authentication for all API endpoints
+- API_SECRET protection for frontend-to-backend communication
+- OIDC JWT token support for user authentication
+- Rate limiting on RSS feed collection (5-minute cooldown)
+- SQL injection protection via parameterized queries
+- XSS prevention through React Native auto-escaping
 
----
-
-## [0.7.0] - 2025-10-31
-
-### Added
-- **Today's article count** - Home page now shows daily article count instead of total database count
-  - More relevant metric for users to see fresh content
-  - Backend still tracks total count for analytics
-- **PWA icon files** - Added icon-192x192.png and icon-512x512.png for proper PWA support
-- **Backend favicon support** - Admin dashboard and login page now display proper favicons
-- **D1Service today filter** - Added `today` parameter to `getArticleCount()` method using SQLite date filtering
-
-### Changed
-- **API response structure** - `/api/feeds` now returns both `total` and `todayCount`
-- **Home page display** - Changed from "352 Articles" to "55 Articles Today" (dynamic)
-- **PWA manifest** - Fixed all icon references to use correct android-chrome files
-
-### Fixed
-- **Auth page routing** - Added missing routes for /auth/login, /auth/register, /auth/forgot-password
-- **404 error page** - Complete redesign with Zimbabwe flag branding and proper navigation
-- **Backend favicons** - Added favicon links to admin HTML templates
-- **PWA shortcuts** - Fixed icon paths in manifest.json shortcuts (politics, economy, sports, harare)
-
-### Deployed
-- ✅ Frontend: www.hararemetro.co.zw (Version: 47f7aba5-578f-4482-a3e1-6f10d9fb3ea8)
-- ✅ Backend: admin.hararemetro.co.zw (Version: 60f6150e-7d66-45f3-a44a-58ea133a4880)
-- ✅ Verified: API returning todayCount=55, total=352
-
----
-
-## [0.6.0] - 2025-10-29
+## [0.1.0] - 2025-12-20
 
 ### Added
-- **Real-time log streaming** for both frontend and backend workers via wrangler tail
-- **Observability configuration** enabled in both wrangler.jsonc files
-- **Preview URL support** for testing deployments
-- **LOGGING-AND-MONITORING.md** - Comprehensive logging guide
-- **Backend deployment** with OpenAuthService enabled
 
-### Changed
-- **OpenAuthService** import re-enabled in backend/index.ts
-- **Backend deployed** to production (version 780525e1-9b4d-45ea-9c1d-65d91202fff8)
-- **Phase 2 status** updated from 40% to 60% complete
+- Initial release of Mukoko News
+- Cloudflare Workers backend with Hono framework
+- React Native Expo mobile app (iOS, Android, Web)
+- D1 database with 17 migrations
+- Pan-African news aggregation from 16 countries
+- RSS feed collection and processing
+- User authentication via OIDC (id.mukoko.com)
+- Role-based access control (RBAC) with admin role
+- Article interactions tracking (likes, saves, views)
+- Real-time analytics with Durable Objects
+- Semantic search with Cloudflare Vectorize
+- AI-powered content processing with Workers AI
+- Offline-first mobile app with IndexedDB caching
+- Nyuchi Brand v6 design system (Tanzanite, Cobalt, Gold)
+- Material Design UI with React Native Paper
+- Admin dashboard with analytics
+- Health check endpoint for monitoring
+- Comprehensive test suite (Vitest + Jest)
+- Pre-commit hooks (TypeScript check + build validation)
+- ESLint 9 flat config
 
-### Fixed
-- **OpenAuthService dependencies** installed (@openauthjs/openauth + valibot)
-- **Backend build** now passes with authentication enabled
+### Backend Features
 
-### Verified
-- ✅ Health endpoint operational (148ms response time)
-- ✅ Log streaming working with real-time data
-- ✅ All backend services healthy
+- **API Framework**: Hono (lightweight, fast)
+- **Database**: Cloudflare D1 (SQLite at edge)
+- **Cache**: KV Namespaces for session storage
+- **Real-time**: 4 Durable Objects classes
+  - ArticleInteractions
+  - UserBehavior
+  - RealtimeCounters
+  - RealtimeAnalytics
+- **AI**: Workers AI for content processing
+- **Search**: Vectorize for semantic search
+- **Cron Jobs**: Scheduled RSS collection
+- **Analytics**: Analytics Engine for metrics
 
----
+### Mobile Features
 
-## [0.5.0] - 2025-10-28
+- **Framework**: React Native 0.81.5 via Expo 54
+- **UI**: React Native Paper (Material Design)
+- **Navigation**: React Navigation (Stack + Bottom Tabs)
+- **State Management**: Context API (AuthContext, ThemeContext)
+- **Storage**: AsyncStorage + IndexedDB (web)
+- **Offline Support**: Article caching for offline reading
+- **Platform**: iOS, Android, Web (responsive)
 
-### Added
-- **Migration 007** applied to production database (manually)
-  - `article_comments` table with moderation support
-  - `comment_likes` table for comment engagement
-  - `user_follows` table for following sources/authors/categories
-  - Full indexes and triggers for performance
-- **Phase 2 backend endpoints** (9 APIs):
-  - POST /api/articles/:id/like
-  - POST /api/articles/:id/save
-  - POST /api/articles/:id/view
-  - POST /api/articles/:id/comment
-  - GET /api/articles/:id/comments
-  - GET /api/user/me/preferences
-  - POST /api/user/me/preferences
-  - POST /api/user/me/follows
-  - DELETE /api/user/me/follows/:type/:id
-- **PROJECT-STATUS.md** - Honest phase tracking document
-- **PHASE-2-COMPLETION-PLAN.md** - Detailed 3-week roadmap
-- **Documentation cleanup** - Consolidated and updated all docs
+### Database Schema
 
-### Changed
-- **Database name fixed** in all wrangler.jsonc files
-  - Old: `hararemetro_db`
-  - New: `hararemetro_articles`
-- **Architecture simplified** from 3-worker to 2-worker system
-- **Account worker archived** to `archive/account-worker-phase3a-archived-20251028/`
-- **Phase status corrected**:
-  - Phase 1: 95% → 100% ✅
-  - Phase 2: 100% → 40% (honest assessment)
-  - Phase 3a: 90% → 0% (deferred)
-- **CLAUDE.md** updated with 2-worker architecture
-- **README.md** updated with correct database schema
+- **Tables**: 15+ tables including:
+  - users, articles, categories, keywords
+  - news_sources, rss_sources
+  - user_interactions, user_preferences
+  - countries, article_keywords
+- **Roles**: admin, moderator, support, author, user
+- **Migrations**: 17 migrations for schema evolution
 
-### Fixed
-- **Database configuration** - All configs now reference correct database name
-- **Documentation alignment** - All docs now reflect actual implementation
-- **Phase tracking** - Removed false "complete" status from Phase 2
+### API Endpoints
 
-### Removed
-- Account worker from main codebase (archived for future use)
-- 3-worker architecture references
+- **Feed**: `/api/feeds`, `/api/feeds/personalized`
+- **Articles**: `/api/article/:id`
+- **Collection**: `/api/feed/collect`, `/api/feed/initialize-sources`
+- **Categories**: `/api/categories`
+- **Countries**: `/api/countries`
+- **Admin**: `/api/admin/*` (stats, users, sources, analytics)
+- **Health**: `/api/health` (monitoring)
 
----
+### Deployment
 
-## [0.4.0] - 2025-10-24 to 2025-10-26
-
-### Added
-- **Cron logging system** (migration 006)
-  - `cron_logs` table for tracking RSS refresh execution
-  - D1-based logging instead of Analytics Engine
-- **Phase 2 user engagement planning**
-  - Database migration 007 created
-  - Backend endpoints written (not yet enabled)
-- **Admin dashboard redesign**
-  - Black/white theme with Lucide icons
-  - Tab-based navigation
-  - Source management interface
-
-### Changed
-- **Category classification fixed** - JSON keyword parsing corrected
-- **RSS feed processing** - Better error handling
+- **Backend**: Cloudflare Workers (manual deployment)
+- **Mobile Web**: Vercel (https://news.mukoko.com)
+- **CI/CD**: GitHub Actions for tests (no auto-deploy)
 
 ---
 
-## [0.3.0] - 2025-10-11 to 2025-10-23
+## Version History
 
-### Added
-- **Phase 1 completion** - Core platform features
-  - RSS feed aggregation from Zimbabwe news sources
-  - Hourly cron job (frontend → backend)
-  - AI content pipeline (author extraction, keywords, quality scoring)
-  - Author recognition across multiple outlets
-  - Category classification system (256-keyword taxonomy)
-- **Public API endpoints**:
-  - GET /api/feeds - Paginated articles
-  - GET /api/categories - All categories
-  - GET /api/article/by-source-slug - Single article
-  - GET /api/health - Health check
-  - GET /api/news-bytes - Articles with images only
-  - GET /api/search - Full-text search
-  - GET /api/authors - Journalist discovery
-  - GET /api/sources - News sources listing
-  - GET /api/refresh - User-triggered refresh (rate-limited)
-- **Admin dashboard** - Source management, statistics, AI pipeline status
-- **Frontend** - React Router 7 SSR application with Zimbabwe flag branding
-
-### Technical
-- **2-worker architecture**:
-  - www.hararemetro.co.zw (frontend)
-  - admin.hararemetro.co.zw (backend)
-- **Cloudflare D1 database** - Single database (hararemetro_articles)
-- **Cloudflare Workers AI** - Content processing pipeline
-- **Cloudflare Analytics Engine** - User interaction tracking
-- **Cloudflare Vectorize** - Semantic search (configured, not active)
-
----
-
-## [0.2.0] - 2025-09-20 to 2025-10-10
-
-### Added
-- **Database schema** design and initial migrations
-- **RSS feed service** with XML parsing
-- **News source management** system
-- **Article AI service** with Cloudflare Workers AI
-- **Author profile service** with deduplication
-- **Content processing pipeline** - AI orchestration
-
-### Technical
-- TypeScript codebase
-- Hono web framework for backend
-- React Router 7 for frontend
-- Tailwind CSS 4.x with Zimbabwe flag colors
-
----
-
-## [0.1.0] - 2025-08-21 to 2025-09-19
-
-### Added
-- **Initial project setup**
-- **Cloudflare Workers** infrastructure
-- **D1 database** creation
-- **Basic frontend** structure
-- **Project documentation** (README, CLAUDE.md)
-
-### Technical
-- Monorepo structure
-- Separate frontend and backend workers
-- GitHub Actions CI/CD
-
----
-
-## Version History Summary
-
-| Version | Date | Phase | Completion | Key Features |
-|---------|------|-------|------------|--------------|
-| 0.8.0 | 2025-12-11 | Phase 2 | 70% | Mobile UI improvements, responsive design |
-| 0.7.0 | 2025-10-31 | Phase 2 | 65% | Today count, PWA icons, auth routes |
-| 0.6.0 | 2025-10-29 | Phase 2 | 60% | Logging, backend deployed |
-| 0.5.0 | 2025-10-28 | Phase 2 | 40% | Migration 007, docs cleanup |
-| 0.4.0 | 2025-10-26 | Phase 2 | 30% | Cron logging, planning |
-| 0.3.0 | 2025-10-23 | Phase 1 | 100% | Core platform complete |
-| 0.2.0 | 2025-10-10 | Phase 1 | 70% | RSS + AI processing |
-| 0.1.0 | 2025-09-19 | Phase 1 | 30% | Initial setup |
-
----
-
-## Upcoming Releases
-
-### [0.7.0] - Planned
-**Phase 2 Frontend Integration**
-- Like/save buttons on articles
-- Comment system UI
-- Follow buttons for sources/authors
-- User profile pages
-- Authentication flow tested
-- Integration testing complete
-
-### [0.8.0] - Planned
-**Phase 2 Complete**
-- All Phase 2 features deployed
-- User engagement functional
-- Performance optimized
-- Production ready
-
-### [1.0.0] - Planned
-**Phase 3 - Advanced Features**
-- Personalized feed algorithm
-- Notifications system
-- Reading analytics
-- User dashboards
-- Mobile app considerations
-
----
+- **[Unreleased]** - Current development version
+- **[0.1.0]** - 2025-12-20 - Initial release
 
 ## Links
 
-- **Repository**: https://github.com/nyuchitech/harare-metro
-- **Live Site**: https://www.hararemetro.co.zw
-- **Admin Panel**: https://admin.hararemetro.co.zw
-- **Documentation**: [CLAUDE.md](CLAUDE.md)
-- **Status**: [PROJECT-STATUS.md](PROJECT-STATUS.md)
-- **Plan**: [PHASE-2-COMPLETION-PLAN.md](PHASE-2-COMPLETION-PLAN.md)
+- [Repository](https://github.com/nyuchitech/mukoko-news)
+- [Issues](https://github.com/nyuchitech/mukoko-news/issues)
+- [Pull Requests](https://github.com/nyuchitech/mukoko-news/pulls)
+- [Security Policy](SECURITY.md)
+- [Contributing Guide](CONTRIBUTING.md)
 
 ---
 
-## Contributors
+"Ndiri nekuti tiri" — I am because we are
 
-- **Owner**: Bryan Fawcett
-- **Development**: Claude Code (AI Assistant)
-- **Stack**: Cloudflare Workers, D1, React Router 7, TypeScript
-
----
-
-**Note**: This changelog was created on 2025-10-29 to consolidate project history.
-Previous changes were retroactively documented from git commits and documentation.
+Built with ❤️ by [Nyuchi Technologies](https://brand.nyuchi.com)
