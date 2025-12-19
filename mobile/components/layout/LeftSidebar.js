@@ -17,6 +17,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
 import mukokoTheme from '../../theme';
 import Logo from '../Logo';
+import CountryPickerButton from '../CountryPickerButton';
 
 /**
  * LeftSidebar - Instagram-style navigation sidebar for tablet/desktop
@@ -114,7 +115,8 @@ export default function LeftSidebar({ currentRoute }) {
     },
   };
 
-  const iconColor = paperTheme.colors.onSurfaceVariant;
+  // Use inverse theme color for icons
+  const iconColor = isDark ? '#FFFFFF' : '#000000';
   const activeIconColor = paperTheme.colors.primary;
 
   return (
@@ -136,6 +138,15 @@ export default function LeftSidebar({ currentRoute }) {
         {navItems.map((item) => {
           const isActive = activeRoute === item.name;
           const IconComponent = item.icon;
+
+          // Special handling for Pulse - show country picker instead
+          if (item.name === 'Pulse') {
+            return (
+              <View key={item.name} style={[styles.navItem, isActive && [styles.navItemActive, dynamicStyles.navItemActive]]}>
+                <CountryPickerButton compact={false} showLabel={true} />
+              </View>
+            );
+          }
 
           return (
             <TouchableOpacity
@@ -195,11 +206,10 @@ export default function LeftSidebar({ currentRoute }) {
         <TouchableOpacity
           style={styles.navItem}
           onPress={() => {
-            navigate('Profile');
-            // Small delay to navigate to settings within profile
-            setTimeout(() => {
-              navigate('ProfileSettings');
-            }, 100);
+            // Navigate to ProfileSettings screen within Profile tab
+            navigationRef.navigate('Profile', {
+              screen: 'ProfileSettings',
+            });
           }}
           activeOpacity={0.7}
           accessibilityLabel="Settings"

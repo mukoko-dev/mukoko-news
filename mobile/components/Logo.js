@@ -37,12 +37,12 @@ export default function Logo({
   // Use theme prop if provided for backwards compatibility, otherwise use textStyle
   const effectiveStyle = theme || textStyle;
 
-  // textStyle: 'dark' = dark/black text (for light backgrounds) - use dark icon
-  //            'light' = light/white text (for dark backgrounds) - use light icon
+  // textStyle: 'dark' = dark/black text (for light backgrounds) - use light icon (was swapped)
+  //            'light' = light/white text (for dark backgrounds) - use dark icon (was swapped)
   const textColor = effectiveStyle === 'dark'
     ? mukokoTheme.colors.onSurface
     : mukokoTheme.colors.onPrimary;
-  const logoIcon = effectiveStyle === 'dark' ? logoIconDark : logoIconLight;
+  const logoIcon = effectiveStyle === 'dark' ? logoIconLight : logoIconDark;
 
   return (
     <View style={[styles.container, { gap: spacing }, style]}>

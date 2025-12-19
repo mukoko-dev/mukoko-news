@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { useTheme as usePaperTheme } from 'react-native-paper';
-import { Compass, Newspaper, Sun, Moon } from 'lucide-react-native';
+import { useTheme as usePaperTheme, Tooltip } from 'react-native-paper';
+import { Sun, Moon, Bell } from 'lucide-react-native';
 import { navigate, navigationRef } from '../navigation/navigationRef';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
 import Logo from './Logo';
+import CountryPickerButton from './CountryPickerButton';
 
 /**
  * Helper to safely get the current route name from navigation state
@@ -93,7 +94,8 @@ export default function AppHeader() {
   };
 
   const screenTitle = getScreenTitle();
-  const iconColor = paperTheme.colors.onSurfaceVariant;
+  // Use inverse theme color for icons (light icons in dark mode, dark icons in light mode)
+  const iconColor = isDark ? '#FFFFFF' : '#000000';
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -115,29 +117,10 @@ export default function AppHeader() {
         )}
       </View>
 
-      {/* Right: Utility Icons (Discover, Pulse, Theme) */}
+      {/* Right: Country Picker, Theme, Notifications */}
       <View style={styles.rightSection}>
-        {/* Discover */}
-        <TouchableOpacity
-          onPress={() => navigate('Discover')}
-          style={styles.iconButton}
-          activeOpacity={0.7}
-          accessibilityLabel="Discover content"
-          accessibilityRole="button"
-        >
-          <Compass size={22} color={iconColor} strokeWidth={1.5} />
-        </TouchableOpacity>
-
-        {/* Pulse - Personalized Feed */}
-        <TouchableOpacity
-          onPress={() => navigate('Pulse')}
-          style={styles.iconButton}
-          activeOpacity={0.7}
-          accessibilityLabel="Pulse - Personalized feed"
-          accessibilityRole="button"
-        >
-          <Newspaper size={22} color={iconColor} strokeWidth={1.5} />
-        </TouchableOpacity>
+        {/* Country Picker */}
+        <CountryPickerButton compact={true} showLabel={false} />
 
         {/* Theme Toggle */}
         <TouchableOpacity
@@ -153,6 +136,19 @@ export default function AppHeader() {
             <Moon size={22} color={iconColor} strokeWidth={1.5} />
           )}
         </TouchableOpacity>
+
+        {/* Notifications - Coming Soon */}
+        <Tooltip title="Coming Soon">
+          <TouchableOpacity
+            onPress={() => {}}
+            style={styles.iconButton}
+            activeOpacity={0.7}
+            accessibilityLabel="Notifications (Coming Soon)"
+            accessibilityRole="button"
+          >
+            <Bell size={22} color={iconColor} strokeWidth={1.5} />
+          </TouchableOpacity>
+        </Tooltip>
       </View>
     </View>
   );
@@ -172,10 +168,10 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   title: {
-    fontSize: 24,
+    fontSize: 20,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    fontWeight: '700',
-    letterSpacing: -0.3,
+    fontWeight: '600',
+    letterSpacing: 0,
   },
   rightSection: {
     flexDirection: 'row',

@@ -74,7 +74,16 @@ export default function ProfileSettingsScreen({ navigation }) {
     try {
       const result = await userAPI.getProfile();
       if (result.error) {
-        setError('Please log in to access settings.');
+        // For anonymous users, create a guest profile
+        setProfile({
+          username: 'Guest',
+          displayName: 'Guest User',
+          bio: 'Sign in to personalize your settings',
+          isAnonymous: true,
+        });
+        setDisplayName('Guest User');
+        setBio('Sign in to personalize your settings');
+        setLoading(false);
         return;
       }
       const data = result.data;
@@ -83,7 +92,15 @@ export default function ProfileSettingsScreen({ navigation }) {
       setBio(data.bio || '');
     } catch (err) {
       console.error('Error loading profile:', err);
-      setError('Failed to load profile. Please try again.');
+      // For errors, show guest profile
+      setProfile({
+        username: 'Guest',
+        displayName: 'Guest User',
+        bio: 'Sign in to personalize your settings',
+        isAnonymous: true,
+      });
+      setDisplayName('Guest User');
+      setBio('Sign in to personalize your settings');
     } finally {
       setLoading(false);
     }

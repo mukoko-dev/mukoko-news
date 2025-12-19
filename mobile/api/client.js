@@ -32,6 +32,9 @@ const BASE_URL = __DEV__
 const API_BASE_URL = BASE_URL;
 const ADMIN_API_URL = BASE_URL; // Admin at /admin
 
+// API Secret for backend authentication (set via environment variable)
+const API_SECRET = process.env.EXPO_PUBLIC_API_SECRET;
+
 /**
  * Make authenticated API request
  */
@@ -41,19 +44,33 @@ async function apiRequest(endpoint, options = {}) {
   // Get auth token if available
   const token = await getAuthToken();
 
+  // Set up timeout controller (10 seconds for API calls)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+  // Determine which Authorization header to use
+  // Priority: User OIDC token > API Secret (for unauthenticated requests)
+  const authHeader = token
+    ? `Bearer ${token}`  // User authenticated - use their token
+    : API_SECRET
+      ? `Bearer ${API_SECRET}`  // No user token - use API secret for backend auth
+      : undefined;
+
   const config = {
     ...options,
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
+      ...(authHeader && { Authorization: authHeader }),
       ...(token && { Cookie: `auth_token=${token}` }),
       ...options.headers,
     },
     credentials: 'include', // Include cookies for cross-origin requests
+    signal: controller.signal,
   };
 
   try {
     const response = await fetch(url, config);
+    clearTimeout(timeoutId);
 
     // Handle non-JSON responses
     const contentType = response.headers.get('content-type');
@@ -70,6 +87,14 @@ async function apiRequest(endpoint, options = {}) {
 
     return { data, error: null };
   } catch (error) {
+    clearTimeout(timeoutId);
+
+    // Handle timeout error
+    if (error.name === 'AbortError') {
+      console.error(`[API] ${endpoint}: Request timeout (10s)`);
+      return { data: null, error: 'Request timeout - please try again' };
+    }
+
     console.error(`[API] ${endpoint}:`, error);
     return { data: null, error: error.message };
   }
@@ -191,6 +216,17 @@ export const auth = {
  * Articles/News Feed API
  */
 export const articles = {
+  /**
+   * Trigger backend RSS collection (TikTok-style feed refresh)
+   * Rate limited to once every 5 minutes
+   * Returns number of new articles collected
+   */
+  async collectFeed() {
+    return apiRequest('/api/feed/collect', {
+      method: 'POST',
+    });
+  },
+
   /**
    * Get article feed
    * @param {Object} options
