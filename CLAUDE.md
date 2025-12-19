@@ -99,12 +99,35 @@ Schema in `database/schema.sql`. 17 migrations in `database/migrations/`.
 
 ## API
 
-Base URL: `https://mukoko-news-backend.nyuchi.workers.dev`
-- `/api/*` - Public (no auth required)
-- `/api/admin/*` - Admin only (auth required)
-- `/health` - Public health check
+**Base URL**: `https://api.news.mukoko.com`
 
-OpenAPI schema in `api-schema.yml`.
+**Fallback URL**: `https://mukoko-news-backend.nyuchi.workers.dev` (if primary domain fails)
+
+### Endpoint Protection (Updated)
+
+- `/api/*` - **Protected** (requires bearer token: API_SECRET or OIDC JWT)
+- `/api/health` - Public (no auth required)
+- `/api/admin/*` - Admin only (separate admin auth + RBAC)
+
+### Authentication Methods
+
+1. **API_SECRET** - Bearer token for frontend (Vercel) to backend auth
+   - Set via: `npx wrangler secret put API_SECRET`
+   - Environment variable: `EXPO_PUBLIC_API_SECRET`
+   - Configured in: `.env.local` (development), Vercel (production)
+
+2. **OIDC JWT** - User authentication tokens from id.mukoko.com
+   - Validated by oidcAuth middleware
+   - Takes priority over API_SECRET
+
+### New Endpoints
+
+- `POST /api/feed/collect` - TikTok-style RSS collection (rate-limited 5 min)
+- `POST /api/feed/initialize-sources` - Initialize 56 Pan-African RSS sources
+
+**API Auth Middleware**: `backend/middleware/apiAuth.ts`
+**Setup Guide**: `API_SECRET_SETUP.md`
+**OpenAPI Schema**: `api-schema.yml`
 
 ## Deployment
 

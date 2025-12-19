@@ -1,0 +1,106 @@
+name: Feature Request
+description: Suggest a new feature or enhancement for Mukoko News
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a new feature! Please fill out the form below.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of Mukoko News would this feature affect?
+      options:
+        - Backend API (Cloudflare Workers)
+        - Mobile App (iOS)
+        - Mobile App (Android)
+        - Mobile App (Web)
+        - Database (D1)
+        - RSS Feed Collection
+        - Authentication (OIDC)
+        - Admin Dashboard
+        - Design System (UI/UX)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem? Please describe.
+      placeholder: I'm always frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution you'd like
+      placeholder: I'd like to see...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you've considered
+      placeholder: I also thought about...
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How important is this feature to you?
+      options:
+        - Critical (Blocking my use of the app)
+        - High (Would significantly improve my experience)
+        - Medium (Would be nice to have)
+        - Low (Just a suggestion)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: willingness
+    attributes:
+      label: Contribution
+      description: Are you willing to contribute to this feature?
+      options:
+        - Yes, I can implement this
+        - Yes, I can help test this
+        - Yes, I can help design this
+        - No, but I'd like to see it implemented
+    validations:
+      required: true
+
+  - type: textarea
+    id: mockups
+    attributes:
+      label: Mockups or Examples
+      description: If applicable, add mockups, wireframes, or examples from other apps
+      placeholder: Drag and drop images or links here
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context or information about the feature request
+      placeholder: Any other relevant information...
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      description: Before submitting, please verify
+      options:
+        - label: I have searched for similar feature requests
+          required: true
+        - label: This feature aligns with Mukoko News's mission (Pan-African news aggregation)
+          required: true
+        - label: I have included all requested information
+          required: true
