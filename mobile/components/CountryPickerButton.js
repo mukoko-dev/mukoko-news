@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Animated, PanResponder } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Animated, PanResponder, Dimensions } from 'react-native';
 import { Text, useTheme, ActivityIndicator, Portal } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
@@ -226,11 +226,12 @@ export default function CountryPickerButton({ compact = false, showLabel = true 
           animationType="fade"
           onRequestClose={() => setModalVisible(false)}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setModalVisible(false)}
-          >
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setModalVisible(false)}
+            />
             <Animated.View
               style={[
                 styles.modalContent,
@@ -303,7 +304,7 @@ export default function CountryPickerButton({ compact = false, showLabel = true 
                 ))}
               </ScrollView>
             </Animated.View>
-          </TouchableOpacity>
+          </View>
         </Modal>
       </Portal>
     </>
@@ -351,7 +352,14 @@ const styles = StyleSheet.create({
     maxHeight: '80%',
     borderRadius: 16,
     padding: 20,
-    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
   },
   modalHeader: {
     flexDirection: 'row',
