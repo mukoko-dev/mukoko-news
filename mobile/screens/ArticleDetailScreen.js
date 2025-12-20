@@ -842,6 +842,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     marginLeft: 'auto',
+    minHeight: 44,
   },
   readOriginalText: {
     fontSize: 14,

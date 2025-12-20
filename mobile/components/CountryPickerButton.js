@@ -325,6 +325,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     gap: 6,
+    minHeight: 44,
   },
   buttonCompact: {
     paddingHorizontal: 8,
@@ -352,14 +353,8 @@ const styles = StyleSheet.create({
     maxHeight: '80%',
     borderRadius: 16,
     padding: 20,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -373,9 +368,14 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 4,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   countriesList: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 1,
   },
   countryItem: {
     flexDirection: 'row',
@@ -384,6 +384,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 8,
     gap: 12,
+    minHeight: 44,
   },
   countryFlag: {
     fontSize: 28,

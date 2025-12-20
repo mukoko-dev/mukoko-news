@@ -229,7 +229,7 @@ function ArticleCard({
         accessibilityRole="button"
         accessibilityHint="Opens article for reading"
       >
-        <Surface style={[styles.horizontalSurface, glassStyles.surface]} elevation={1}>
+        <Surface style={[styles.horizontalSurface, glassStyles.surface]} elevation={0}>
           {/* Image Section - only show if we have an image */}
           {hasImage && (
             <View style={[styles.horizontalImageContainer, glassStyles.placeholder]}>
@@ -274,7 +274,7 @@ function ArticleCard({
         accessibilityRole="button"
         accessibilityHint="Opens article for reading"
       >
-        <Surface style={[styles.compactSurface, glassStyles.surface]} elevation={1}>
+        <Surface style={[styles.compactSurface, glassStyles.surface]} elevation={0}>
           <View style={styles.compactContent}>
             <View style={styles.compactTextContent}>
               {article.category && (
@@ -318,7 +318,7 @@ function ArticleCard({
         accessibilityRole="button"
         accessibilityHint="Opens featured article for reading"
       >
-        <Surface style={[styles.featuredSurface, glassStyles.surface]} elevation={2}>
+        <Surface style={[styles.featuredSurface, glassStyles.surface]} elevation={0}>
           {/* Full-width Image - only show if we have an image */}
           {hasImage && (
             <View style={[styles.featuredImageContainer, glassStyles.placeholder]}>
@@ -377,7 +377,7 @@ function ArticleCard({
       accessibilityRole="button"
       accessibilityHint="Opens article for reading"
     >
-      <Surface style={[styles.defaultSurface, glassStyles.surface]} elevation={1}>
+      <Surface style={[styles.defaultSurface, glassStyles.surface]} elevation={0}>
         {/* Image Section - only show if we have an image */}
         {hasImage && (
           <View style={[styles.defaultImageContainer, glassStyles.placeholder]}>
@@ -462,6 +462,8 @@ const styles = StyleSheet.create({
     borderRadius: mukokoTheme.roundness,
     backgroundColor: mukokoTheme.colors.surface,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   defaultImageContainer: {
     width: '100%',
@@ -499,6 +501,8 @@ const styles = StyleSheet.create({
     borderRadius: mukokoTheme.roundness / 2,
     backgroundColor: mukokoTheme.colors.surface,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   horizontalImageContainer: {
     width: 120,
@@ -533,6 +537,8 @@ const styles = StyleSheet.create({
     borderRadius: mukokoTheme.roundness / 2,
     backgroundColor: mukokoTheme.colors.surface,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   compactContent: {
     flexDirection: 'row',
@@ -570,6 +576,8 @@ const styles = StyleSheet.create({
     borderRadius: mukokoTheme.roundness,
     backgroundColor: mukokoTheme.colors.surface,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   featuredImageContainer: {
     width: '100%',
