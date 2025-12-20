@@ -1,32 +1,22 @@
 /**
  * UserProfileScreen - WeChat-inspired clean profile design
  * Uses reusable ProfileHeader, MenuItem, and MenuSection components
+ * shadcn-style with NativeWind + Lucide icons
  */
 
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-} from 'react-native';
-import {
-  Text,
-  ActivityIndicator,
-  useTheme as usePaperTheme,
-} from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, ScrollView, Pressable, Text } from 'react-native';
+import { Bookmark, Clock, LineChart, Settings, HelpCircle, Info } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import mukokoTheme from '../theme';
 import { useLayout } from '../components/layout';
 import { user as userAPI, auth } from '../api/client';
 import ProfileHeader from '../components/ProfileHeader';
 import MenuItem from '../components/MenuItem';
 import MenuSection from '../components/MenuSection';
+import { LoadingState, ErrorState } from '../components/ui';
 
 export default function UserProfileScreen({ navigation, route }) {
   const { username } = route.params || {};
-  const paperTheme = usePaperTheme();
   const layout = useLayout();
 
   const [profile, setProfile] = useState(null);
@@ -35,7 +25,7 @@ export default function UserProfileScreen({ navigation, route }) {
   const [error, setError] = useState(null);
 
   // On tablet/desktop, no bottom tab bar, so reduce padding
-  const bottomPadding = layout.isMobile ? mukokoTheme.layout.bottomPaddingMobile : mukokoTheme.layout.bottomPaddingDesktop;
+  const bottomPadding = layout.isMobile ? 100 : 24;
 
   useEffect(() => {
     loadProfile();
@@ -114,33 +104,16 @@ export default function UserProfileScreen({ navigation, route }) {
   };
 
   if (loading) {
-    return (
-      <View style={[styles.loadingContainer, { backgroundColor: paperTheme.colors.background }]}>
-        <ActivityIndicator size="large" color={paperTheme.colors.primary} />
-      </View>
-    );
+    return <LoadingState />;
   }
 
   if (error || !profile) {
     return (
-      <View style={[styles.errorContainer, { backgroundColor: paperTheme.colors.background }]}>
-        <MaterialCommunityIcons
-          name="alert-circle-outline"
-          size={mukokoTheme.layout.emojiLarge}
-          color={paperTheme.colors.error}
-        />
-        <Text style={[styles.errorText, { color: paperTheme.colors.onSurfaceVariant }]}>
-          {error || 'User not found'}
-        </Text>
-        <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: paperTheme.colors.primary }]}
-          onPress={loadProfile}
-        >
-          <Text style={[styles.retryButtonText, { color: paperTheme.colors.onPrimary }]}>
-            Try Again
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <ErrorState
+        title="Profile not found"
+        message={error || 'User not found'}
+        onRetry={loadProfile}
+      />
     );
   }
 
@@ -148,10 +121,10 @@ export default function UserProfileScreen({ navigation, route }) {
   const avatarUrl = profile.avatar_url || profile.avatarUrl;
 
   return (
-    <View style={[styles.container, { backgroundColor: paperTheme.colors.background }]}>
+    <View className="flex-1 bg-background">
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: bottomPadding }]}
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: bottomPadding }}
         showsVerticalScrollIndicator={false}
       >
         {/* Profile Header Component */}
@@ -167,7 +140,7 @@ export default function UserProfileScreen({ navigation, route }) {
         {/* Content & Services Section */}
         <MenuSection>
           <MenuItem
-            icon="bookmark"
+            icon={Bookmark}
             iconColor="#FFD740"
             iconBg="rgba(255, 215, 64, 0.15)"
             label="Saved Articles"
@@ -176,7 +149,7 @@ export default function UserProfileScreen({ navigation, route }) {
           />
 
           <MenuItem
-            icon="history"
+            icon={Clock}
             iconColor="#00B0FF"
             iconBg="rgba(0, 176, 255, 0.15)"
             label="Reading History"
@@ -188,7 +161,7 @@ export default function UserProfileScreen({ navigation, route }) {
         {/* Stats Section */}
         <MenuSection>
           <MenuItem
-            icon="chart-line"
+            icon={LineChart}
             iconColor="#64FFDA"
             iconBg="rgba(100, 255, 218, 0.15)"
             label="My Stats"
@@ -200,7 +173,7 @@ export default function UserProfileScreen({ navigation, route }) {
         {/* Settings Section */}
         <MenuSection>
           <MenuItem
-            icon="cog"
+            icon={Settings}
             iconColor="#B388FF"
             iconBg="rgba(179, 136, 255, 0.15)"
             label="Settings"
@@ -209,18 +182,18 @@ export default function UserProfileScreen({ navigation, route }) {
           />
 
           <MenuItem
-            icon="help-circle"
-            iconColor={paperTheme.colors.onSurfaceVariant}
-            iconBg={paperTheme.colors.surfaceVariant}
+            icon={HelpCircle}
+            iconColor="#4a4a4a"
+            iconBg="#F3F2EE"
             label="Help & Feedback"
             onPress={() => handleMenuPress('help')}
             showChevron
           />
 
           <MenuItem
-            icon="information"
-            iconColor={paperTheme.colors.onSurfaceVariant}
-            iconBg={paperTheme.colors.surfaceVariant}
+            icon={Info}
+            iconColor="#4a4a4a"
+            iconBg="#F3F2EE"
             label="About Mukoko"
             onPress={() => handleMenuPress('about')}
             showChevron
@@ -229,68 +202,18 @@ export default function UserProfileScreen({ navigation, route }) {
 
         {/* Login Prompt for Guests */}
         {profile.isAnonymous && (
-          <TouchableOpacity
-            style={[styles.loginPrompt, { backgroundColor: paperTheme.colors.primaryContainer }]}
+          <Pressable
+            className="bg-tanzanite-container p-lg rounded-card mx-md"
             onPress={() => navigation.navigate('ProfileSettings')}
           >
-            <Text style={[styles.loginPromptText, { color: paperTheme.colors.primary }]}>
+            <Text className="font-sans-medium text-body-medium text-tanzanite text-center">
               Sign in to save articles and track your reading
             </Text>
-          </TouchableOpacity>
+          </Pressable>
         )}
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: mukokoTheme.spacing.md,
-    padding: mukokoTheme.spacing.xl,
-  },
-  errorText: {
-    fontSize: mukokoTheme.typography.bodyMedium,
-    textAlign: 'center',
-  },
-  retryButton: {
-    paddingVertical: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    marginTop: mukokoTheme.spacing.sm,
-  },
-  retryButtonText: {
-    fontSize: mukokoTheme.typography.bodyMedium,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    // paddingBottom set dynamically
-  },
-
-  // Login Prompt
-  loginPrompt: {
-    margin: mukokoTheme.spacing.lg,
-    padding: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    alignItems: 'center',
-  },
-  loginPromptText: {
-    fontSize: mukokoTheme.typography.bodyMedium,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    textAlign: 'center',
-  },
-});
+// All styles removed - using NativeWind classes instead

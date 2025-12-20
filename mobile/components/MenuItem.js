@@ -1,86 +1,54 @@
 /**
  * MenuItem - Reusable menu item component
  * WeChat/Settings style menu item with icon, label, value, and chevron
+ * shadcn-style with NativeWind + Lucide icons
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, useTheme as usePaperTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import mukokoTheme from '../theme';
+import { View, Pressable, Text } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
+import { getIcon } from '../constants/icons';
 
 export default function MenuItem({
   icon,
-  iconColor,
-  iconBg,
+  iconColor = '#FFD740',
+  iconBg = 'rgba(255, 215, 64, 0.15)',
   label,
   value,
   onPress,
   showChevron = true,
   disabled = false,
-  style,
+  className = '',
 }) {
-  const paperTheme = usePaperTheme();
+  const IconComponent = typeof icon === 'string' ? getIcon(icon) : icon;
 
   return (
-    <TouchableOpacity
-      style={[styles.menuItem, style]}
+    <Pressable
+      className={`flex-row items-center p-lg min-h-[64px] ${className}`}
       onPress={onPress}
-      activeOpacity={0.7}
       disabled={disabled}
     >
       {/* Icon Circle */}
-      <View style={[styles.menuIconContainer, { backgroundColor: iconBg }]}>
-        <MaterialCommunityIcons
-          name={icon}
-          size={mukokoTheme.layout.emojiMedium}
-          color={iconColor}
-        />
+      <View
+        className="w-[48px] h-[48px] rounded-full items-center justify-center mr-md"
+        style={{ backgroundColor: iconBg }}
+      >
+        <IconComponent size={28} color={iconColor} />
       </View>
 
       {/* Label */}
-      <Text style={[styles.menuLabel, { color: paperTheme.colors.onSurface }]}>
+      <Text className="flex-1 font-sans text-body-medium text-on-surface">
         {label}
       </Text>
 
       {/* Value or Chevron */}
       {value ? (
-        <Text style={[styles.menuValue, { color: paperTheme.colors.onSurfaceVariant }]}>
+        <Text className="font-sans text-body-small text-on-surface-variant mr-xs">
           {value}
         </Text>
       ) : showChevron ? (
-        <MaterialCommunityIcons
-          name="chevron-right"
-          size={mukokoTheme.layout.badgeMedium}
-          color={paperTheme.colors.onSurfaceVariant}
-        />
+        <ChevronRight size={24} color="#4a4a4a" />
       ) : null}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: mukokoTheme.spacing.lg,
-    minHeight: mukokoTheme.layout.emojiXL,
-  },
-  menuIconContainer: {
-    width: mukokoTheme.layout.actionButtonSize,
-    height: mukokoTheme.layout.actionButtonSize,
-    borderRadius: mukokoTheme.layout.actionButtonSize / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: mukokoTheme.spacing.md,
-  },
-  menuLabel: {
-    flex: 1,
-    fontSize: mukokoTheme.typography.bodyMedium,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
-  menuValue: {
-    fontSize: mukokoTheme.typography.bodySmall,
-    marginRight: mukokoTheme.spacing.xs,
-  },
-});
