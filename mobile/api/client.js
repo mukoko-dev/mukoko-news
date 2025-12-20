@@ -22,12 +22,14 @@ async function getAuthToken() {
 // Backend URLs - Mukoko News Architecture:
 // - news.mukoko.com → Expo Web frontend (Vercel)
 // - mukoko-news-backend.nyuchi.workers.dev → API (Cloudflare Workers)
-const API_URL = 'https://mukoko-news-backend.nyuchi.workers.dev';
+// API URL can be overridden via EXPO_PUBLIC_API_URL environment variable
+const DEFAULT_API_URL = 'https://mukoko-news-backend.nyuchi.workers.dev';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
 
 const BASE_URL = __DEV__
-  ? API_URL  // Use workers.dev domain in development
+  ? API_URL  // Use configured API URL in development
   // ? 'http://localhost:3000'  // Local dev server (uncomment for local testing)
-  : API_URL;  // Production uses workers.dev domain
+  : API_URL;  // Production uses configured API URL
 
 // All APIs are on the same domain
 const API_BASE_URL = BASE_URL;
