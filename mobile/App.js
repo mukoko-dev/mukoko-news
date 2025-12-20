@@ -7,6 +7,7 @@ import AppNavigator from './navigation/AppNavigator';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import './global.css';
 
 // Startup diagnostics
 const logStartup = (stage, details = {}) => {
