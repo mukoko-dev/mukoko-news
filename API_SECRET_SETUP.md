@@ -31,17 +31,22 @@ This secret is:
 
 ## Vercel Setup Instructions
 
-### 1. Add Environment Variable in Vercel
+### 1. Add Environment Variables in Vercel
 
 Go to your Vercel project settings:
 
 1. Navigate to: **Settings** → **Environment Variables**
-2. Add new variable:
-   - **Name**: `EXPO_PUBLIC_API_SECRET`
-   - **Value**: `19482d51c865fcda11c56ee6a17ed70c`
-   - **Environments**: Production, Preview, Development (check all)
+2. Add the following variables:
 
-3. Click **Save**
+| Name | Value | Required |
+|------|-------|----------|
+| `EXPO_PUBLIC_API_SECRET` | `19482d51c865fcda11c56ee6a17ed70c` | **Yes** |
+| `EXPO_PUBLIC_API_URL` | `https://mukoko-news-backend.nyuchi.workers.dev` | No (has default) |
+
+3. Select **Environments**: Production, Preview, Development (check all)
+4. Click **Save**
+
+**Note**: `EXPO_PUBLIC_API_URL` is optional. If not set, it defaults to the workers.dev URL. Only set this if you need to override the API endpoint.
 
 ### 2. Redeploy
 
@@ -58,14 +63,12 @@ vercel --prod
 
 ## Testing
 
-**Primary URL**: `https://api.news.mukoko.com`
-
-**Fallback URL**: `https://mukoko-news-backend.nyuchi.workers.dev` (if primary domain fails)
+**API URL**: `https://mukoko-news-backend.nyuchi.workers.dev`
 
 ### Without Token (Should Fail)
 
 ```bash
-curl https://api.news.mukoko.com/api/feeds
+curl https://mukoko-news-backend.nyuchi.workers.dev/api/feeds
 # Response: {"error":"Unauthorized","message":"Valid API key or user token required..."}
 ```
 
@@ -73,22 +76,15 @@ curl https://api.news.mukoko.com/api/feeds
 
 ```bash
 curl -H "Authorization: Bearer 19482d51c865fcda11c56ee6a17ed70c" \
-  https://api.news.mukoko.com/api/feeds
+  https://mukoko-news-backend.nyuchi.workers.dev/api/feeds
 # Response: {"articles":[...]}
 ```
 
 ### Health Endpoint (Always Public)
 
 ```bash
-curl https://api.news.mukoko.com/api/health
-# Response: {"status":"healthy","security":{"apiAuthEnabled":true,...}}
-```
-
-### Testing Fallback URL
-
-```bash
-# If primary domain fails, use fallback
 curl https://mukoko-news-backend.nyuchi.workers.dev/api/health
+# Response: {"status":"healthy","security":{"apiAuthEnabled":true,...}}
 ```
 
 ## How It Works
