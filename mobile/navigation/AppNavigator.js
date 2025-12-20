@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { Zap, ZapOff, Globe, Search, Compass, User, ShieldCheck } from 'lucide-react-native';
 import { useTheme as usePaperTheme } from 'react-native-paper';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -182,13 +182,10 @@ function MainTabs({ currentRoute }) {
         component={BytesStack}
         options={{
           tabBarLabel: 'Bytes',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'lightning-bolt' : 'lightning-bolt-outline'}
-              size={24}
-              color={color}
-            />
-          ),
+          tabBarIcon: ({ color, focused }) => {
+            const Icon = focused ? Zap : ZapOff;
+            return <Icon size={24} color={color} />;
+          },
         }}
       />
 
@@ -198,12 +195,8 @@ function MainTabs({ currentRoute }) {
         component={PulseStack}
         options={{
           tabBarLabel: 'Pulse',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'earth' : 'earth'}
-              size={24}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <Globe size={24} color={color} />
           ),
         }}
       />
@@ -214,12 +207,8 @@ function MainTabs({ currentRoute }) {
         component={SearchStack}
         options={{
           tabBarLabel: 'Search',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'magnify' : 'magnify'}
-              size={24}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <Search size={24} color={color} />
           ),
         }}
       />
@@ -230,12 +219,8 @@ function MainTabs({ currentRoute }) {
         component={DiscoverStack}
         options={{
           tabBarLabel: 'Discover',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'compass' : 'compass-outline'}
-              size={24}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <Compass size={24} color={color} />
           ),
         }}
       />
@@ -246,12 +231,8 @@ function MainTabs({ currentRoute }) {
         component={ProfileStack}
         options={{
           tabBarLabel: 'Profile',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'account' : 'account-outline'}
-              size={24}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <User size={24} color={color} />
           ),
         }}
       />
@@ -263,12 +244,8 @@ function MainTabs({ currentRoute }) {
           component={AdminStack}
           options={{
             tabBarLabel: 'Admin',
-            tabBarIcon: ({ color, focused }) => (
-              <MaterialCommunityIcons
-                name={focused ? 'shield-crown' : 'shield-crown-outline'}
-                size={24}
-                color={color}
-              />
+            tabBarIcon: ({ color }) => (
+              <ShieldCheck size={24} color={color} />
             ),
           }}
         />
