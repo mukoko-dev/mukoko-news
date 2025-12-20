@@ -5,13 +5,13 @@
 
 ## Progress Overview
 
-**Completed**: 3/15 items (20%)
+**Completed**: 4/15 items (27%)
 **In Progress**: Migrating remaining screens
 **Status**: 🟡 Active Migration
 
 ---
 
-## ✅ Completed (3/15)
+## ✅ Completed (4/15)
 
 ### Infrastructure & Components
 1. **✅ NativeWind Setup**
@@ -58,17 +58,17 @@
    - Uses LoadingState, EmptyState components
    - Removed 174 lines of StyleSheet code
 
+7. **✅ DiscoverScreen** (550 → 390 lines, -29%)
+   - Migrated to NativeWind + Lucide icons
+   - Uses LoadingState, EmptyState components
+   - Converted all section headers and buttons to NativeWind
+   - Removed 160 lines of StyleSheet code
+
 ---
 
-## 🟡 Remaining (12/15)
+## 🟡 Remaining (11/15)
 
-### User Screens (7)
-- ⏳ **HomeScreen** (535 lines)
-  - Main feed with ArticleCard grid
-  - Uses CategoryChips, LoginPromo components
-  - Empty state with MaterialCommunityIcons
-  - 6 hardcoded values to replace
-
+### User Screens (5)
 - ⏳ **SearchScreen** (803 lines)
   - Search + Insights combined
   - Stats display, trending topics, author rankings
@@ -78,11 +78,6 @@
   - TikTok-style vertical video feed
   - Immersive UI with action buttons
   - 19 hardcoded values to replace
-
-- ⏳ **DiscoverScreen** (550 lines)
-  - Visual exploration with hero cards
-  - Category grid, trending topics
-  - 9 hardcoded values to replace
 
 - ⏳ **ArticleDetailScreen** (977 lines - LARGEST)
   - Full article view with reader
@@ -127,8 +122,10 @@
 ### Code Reduction
 - **UserProfileScreen**: -52 lines (-19%)
 - **InsightsScreen**: -174 lines (-41%)
+- **HomeScreen**: -157 lines (-29%)
+- **DiscoverScreen**: -160 lines (-29%)
 - **AppNavigator**: -23 lines (icon code)
-- **Total Saved**: 249 lines removed
+- **Total Saved**: 566 lines removed
 
 ### Hardcoded Values Remaining
 - **User Screens**: 154 values across 7 screens
@@ -265,5 +262,5 @@ Each screen migration follows this pattern:
 
 ---
 
-**Migration Progress**: 20% complete (3/15 items)
-**Estimated Completion**: 12 screens remaining
+**Migration Progress**: 27% complete (4/15 items)
+**Estimated Completion**: 11 screens remaining
