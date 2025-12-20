@@ -226,11 +226,12 @@ export default function CountryPickerButton({ compact = false, showLabel = true 
           animationType="fade"
           onRequestClose={() => setModalVisible(false)}
         >
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setModalVisible(false)}
-          >
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={StyleSheet.absoluteFill}
+              activeOpacity={1}
+              onPress={() => setModalVisible(false)}
+            />
             <Animated.View
               style={[
                 styles.modalContent,
@@ -303,7 +304,7 @@ export default function CountryPickerButton({ compact = false, showLabel = true 
                 ))}
               </ScrollView>
             </Animated.View>
-          </TouchableOpacity>
+          </View>
         </Modal>
       </Portal>
     </>
@@ -324,6 +325,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     gap: 6,
+    minHeight: 44,
   },
   buttonCompact: {
     paddingHorizontal: 8,
@@ -352,6 +354,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -365,9 +368,14 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 4,
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   countriesList: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 1,
   },
   countryItem: {
     flexDirection: 'row',
@@ -376,6 +384,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 8,
     gap: 12,
+    minHeight: 44,
   },
   countryFlag: {
     fontSize: 28,

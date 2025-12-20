@@ -12,7 +12,6 @@ import {
 import { Text, IconButton, Button, Divider, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import Markdown from 'react-native-markdown-display';
@@ -41,9 +40,6 @@ export default function ArticleDetailScreen({ route, navigation }) {
   const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
-  // Hero uses inverse theme for contrast (light mode = dark hero, dark mode = light hero)
-  const heroTheme = isDark ? paperTheme : paperThemeDark;
-
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -69,9 +65,6 @@ export default function ArticleDetailScreen({ route, navigation }) {
     },
     errorMessage: {
       color: currentTheme.colors.onSurfaceVariant,
-    },
-    articleContainer: {
-      backgroundColor: currentTheme.colors.surface,
     },
     contentParagraph: {
       color: currentTheme.colors.onSurface,
@@ -448,34 +441,51 @@ export default function ArticleDetailScreen({ route, navigation }) {
         {/* Article Content */}
         {article && !loading && !error && (
           <>
-            {/* Hero Section - Uses inverse theme for contrast */}
-            <LinearGradient
-              colors={[heroTheme.colors.background, heroTheme.colors.surface]}
-              style={[styles.heroSection, { paddingTop: insets.top + 16 }]}
+            {/* Hero Section */}
+            <View
+              style={[
+                styles.heroSection,
+                {
+                  paddingTop: insets.top + 16,
+                  backgroundColor: currentTheme.colors.primary,
+                }
+              ]}
             >
               {/* Back Button */}
               <TouchableOpacity
                 onPress={handleBack}
-                style={[styles.heroBackButton, { backgroundColor: heroTheme.colors.glass }]}
+                style={[
+                  styles.heroBackButton,
+                  {
+                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
+                    top: insets.top + 16,
+                  }
+                ]}
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons
                   name="arrow-left"
                   size={24}
-                  color={heroTheme.colors.onSurface}
+                  color={currentTheme.colors.onPrimary}
                 />
               </TouchableOpacity>
 
               {/* Share Button */}
               <TouchableOpacity
                 onPress={handleShare}
-                style={[styles.heroShareButton, { backgroundColor: heroTheme.colors.glass }]}
+                style={[
+                  styles.heroShareButton,
+                  {
+                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
+                    top: insets.top + 16,
+                  }
+                ]}
                 activeOpacity={0.7}
               >
                 <MaterialCommunityIcons
                   name="share-variant-outline"
                   size={22}
-                  color={heroTheme.colors.onSurface}
+                  color={currentTheme.colors.onPrimary}
                 />
               </TouchableOpacity>
 
@@ -483,15 +493,15 @@ export default function ArticleDetailScreen({ route, navigation }) {
               {article.category && (
                 <View style={styles.categoryContainer}>
                   <View style={[styles.categoryBadge, {
-                    backgroundColor: heroTheme.colors.glass,
-                    borderColor: heroTheme.colors.glassBorder,
+                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
+                    borderColor: `${currentTheme.colors.onPrimary}4D`,
                   }]}>
                     <MaterialCommunityIcons
                       name="tag-outline"
                       size={14}
-                      color={heroTheme.colors.primary}
+                      color={currentTheme.colors.onPrimary}
                     />
-                    <Text style={[styles.categoryText, { color: heroTheme.colors.onSurface }]}>
+                    <Text style={[styles.categoryText, { color: currentTheme.colors.onPrimary }]}>
                       {article.category.toUpperCase()}
                     </Text>
                   </View>
@@ -499,16 +509,32 @@ export default function ArticleDetailScreen({ route, navigation }) {
               )}
 
               {/* Title */}
-              <Text style={[styles.heroTitle, { color: heroTheme.colors.onSurface }]} accessibilityRole="header">
+              <Text style={[styles.heroTitle, { color: currentTheme.colors.onPrimary }]} accessibilityRole="header">
                 {article.title}
               </Text>
 
+              {/* Author Profile */}
+              {article.author && (
+                <View style={styles.authorContainer}>
+                  <View style={[styles.authorAvatar, { backgroundColor: `${currentTheme.colors.onPrimary}33` }]}>
+                    <MaterialCommunityIcons
+                      name="account"
+                      size={20}
+                      color={currentTheme.colors.onPrimary}
+                    />
+                  </View>
+                  <Text style={[styles.authorName, { color: currentTheme.colors.onPrimary }]}>
+                    {article.author}
+                  </Text>
+                </View>
+              )}
+
               {/* Source and Date */}
               <View style={styles.heroMeta}>
-                <Text style={[styles.heroSource, { color: heroTheme.colors.onSurface }]}>
+                <Text style={[styles.heroSource, { color: currentTheme.colors.onPrimary }]}>
                   {article.source || 'Unknown Source'}
                 </Text>
-                <Text style={[styles.heroDate, { color: heroTheme.colors.onSurfaceVariant }]}>
+                <Text style={[styles.heroDate, { color: `${currentTheme.colors.onPrimary}B3` }]}>
                   {formatDate(article.published_at)}
                 </Text>
               </View>
@@ -518,17 +544,17 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 <View style={styles.keywordsContainer}>
                   {getKeywords().map((keyword, index) => (
                     <View key={index} style={[styles.keywordTag, {
-                      backgroundColor: heroTheme.colors.glass,
-                      borderColor: heroTheme.colors.glassBorder,
+                      backgroundColor: `${currentTheme.colors.onPrimary}33`,
+                      borderColor: `${currentTheme.colors.onPrimary}4D`,
                     }]}>
-                      <Text style={[styles.keywordText, { color: heroTheme.colors.onSurfaceVariant }]}>
+                      <Text style={[styles.keywordText, { color: `${currentTheme.colors.onPrimary}E6` }]}>
                         {keyword}
                       </Text>
                     </View>
                   ))}
                 </View>
               )}
-            </LinearGradient>
+            </View>
 
             {/* Article Image (if exists) */}
             {article.image_url && (
@@ -542,7 +568,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
             )}
 
             {/* Article Body */}
-            <View style={[styles.articleBody, dynamicStyles.articleContainer]}>
+            <View style={styles.articleBody}>
               {/* Description */}
               {article.description && (
                 <Text style={[styles.articleDescription, { color: currentTheme.colors.onSurfaceVariant }]}>
@@ -661,7 +687,6 @@ const styles = StyleSheet.create({
   },
   heroBackButton: {
     position: 'absolute',
-    top: 16,
     left: 16,
     width: 44,
     height: 44,
@@ -672,7 +697,6 @@ const styles = StyleSheet.create({
   },
   heroShareButton: {
     position: 'absolute',
-    top: 16,
     right: 16,
     width: 44,
     height: 44,
@@ -719,6 +743,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
+  authorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  authorAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  authorName: {
+    fontSize: 14,
+    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
   keywordsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -756,7 +797,6 @@ const styles = StyleSheet.create({
   // Article Body
   articleBody: {
     padding: 20,
-    marginTop: 16,
   },
   articleDescription: {
     fontSize: 18,
@@ -802,6 +842,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     marginLeft: 'auto',
+    minHeight: 44,
   },
   readOriginalText: {
     fontSize: 14,
