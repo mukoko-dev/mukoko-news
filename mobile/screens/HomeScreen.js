@@ -250,8 +250,8 @@ export default function HomeScreen({ navigation }) {
   // Calculate card width for multi-column layouts
   const getCardWidth = () => {
     if (layoutConfig.numColumns === 1) return undefined;
-    const totalPadding = mukokoTheme.spacing.md * 2;
-    const gap = mukokoTheme.spacing.md * (layoutConfig.numColumns - 1);
+    const totalPadding = 12 * 2; // 12px = md spacing
+    const gap = 12 * (layoutConfig.numColumns - 1);
     return (screenWidth - totalPadding - gap) / layoutConfig.numColumns;
   };
 
