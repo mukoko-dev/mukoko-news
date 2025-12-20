@@ -293,21 +293,21 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statValue: {
-    fontSize: 28,
+    fontSize: mukokoTheme.typography.statsValue,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: mukokoTheme.typography.labelSmall,
     marginTop: 2,
   },
   statDivider: {
-    width: 1,
-    height: 32,
+    width: mukokoTheme.layout.dividerWidth,
+    height: mukokoTheme.layout.statDividerHeight,
   },
 
   // Section labels
   sectionLabel: {
-    fontSize: 13,
+    fontSize: mukokoTheme.typography.labelLarge,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
     marginBottom: mukokoTheme.spacing.sm,
     marginTop: mukokoTheme.spacing.sm,
@@ -332,27 +332,27 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   topicEmoji: {
-    fontSize: 24,
+    fontSize: mukokoTheme.typography.headlineLarge,
   },
   hotBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+    width: mukokoTheme.layout.badgeSmall,
+    height: mukokoTheme.layout.badgeSmall,
+    borderRadius: mukokoTheme.layout.badgeSmall / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
   hotBadgeText: {
-    color: '#FFF',
-    fontSize: 10,
+    color: mukokoTheme.colors.onPrimary,
+    fontSize: mukokoTheme.typography.caption,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
   topicName: {
-    fontSize: 13,
+    fontSize: mukokoTheme.typography.labelLarge,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
     marginBottom: 2,
   },
   topicCount: {
-    fontSize: 11,
+    fontSize: mukokoTheme.typography.labelSmall,
   },
   growthRow: {
     flexDirection: 'row',
@@ -361,7 +361,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   growthText: {
-    fontSize: 10,
+    fontSize: mukokoTheme.typography.caption,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 
@@ -376,26 +376,26 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   rank: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: mukokoTheme.layout.badgeMedium,
+    height: mukokoTheme.layout.badgeMedium,
+    borderRadius: mukokoTheme.layout.badgeMedium / 2,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: mukokoTheme.spacing.sm,
   },
   rankText: {
-    fontSize: 11,
+    fontSize: mukokoTheme.typography.labelSmall,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
   authorInfo: {
     flex: 1,
   },
   authorName: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
   authorMeta: {
-    fontSize: 11,
+    fontSize: mukokoTheme.typography.labelSmall,
     marginTop: 1,
   },
 
@@ -405,20 +405,20 @@ const styles = StyleSheet.create({
     paddingVertical: mukokoTheme.spacing.xxl,
   },
   emptyEmoji: {
-    fontSize: 48,
+    fontSize: mukokoTheme.layout.emojiLarge,
     marginBottom: mukokoTheme.spacing.md,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: mukokoTheme.typography.titleLarge,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
     marginBottom: mukokoTheme.spacing.xs,
   },
   emptySubtitle: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
   },
 
   // Bottom padding
   bottomPadding: {
-    height: 100,
+    height: mukokoTheme.layout.bottomPaddingMobile,
   },
 });

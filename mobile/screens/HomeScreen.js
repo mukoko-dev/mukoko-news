@@ -65,7 +65,7 @@ export default function HomeScreen({ navigation }) {
   const preferencesLoadedRef = useRef(false);
 
   // On tablet/desktop, no bottom tab bar, so reduce padding
-  const bottomPadding = layout.isMobile ? 100 : 24;
+  const bottomPadding = layout.isMobile ? mukokoTheme.layout.bottomPaddingMobile : mukokoTheme.layout.bottomPaddingDesktop;
 
   // Calculate responsive layout
   const getLayoutConfig = useCallback((width) => {
@@ -461,7 +461,7 @@ const styles = StyleSheet.create({
     gap: mukokoTheme.spacing.md,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
     color: mukokoTheme.colors.onSurfaceVariant,
   },
 
@@ -476,12 +476,12 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 20,
+    fontSize: mukokoTheme.typography.headlineSmall,
     color: mukokoTheme.colors.onSurface,
     textAlign: 'center',
   },
   emptyDescription: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
     color: mukokoTheme.colors.onSurfaceVariant,
     textAlign: 'center',
     lineHeight: 20,
@@ -502,13 +502,13 @@ const styles = StyleSheet.create({
   // Error state styles
   errorTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 20,
+    fontSize: mukokoTheme.typography.headlineSmall,
     marginTop: mukokoTheme.spacing.md,
     marginBottom: mukokoTheme.spacing.sm,
     textAlign: 'center',
   },
   errorMessage: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
     textAlign: 'center',
     marginBottom: mukokoTheme.spacing.lg,
     paddingHorizontal: mukokoTheme.spacing.xl,
@@ -523,8 +523,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: mukokoTheme.colors.onPrimary,
+    fontSize: mukokoTheme.typography.bodyMedium,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 
