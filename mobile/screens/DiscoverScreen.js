@@ -245,8 +245,10 @@ export default function DiscoverScreen({ navigation }) {
     const totalGap = gap * (columns - 1);
     const totalPadding = padding * 2;
     const width = (validWidth - totalPadding - totalGap) / columns;
-    // Ensure width is valid and positive
-    return Math.max(width, 100); // minimum 100px width
+    // Ensure width is valid and positive with a percentage-based minimum
+    // Minimum is 15% of available width to handle very small screens
+    const minWidth = validWidth * 0.15;
+    return Math.max(width, minWidth);
   };
 
   const categoryCardWidth = calculateCardWidth(categoryColumns);

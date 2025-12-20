@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Animated, PanResponder, Dimensions } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Animated, PanResponder } from 'react-native';
 import { Text, useTheme, ActivityIndicator, Portal } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';

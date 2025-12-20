@@ -447,7 +447,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 styles.heroSection,
                 {
                   paddingTop: insets.top + 16,
-                  backgroundColor: mukokoTheme.colors.primary,
+                  backgroundColor: currentTheme.colors.primary,
                 }
               ]}
             >
@@ -457,7 +457,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 style={[
                   styles.heroBackButton,
                   {
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
                     top: insets.top + 16,
                   }
                 ]}
@@ -466,7 +466,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 <MaterialCommunityIcons
                   name="arrow-left"
                   size={24}
-                  color="#FFFFFF"
+                  color={currentTheme.colors.onPrimary}
                 />
               </TouchableOpacity>
 
@@ -476,7 +476,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 style={[
                   styles.heroShareButton,
                   {
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
                     top: insets.top + 16,
                   }
                 ]}
@@ -485,7 +485,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 <MaterialCommunityIcons
                   name="share-variant-outline"
                   size={22}
-                  color="#FFFFFF"
+                  color={currentTheme.colors.onPrimary}
                 />
               </TouchableOpacity>
 
@@ -493,15 +493,15 @@ export default function ArticleDetailScreen({ route, navigation }) {
               {article.category && (
                 <View style={styles.categoryContainer}>
                   <View style={[styles.categoryBadge, {
-                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                    borderColor: 'rgba(255, 255, 255, 0.3)',
+                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
+                    borderColor: `${currentTheme.colors.onPrimary}4D`,
                   }]}>
                     <MaterialCommunityIcons
                       name="tag-outline"
                       size={14}
-                      color="#FFFFFF"
+                      color={currentTheme.colors.onPrimary}
                     />
-                    <Text style={[styles.categoryText, { color: '#FFFFFF' }]}>
+                    <Text style={[styles.categoryText, { color: currentTheme.colors.onPrimary }]}>
                       {article.category.toUpperCase()}
                     </Text>
                   </View>
@@ -509,21 +509,21 @@ export default function ArticleDetailScreen({ route, navigation }) {
               )}
 
               {/* Title */}
-              <Text style={[styles.heroTitle, { color: '#FFFFFF' }]} accessibilityRole="header">
+              <Text style={[styles.heroTitle, { color: currentTheme.colors.onPrimary }]} accessibilityRole="header">
                 {article.title}
               </Text>
 
               {/* Author Profile */}
               {article.author && (
                 <View style={styles.authorContainer}>
-                  <View style={styles.authorAvatar}>
+                  <View style={[styles.authorAvatar, { backgroundColor: `${currentTheme.colors.onPrimary}33` }]}>
                     <MaterialCommunityIcons
                       name="account"
                       size={20}
-                      color="#FFFFFF"
+                      color={currentTheme.colors.onPrimary}
                     />
                   </View>
-                  <Text style={[styles.authorName, { color: '#FFFFFF' }]}>
+                  <Text style={[styles.authorName, { color: currentTheme.colors.onPrimary }]}>
                     {article.author}
                   </Text>
                 </View>
@@ -531,10 +531,10 @@ export default function ArticleDetailScreen({ route, navigation }) {
 
               {/* Source and Date */}
               <View style={styles.heroMeta}>
-                <Text style={[styles.heroSource, { color: '#FFFFFF' }]}>
+                <Text style={[styles.heroSource, { color: currentTheme.colors.onPrimary }]}>
                   {article.source || 'Unknown Source'}
                 </Text>
-                <Text style={[styles.heroDate, { color: 'rgba(255, 255, 255, 0.7)' }]}>
+                <Text style={[styles.heroDate, { color: `${currentTheme.colors.onPrimary}B3` }]}>
                   {formatDate(article.published_at)}
                 </Text>
               </View>
@@ -544,10 +544,10 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 <View style={styles.keywordsContainer}>
                   {getKeywords().map((keyword, index) => (
                     <View key={index} style={[styles.keywordTag, {
-                      backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                      borderColor: 'rgba(255, 255, 255, 0.3)',
+                      backgroundColor: `${currentTheme.colors.onPrimary}33`,
+                      borderColor: `${currentTheme.colors.onPrimary}4D`,
                     }]}>
-                      <Text style={[styles.keywordText, { color: 'rgba(255, 255, 255, 0.9)' }]}>
+                      <Text style={[styles.keywordText, { color: `${currentTheme.colors.onPrimary}E6` }]}>
                         {keyword}
                       </Text>
                     </View>
@@ -697,7 +697,6 @@ const styles = StyleSheet.create({
   },
   heroShareButton: {
     position: 'absolute',
-    top: 16,
     right: 16,
     width: 44,
     height: 44,
@@ -754,7 +753,6 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
