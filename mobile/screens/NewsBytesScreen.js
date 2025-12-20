@@ -7,21 +7,26 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
-  StyleSheet,
   FlatList,
   Dimensions,
   TouchableOpacity,
   Image,
   Share,
-} from 'react-native';
-import {
+  Pressable,
   Text,
-  IconButton,
-  ActivityIndicator,
-  useTheme as usePaperTheme,
-} from 'react-native-paper';
+} from 'react-native';
+import { useTheme as usePaperTheme } from 'react-native-paper';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import {
+  Heart,
+  MessageCircle,
+  Share2,
+  Bookmark,
+  AlertCircle,
+  RefreshCw,
+  Loader2
+} from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { newsBytes, articles as articlesAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
@@ -285,14 +290,19 @@ export default function NewsBytesScreen({ navigation }) {
 
     return (
       <TouchableOpacity
-        style={[styles.byteContainer, { width: SCREEN_WIDTH, height: SCREEN_HEIGHT, backgroundColor: colors.background }]}
+        className="relative"
+        style={{
+          width: SCREEN_WIDTH,
+          height: SCREEN_HEIGHT,
+          backgroundColor: colors.background,
+        }}
         activeOpacity={1}
         onPress={() => handleViewArticle(item)}
       >
         {/* Background Image - Only articles with images are shown */}
         <Image
           source={{ uri: item.image_url }}
-          style={styles.backgroundImage}
+          className="absolute inset-0 bg-[#1a1a1a]"
           resizeMode="cover"
         />
 
@@ -300,63 +310,119 @@ export default function NewsBytesScreen({ navigation }) {
         <LinearGradient
           colors={['rgba(0,0,0,0.1)', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']}
           locations={[0, 0.4, 1]}
-          style={styles.gradientOverlay}
+          className="absolute inset-0"
         />
 
         {/* Content - Positioned from bottom with responsive offset */}
-        <View style={[
-          styles.contentContainer,
-          {
+        <View
+          className="absolute left-md right-md gap-sm"
+          style={{
             bottom: CONTENT_BOTTOM_OFFSET,
             paddingRight: 72, // Space for action buttons
-          }
-        ]}>
+          }}
+        >
           {/* Category Badge */}
           {item.category && (
-            <View style={[styles.categoryBadge, { backgroundColor: colors.accent }]}>
-              <Text style={[styles.categoryText, { color: colors.background }]}>{item.category}</Text>
+            <View
+              className="self-start px-sm py-[2px] rounded-md"
+              style={{ backgroundColor: colors.accent }}
+            >
+              <Text
+                className="font-sans-bold text-body-small uppercase"
+                style={{ color: colors.background, letterSpacing: 0.5 }}
+              >
+                {item.category}
+              </Text>
             </View>
           )}
 
           {/* Title - Large, readable */}
-          <Text style={[styles.byteTitle, { color: colors.white }]} numberOfLines={4}>
+          <Text
+            className="font-serif-bold text-headline-large leading-8"
+            style={{
+              color: colors.white,
+              textShadowColor: 'rgba(0, 0, 0, 0.8)',
+              textShadowOffset: { width: 0, height: 2 },
+              textShadowRadius: 4,
+              letterSpacing: -0.3,
+            }}
+            numberOfLines={4}
+          >
             {item.title}
           </Text>
 
           {/* Description - Two lines max */}
           {item.description && (
-            <Text style={[styles.byteDescription, { color: colors.whiteTranslucent }]} numberOfLines={2}>
+            <Text
+              className="font-sans text-body-medium leading-5"
+              style={{
+                color: colors.whiteTranslucent,
+                textShadowColor: 'rgba(0, 0, 0, 0.8)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 3,
+              }}
+              numberOfLines={2}
+            >
               {item.description.slice(0, 120)}...
             </Text>
           )}
 
           {/* Source & Date */}
-          <View style={styles.metaContainer}>
+          <View className="flex-row items-center gap-xs">
             <SourceIcon source={item.source} size={18} showBorder={false} />
-            <Text style={[styles.sourceText, { color: colors.accent }]}>{item.source}</Text>
-            <Text style={[styles.dotSeparator, { color: colors.whiteFaded }]}>•</Text>
-            <Text style={[styles.dateText, { color: colors.whiteTranslucent }]}>{formatDate(item.published_at)}</Text>
+            <Text
+              className="font-sans-bold text-label-large"
+              style={{
+                color: colors.accent,
+                textShadowColor: 'rgba(0, 0, 0, 0.8)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 3,
+              }}
+            >
+              {item.source}
+            </Text>
+            <Text className="opacity-60" style={{ color: colors.whiteFaded }}>
+              •
+            </Text>
+            <Text
+              className="font-sans text-label-large"
+              style={{
+                color: colors.whiteTranslucent,
+                textShadowColor: 'rgba(0, 0, 0, 0.8)',
+                textShadowOffset: { width: 0, height: 1 },
+                textShadowRadius: 3,
+              }}
+            >
+              {formatDate(item.published_at)}
+            </Text>
           </View>
 
           {/* Read More Button */}
-          <TouchableOpacity
-            style={[styles.readMoreButton, { borderColor: colors.glassBorder, backgroundColor: colors.glassBackground }]}
+          <Pressable
+            className="self-start px-md py-sm rounded-button border mt-xs"
+            style={{
+              borderColor: colors.glassBorder,
+              backgroundColor: colors.glassBackground,
+            }}
             onPress={() => handleViewArticle(item)}
           >
-            <Text style={[styles.readMoreText, { color: colors.white }]}>Read Full Article</Text>
-          </TouchableOpacity>
+            <Text className="font-sans-medium text-label-large" style={{ color: colors.white }}>
+              Read Full Article
+            </Text>
+          </Pressable>
         </View>
 
         {/* Right Side Actions - Vertically centered */}
-        <View style={[
-          styles.actionsContainer,
-          {
+        <View
+          className="absolute items-center gap-md"
+          style={{
             right: ACTIONS_RIGHT_OFFSET,
             bottom: CONTENT_BOTTOM_OFFSET + 40,
-          }
-        ]}>
+          }}
+        >
           <ActionButton
-            icon={byteState.isLiked ? "heart" : "heart-outline"}
+            Icon={Heart}
+            fill={byteState.isLiked}
             color={byteState.isLiked ? colors.liked : colors.white}
             label={byteState.likesCount || 0}
             onPress={() => handleLike(item)}
@@ -365,7 +431,7 @@ export default function NewsBytesScreen({ navigation }) {
           />
 
           <ActionButton
-            icon="comment-outline"
+            Icon={MessageCircle}
             color={colors.white}
             label={item.commentsCount || 0}
             onPress={() => handleViewArticle(item)}
@@ -374,7 +440,7 @@ export default function NewsBytesScreen({ navigation }) {
           />
 
           <ActionButton
-            icon="share-variant-outline"
+            Icon={Share2}
             color={colors.white}
             label="Share"
             onPress={() => handleShare(item)}
@@ -383,7 +449,8 @@ export default function NewsBytesScreen({ navigation }) {
           />
 
           <ActionButton
-            icon={byteState.isSaved ? "bookmark" : "bookmark-outline"}
+            Icon={Bookmark}
+            fill={byteState.isSaved}
             color={byteState.isSaved ? colors.saved : colors.white}
             onPress={() => handleSave(item)}
             glassColor={colors.glassBackground}
@@ -396,10 +463,12 @@ export default function NewsBytesScreen({ navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={[styles.loadingText, { color: colors.white }]}>Loading NewsBytes...</Text>
+      <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
+        <View className="flex-1 justify-center items-center gap-md">
+          <Loader2 size={48} color={colors.accent} className="animate-spin" />
+          <Text className="font-sans-medium text-body-medium" style={{ color: colors.white }}>
+            Loading NewsBytes...
+          </Text>
         </View>
       </SafeAreaView>
     );
@@ -407,44 +476,63 @@ export default function NewsBytesScreen({ navigation }) {
 
   if (error) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={styles.loadingContainer}>
-          <IconButton
-            icon="alert-circle-outline"
-            size={64}
-            iconColor={colors.accent}
-          />
-          <Text style={[styles.errorTitle, { color: colors.white }]}>Something went wrong</Text>
-          <Text style={[styles.errorMessage, { color: colors.whiteTranslucent }]}>{error}</Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: colors.accent }]}
+      <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
+        <View className="flex-1 justify-center items-center gap-md px-xl">
+          <AlertCircle size={64} color={colors.accent} />
+          <Text
+            className="font-serif-bold text-headline-small text-center mb-sm"
+            style={{ color: colors.white }}
+          >
+            Something went wrong
+          </Text>
+          <Text
+            className="font-sans text-body-medium text-center mb-lg"
+            style={{ color: colors.whiteTranslucent }}
+          >
+            {error}
+          </Text>
+          <Pressable
+            className="flex-row items-center justify-center gap-sm py-sm px-lg rounded-button min-w-[120px]"
+            style={{ backgroundColor: colors.accent }}
             onPress={loadNewsBytes}
             accessibilityRole="button"
             accessibilityLabel="Retry loading NewsBytes"
           >
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
+            <RefreshCw size={16} color={mukokoTheme.colors.onPrimary} />
+            <Text className="font-sans-medium text-body-medium" style={{ color: mukokoTheme.colors.onPrimary }}>
+              Try Again
+            </Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.background }]}>
+    <View className="flex-1" style={{ backgroundColor: colors.background }}>
       {/* Progress Indicator - Responsive top position */}
-      <View style={[styles.progressContainer, { top: PROGRESS_TOP_OFFSET }]}>
+      <View
+        className="absolute left-0 right-0 flex-row justify-center items-center gap-xs z-[100]"
+        style={{ top: PROGRESS_TOP_OFFSET }}
+      >
         {bytes.slice(0, 10).map((_, index) => (
           <View
             key={index}
-            style={[
-              styles.progressDot,
-              { backgroundColor: colors.whiteFaded },
-              index === currentIndex && [styles.progressDotActive, { backgroundColor: colors.accent }],
-            ]}
+            className="rounded-full"
+            style={{
+              width: index === currentIndex ? mukokoTheme.layout.progressDotActive : mukokoTheme.layout.progressDotSize,
+              height: mukokoTheme.layout.progressDotSize,
+              backgroundColor: index === currentIndex ? colors.accent : colors.whiteFaded,
+            }}
           />
         ))}
         {bytes.length > 10 && (
-          <Text style={[styles.progressMore, { color: colors.white }]}>+{bytes.length - 10}</Text>
+          <Text
+            className="font-sans text-label-small ml-xs"
+            style={{ color: colors.white, opacity: 0.8 }}
+          >
+            +{bytes.length - 10}
+          </Text>
         )}
       </View>
 
@@ -467,13 +555,22 @@ export default function NewsBytesScreen({ navigation }) {
           index,
         })}
         ListEmptyComponent={
-          <View style={[styles.emptyContainer, { height: SCREEN_HEIGHT, backgroundColor: colors.background }]}>
-            <Text style={styles.emptyIcon}>📰</Text>
+          <View
+            className="flex-1 justify-center items-center px-xl gap-md"
+            style={{ height: SCREEN_HEIGHT, backgroundColor: colors.background }}
+          >
+            <Text className="text-[64px] opacity-50">📰</Text>
             <Text
-              style={[styles.emptyTitle, { color: colors.white }]}
+              className="font-serif-bold text-headline-medium text-center"
+              style={{ color: colors.white }}
               accessibilityRole="header"
-            >No NewsBytes available</Text>
-            <Text style={[styles.emptyDescription, { color: colors.whiteTranslucent }]}>
+            >
+              No NewsBytes available
+            </Text>
+            <Text
+              className="font-sans text-body-medium text-center"
+              style={{ color: colors.whiteTranslucent }}
+            >
               Pull down to refresh or check back later
             </Text>
           </View>
@@ -486,220 +583,31 @@ export default function NewsBytesScreen({ navigation }) {
 /**
  * ActionButton Component - Reusable action button for the side panel
  */
-function ActionButton({ icon, color, label, onPress, glassColor, textColor }) {
+function ActionButton({ Icon, fill, color, label, onPress, glassColor, textColor }) {
   return (
-    <TouchableOpacity style={styles.actionButton} onPress={onPress}>
-      <View style={[styles.actionIconContainer, { backgroundColor: glassColor }]}>
-        <IconButton
-          icon={icon}
-          iconColor={color}
-          size={28}
-          style={styles.actionIcon}
-        />
+    <Pressable className="items-center gap-xs" onPress={onPress}>
+      <View
+        className="w-touch h-touch rounded-full items-center justify-center"
+        style={{ backgroundColor: glassColor }}
+      >
+        <Icon size={28} color={color} fill={fill ? color : 'transparent'} />
       </View>
       {label !== undefined && (
-        <Text style={[styles.actionText, { color: textColor }]}>{label}</Text>
+        <Text
+          className="font-sans-medium text-body-small"
+          style={{
+            color: textColor,
+            textShadowColor: 'rgba(0, 0, 0, 0.8)',
+            textShadowOffset: { width: 0, height: 1 },
+            textShadowRadius: 2,
+          }}
+        >
+          {label}
+        </Text>
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  byteContainer: {
-    position: 'relative',
-  },
-  backgroundImage: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#1a1a1a',
-  },
-  gradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-
-  // Content positioning
-  contentContainer: {
-    position: 'absolute',
-    left: mukokoTheme.spacing.md,
-    right: mukokoTheme.spacing.md,
-    gap: mukokoTheme.spacing.sm,
-  },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: mukokoTheme.spacing.sm,
-    paddingVertical: mukokoTheme.spacing.xs - 2,
-    borderRadius: mukokoTheme.roundness / 2,
-  },
-  categoryText: {
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    fontSize: mukokoTheme.typography.bodySmall,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  byteTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: mukokoTheme.typography.headlineLarge,
-    lineHeight: 32,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-    letterSpacing: -0.3,
-  },
-  byteDescription: {
-    fontSize: mukokoTheme.typography.bodyMedium,
-    lineHeight: 21,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  metaContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.xs,
-  },
-  sourceText: {
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    fontSize: mukokoTheme.typography.labelLarge,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  dotSeparator: {
-    opacity: 0.6,
-  },
-  dateText: {
-    fontSize: mukokoTheme.typography.labelLarge,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  readMoreButton: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-    borderRadius: mukokoTheme.roundness,
-    borderWidth: 1,
-    marginTop: mukokoTheme.spacing.xs,
-  },
-  readMoreText: {
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    fontSize: mukokoTheme.typography.labelLarge,
-  },
-
-  // Actions panel
-  actionsContainer: {
-    position: 'absolute',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.md,
-  },
-  actionButton: {
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.xs,
-  },
-  actionIconContainer: {
-    width: mukokoTheme.layout.actionButtonSize,
-    height: mukokoTheme.layout.actionButtonSize,
-    borderRadius: mukokoTheme.layout.actionButtonSize / 2,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionIcon: {
-    margin: 0,
-  },
-  actionText: {
-    fontSize: mukokoTheme.typography.bodySmall,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    textShadowColor: 'rgba(0, 0, 0, 0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-
-  // Progress indicator
-  progressContainer: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.xs,
-    zIndex: 100,
-  },
-  progressDot: {
-    width: mukokoTheme.layout.progressDotSize,
-    height: mukokoTheme.layout.progressDotSize,
-    borderRadius: mukokoTheme.layout.progressDotSize / 2,
-  },
-  progressDotActive: {
-    width: mukokoTheme.layout.progressDotActive,
-  },
-  progressMore: {
-    fontSize: mukokoTheme.typography.labelSmall,
-    opacity: 0.8, // Increased from 0.7 for better contrast
-    marginLeft: mukokoTheme.spacing.xs,
-  },
-
-  // Loading state
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.md,
-  },
-  loadingText: {
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-
-  // Empty state
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: mukokoTheme.spacing.xl,
-    gap: mukokoTheme.spacing.md,
-  },
-  emptyIcon: {
-    fontSize: mukokoTheme.layout.emojiXL,
-    opacity: 0.5,
-  },
-  emptyTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: mukokoTheme.typography.headlineMedium,
-    textAlign: 'center',
-  },
-  emptyDescription: {
-    fontSize: mukokoTheme.typography.bodyMedium,
-    textAlign: 'center',
-  },
-
-  // Error state styles
-  errorTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: mukokoTheme.typography.headlineSmall,
-    marginBottom: mukokoTheme.spacing.sm,
-    textAlign: 'center',
-  },
-  errorMessage: {
-    fontSize: mukokoTheme.typography.bodyMedium,
-    textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.lg,
-    paddingHorizontal: mukokoTheme.spacing.xl,
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: mukokoTheme.spacing.sm,
-    paddingVertical: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    minWidth: 120,
-  },
-  retryButtonText: {
-    color: mukokoTheme.colors.onPrimary,
-    fontSize: mukokoTheme.typography.bodyMedium,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-});
+// All styles removed - using NativeWind classes instead
+// Note: textShadow styles kept inline as NativeWind doesn't support text shadows
