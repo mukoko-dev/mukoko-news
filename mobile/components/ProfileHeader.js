@@ -1,15 +1,14 @@
 /**
  * ProfileHeader - Reusable profile header component
  * WeChat-inspired design with avatar, name, ID, and QR button
+ * shadcn-style with NativeWind + Lucide icons
  */
 
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Image } from 'react-native';
-import { Text, useTheme as usePaperTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import mukokoTheme from '../theme';
+import { View, Pressable, Image, Text } from 'react-native';
+import { QrCode } from 'lucide-react-native';
 
-const AVATAR_SIZE = mukokoTheme.layout.emojiXL + 36; // 100px
+const AVATAR_SIZE = 100; // 64px (emojiXL) + 36px = 100px
 
 export default function ProfileHeader({
   displayName,
@@ -18,110 +17,57 @@ export default function ProfileHeader({
   avatarUrl,
   showQrButton = true,
   onQrPress,
-  style,
+  className = '',
 }) {
-  const paperTheme = usePaperTheme();
-
   const getInitials = (name) => {
     if (!name) return '?';
     return name.charAt(0).toUpperCase();
   };
 
   return (
-    <View style={[styles.profileHeader, { backgroundColor: paperTheme.colors.surface }, style]}>
-      <View style={styles.profileRow}>
+    <View className={`bg-surface p-lg mb-sm ${className}`}>
+      <View className="flex-row items-center mb-md">
         {/* Avatar */}
         {avatarUrl ? (
-          <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+          <Image
+            source={{ uri: avatarUrl }}
+            className="w-[100px] h-[100px] rounded-full"
+          />
         ) : (
-          <View style={[styles.avatarPlaceholder, { backgroundColor: paperTheme.colors.primaryContainer }]}>
-            <Text style={[styles.avatarInitials, { color: paperTheme.colors.primary }]}>
+          <View className="w-[100px] h-[100px] rounded-full bg-tanzanite-container items-center justify-center">
+            <Text className="font-serif-bold text-display-small text-tanzanite">
               {getInitials(displayName)}
             </Text>
           </View>
         )}
 
         {/* Name and ID */}
-        <View style={styles.profileInfo}>
-          <Text style={[styles.displayName, { color: paperTheme.colors.onSurface }]}>
+        <View className="flex-1 ml-lg">
+          <Text className="font-serif-bold text-headline-small text-on-surface mb-xs">
             {displayName}
           </Text>
-          <Text style={[styles.mukokoId, { color: paperTheme.colors.onSurfaceVariant }]}>
+          <Text className="font-sans text-body-small text-on-surface-variant">
             Mukoko ID: {username}
           </Text>
         </View>
 
         {/* QR Code Icon */}
         {showQrButton && (
-          <TouchableOpacity
-            style={styles.qrButton}
+          <Pressable
+            className="w-touch h-touch items-center justify-center"
             onPress={onQrPress}
           >
-            <MaterialCommunityIcons
-              name="qrcode"
-              size={mukokoTheme.layout.badgeMedium}
-              color={paperTheme.colors.onSurface}
-            />
-          </TouchableOpacity>
+            <QrCode size={24} color="#1C1B1F" />
+          </Pressable>
         )}
       </View>
 
       {/* Bio */}
       {bio && (
-        <Text style={[styles.bio, { color: paperTheme.colors.onSurfaceVariant }]}>
+        <Text className="font-sans text-body-medium text-on-surface-variant leading-5">
           {bio}
         </Text>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  profileHeader: {
-    padding: mukokoTheme.spacing.lg,
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  profileRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
-  },
-  avatarPlaceholder: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontSize: mukokoTheme.typography.displaySmall,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-  },
-  profileInfo: {
-    flex: 1,
-    marginLeft: mukokoTheme.spacing.lg,
-  },
-  displayName: {
-    fontSize: mukokoTheme.typography.headlineSmall,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  mukokoId: {
-    fontSize: mukokoTheme.typography.bodySmall,
-  },
-  qrButton: {
-    width: mukokoTheme.touchTargets.minimum,
-    height: mukokoTheme.touchTargets.minimum,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  bio: {
-    fontSize: mukokoTheme.typography.bodyMedium,
-    lineHeight: 20,
-  },
-});
