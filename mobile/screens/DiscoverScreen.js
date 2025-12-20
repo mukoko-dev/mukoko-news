@@ -198,15 +198,65 @@ export default function DiscoverScreen({ navigation }) {
     });
   }, [navigation]);
 
-  // Calculate grid dimensions
+  // Calculate grid dimensions based on screen size
   const padding = mukokoTheme.spacing.md;
   const gap = mukokoTheme.spacing.sm;
 
-  // 3-column category grid
-  const categoryCardWidth = (screenWidth - padding * 2 - gap * 2) / 3;
+  // Responsive column counts - defensive checks for layout properties
+  const getCategoryColumns = () => {
+    if (layout?.isDesktop || layout?.layout === 'desktop') return 5;
+    if (layout?.isTablet || layout?.layout === 'tablet') return 4;
+    return 3; // mobile
+  };
 
-  // 2-column article grid
-  const articleCardWidth = (screenWidth - padding * 2 - gap) / 2;
+  const getArticleColumns = () => {
+    if (layout?.isDesktop || layout?.layout === 'desktop') return 3;
+    if (layout?.isTablet || layout?.layout === 'tablet') return 2;
+    return 1; // mobile
+  };
+
+  const categoryColumns = getCategoryColumns();
+  const articleColumns = getArticleColumns();
+
+  // Calculate available width (accounting for sidebars on desktop/tablet)
+  const getAvailableWidth = () => {
+    const isMobileLayout = !layout?.isDesktop && !layout?.isTablet &&
+                          (layout?.isMobile || layout?.layout === 'mobile' || !layout);
+    if (isMobileLayout) return screenWidth;
+
+    // For tablet/desktop, use the contentWidth from layout context
+    // contentWidth might be a string '100%' or a number
+    const layoutContentWidth = layout?.contentWidth;
+    if (typeof layoutContentWidth === 'number' && layoutContentWidth > 0) {
+      return layoutContentWidth;
+    }
+    return screenWidth;
+  };
+
+  const availableWidth = getAvailableWidth();
+
+  // Validate availableWidth is a valid number
+  const validWidth = typeof availableWidth === 'number' && !isNaN(availableWidth) && availableWidth > 0
+    ? availableWidth
+    : screenWidth;
+
+  // Calculate card widths based on columns
+  const calculateCardWidth = (columns) => {
+    const totalGap = gap * (columns - 1);
+    const totalPadding = padding * 2;
+    const width = (validWidth - totalPadding - totalGap) / columns;
+    // Ensure width is valid and positive with a percentage-based minimum
+    // Minimum is 15% of available width to handle very small screens
+    const minWidth = validWidth * 0.15;
+    return Math.max(width, minWidth);
+  };
+
+  const categoryCardWidth = calculateCardWidth(categoryColumns);
+  const articleCardWidth = calculateCardWidth(articleColumns);
+
+  // Number of items to show initially
+  const categoryItemsToShow = categoryColumns * 2; // 2 rows
+  const articleItemsToShow = articleColumns * 4; // 4 rows
 
   // Dynamic styles
   const dynamicStyles = {
@@ -269,7 +319,7 @@ export default function DiscoverScreen({ navigation }) {
             <HeroStoryCard
               article={heroArticle}
               onPress={() => handleArticlePress(heroArticle)}
-              width={screenWidth - padding * 2}
+              width={validWidth - padding * 2}
             />
           </View>
         )}
@@ -294,7 +344,7 @@ export default function DiscoverScreen({ navigation }) {
               </Text>
             </View>
             <View style={styles.categoryGrid}>
-              {categories.slice(0, 9).map((category, index) => (
+              {categories.slice(0, categoryItemsToShow).map((category, index) => (
                 <CategoryExplorerCard
                   key={category.id || category.slug || index}
                   category={category}
@@ -304,7 +354,7 @@ export default function DiscoverScreen({ navigation }) {
                 />
               ))}
             </View>
-            {categories.length > 9 && (
+            {categories.length > categoryItemsToShow && (
               <TouchableOpacity
                 style={[styles.viewAllButton, { borderColor: paperTheme.colors.primary }]}
                 onPress={() => navigation.navigate('AllCategories')}
@@ -327,7 +377,7 @@ export default function DiscoverScreen({ navigation }) {
               <CuratedLabel variant="popular" size="small" showIcon={false} />
             </View>
             <View style={styles.articleGrid}>
-              {latestArticles.slice(0, 10).map((article) => (
+              {latestArticles.slice(0, articleItemsToShow).map((article) => (
                 <View key={article.id} style={{ width: articleCardWidth }}>
                   <ArticleCard
                     article={article}
@@ -338,7 +388,7 @@ export default function DiscoverScreen({ navigation }) {
                 </View>
               ))}
             </View>
-            {latestArticles.length > 10 && (
+            {latestArticles.length > articleItemsToShow && (
               <TouchableOpacity
                 style={[styles.loadMoreButton, { backgroundColor: paperTheme.colors.primary }]}
                 onPress={async () => {
