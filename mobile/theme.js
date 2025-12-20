@@ -172,6 +172,19 @@ export const mukokoTheme = {
     medium: 250,
     slow: 350,
   },
+
+  // Touch targets and interactive elements (WCAG 2.1 AAA)
+  touchTargets: {
+    minimum: 44,      // WCAG AAA minimum touch target size
+    compact: 40,      // Compact buttons (still accessible)
+    large: 56,        // Large prominent buttons
+  },
+
+  // Scroll behavior constants
+  scroll: {
+    headerThreshold: 100,  // Show floating header after scrolling past this
+    headerHeight: 60,      // Standard header height
+  },
 };
 
 /**

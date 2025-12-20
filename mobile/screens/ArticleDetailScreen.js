@@ -52,7 +52,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
   // Scroll tracking for collapsible header
   const scrollY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
-  const headerTranslateY = useRef(new Animated.Value(-100)).current; // Start hidden
+  const headerTranslateY = useRef(new Animated.Value(-mukokoTheme.scroll.headerHeight)).current; // Start hidden
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -393,20 +393,20 @@ export default function ArticleDetailScreen({ route, navigation }) {
         const currentScrollY = event.nativeEvent.contentOffset.y;
         const scrollDirection = currentScrollY > lastScrollY.current ? 'down' : 'up';
 
-        // Only show header when scrolling up and past 100px
+        // Only show header when scrolling up and past threshold
         // Hide when scrolling down or at top of page
-        if (scrollDirection === 'up' && currentScrollY > 100) {
+        if (scrollDirection === 'up' && currentScrollY > mukokoTheme.scroll.headerThreshold) {
           // Show header
           Animated.timing(headerTranslateY, {
             toValue: 0,
-            duration: 200,
+            duration: mukokoTheme.animation.medium,
             useNativeDriver: true,
           }).start();
-        } else if (scrollDirection === 'down' || currentScrollY <= 100) {
+        } else if (scrollDirection === 'down' || currentScrollY <= mukokoTheme.scroll.headerThreshold) {
           // Hide header
           Animated.timing(headerTranslateY, {
-            toValue: -100,
-            duration: 200,
+            toValue: -mukokoTheme.scroll.headerHeight,
+            duration: mukokoTheme.animation.medium,
             useNativeDriver: true,
           }).start();
         }
@@ -675,7 +675,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
             {
               backgroundColor: currentTheme.colors.primary,
               transform: [{ translateY: headerTranslateY }],
-              paddingTop: insets.top + 8,
+              paddingTop: insets.top + mukokoTheme.spacing.sm,
             },
           ]}
         >
@@ -777,43 +777,43 @@ const styles = StyleSheet.create({
 
   // Hero Section
   heroSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingHorizontal: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
+    paddingBottom: mukokoTheme.spacing.xxl,
     position: 'relative',
   },
   heroBackButton: {
     position: 'absolute',
-    left: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    left: mukokoTheme.spacing.lg,
+    width: mukokoTheme.touchTargets.minimum,
+    height: mukokoTheme.touchTargets.minimum,
+    borderRadius: mukokoTheme.touchTargets.minimum / 2,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
   heroShareButton: {
     position: 'absolute',
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    right: mukokoTheme.spacing.lg,
+    width: mukokoTheme.touchTargets.minimum,
+    height: mukokoTheme.touchTargets.minimum,
+    borderRadius: mukokoTheme.touchTargets.minimum / 2,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
   categoryContainer: {
-    marginTop: 60,
-    marginBottom: 20,
+    marginTop: mukokoTheme.spacing.xxl + mukokoTheme.spacing.xl + mukokoTheme.spacing.sm,
+    marginBottom: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
     flexDirection: 'row',
   },
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: mukokoTheme.spacing.xs + 2,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: mukokoTheme.spacing.md,
+    paddingVertical: mukokoTheme.spacing.xs + 2,
+    borderRadius: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
   },
   categoryText: {
     fontSize: 12,
@@ -951,24 +951,20 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingBottom: 12,
+    paddingBottom: mukokoTheme.spacing.md,
     zIndex: 100,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    ...mukokoTheme.shadows.medium,
   },
   floatingHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 12,
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    gap: mukokoTheme.spacing.md,
   },
   floatingButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: mukokoTheme.touchTargets.compact,
+    height: mukokoTheme.touchTargets.compact,
+    borderRadius: mukokoTheme.touchTargets.compact / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
