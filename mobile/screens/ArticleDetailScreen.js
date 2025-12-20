@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   ScrollView,
@@ -8,6 +8,7 @@ import {
   Linking,
   ActivityIndicator,
   Share,
+  Animated,
 } from 'react-native';
 import { Text, IconButton, Button, Divider, useTheme as usePaperTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -47,6 +48,11 @@ export default function ArticleDetailScreen({ route, navigation }) {
   const [isSaved, setIsSaved] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
   const [shareModalVisible, setShareModalVisible] = useState(false);
+
+  // Scroll tracking for collapsible header
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+  const headerTranslateY = useRef(new Animated.Value(-100)).current; // Start hidden
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -378,6 +384,38 @@ export default function ArticleDetailScreen({ route, navigation }) {
     }
   };
 
+  // Handle scroll to show/hide header
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    {
+      useNativeDriver: false,
+      listener: (event) => {
+        const currentScrollY = event.nativeEvent.contentOffset.y;
+        const scrollDirection = currentScrollY > lastScrollY.current ? 'down' : 'up';
+
+        // Only show header when scrolling up and past 100px
+        // Hide when scrolling down or at top of page
+        if (scrollDirection === 'up' && currentScrollY > 100) {
+          // Show header
+          Animated.timing(headerTranslateY, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        } else if (scrollDirection === 'down' || currentScrollY <= 100) {
+          // Hide header
+          Animated.timing(headerTranslateY, {
+            toValue: -100,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+        }
+
+        lastScrollY.current = currentScrollY;
+      },
+    }
+  );
+
   // Extract keywords/tags from article
   const getKeywords = () => {
     const keywords = [];
@@ -406,6 +444,8 @@ export default function ArticleDetailScreen({ route, navigation }) {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {/* Loading State */}
         {loading && (
@@ -627,6 +667,62 @@ export default function ArticleDetailScreen({ route, navigation }) {
         )}
       </ScrollView>
 
+      {/* Floating Header - Shows when scrolling up */}
+      {article && !loading && !error && (
+        <Animated.View
+          style={[
+            styles.floatingHeader,
+            {
+              backgroundColor: currentTheme.colors.primary,
+              transform: [{ translateY: headerTranslateY }],
+              paddingTop: insets.top + 8,
+            },
+          ]}
+        >
+          <View style={styles.floatingHeaderContent}>
+            {/* Back Button */}
+            <TouchableOpacity
+              onPress={handleBack}
+              style={[
+                styles.floatingButton,
+                { backgroundColor: `${currentTheme.colors.onPrimary}33` },
+              ]}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name="arrow-left"
+                size={24}
+                color={currentTheme.colors.onPrimary}
+              />
+            </TouchableOpacity>
+
+            {/* Article Title (truncated) */}
+            <Text
+              style={[styles.floatingTitle, { color: currentTheme.colors.onPrimary }]}
+              numberOfLines={1}
+            >
+              {article.title}
+            </Text>
+
+            {/* Share Button */}
+            <TouchableOpacity
+              onPress={handleShare}
+              style={[
+                styles.floatingButton,
+                { backgroundColor: `${currentTheme.colors.onPrimary}33` },
+              ]}
+              activeOpacity={0.7}
+            >
+              <MaterialCommunityIcons
+                name="share-variant-outline"
+                size={22}
+                color={currentTheme.colors.onPrimary}
+              />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
+
       <ShareModal
         visible={shareModalVisible}
         onDismiss={() => setShareModalVisible(false)}
@@ -847,5 +943,39 @@ const styles = StyleSheet.create({
   readOriginalText: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+
+  // Floating Header (appears on scroll up)
+  floatingHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 12,
+    zIndex: 100,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  floatingHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  floatingButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floatingTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    letterSpacing: -0.2,
   },
 });
