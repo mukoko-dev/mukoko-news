@@ -58,14 +58,12 @@ vercel --prod
 
 ## Testing
 
-**Primary URL**: `https://api.news.mukoko.com`
-
-**Fallback URL**: `https://mukoko-news-backend.nyuchi.workers.dev` (if primary domain fails)
+**API URL**: `https://mukoko-news-backend.nyuchi.workers.dev`
 
 ### Without Token (Should Fail)
 
 ```bash
-curl https://api.news.mukoko.com/api/feeds
+curl https://mukoko-news-backend.nyuchi.workers.dev/api/feeds
 # Response: {"error":"Unauthorized","message":"Valid API key or user token required..."}
 ```
 
@@ -73,22 +71,15 @@ curl https://api.news.mukoko.com/api/feeds
 
 ```bash
 curl -H "Authorization: Bearer 19482d51c865fcda11c56ee6a17ed70c" \
-  https://api.news.mukoko.com/api/feeds
+  https://mukoko-news-backend.nyuchi.workers.dev/api/feeds
 # Response: {"articles":[...]}
 ```
 
 ### Health Endpoint (Always Public)
 
 ```bash
-curl https://api.news.mukoko.com/api/health
-# Response: {"status":"healthy","security":{"apiAuthEnabled":true,...}}
-```
-
-### Testing Fallback URL
-
-```bash
-# If primary domain fails, use fallback
 curl https://mukoko-news-backend.nyuchi.workers.dev/api/health
+# Response: {"status":"healthy","security":{"apiAuthEnabled":true,...}}
 ```
 
 ## How It Works

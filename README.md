@@ -152,9 +152,7 @@ See [API_SECRET_SETUP.md](API_SECRET_SETUP.md) for setup instructions.
 
 ## 🔌 API Endpoints
 
-**Base URL**: `https://api.news.mukoko.com`
-
-**Fallback URL**: `https://mukoko-news-backend.nyuchi.workers.dev` (if primary domain fails)
+**Base URL**: `https://mukoko-news-backend.nyuchi.workers.dev`
 
 ### Public Endpoints (Require API Key)
 

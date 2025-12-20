@@ -99,9 +99,7 @@ Schema in `database/schema.sql`. 17 migrations in `database/migrations/`.
 
 ## API
 
-**Base URL**: `https://api.news.mukoko.com`
-
-**Fallback URL**: `https://mukoko-news-backend.nyuchi.workers.dev` (if primary domain fails)
+**Base URL**: `https://mukoko-news-backend.nyuchi.workers.dev`
 
 ### Endpoint Protection (Updated)
 
