@@ -48,59 +48,6 @@ const formatRelativeTime = (dateString) => {
 };
 
 /**
- * Calculate word count from text
- */
-const getWordCount = (text) => {
-  if (!text) return 0;
-  return text.trim().split(/\s+/).filter(word => word.length > 0).length;
-};
-
-/**
- * Calculate read time in minutes (average 200 words per minute)
- */
-const getReadTime = (text) => {
-  const words = getWordCount(text);
-  const minutes = Math.ceil(words / 200);
-  return minutes < 1 ? 1 : minutes;
-};
-
-/**
- * Extract hashtags from article (category + keywords)
- */
-const getHashtags = (article) => {
-  const tags = [];
-
-  // Add category as first tag if exists
-  if (article.category) {
-    tags.push(`#${article.category.toLowerCase().replace(/\s+/g, '')}`);
-  }
-
-  // Add keywords/tags if available
-  if (article.tags && Array.isArray(article.tags)) {
-    article.tags.slice(0, 3).forEach(tag => {
-      const formatted = `#${tag.toLowerCase().replace(/\s+/g, '')}`;
-      if (!tags.includes(formatted)) {
-        tags.push(formatted);
-      }
-    });
-  }
-
-  // Extract from title for Zimbabwe-specific content
-  const titleLower = (article.title || '').toLowerCase();
-  const zimbabweKeywords = ['zimbabwe', 'zim', 'harare', 'bulawayo'];
-  zimbabweKeywords.forEach(keyword => {
-    if (titleLower.includes(keyword) && tags.length < 4) {
-      const tag = `#${keyword}`;
-      if (!tags.includes(tag)) {
-        tags.push(tag);
-      }
-    }
-  });
-
-  return tags.slice(0, 4); // Max 4 tags
-};
-
-/**
  * Optimized Image component to prevent flickering
  * Uses memo and stable key to prevent unnecessary re-renders
  */
@@ -173,12 +120,6 @@ function ArticleCard({
   // Stable key for the image to prevent re-mounting
   const imageKey = `${article.id || article.slug}-image`;
 
-  // Calculate article stats
-  const contentText = article.description || article.content || article.title || '';
-  const wordCount = getWordCount(contentText);
-  const readTime = getReadTime(contentText);
-  const hashtags = getHashtags(article);
-
   // Dynamic glass styles based on theme
   const glassStyles = {
     surface: {
@@ -244,9 +185,6 @@ function ArticleCard({
 
           {/* Content Section */}
           <View style={[styles.horizontalContent, !hasImage && styles.horizontalContentNoImage]}>
-            {article.category && (
-              <Text style={[styles.categoryLabel, glassStyles.category]}>{article.category}</Text>
-            )}
             <Text style={[styles.horizontalTitle, glassStyles.title]} numberOfLines={2}>
               {article.title}
             </Text>
@@ -277,9 +215,6 @@ function ArticleCard({
         <Surface style={[styles.compactSurface, glassStyles.surface]} elevation={0}>
           <View style={styles.compactContent}>
             <View style={styles.compactTextContent}>
-              {article.category && (
-                <Text style={[styles.categoryLabelSmall, glassStyles.category]}>{article.category}</Text>
-              )}
               <Text style={[styles.compactTitle, glassStyles.title]} numberOfLines={2}>
                 {article.title}
               </Text>
@@ -314,7 +249,7 @@ function ArticleCard({
         activeOpacity={0.85}
         onPress={onPress}
         style={[styles.featuredCard, cardWidth && { width: cardWidth }, style]}
-        accessibilityLabel={`Featured article: ${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}. ${readTime} minute read`}
+        accessibilityLabel={`Featured article: ${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}`}
         accessibilityRole="button"
         accessibilityHint="Opens featured article for reading"
       >
@@ -328,23 +263,11 @@ function ArticleCard({
                 style={styles.featuredImage}
                 onError={handleImageError}
               />
-              {/* Gradient overlay for text readability */}
-              <View style={styles.featuredGradient} />
-              {/* Category badge on image */}
-              {article.category && (
-                <View style={[styles.featuredCategoryBadge, { backgroundColor: paperTheme.colors.primary }]}>
-                  <Text style={styles.featuredCategoryText}>{article.category}</Text>
-                </View>
-              )}
             </View>
           )}
 
           {/* Content */}
           <View style={styles.featuredContent}>
-            {/* Show category in content when no image */}
-            {!hasImage && article.category && (
-              <Text style={[styles.categoryLabel, glassStyles.category]}>{article.category}</Text>
-            )}
             <Text style={[styles.featuredTitle, glassStyles.title]} numberOfLines={3}>
               {article.title}
             </Text>
@@ -373,7 +296,7 @@ function ArticleCard({
       activeOpacity={0.85}
       onPress={onPress}
       style={[styles.defaultCard, cardWidth && { width: cardWidth }, style]}
-      accessibilityLabel={`${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}. ${readTime} minute read`}
+      accessibilityLabel={`${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}`}
       accessibilityRole="button"
       accessibilityHint="Opens article for reading"
     >
@@ -413,31 +336,6 @@ function ArticleCard({
               {article.description}
             </Text>
           )}
-
-          {/* Hashtags Row */}
-          {hashtags.length > 0 && (
-            <View style={styles.hashtagsRow}>
-              {hashtags.map((tag, index) => (
-                <View key={index} style={[styles.hashtagChip, glassStyles.tagChip]}>
-                  <Text style={[styles.hashtagText, glassStyles.tagText]}>{tag}</Text>
-                </View>
-              ))}
-              {hashtags.length < 4 && (
-                <Text style={[styles.moreTagsText, glassStyles.meta]}>+{4 - hashtags.length} more</Text>
-              )}
-            </View>
-          )}
-
-          {/* Stats Row - Word count and Read time */}
-          <View style={styles.statsRow}>
-            <Text style={[styles.statsText, glassStyles.statsText]}>
-              {wordCount} words
-            </Text>
-            <Text style={[styles.dotSeparator, glassStyles.meta]}>•</Text>
-            <Text style={[styles.statsText, glassStyles.statsText]}>
-              {readTime} min read
-            </Text>
-          </View>
         </View>
       </Surface>
     </TouchableOpacity>
@@ -475,8 +373,8 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   defaultContent: {
-    padding: mukokoTheme.spacing.md,
-    gap: mukokoTheme.spacing.xs,
+    padding: mukokoTheme.spacing.lg,
+    gap: mukokoTheme.spacing.sm,
   },
   defaultTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
@@ -489,7 +387,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     color: mukokoTheme.colors.onSurfaceVariant,
-    marginTop: mukokoTheme.spacing.xs,
+    marginTop: mukokoTheme.spacing.sm,
   },
 
   // ============ HORIZONTAL VARIANT ============
@@ -515,7 +413,7 @@ const styles = StyleSheet.create({
   },
   horizontalContent: {
     flex: 1,
-    padding: mukokoTheme.spacing.sm,
+    padding: mukokoTheme.spacing.md,
     justifyContent: 'space-between',
   },
   horizontalContentNoImage: {
@@ -542,8 +440,8 @@ const styles = StyleSheet.create({
   },
   compactContent: {
     flexDirection: 'row',
-    padding: mukokoTheme.spacing.sm,
-    gap: mukokoTheme.spacing.sm,
+    padding: mukokoTheme.spacing.md,
+    gap: mukokoTheme.spacing.md,
   },
   compactTextContent: {
     flex: 1,
@@ -618,7 +516,7 @@ const styles = StyleSheet.create({
   },
   featuredContent: {
     padding: mukokoTheme.spacing.lg,
-    gap: mukokoTheme.spacing.sm,
+    gap: mukokoTheme.spacing.md,
   },
   featuredTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
@@ -667,7 +565,7 @@ const styles = StyleSheet.create({
   sourceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.xs,
+    marginBottom: mukokoTheme.spacing.sm,
     gap: 6,
   },
 
@@ -675,7 +573,7 @@ const styles = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: mukokoTheme.spacing.xs,
+    marginTop: mukokoTheme.spacing.sm,
     gap: 6,
   },
   sourceText: {
