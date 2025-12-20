@@ -24,3 +24,24 @@ export { Input, SearchBar } from './input';
 
 // Badges
 export { Badge, CountBadge } from './badge';
+
+// Avatar
+export { Avatar, AvatarGroup } from './avatar';
+
+// Stats
+export { StatCard, StatsRow, StatBadge } from './stats';
+
+// Sections
+export { SectionLabel, SectionDivider } from './section';
+
+// Forms
+export {
+  Form,
+  FormField,
+  FormLabel,
+  FormDescription,
+  FormMessage,
+  TextInput,
+  Select,
+  Checkbox,
+} from './form';
