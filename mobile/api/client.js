@@ -19,31 +19,20 @@ async function getAuthToken() {
   }
 }
 
-// Backend URLs - Mukoko News Architecture:
-// - news.mukoko.com → Expo Web frontend (Vercel)
-// - api.news.mukoko.com → Primary API (Cloudflare Workers with custom domain)
-// - mukoko-news-backend.nyuchi.workers.dev → Fallback API (Cloudflare Workers default domain)
-const PRIMARY_URL = 'https://api.news.mukoko.com';
-const FALLBACK_URL = 'https://mukoko-news-backend.nyuchi.workers.dev';
-
-const BASE_URL = __DEV__
-  ? PRIMARY_URL  // Use primary domain in development
-  // ? 'http://localhost:3000'  // Local dev server (uncomment for local testing)
-  : PRIMARY_URL;  // Production uses primary domain
-
-// All APIs are on the same domain
-const API_BASE_URL = BASE_URL;
-const ADMIN_API_URL = BASE_URL; // Admin at /admin
+// Backend URL - Cloudflare Workers
+// Can be overridden via EXPO_PUBLIC_API_URL environment variable
+// For local development, set EXPO_PUBLIC_API_URL=http://localhost:3000
+const DEFAULT_API_URL = 'https://mukoko-news-backend.nyuchi.workers.dev';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || DEFAULT_API_URL;
 
 // API Secret for backend authentication (set via environment variable)
 const API_SECRET = process.env.EXPO_PUBLIC_API_SECRET;
 
 /**
- * Make authenticated API request with fallback support
+ * Make authenticated API request
  */
-async function apiRequest(endpoint, options = {}, isRetry = false) {
-  const baseUrl = isRetry ? FALLBACK_URL : API_BASE_URL;
-  const url = `${baseUrl}${endpoint}`;
+async function apiRequest(endpoint, options = {}) {
+  const url = `${API_URL}${endpoint}`;
 
   // Get auth token if available
   const token = await getAuthToken();
@@ -96,20 +85,7 @@ async function apiRequest(endpoint, options = {}, isRetry = false) {
     // Handle timeout error
     if (error.name === 'AbortError') {
       console.error(`[API] ${endpoint}: Request timeout (10s)`);
-
-      // Try fallback URL if primary failed and not already retrying
-      if (!isRetry && baseUrl === PRIMARY_URL) {
-        console.log(`[API] ${endpoint}: Trying fallback URL...`);
-        return apiRequest(endpoint, options, true);
-      }
-
       return { data: null, error: 'Request timeout - please try again' };
-    }
-
-    // Try fallback URL for network errors if primary failed and not already retrying
-    if (!isRetry && baseUrl === PRIMARY_URL && (error.message.includes('Network') || error.message.includes('Failed to fetch'))) {
-      console.log(`[API] ${endpoint}: Primary domain failed, trying fallback URL...`);
-      return apiRequest(endpoint, options, true);
     }
 
     console.error(`[API] ${endpoint}:`, error);

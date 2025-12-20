@@ -23,7 +23,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- API base URL updated to `https://api.news.mukoko.com`
+- API base URL switched to `https://mukoko-news-backend.nyuchi.workers.dev` (workers.dev domain)
+- Removed fallback URL logic - using single reliable endpoint
+- API URL now configurable via `EXPO_PUBLIC_API_URL` environment variable
 - All `/api/*` endpoints now require bearer token authentication (except `/api/health`)
 - Tab bar icon colors fixed for better visibility
 - Mobile app now includes API_SECRET in authorization headers
