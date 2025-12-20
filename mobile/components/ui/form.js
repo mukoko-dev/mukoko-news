@@ -4,8 +4,8 @@
  * Mukoko brand styling with Nyuchi Brand System v6
  */
 
-import React from 'react';
-import { View, Text, TextInput as RNTextInput } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TextInput as RNTextInput, Pressable, Modal, ScrollView } from 'react-native';
 
 export function Form({ children, className = '' }) {
   return <View className={`gap-lg ${className}`}>{children}</View>;
@@ -128,23 +128,63 @@ export function Select({
   error,
   className = '',
 }) {
-  // Note: This is a simplified select. For production, use a proper picker library
-  // like @react-native-picker/picker or react-native-dropdown-picker
+  const [isOpen, setIsOpen] = useState(false);
+
+  const selectedOption = options.find(opt => opt.value === value);
+  const displayText = selectedOption?.label || value || placeholder;
+
+  const handleSelect = (optionValue) => {
+    if (onValueChange) {
+      onValueChange(optionValue);
+    }
+    setIsOpen(false);
+  };
 
   return (
-    <View
-      className={`
-        rounded-button border px-md h-touch flex-row items-center justify-between
-        ${error ? 'border-error' : 'border-outline'}
-        bg-surface
-        ${className}
-      `.trim().replace(/\s+/g, ' ')}
-    >
-      <Text className={`font-sans text-body-medium ${value ? 'text-on-surface' : 'text-on-surface-variant'}`}>
-        {value || placeholder}
-      </Text>
-      {/* Add chevron down icon here */}
-    </View>
+    <>
+      <Pressable
+        className={`
+          rounded-button border px-md h-touch flex-row items-center justify-between
+          ${error ? 'border-error' : 'border-outline'}
+          bg-surface
+          ${className}
+        `.trim().replace(/\s+/g, ' ')}
+        onPress={() => setIsOpen(true)}
+      >
+        <Text className={`font-sans text-body-medium ${value ? 'text-on-surface' : 'text-on-surface-variant'}`}>
+          {displayText}
+        </Text>
+        <Text className="text-on-surface-variant">▼</Text>
+      </Pressable>
+
+      <Modal
+        visible={isOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsOpen(false)}
+      >
+        <Pressable
+          className="flex-1 bg-black/50 justify-center items-center"
+          onPress={() => setIsOpen(false)}
+        >
+          <View className="bg-surface rounded-card max-h-[400px] w-[80%] max-w-[300px]" onStartShouldSetResponder={() => true}>
+            <ScrollView className="max-h-[400px]">
+              {options.map((option, index) => (
+                <Pressable
+                  key={option.value || index}
+                  className={`px-lg py-md border-b border-outline ${value === option.value ? 'bg-tanzanite-container' : ''}`}
+                  onPress={() => handleSelect(option.value)}
+                >
+                  <Text className={`font-sans text-body-medium ${value === option.value ? 'text-tanzanite font-sans-medium' : 'text-on-surface'}`}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
   );
 }
 
@@ -155,11 +195,14 @@ export function Checkbox({
   error,
   className = '',
 }) {
-  // Note: This is a simplified checkbox. For production, use a proper checkbox library
-  // or Expo Checkbox
+  const handlePress = () => {
+    if (onCheckedChange) {
+      onCheckedChange(!checked);
+    }
+  };
 
   return (
-    <View className={className}>
+    <Pressable className={className} onPress={handlePress}>
       <View className="flex-row items-center">
         <View
           className={`
@@ -178,6 +221,6 @@ export function Checkbox({
           </Text>
         )}
       </View>
-    </View>
+    </Pressable>
   );
 }
