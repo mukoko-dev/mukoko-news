@@ -202,16 +202,16 @@ export default function DiscoverScreen({ navigation }) {
   const padding = mukokoTheme.spacing.md;
   const gap = mukokoTheme.spacing.sm;
 
-  // Responsive column counts
+  // Responsive column counts - defensive checks for layout properties
   const getCategoryColumns = () => {
-    if (layout.isDesktop) return 5;
-    if (layout.isTablet) return 4;
+    if (layout?.isDesktop || layout?.layout === 'desktop') return 5;
+    if (layout?.isTablet || layout?.layout === 'tablet') return 4;
     return 3; // mobile
   };
 
   const getArticleColumns = () => {
-    if (layout.isDesktop) return 3;
-    if (layout.isTablet) return 2;
+    if (layout?.isDesktop || layout?.layout === 'desktop') return 3;
+    if (layout?.isTablet || layout?.layout === 'tablet') return 2;
     return 1; // mobile
   };
 
@@ -220,16 +220,37 @@ export default function DiscoverScreen({ navigation }) {
 
   // Calculate available width (accounting for sidebars on desktop/tablet)
   const getAvailableWidth = () => {
-    if (layout.isMobile) return screenWidth;
+    const isMobileLayout = !layout?.isDesktop && !layout?.isTablet &&
+                          (layout?.isMobile || layout?.layout === 'mobile' || !layout);
+    if (isMobileLayout) return screenWidth;
+
     // For tablet/desktop, use the contentWidth from layout context
-    return layout.contentWidth || screenWidth;
+    // contentWidth might be a string '100%' or a number
+    const layoutContentWidth = layout?.contentWidth;
+    if (typeof layoutContentWidth === 'number' && layoutContentWidth > 0) {
+      return layoutContentWidth;
+    }
+    return screenWidth;
   };
 
   const availableWidth = getAvailableWidth();
 
+  // Validate availableWidth is a valid number
+  const validWidth = typeof availableWidth === 'number' && !isNaN(availableWidth) && availableWidth > 0
+    ? availableWidth
+    : screenWidth;
+
   // Calculate card widths based on columns
-  const categoryCardWidth = (availableWidth - padding * 2 - gap * (categoryColumns - 1)) / categoryColumns;
-  const articleCardWidth = (availableWidth - padding * 2 - gap * (articleColumns - 1)) / articleColumns;
+  const calculateCardWidth = (columns) => {
+    const totalGap = gap * (columns - 1);
+    const totalPadding = padding * 2;
+    const width = (validWidth - totalPadding - totalGap) / columns;
+    // Ensure width is valid and positive
+    return Math.max(width, 100); // minimum 100px width
+  };
+
+  const categoryCardWidth = calculateCardWidth(categoryColumns);
+  const articleCardWidth = calculateCardWidth(articleColumns);
 
   // Number of items to show initially
   const categoryItemsToShow = categoryColumns * 2; // 2 rows
@@ -296,7 +317,7 @@ export default function DiscoverScreen({ navigation }) {
             <HeroStoryCard
               article={heroArticle}
               onPress={() => handleArticlePress(heroArticle)}
-              width={availableWidth - padding * 2}
+              width={validWidth - padding * 2}
             />
           </View>
         )}
