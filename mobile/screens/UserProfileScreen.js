@@ -27,7 +27,7 @@ import { useLayout } from '../components/layout';
 import { user as userAPI, auth } from '../api/client';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const AVATAR_SIZE = 100;
+const AVATAR_SIZE = mukokoTheme.layout.emojiXL + 36; // 100px
 const GRID_GAP = 2;
 const GRID_COLUMNS = 3;
 const GRID_ITEM_SIZE = (SCREEN_WIDTH - GRID_GAP * (GRID_COLUMNS + 1)) / GRID_COLUMNS;
