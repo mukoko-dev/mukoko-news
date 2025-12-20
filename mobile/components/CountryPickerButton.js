@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Animated, PanResponder } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Animated, PanResponder, Dimensions } from 'react-native';
 import { Text, useTheme, ActivityIndicator, Portal } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { countries as countriesAPI } from '../api/client';
 import mukokoTheme from '../theme';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
  * CountryPickerButton - Compact button showing current country with flag
@@ -34,11 +36,19 @@ export default function CountryPickerButton({ compact = false, showLabel = true 
         opacity.setValue(newOpacity);
       },
       onPanResponderRelease: (_, gestureState) => {
-        // If dragged more than 80px in any direction, close
-        if (Math.abs(gestureState.dy) > 80) {
+        // If dragged down more than theme threshold, close
+        if (gestureState.dy > mukokoTheme.modal.dragThreshold) {
           setModalVisible(false);
-          panY.setValue(0);
-          opacity.setValue(1);
+          Animated.timing(panY, {
+            toValue: 0,
+            duration: mukokoTheme.animation.fast,
+            useNativeDriver: true,
+          }).start();
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: mukokoTheme.animation.fast,
+            useNativeDriver: true,
+          }).start();
         } else {
           // Spring back
           Animated.parallel([
@@ -235,7 +245,12 @@ export default function CountryPickerButton({ compact = false, showLabel = true 
             <Animated.View
               style={[
                 styles.modalContent,
-                { backgroundColor: theme.colors.surface },
+                {
+                  backgroundColor: theme.colors.surface,
+                  borderColor: theme.colors.outline,
+                  maxHeight: SCREEN_HEIGHT * mukokoTheme.modal.maxHeight,
+                  minHeight: SCREEN_HEIGHT * mukokoTheme.modal.initialHeight,
+                },
                 {
                   transform: [{ translateY: panY }],
                   opacity: opacity,
@@ -244,6 +259,14 @@ export default function CountryPickerButton({ compact = false, showLabel = true 
               onStartShouldSetResponder={() => true}
               {...panResponder.panHandlers}
             >
+              <View
+                style={[
+                  styles.handle,
+                  { backgroundColor: theme.colors.onSurfaceVariant }
+                ]}
+                {...panResponder.panHandlers}
+              />
+
               <View style={styles.modalHeader}>
                 <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
                   Select Country
@@ -321,17 +344,17 @@ const styles = StyleSheet.create({
   button: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-    minHeight: 44,
+    paddingHorizontal: mukokoTheme.spacing.md,
+    paddingVertical: mukokoTheme.spacing.sm,
+    borderRadius: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
+    gap: mukokoTheme.spacing.xs + 2,
+    minHeight: mukokoTheme.touchTargets.minimum,
   },
   buttonCompact: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
+    paddingHorizontal: mukokoTheme.spacing.sm,
+    paddingVertical: mukokoTheme.spacing.xs + 2,
+    borderRadius: mukokoTheme.spacing.lg,
+    gap: mukokoTheme.spacing.xs,
   },
   flag: {
     fontSize: 20,
@@ -342,49 +365,55 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: mukokoTheme.modal.overlayColor,
+    justifyContent: 'flex-end',
   },
   modalContent: {
     width: '100%',
-    maxWidth: 400,
-    maxHeight: '80%',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderTopLeftRadius: mukokoTheme.modal.borderRadius,
+    borderTopRightRadius: mukokoTheme.modal.borderRadius,
+    borderTopWidth: 1,
+  },
+  handle: {
+    width: mukokoTheme.modal.handleWidth,
+    height: mukokoTheme.modal.handleHeight,
+    borderRadius: mukokoTheme.modal.handleHeight / 2,
+    alignSelf: 'center',
+    marginTop: mukokoTheme.spacing.sm,
+    marginBottom: mukokoTheme.spacing.lg,
+    opacity: 0.3,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginHorizontal: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
+    marginBottom: mukokoTheme.spacing.lg,
   },
   modalTitle: {
     fontSize: 20,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
   closeButton: {
-    padding: 4,
-    minWidth: 44,
-    minHeight: 44,
+    padding: mukokoTheme.spacing.xs,
+    minWidth: mukokoTheme.touchTargets.minimum,
+    minHeight: mukokoTheme.touchTargets.minimum,
     alignItems: 'center',
     justifyContent: 'center',
   },
   countriesList: {
     flexGrow: 0,
     flexShrink: 1,
+    paddingHorizontal: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
   },
   countryItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 12,
-    minHeight: 44,
+    padding: mukokoTheme.spacing.md,
+    borderRadius: mukokoTheme.roundness,
+    marginBottom: mukokoTheme.spacing.sm,
+    gap: mukokoTheme.spacing.md,
+    minHeight: mukokoTheme.touchTargets.minimum,
   },
   countryFlag: {
     fontSize: 28,

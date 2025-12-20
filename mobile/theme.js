@@ -185,6 +185,19 @@ export const mukokoTheme = {
     headerThreshold: 100,  // Show floating header after scrolling past this
     headerHeight: 60,      // Standard header height
   },
+
+  // Modal constants - Consistent behavior across all modals
+  modal: {
+    initialHeight: 0.6,          // Initial height when modal opens (60%)
+    maxHeight: 1.0,              // Maximum height modal can expand to (100%)
+    borderRadius: 20,            // Top border radius for slide-up modals
+    borderRadiusWeb: 20,         // Border radius for web modals
+    handleWidth: 40,             // Drag handle width
+    handleHeight: 4,             // Drag handle height
+    dragThreshold: 100,          // Pixels to drag down before dismissing
+    backdropOpacity: 0.5,        // Backdrop darkness
+    overlayColor: 'rgba(0, 0, 0, 0.5)', // Backdrop color
+  },
 };
 
 /**
