@@ -534,13 +534,13 @@ const styles = StyleSheet.create({
   },
   categoryText: {
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    fontSize: 12, // Increased from 11 for WCAG readability
+    fontSize: mukokoTheme.typography.bodySmall,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   byteTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 26,
+    fontSize: mukokoTheme.typography.headlineLarge,
     lineHeight: 32,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 2 },
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.3,
   },
   byteDescription: {
-    fontSize: 15,
+    fontSize: mukokoTheme.typography.bodyMedium,
     lineHeight: 21,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -561,7 +561,7 @@ const styles = StyleSheet.create({
   },
   sourceText: {
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    fontSize: 13,
+    fontSize: mukokoTheme.typography.labelLarge,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   dateText: {
-    fontSize: 13,
+    fontSize: mukokoTheme.typography.labelLarge,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
   },
   readMoreText: {
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    fontSize: 13,
+    fontSize: mukokoTheme.typography.labelLarge,
   },
 
   // Actions panel
@@ -596,12 +596,12 @@ const styles = StyleSheet.create({
   },
   actionButton: {
     alignItems: 'center',
-    gap: 4,
+    gap: mukokoTheme.spacing.xs,
   },
   actionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: mukokoTheme.layout.actionButtonSize,
+    height: mukokoTheme.layout.actionButtonSize,
+    borderRadius: mukokoTheme.layout.actionButtonSize / 2,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -609,7 +609,7 @@ const styles = StyleSheet.create({
     margin: 0,
   },
   actionText: {
-    fontSize: 12, // Increased from 11 for WCAG readability
+    fontSize: mukokoTheme.typography.bodySmall,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
     textShadowColor: 'rgba(0, 0, 0, 0.8)',
     textShadowOffset: { width: 0, height: 1 },
@@ -628,15 +628,15 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   progressDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: mukokoTheme.layout.progressDotSize,
+    height: mukokoTheme.layout.progressDotSize,
+    borderRadius: mukokoTheme.layout.progressDotSize / 2,
   },
   progressDotActive: {
-    width: 18,
+    width: mukokoTheme.layout.progressDotActive,
   },
   progressMore: {
-    fontSize: 11, // Increased from 10 for WCAG readability
+    fontSize: mukokoTheme.typography.labelSmall,
     opacity: 0.8, // Increased from 0.7 for better contrast
     marginLeft: mukokoTheme.spacing.xs,
   },
@@ -661,28 +661,28 @@ const styles = StyleSheet.create({
     gap: mukokoTheme.spacing.md,
   },
   emptyIcon: {
-    fontSize: 64,
+    fontSize: mukokoTheme.layout.emojiXL,
     opacity: 0.5,
   },
   emptyTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 22,
+    fontSize: mukokoTheme.typography.headlineMedium,
     textAlign: 'center',
   },
   emptyDescription: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
     textAlign: 'center',
   },
 
   // Error state styles
   errorTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 20,
+    fontSize: mukokoTheme.typography.headlineSmall,
     marginBottom: mukokoTheme.spacing.sm,
     textAlign: 'center',
   },
   errorMessage: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
     textAlign: 'center',
     marginBottom: mukokoTheme.spacing.lg,
     paddingHorizontal: mukokoTheme.spacing.xl,
@@ -698,8 +698,8 @@ const styles = StyleSheet.create({
     minWidth: 120,
   },
   retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    color: mukokoTheme.colors.onPrimary,
+    fontSize: mukokoTheme.typography.bodyMedium,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 });

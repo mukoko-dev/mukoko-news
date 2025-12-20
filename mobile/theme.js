@@ -198,6 +198,58 @@ export const mukokoTheme = {
     backdropOpacity: 0.5,        // Backdrop darkness
     overlayColor: 'rgba(0, 0, 0, 0.5)', // Backdrop color
   },
+
+  // Typography sizes - Consistent font sizes across all components
+  typography: {
+    // Display sizes (for large headings)
+    displayLarge: 48,
+    displayMedium: 36,
+    displaySmall: 32,
+    statsValue: 28,       // Large stats values
+
+    // Headline sizes
+    headlineLarge: 26,    // Large prominent headlines (e.g., NewsBytes)
+    headlineMedium: 22,
+    headlineSmall: 20,
+
+    // Title sizes
+    titleLarge: 18,
+    titleMedium: 16,
+    titleSmall: 14,
+
+    // Body sizes
+    bodyLarge: 16,
+    bodyMedium: 14,
+    bodySmall: 12,
+
+    // Label sizes
+    labelLarge: 13,
+    labelMedium: 12,
+    labelSmall: 11,
+
+    // Caption/micro
+    caption: 10,
+  },
+
+  // Layout constants - Consistent layout measurements
+  layout: {
+    bottomPaddingMobile: 100,  // Bottom padding for mobile with tab bar
+    bottomPaddingDesktop: 24,  // Bottom padding for desktop/tablet
+    cardImageWidth: 80,        // Standard card thumbnail width
+    cardImageHeight: 60,       // Standard card thumbnail height
+    cardImageRadius: 8,        // Card thumbnail border radius
+    dividerWidth: 1,           // Standard divider width
+    emojiSmall: 20,            // Small emoji size
+    emojiMedium: 28,           // Medium emoji size
+    emojiLarge: 48,            // Large emoji size
+    emojiXL: 64,               // Extra large emoji size
+    actionButtonSize: 48,      // Action button touch target size
+    progressDotSize: 6,        // Progress indicator dot size
+    progressDotActive: 18,     // Active progress indicator dot size
+    badgeSmall: 18,            // Small badge size (e.g., hot badge)
+    badgeMedium: 24,           // Medium badge size (e.g., rank)
+    statDividerHeight: 32,     // Height for stat section dividers
+  },
 };
 
 /**

@@ -129,7 +129,7 @@ export default function SearchScreen({ navigation, route }) {
   const layout = useLayout();
 
   // On tablet/desktop, no bottom tab bar, so reduce padding
-  const bottomPadding = layout.isMobile ? 100 : 24;
+  const bottomPadding = layout.isMobile ? mukokoTheme.layout.bottomPaddingMobile : mukokoTheme.layout.bottomPaddingDesktop;
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -602,11 +602,11 @@ const styles = StyleSheet.create({
     gap: mukokoTheme.spacing.xs,
   },
   resultsInfoText: {
-    fontSize: 13,
+    fontSize: mukokoTheme.typography.labelLarge,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
   resultsSubtext: {
-    fontSize: 11,
+    fontSize: mukokoTheme.typography.labelSmall,
     marginTop: 2,
   },
 
@@ -629,7 +629,7 @@ const styles = StyleSheet.create({
     paddingVertical: mukokoTheme.spacing.xxl,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
 
@@ -653,9 +653,9 @@ const styles = StyleSheet.create({
     padding: mukokoTheme.spacing.sm,
   },
   cardImageContainer: {
-    width: 80,
-    height: 60,
-    borderRadius: 8,
+    width: mukokoTheme.layout.cardImageWidth,
+    height: mukokoTheme.layout.cardImageHeight,
+    borderRadius: mukokoTheme.layout.cardImageRadius,
     overflow: 'hidden',
   },
   cardImage: {
@@ -671,7 +671,7 @@ const styles = StyleSheet.create({
     marginLeft: 0,
   },
   cardSource: {
-    fontSize: 10,
+    fontSize: mukokoTheme.typography.caption,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -679,12 +679,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.titleSmall,
     lineHeight: 18,
     marginBottom: 2,
   },
   cardDate: {
-    fontSize: 11,
+    fontSize: mukokoTheme.typography.labelSmall,
   },
 
   // Empty State
@@ -694,16 +694,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: mukokoTheme.spacing.xl,
   },
   emptyEmoji: {
-    fontSize: 48,
+    fontSize: mukokoTheme.layout.emojiLarge,
     marginBottom: mukokoTheme.spacing.md,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: mukokoTheme.typography.titleLarge,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
     marginBottom: mukokoTheme.spacing.xs,
   },
   emptySubtitle: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
     textAlign: 'center',
     marginBottom: mukokoTheme.spacing.md,
     lineHeight: 20,
@@ -728,7 +728,7 @@ const styles = StyleSheet.create({
     marginBottom: mukokoTheme.spacing.xs,
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: mukokoTheme.typography.bodySmall,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -739,7 +739,7 @@ const styles = StyleSheet.create({
     marginBottom: mukokoTheme.spacing.lg,
   },
   suggestionsSubtext: {
-    fontSize: 12,
+    fontSize: mukokoTheme.typography.bodySmall,
     marginBottom: mukokoTheme.spacing.sm,
   },
   suggestionsRow: {
@@ -748,10 +748,10 @@ const styles = StyleSheet.create({
     gap: mukokoTheme.spacing.xs,
   },
   suggestionChip: {
-    borderRadius: 20,
+    borderRadius: mukokoTheme.modal.borderRadius,
   },
   suggestionText: {
-    fontSize: 12,
+    fontSize: mukokoTheme.typography.bodySmall,
   },
 
   // Authors Section
@@ -785,19 +785,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statEmoji: {
-    fontSize: 20,
+    fontSize: mukokoTheme.layout.emojiSmall,
     marginBottom: mukokoTheme.spacing.xs,
   },
   statValue: {
-    fontSize: 22,
+    fontSize: mukokoTheme.typography.headlineMedium,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: mukokoTheme.typography.labelSmall,
     marginTop: 2,
   },
   statDivider: {
-    width: 1,
-    height: 40,
+    width: mukokoTheme.layout.dividerWidth,
+    height: mukokoTheme.touchTargets.compact,
   },
 });
