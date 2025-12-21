@@ -7,28 +7,6 @@ jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
 
-// Mock react-native-paper
-jest.mock('react-native-paper', () => {
-  const RealModule = jest.requireActual('react-native-paper');
-  const MockedModule = {
-    ...RealModule,
-    useTheme: () => ({
-      colors: {
-        primary: '#5e5772',
-        surface: '#FFFFFF',
-        surfaceVariant: '#f9f8f4',
-        onSurface: '#1f1f1f',
-        onSurfaceVariant: '#4a4a4a',
-        outline: '#cccccc',
-        glassCard: '#FFFFFF',
-        glassBorder: '#e0e0e0',
-        glass: 'rgba(94, 87, 114, 0.10)',
-      },
-    }),
-  };
-  return MockedModule;
-});
-
 // Mock expo-haptics
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn(),
@@ -57,8 +35,35 @@ jest.mock('@expo/vector-icons', () => ({
   Ionicons: 'Ionicons',
 }));
 
+// Mock lucide-react-native icons
+jest.mock('lucide-react-native', () => ({
+  Heart: 'Heart',
+  Bookmark: 'Bookmark',
+  Share2: 'Share2',
+  MessageCircle: 'MessageCircle',
+  ChevronLeft: 'ChevronLeft',
+  ExternalLink: 'ExternalLink',
+  Loader2: 'Loader2',
+  AlertCircle: 'AlertCircle',
+  RefreshCw: 'RefreshCw',
+  Tag: 'Tag',
+  User: 'User',
+  Twitter: 'Twitter',
+  Link: 'Link',
+  Check: 'Check',
+  X: 'X',
+  Facebook: 'Facebook',
+  Linkedin: 'Linkedin',
+  Sun: 'Sun',
+  Moon: 'Moon',
+  Bell: 'Bell',
+  Newspaper: 'Newspaper',
+  Search: 'Search',
+}));
+
 // Global test utilities
 global.fetch = jest.fn();
+global.__DEV__ = true; // React Native development global
 
 // Silence console during tests (optional - uncomment to enable)
 // global.console = {
