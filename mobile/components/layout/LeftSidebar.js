@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { useTheme as usePaperTheme } from 'react-native-paper';
+import { View, Pressable, Text as RNText } from 'react-native';
 import {
   Zap,
   Search,
@@ -15,7 +14,6 @@ import {
 import { navigate, navigationRef } from '../../navigation/navigationRef';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useAuth } from '../../contexts/AuthContext';
-import mukokoTheme from '../../theme';
 import Logo from '../Logo';
 import CountryPickerButton from '../CountryPickerButton';
 
@@ -29,10 +27,11 @@ import CountryPickerButton from '../CountryPickerButton';
  * - Theme toggle
  * - Profile/settings access
  * - Admin link (if admin)
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function LeftSidebar({ currentRoute }) {
-  const { isDark, toggleTheme } = useTheme();
-  const paperTheme = usePaperTheme();
+  const { isDark, toggleTheme, theme } = useTheme();
   const { user, isAdmin } = useAuth();
 
   // Get current route name for highlighting
@@ -96,45 +95,25 @@ export default function LeftSidebar({ currentRoute }) {
     navigate(route);
   };
 
-  // Dynamic styles based on theme
-  const dynamicStyles = {
-    container: {
-      backgroundColor: paperTheme.colors.background,
-    },
-    navItemActive: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
-    },
-    label: {
-      color: paperTheme.colors.onSurface,
-    },
-    labelActive: {
-      color: paperTheme.colors.primary,
-    },
-    divider: {
-      backgroundColor: paperTheme.colors.outline,
-    },
-  };
-
   // Use inverse theme color for icons
   const iconColor = isDark ? '#FFFFFF' : '#000000';
-  const activeIconColor = paperTheme.colors.primary;
+  const activeIconColor = theme.colors.tanzanite;
 
   return (
-    <View style={[styles.container, dynamicStyles.container]}>
+    <View className="flex-1 pt-lg pb-lg" style={{ backgroundColor: theme.colors.background }}>
       {/* Logo Section */}
-      <View style={styles.logoSection}>
-        <TouchableOpacity
+      <View className="px-lg pb-xl">
+        <Pressable
           onPress={() => handleNavPress('Bytes')}
-          activeOpacity={0.7}
           accessibilityLabel="Go to home"
           accessibilityRole="button"
         >
           <Logo size="md" theme={isDark ? 'light' : 'dark'} />
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {/* Navigation Items */}
-      <View style={styles.navSection}>
+      <View className="flex-1 px-sm gap-xs">
         {navItems.map((item) => {
           const isActive = activeRoute === item.name;
           const IconComponent = item.icon;
@@ -142,21 +121,24 @@ export default function LeftSidebar({ currentRoute }) {
           // Special handling for Pulse - show country picker instead
           if (item.name === 'Pulse') {
             return (
-              <View key={item.name} style={[styles.navItem, isActive && [styles.navItemActive, dynamicStyles.navItemActive]]}>
+              <View
+                key={item.name}
+                className={`flex-row items-center py-md px-md rounded-button gap-lg min-h-[52px] ${
+                  isActive ? 'bg-surface-variant' : ''
+                }`}
+              >
                 <CountryPickerButton compact={false} showLabel={true} />
               </View>
             );
           }
 
           return (
-            <TouchableOpacity
+            <Pressable
               key={item.name}
-              style={[
-                styles.navItem,
-                isActive && [styles.navItemActive, dynamicStyles.navItemActive],
-              ]}
+              className={`flex-row items-center py-md px-md rounded-button gap-lg min-h-[52px] ${
+                isActive ? 'bg-surface-variant' : ''
+              }`}
               onPress={() => handleNavPress(item.route)}
-              activeOpacity={0.7}
               accessibilityLabel={`Navigate to ${item.label}`}
               accessibilityRole="button"
               accessibilityState={{ selected: isActive }}
@@ -166,29 +148,27 @@ export default function LeftSidebar({ currentRoute }) {
                 color={isActive ? activeIconColor : iconColor}
                 strokeWidth={isActive ? 2 : 1.5}
               />
-              <Text
-                style={[
-                  styles.navLabel,
-                  dynamicStyles.label,
-                  isActive && [styles.navLabelActive, dynamicStyles.labelActive],
-                ]}
+              <RNText
+                className={`text-[15px] ${
+                  isActive ? 'font-sans-bold' : 'font-sans'
+                }`}
+                style={{ color: isActive ? theme.colors.tanzanite : theme.colors['on-surface'] }}
               >
                 {item.label}
-              </Text>
-            </TouchableOpacity>
+              </RNText>
+            </Pressable>
           );
         })}
       </View>
 
       {/* Bottom Section - Theme Toggle & Settings */}
-      <View style={styles.bottomSection}>
-        <View style={[styles.divider, dynamicStyles.divider]} />
+      <View className="px-sm gap-xs">
+        <View className="h-[1px] mx-md mb-md" style={{ backgroundColor: theme.colors.outline }} />
 
         {/* Theme Toggle */}
-        <TouchableOpacity
-          style={styles.navItem}
+        <Pressable
+          className="flex-row items-center py-md px-md rounded-button gap-lg min-h-[52px]"
           onPress={toggleTheme}
-          activeOpacity={0.7}
           accessibilityLabel={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
           accessibilityRole="button"
         >
@@ -197,73 +177,29 @@ export default function LeftSidebar({ currentRoute }) {
           ) : (
             <Moon size={24} color={iconColor} strokeWidth={1.5} />
           )}
-          <Text style={[styles.navLabel, dynamicStyles.label]}>
+          <RNText className="text-[15px] font-sans" style={{ color: theme.colors['on-surface'] }}>
             {isDark ? 'Light Mode' : 'Dark Mode'}
-          </Text>
-        </TouchableOpacity>
+          </RNText>
+        </Pressable>
 
         {/* Settings (navigates to profile settings) */}
-        <TouchableOpacity
-          style={styles.navItem}
+        <Pressable
+          className="flex-row items-center py-md px-md rounded-button gap-lg min-h-[52px]"
           onPress={() => {
             // Navigate to ProfileSettings screen within Profile tab
             navigationRef.navigate('Profile', {
               screen: 'ProfileSettings',
             });
           }}
-          activeOpacity={0.7}
           accessibilityLabel="Settings"
           accessibilityRole="button"
         >
           <Settings size={24} color={iconColor} strokeWidth={1.5} />
-          <Text style={[styles.navLabel, dynamicStyles.label]}>Settings</Text>
-        </TouchableOpacity>
+          <RNText className="text-[15px] font-sans" style={{ color: theme.colors['on-surface'] }}>
+            Settings
+          </RNText>
+        </Pressable>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    paddingTop: mukokoTheme.spacing.lg,
-    paddingBottom: mukokoTheme.spacing.lg,
-  },
-  logoSection: {
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    paddingBottom: mukokoTheme.spacing.xl,
-  },
-  navSection: {
-    flex: 1,
-    paddingHorizontal: mukokoTheme.spacing.sm,
-    gap: mukokoTheme.spacing.xs,
-  },
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.md,
-    paddingHorizontal: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness,
-    gap: mukokoTheme.spacing.lg,
-    minHeight: 52,
-  },
-  navItemActive: {
-    borderRadius: mukokoTheme.roundness,
-  },
-  navLabel: {
-    fontSize: 15,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
-  navLabelActive: {
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  bottomSection: {
-    paddingHorizontal: mukokoTheme.spacing.sm,
-    gap: mukokoTheme.spacing.xs,
-  },
-  divider: {
-    height: 1,
-    marginHorizontal: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-});
