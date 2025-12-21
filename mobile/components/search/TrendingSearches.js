@@ -9,7 +9,8 @@
 
 import React, { memo } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, Icon, useTheme as usePaperTheme } from 'react-native-paper';
+import { Text } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 import mukokoTheme from '../../theme';
 import { CuratedLabel } from '../ai';
 
@@ -29,7 +30,7 @@ function TrendingSearchItem({ item, rank, onPress, paperTheme }) {
       onPress={onPress}
       style={[
         styles.item,
-        { borderBottomColor: paperTheme.colors.outline },
+        { borderBottomColor: theme.colors.outline },
       ]}
       accessibilityLabel={`Trending search: ${item.query || item.name}. Rank ${rank}`}
       accessibilityRole="button"
@@ -41,14 +42,14 @@ function TrendingSearchItem({ item, rank, onPress, paperTheme }) {
           {
             backgroundColor: isTopThree
               ? RANK_COLORS[rank]
-              : paperTheme.colors.surfaceVariant,
+              : theme.colors.surfaceVariant,
           },
         ]}
       >
         <Text
           style={[
             styles.rankText,
-            { color: isTopThree ? '#FFFFFF' : paperTheme.colors.onSurfaceVariant },
+            { color: isTopThree ? '#FFFFFF' : theme.colors.onSurfaceVariant },
           ]}
         >
           {rank}
@@ -58,13 +59,13 @@ function TrendingSearchItem({ item, rank, onPress, paperTheme }) {
       {/* Search Term */}
       <View style={styles.content}>
         <Text
-          style={[styles.searchTerm, { color: paperTheme.colors.onSurface }]}
+          style={[styles.searchTerm, { color: theme.colors.onSurface }]}
           numberOfLines={1}
         >
           {item.query || item.name || item.category_name}
         </Text>
         {item.count !== undefined && (
-          <Text style={[styles.searchCount, { color: paperTheme.colors.onSurfaceVariant }]}>
+          <Text style={[styles.searchCount, { color: theme.colors.onSurfaceVariant }]}>
             {item.count || item.article_count} searches
           </Text>
         )}
@@ -79,7 +80,7 @@ function TrendingSearchItem({ item, rank, onPress, paperTheme }) {
       <Icon
         source="chevron-right"
         size={18}
-        color={paperTheme.colors.onSurfaceVariant}
+        color={theme.colors.onSurfaceVariant}
       />
     </TouchableOpacity>
   );
@@ -93,7 +94,7 @@ function TrendingSearches({
   maxItems = 10,
   style,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   if (!searches || searches.length === 0) return null;
 
@@ -103,7 +104,7 @@ function TrendingSearches({
     <View style={[styles.container, style]}>
       {/* Section Header */}
       <View style={styles.header}>
-        <Text style={[styles.sectionTitle, { color: paperTheme.colors.onSurface }]}>
+        <Text style={[styles.sectionTitle, { color: theme.colors.onSurface }]}>
           {title}
         </Text>
         {showAILabel && (
@@ -116,8 +117,8 @@ function TrendingSearches({
         style={[
           styles.list,
           {
-            backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-            borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+            backgroundColor: theme.colors.glassCard || theme.colors.surface,
+            borderColor: theme.colors.glassBorder || theme.colors.outline,
           },
         ]}
       >
