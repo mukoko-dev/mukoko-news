@@ -5,22 +5,21 @@ import {
   RefreshControl,
   Pressable,
   Switch,
-  Text,
+  Text as RNText,
 } from 'react-native';
-import {
-  Card,
-  useTheme,
-} from 'react-native-paper';
 import { Loader2, Plus } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
 import AdminScreenWrapper from '../../components/AdminScreenWrapper';
-import { Button, LoadingState } from '../../components/ui';
+import { Button, LoadingState, Badge } from '../../components/ui';
 
 /**
  * Admin Sources Screen
  * Manage RSS news sources
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminSourcesScreen({ navigation }) {
   const theme = useTheme();
@@ -93,7 +92,9 @@ export default function AdminSourcesScreen({ navigation }) {
   if (!isAdmin) {
     return (
       <View className="flex-1 justify-center items-center bg-background">
-        <Text className="font-serif-bold text-headline-small text-on-surface">Access Denied</Text>
+        <RNText className="font-serif-bold text-headline-small text-on-surface">
+          Access Denied
+        </RNText>
       </View>
     );
   }
@@ -101,13 +102,21 @@ export default function AdminSourcesScreen({ navigation }) {
   if (error) {
     return (
       <View className="flex-1 justify-center items-center px-lg bg-background">
-        <Text className="font-serif-bold text-headline-small text-on-surface mb-sm">Something went wrong</Text>
-        <Text className="font-sans text-body-medium text-on-surface-variant mb-lg text-center">{error}</Text>
+        <RNText className="font-serif-bold text-headline-small text-on-surface mb-sm">
+          Something went wrong
+        </RNText>
+        <RNText className="font-sans text-body-medium text-on-surface-variant mb-lg text-center">
+          {error}
+        </RNText>
         <Pressable
-          className="py-md px-lg rounded-button bg-tanzanite"
+          className="py-md px-xl rounded-button min-h-touch bg-tanzanite"
           onPress={loadSources}
+          accessibilityLabel="Try again"
+          accessibilityRole="button"
         >
-          <Text className="font-sans-bold text-body-medium text-white">Try Again</Text>
+          <RNText className="font-sans-bold text-label-large text-on-primary">
+            Try Again
+          </RNText>
         </Pressable>
       </View>
     );
@@ -116,219 +125,145 @@ export default function AdminSourcesScreen({ navigation }) {
   const enabledCount = sources.filter((s) => s.enabled).length;
 
   const renderSource = ({ item: source }) => (
-    <Card
-      style={[
-        styles.sourceCard,
-        { backgroundColor: theme.colors.surface },
-        !source.enabled && styles.disabledCard,
-      ]}
+    <View
+      className={`mb-md rounded-card bg-surface border border-outline overflow-hidden ${
+        !source.enabled ? 'opacity-60' : ''
+      }`}
     >
-      <Card.Content>
-        <View style={styles.sourceHeader}>
-          <View style={styles.sourceIcon}>
-            <Text style={styles.iconText}>📰</Text>
+      <View className="p-lg">
+        <View className="flex-row items-center mb-md">
+          <View className="w-[44px] h-[44px] rounded-button bg-surface-variant justify-center items-center mr-md">
+            <RNText className="text-[20px]">📰</RNText>
           </View>
-          <View style={styles.sourceInfo}>
-            <Text variant="titleMedium">{source.name}</Text>
+          <View className="flex-1">
+            <RNText className="font-sans-bold text-title-medium text-on-surface">
+              {source.name}
+            </RNText>
             {source.category && (
-              <View style={[styles.categoryBadge, { backgroundColor: theme.colors.primaryContainer }]}>
-                <Text style={[styles.categoryText, { color: theme.colors.primary }]}>
-                  {source.category}
-                </Text>
-              </View>
+              <Badge variant="outline" size="sm" className="mt-xs self-start">
+                {source.category}
+              </Badge>
             )}
           </View>
           {actionLoading === source.id ? (
-            <ActivityIndicator size="small" color={theme.colors.primary} />
+            <Loader2 size={20} color={theme.colors.tanzanite} className="animate-spin" />
           ) : (
             <Switch
               value={source.enabled}
               onValueChange={() => handleToggleSource(source.id, source.enabled)}
-              color={theme.colors.primary}
+              trackColor={{ false: theme.colors['surface-variant'], true: theme.colors.tanzanite }}
+              thumbColor={source.enabled ? theme.colors['on-primary'] : theme.colors['on-surface-variant']}
+              accessibilityLabel={`Toggle ${source.name}`}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: source.enabled }}
             />
           )}
         </View>
 
-        <View style={styles.sourceMeta}>
-          <View style={styles.metaItem}>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+        <View className="flex-row gap-xl mb-md">
+          <View className="gap-[2px]">
+            <RNText className="font-sans text-body-small text-on-surface-variant">
               Articles
-            </Text>
-            <Text variant="titleSmall">{source.article_count || 0}</Text>
+            </RNText>
+            <RNText className="font-sans-bold text-title-small text-on-surface">
+              {source.article_count || 0}
+            </RNText>
           </View>
-          <View style={styles.metaItem}>
-            <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+          <View className="gap-[2px]">
+            <RNText className="font-sans text-body-small text-on-surface-variant">
               Last Fetched
-            </Text>
-            <Text variant="titleSmall">{formatDate(source.last_fetched)}</Text>
+            </RNText>
+            <RNText className="font-sans-bold text-title-small text-on-surface">
+              {formatDate(source.last_fetched)}
+            </RNText>
           </View>
         </View>
 
-        <Text
-          variant="bodySmall"
-          style={[styles.sourceUrl, { color: theme.colors.primary }]}
+        <RNText
+          className="font-sans text-body-small text-tanzanite mt-xs"
           numberOfLines={1}
         >
           {source.url}
-        </Text>
-      </Card.Content>
-    </Card>
+        </RNText>
+      </View>
+    </View>
   );
 
   return (
     <AdminScreenWrapper>
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View className="flex-1 bg-background">
         <AdminHeader navigation={navigation} currentScreen="AdminSources" />
+
         {/* Header */}
         <View className="flex-row items-center justify-between px-lg py-md">
           <View>
-            <Text className="font-serif-bold text-headline-small text-on-surface mb-xs">News Sources</Text>
-            <Text className="font-sans text-body-medium text-on-surface-variant">
+            <RNText className="font-serif-bold text-headline-small text-on-surface mb-xs">
+              News Sources
+            </RNText>
+            <RNText className="font-sans text-body-medium text-on-surface-variant">
               {enabledCount} active of {sources.length} sources
-            </Text>
+            </RNText>
           </View>
-          <Button
+          <Pressable
             onPress={handleAddZimbabweSources}
             disabled={actionLoading === 'add'}
-            className="flex-row items-center gap-xs"
+            className="flex-row items-center gap-xs py-sm px-md rounded-button bg-tanzanite min-h-touch-compact"
+            accessibilityLabel="Add Zimbabwe sources"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: actionLoading === 'add' }}
           >
             {actionLoading === 'add' ? (
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2 size={16} color="#FFFFFF" className="animate-spin" />
             ) : (
-              <Plus size={16} />
+              <Plus size={16} color="#FFFFFF" />
             )}
-            <Text>Add ZW</Text>
-          </Button>
+            <RNText className="font-sans-bold text-label-large text-on-primary">
+              Add ZW
+            </RNText>
+          </Pressable>
         </View>
 
-      {/* Sources List */}
-      {loading ? (
-        <LoadingState message="Loading sources..." />
-      ) : (
-        <FlatList
-          data={sources}
-          renderItem={renderSource}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[theme.colors.primary]}
-            />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📡</Text>
-              <Text variant="titleMedium">No sources configured</Text>
-              <Text style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}>
-                Add news sources to start aggregating articles
-              </Text>
-              <Button
-                mode="contained"
-                onPress={handleAddZimbabweSources}
-                style={{ marginTop: 16 }}
-                icon="plus"
-              >
-                Add Zimbabwe Sources
-              </Button>
-            </View>
-          }
-        />
-      )}
+        {/* Sources List */}
+        {loading ? (
+          <LoadingState message="Loading sources..." />
+        ) : (
+          <FlatList
+            data={sources}
+            renderItem={renderSource}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={{ padding: 16, paddingTop: 0, paddingBottom: 100 }}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                colors={[theme.colors.tanzanite]}
+              />
+            }
+            ListEmptyComponent={
+              <View className="p-xxl items-center">
+                <RNText className="text-[48px] mb-lg">📡</RNText>
+                <RNText className="font-serif-bold text-title-medium text-on-surface mb-sm">
+                  No sources configured
+                </RNText>
+                <RNText className="font-sans text-body-medium text-on-surface-variant text-center mb-lg">
+                  Add news sources to start aggregating articles
+                </RNText>
+                <Pressable
+                  onPress={handleAddZimbabweSources}
+                  className="flex-row items-center gap-sm py-md px-lg rounded-button bg-tanzanite min-h-touch"
+                  accessibilityLabel="Add Zimbabwe sources"
+                  accessibilityRole="button"
+                >
+                  <Plus size={18} color="#FFFFFF" />
+                  <RNText className="font-sans-bold text-label-large text-on-primary">
+                    Add Zimbabwe Sources
+                  </RNText>
+                </Pressable>
+              </View>
+            }
+          />
+        )}
       </View>
     </AdminScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-  },
-  title: {
-    fontWeight: '700',
-  },
-  list: {
-    padding: 16,
-    paddingTop: 0,
-    paddingBottom: 100,
-  },
-  sourceCard: {
-    marginBottom: 12,
-    borderRadius: 12,
-  },
-  disabledCard: {
-    opacity: 0.6,
-  },
-  sourceHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  sourceIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#5e577210',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  iconText: {
-    fontSize: 20,
-  },
-  sourceInfo: {
-    flex: 1,
-  },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginTop: 4,
-  },
-  categoryText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  sourceMeta: {
-    flexDirection: 'row',
-    gap: 24,
-    marginBottom: 12,
-  },
-  metaItem: {
-    gap: 2,
-  },
-  sourceUrl: {
-    marginTop: 4,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyContainer: {
-    padding: 32,
-    alignItems: 'center',
-  },
-  emptyIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  retryButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-});
