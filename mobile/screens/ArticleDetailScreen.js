@@ -19,7 +19,9 @@ import {
   ExternalLink,
   Loader2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Tag,
+  User,
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -547,8 +549,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                     backgroundColor: `${currentTheme.colors.onPrimary}33`,
                     borderColor: `${currentTheme.colors.onPrimary}4D`,
                   }]}>
-                    <MaterialCommunityIcons
-                      name="tag-outline"
+                    <Tag
                       size={14}
                       color={currentTheme.colors.onPrimary}
                     />
@@ -568,8 +569,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
               {article.author && (
                 <View style={styles.authorContainer}>
                   <View style={[styles.authorAvatar, { backgroundColor: `${currentTheme.colors.onPrimary}33` }]}>
-                    <MaterialCommunityIcons
-                      name="account"
+                    <User
                       size={20}
                       color={currentTheme.colors.onPrimary}
                     />
@@ -666,8 +666,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                   <Text style={[styles.readOriginalText, dynamicStyles.readOriginalText]}>
                     Read Original
                   </Text>
-                  <MaterialCommunityIcons
-                    name="open-in-new"
+                  <ExternalLink
                     size={18}
                     color={currentTheme.colors.onPrimary}
                   />
@@ -700,8 +699,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
               ]}
               activeOpacity={0.7}
             >
-              <MaterialCommunityIcons
-                name="arrow-left"
+              <ChevronLeft
                 size={24}
                 color={currentTheme.colors.onPrimary}
               />
@@ -724,8 +722,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
               ]}
               activeOpacity={0.7}
             >
-              <MaterialCommunityIcons
-                name="share-variant-outline"
+              <Share2
                 size={22}
                 color={currentTheme.colors.onPrimary}
               />
