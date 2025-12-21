@@ -1,8 +1,8 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Modal, Platform, Share as RNShare, Clipboard, Animated, PanResponder, Dimensions, ScrollView } from 'react-native';
-import { Text, Portal, useTheme, IconButton } from 'react-native-paper';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { View, Pressable, Modal, Platform, Share as RNShare, Clipboard, Animated, PanResponder, Dimensions, ScrollView, Text as RNText, StyleSheet } from 'react-native';
+import { Twitter, Share2, Link, Check, X, MessageCircle, Facebook, Linkedin } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useTheme } from '../contexts/ThemeContext';
 import mukokoTheme from '../theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -13,7 +13,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
  * On web: Shows custom modal with share options
  */
 export default function ShareModal({ visible, onDismiss, article }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const [copied, setCopied] = useState(false);
   const panY = useRef(new Animated.Value(0)).current;
 
@@ -128,106 +128,24 @@ export default function ShareModal({ visible, onDismiss, article }) {
   // On mobile, use native share sheet
   if (Platform.OS !== 'web') {
     return (
-      <Portal>
-        <Modal
-          visible={visible}
-          transparent
-          animationType="slide"
-          onRequestClose={onDismiss}
-        >
-          <TouchableOpacity
-            style={styles.mobileOverlay}
-            activeOpacity={1}
-            onPress={onDismiss}
-          >
-            <Animated.View
-              style={[
-                styles.mobileContent,
-                {
-                  backgroundColor: theme.colors.surface,
-                  maxHeight: SCREEN_HEIGHT * mukokoTheme.modal.maxHeight,
-                  minHeight: SCREEN_HEIGHT * mukokoTheme.modal.initialHeight,
-                  borderColor: theme.colors.outline,
-                },
-                { transform: [{ translateY: panY }] }
-              ]}
-              onStartShouldSetResponder={() => true}
-              {...panResponder.panHandlers}
-            >
-              <View
-                style={[
-                  styles.handle,
-                  { backgroundColor: theme.colors.onSurfaceVariant }
-                ]}
-                {...panResponder.panHandlers}
-              />
-
-              <ScrollView
-                style={styles.scrollContent}
-                contentContainerStyle={styles.scrollContentContainer}
-                showsVerticalScrollIndicator={false}
-              >
-                <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
-                  Share Article
-                </Text>
-
-                <TouchableOpacity
-                  style={[styles.shareOption, { borderColor: theme.colors.outline }]}
-                  onPress={handleCopyLink}
-                >
-                  <MaterialCommunityIcons
-                    name={copied ? 'check' : 'link-variant'}
-                    size={24}
-                    color={copied ? theme.colors.primary : theme.colors.onSurface}
-                  />
-                  <Text style={[styles.shareOptionText, { color: theme.colors.onSurface }]}>
-                    {copied ? 'Copied!' : 'Copy Link'}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.shareOption, { borderColor: theme.colors.outline }]}
-                  onPress={handleNativeShare}
-                >
-                  <MaterialCommunityIcons
-                    name="share-variant"
-                    size={24}
-                    color={theme.colors.onSurface}
-                  />
-                  <Text style={[styles.shareOptionText, { color: theme.colors.onSurface }]}>
-                    More Options
-                  </Text>
-                </TouchableOpacity>
-              </ScrollView>
-            </Animated.View>
-          </TouchableOpacity>
-        </Modal>
-      </Portal>
-    );
-  }
-
-  // On web, show full share modal (slide-up from bottom like mobile)
-  return (
-    <Portal>
       <Modal
         visible={visible}
         transparent
         animationType="slide"
         onRequestClose={onDismiss}
       >
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
+        <Pressable
+          style={styles.mobileOverlay}
           onPress={onDismiss}
         >
           <Animated.View
             style={[
-              styles.modalContent,
+              styles.mobileContent,
               {
                 backgroundColor: theme.colors.surface,
-                borderColor: theme.colors.outline,
                 maxHeight: SCREEN_HEIGHT * mukokoTheme.modal.maxHeight,
                 minHeight: SCREEN_HEIGHT * mukokoTheme.modal.initialHeight,
+                borderColor: theme.colors.outline,
               },
               { transform: [{ translateY: panY }] }
             ]}
@@ -247,106 +165,174 @@ export default function ShareModal({ visible, onDismiss, article }) {
               contentContainerStyle={styles.scrollContentContainer}
               showsVerticalScrollIndicator={false}
             >
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
-                  Share Article
-                </Text>
-                <TouchableOpacity
-                  onPress={onDismiss}
-                  style={styles.closeButton}
-                >
-                  <MaterialCommunityIcons
-                    name="close"
-                    size={24}
-                    color={theme.colors.onSurface}
-                  />
-                </TouchableOpacity>
-              </View>
+              <RNText style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+                Share Article
+              </RNText>
 
-              <View style={styles.shareGrid}>
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShareTwitter}
-              >
-                <View style={[styles.shareIconCircle, { backgroundColor: '#1DA1F2' }]}>
-                  <MaterialCommunityIcons name="twitter" size={28} color="#fff" />
-                </View>
-                <Text style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
-                  Twitter
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShareWhatsApp}
-              >
-                <View style={[styles.shareIconCircle, { backgroundColor: '#25D366' }]}>
-                  <MaterialCommunityIcons name="whatsapp" size={28} color="#fff" />
-                </View>
-                <Text style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
-                  WhatsApp
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShareFacebook}
-              >
-                <View style={[styles.shareIconCircle, { backgroundColor: '#1877F2' }]}>
-                  <MaterialCommunityIcons name="facebook" size={28} color="#fff" />
-                </View>
-                <Text style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
-                  Facebook
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShareLinkedIn}
-              >
-                <View style={[styles.shareIconCircle, { backgroundColor: '#0A66C2' }]}>
-                  <MaterialCommunityIcons name="linkedin" size={28} color="#fff" />
-                </View>
-                <Text style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
-                  LinkedIn
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.shareButton}
+              <Pressable
+                style={[styles.shareOption, { borderColor: theme.colors.outline }]}
                 onPress={handleCopyLink}
               >
-                <View style={[styles.shareIconCircle, { backgroundColor: theme.colors.primaryContainer }]}>
-                  <MaterialCommunityIcons
-                    name={copied ? 'check' : 'link-variant'}
-                    size={28}
-                    color={theme.colors.primary}
-                  />
-                </View>
-                <Text style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                {copied ? (
+                  <Check size={24} color={theme.colors.primary} />
+                ) : (
+                  <Link size={24} color={theme.colors.onSurface} />
+                )}
+                <RNText style={[styles.shareOptionText, { color: theme.colors.onSurface }]}>
                   {copied ? 'Copied!' : 'Copy Link'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                </RNText>
+              </Pressable>
 
-              {article.source_name && (
-                <View style={[styles.articlePreview, { borderTopColor: theme.colors.outline }]}>
-                  <Text style={[styles.previewSource, { color: theme.colors.onSurfaceVariant }]}>
-                    {article.source_name}
-                  </Text>
-                  <Text
-                    style={[styles.previewTitle, { color: theme.colors.onSurface }]}
-                    numberOfLines={2}
-                  >
-                    {article.title}
-                  </Text>
-                </View>
-              )}
+              <Pressable
+                style={[styles.shareOption, { borderColor: theme.colors.outline }]}
+                onPress={handleNativeShare}
+              >
+                <Share2 size={24} color={theme.colors.onSurface} />
+                <RNText style={[styles.shareOptionText, { color: theme.colors.onSurface }]}>
+                  More Options
+                </RNText>
+              </Pressable>
             </ScrollView>
           </Animated.View>
-        </TouchableOpacity>
+        </Pressable>
       </Modal>
-    </Portal>
+    );
+  }
+
+  // On web, show full share modal (slide-up from bottom like mobile)
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onDismiss}
+    >
+      <Pressable
+        style={styles.overlay}
+        onPress={onDismiss}
+      >
+        <Animated.View
+          style={[
+            styles.modalContent,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outline,
+              maxHeight: SCREEN_HEIGHT * mukokoTheme.modal.maxHeight,
+              minHeight: SCREEN_HEIGHT * mukokoTheme.modal.initialHeight,
+            },
+            { transform: [{ translateY: panY }] }
+          ]}
+          onStartShouldSetResponder={() => true}
+          {...panResponder.panHandlers}
+        >
+          <View
+            style={[
+              styles.handle,
+              { backgroundColor: theme.colors.onSurfaceVariant }
+            ]}
+            {...panResponder.panHandlers}
+          />
+
+          <ScrollView
+            style={styles.scrollContent}
+            contentContainerStyle={styles.scrollContentContainer}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.modalHeader}>
+              <RNText style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+                Share Article
+              </RNText>
+              <Pressable
+                onPress={onDismiss}
+                style={styles.closeButton}
+              >
+                <X size={24} color={theme.colors.onSurface} />
+              </Pressable>
+            </View>
+
+            <View style={styles.shareGrid}>
+            <Pressable
+              style={styles.shareButton}
+              onPress={handleShareTwitter}
+            >
+              <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-twitter'] }]}>
+                <Twitter size={28} color="#fff" />
+              </View>
+              <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                Twitter
+              </RNText>
+            </Pressable>
+
+            <Pressable
+              style={styles.shareButton}
+              onPress={handleShareWhatsApp}
+            >
+              <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-whatsapp'] }]}>
+                <MessageCircle size={28} color="#fff" />
+              </View>
+              <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                WhatsApp
+              </RNText>
+            </Pressable>
+
+            <Pressable
+              style={styles.shareButton}
+              onPress={handleShareFacebook}
+            >
+              <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-facebook'] }]}>
+                <Facebook size={28} color="#fff" />
+              </View>
+              <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                Facebook
+              </RNText>
+            </Pressable>
+
+            <Pressable
+              style={styles.shareButton}
+              onPress={handleShareLinkedIn}
+            >
+              <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-linkedin'] }]}>
+                <Linkedin size={28} color="#fff" />
+              </View>
+              <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                LinkedIn
+              </RNText>
+            </Pressable>
+
+            <Pressable
+              style={styles.shareButton}
+              onPress={handleCopyLink}
+            >
+              <View style={[styles.shareIconCircle, { backgroundColor: theme.colors.primaryContainer }]}>
+                {copied ? (
+                  <Check size={28} color={theme.colors.primary} />
+                ) : (
+                  <Link size={28} color={theme.colors.primary} />
+                )}
+              </View>
+              <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                {copied ? 'Copied!' : 'Copy Link'}
+              </RNText>
+            </Pressable>
+          </View>
+
+            {article.source_name && (
+              <View style={[styles.articlePreview, { borderTopColor: theme.colors.outline }]}>
+                <RNText style={[styles.previewSource, { color: theme.colors.onSurfaceVariant }]}>
+                  {article.source_name}
+                </RNText>
+                <RNText
+                  style={[styles.previewTitle, { color: theme.colors.onSurface }]}
+                  numberOfLines={2}
+                >
+                  {article.title}
+                </RNText>
+              </View>
+            )}
+          </ScrollView>
+        </Animated.View>
+      </Pressable>
+    </Modal>
   );
 }
 
