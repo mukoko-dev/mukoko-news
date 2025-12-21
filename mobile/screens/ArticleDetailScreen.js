@@ -9,6 +9,7 @@ import {
   Animated,
   Pressable,
   Text as RNText,
+  StyleSheet,
 } from 'react-native';
 import {
   Heart,
