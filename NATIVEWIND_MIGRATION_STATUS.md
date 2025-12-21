@@ -5,13 +5,13 @@
 
 ## Progress Overview
 
-**Completed**: 5/15 items (33%)
-**In Progress**: Migrating remaining screens
+**Completed**: 6/15 items (40%)
+**Partially Migrated**: 2 screens (ProfileSettings, Search)
 **Status**: 🟡 Active Migration
 
 ---
 
-## ✅ Completed (5/15)
+## ✅ Completed (6/15) + 2 Partial
 
 ### Infrastructure & Components
 1. **✅ NativeWind Setup**
@@ -71,16 +71,24 @@
    - Kept textShadow styles inline (NativeWind limitation)
    - Removed 92 lines of StyleSheet code
 
+### Partially Migrated (2 screens)
+9. **⚠️ ProfileSettingsScreen** (719 → 722 lines, +0.4%)
+   - Replaced all MaterialCommunityIcons with Lucide icons
+   - Converted error state, header, toast, buttons to NativeWind
+   - Kept StyleSheet for React Native Paper TextInput (not yet migrated)
+   - Icons: User, Mail, AtSign, Moon, Sun, Vibrate, LogOut, Bell, ShieldCheck, Link2, Info, AlertCircle, CheckCircle2
+
+10. **⚠️ SearchScreen** (803 → 804 lines, ~0%)
+   - Replaced ActivityIndicator with Loader2
+   - Migrated SearchResultCard component to NativeWind
+   - Converted empty state to NativeWind
+   - Still has 31 StyleSheet styles remaining for insights sections
+
 ---
 
-## 🟡 Remaining (10/15)
+## 🟡 Remaining (8/15)
 
-### User Screens (4)
-- ⏳ **SearchScreen** (803 lines)
-  - Search + Insights combined
-  - Stats display, trending topics, author rankings
-  - 15 hardcoded values to replace
-
+### User Screens (2)
 - ⏳ **ArticleDetailScreen** (977 lines - LARGEST)
   - Full article view with reader
   - Comments, related articles
@@ -90,11 +98,6 @@
   - Carousel onboarding flow
   - Country/category selection
   - 34 hardcoded values + modal update
-
-- ⏳ **ProfileSettingsScreen** (719 lines)
-  - User settings forms
-  - Account management
-  - 28 hardcoded values to replace
 
 ### Admin Screens (5)
 - ⏳ **AdminDashboardScreen**
@@ -265,5 +268,5 @@ Each screen migration follows this pattern:
 
 ---
 
-**Migration Progress**: 33% complete (5/15 items)
-**Estimated Completion**: 10 screens remaining
+**Migration Progress**: 40% complete (6/15 items + 2 partial)
+**Estimated Completion**: 7 screens remaining (2 user + 5 admin)
