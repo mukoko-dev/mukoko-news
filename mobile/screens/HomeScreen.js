@@ -361,8 +361,8 @@ export default function HomeScreen({ navigation }) {
         renderItem={renderArticleItem}
         keyExtractor={(item) => item.id.toString()}
         numColumns={layoutConfig.numColumns > 1 ? layoutConfig.numColumns : 1}
-        contentContainerStyle={{ padding: 12, paddingBottom: bottomPadding }}
-        columnWrapperStyle={layoutConfig.numColumns > 1 ? { gap: 12, marginBottom: 12 } : undefined}
+        contentContainerStyle={{ padding: theme.spacing.md, paddingBottom: bottomPadding }}
+        columnWrapperStyle={layoutConfig.numColumns > 1 ? { gap: theme.spacing.md, marginBottom: theme.spacing.md } : undefined}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
