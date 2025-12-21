@@ -6,15 +6,15 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, FlatList, RefreshControl, Dimensions, Text } from 'react-native';
-import { Snackbar, useTheme as usePaperTheme } from 'react-native-paper';
-import { Newspaper, RefreshCw } from 'lucide-react-native';
+import { View, FlatList, RefreshControl, Dimensions, Text, Pressable } from 'react-native';
+import { Newspaper, RefreshCw, X } from 'lucide-react-native';
 import { articles, categories as categoriesAPI } from '../api/client';
 import { ErrorState, EmptyState, Button } from '../components/ui';
 import ArticleCard from '../components/ArticleCard';
 import CategoryChips from '../components/CategoryChips';
 import LoginPromo from '../components/LoginPromo';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useLayout } from '../components/layout';
 import localPreferences, { PREF_KEYS } from '../services/LocalPreferencesService';
 import cacheService from '../services/CacheService';
@@ -47,7 +47,7 @@ export default function HomeScreen({ navigation }) {
   const [guestCountries, setGuestCountries] = useState([]);
   const [guestCategories, setGuestCategories] = useState([]);
 
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
   const layout = useLayout();
   const preferencesLoadedRef = useRef(false);
@@ -90,7 +90,9 @@ export default function HomeScreen({ navigation }) {
         preferencesLoadedRef.current = true;
         loadInitialData();
       } catch (error) {
-        console.error('[Home] Failed to load preferences:', error);
+        if (__DEV__) {
+          console.error('[Home] Failed to load preferences:', error);
+        }
         loadInitialData();
       }
     };
@@ -130,7 +132,9 @@ export default function HomeScreen({ navigation }) {
       // Load articles
       await loadArticles();
     } catch (err) {
-      console.error('[Home] Initial load error:', err);
+      if (__DEV__) {
+        console.error('[Home] Initial load error:', err);
+      }
       setError('Failed to load news. Please try again.');
     } finally {
       setLoading(false);
@@ -176,13 +180,17 @@ export default function HomeScreen({ navigation }) {
       try {
         await cacheService.cacheArticles(data.articles);
       } catch (cacheError) {
-        console.warn('[Home] Failed to cache articles:', cacheError);
+        if (__DEV__) {
+          console.warn('[Home] Failed to cache articles:', cacheError);
+        }
         // Don't block UI on cache errors
       }
     }
 
     if (error) {
-      console.error('Failed to load articles:', error);
+      if (__DEV__) {
+        console.error('Failed to load articles:', error);
+      }
     }
   };
 
@@ -195,12 +203,16 @@ export default function HomeScreen({ navigation }) {
 
     try {
       // Step 1: Trigger backend RSS collection (TikTok-style)
-      console.log('[Home] Triggering backend RSS collection...');
+      if (__DEV__) {
+        console.log('[Home] Triggering backend RSS collection...');
+      }
       const collectResult = await articles.collectFeed();
 
       if (collectResult.data?.success) {
         const newArticlesCount = collectResult.data.newArticles || 0;
-        console.log(`[Home] Collection complete: ${newArticlesCount} new articles`);
+        if (__DEV__) {
+          console.log(`[Home] Collection complete: ${newArticlesCount} new articles`);
+        }
 
         // Show feedback message
         if (newArticlesCount > 0) {
@@ -212,7 +224,9 @@ export default function HomeScreen({ navigation }) {
         }
       } else if (collectResult.error) {
         // Handle rate limiting or other errors
-        console.log('[Home] Collection info:', collectResult.error);
+        if (__DEV__) {
+          console.log('[Home] Collection info:', collectResult.error);
+        }
 
         // Show rate limit message if applicable
         if (collectResult.error.includes('wait')) {
@@ -225,7 +239,9 @@ export default function HomeScreen({ navigation }) {
       await loadArticles(selectedCategory);
 
     } catch (err) {
-      console.error('[Home] Refresh error:', err);
+      if (__DEV__) {
+        console.error('[Home] Refresh error:', err);
+      }
       setError('Failed to refresh. Please try again.');
     } finally {
       setRefreshing(false);
@@ -313,17 +329,30 @@ export default function HomeScreen({ navigation }) {
       />
 
       {/* Feed Collection Snackbar */}
-      <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={3000}
-        action={{
-          label: 'OK',
-          onPress: () => setSnackbarVisible(false),
-        }}
-      >
-        {snackbarMessage}
-      </Snackbar>
+      {snackbarVisible && (
+        <View className="absolute bottom-24 left-md right-md z-50">
+          <View
+            className="flex-row items-center justify-between px-md py-sm rounded-button border"
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outline,
+            }}
+          >
+            <Text
+              className="flex-1 font-sans text-body-medium mr-sm"
+              style={{ color: theme.colors['on-surface'] }}
+            >
+              {snackbarMessage}
+            </Text>
+            <Pressable
+              onPress={() => setSnackbarVisible(false)}
+              className="p-xs"
+            >
+              <X size={20} color={theme.colors['on-surface-variant']} />
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Articles Feed */}
       <FlatList
@@ -338,8 +367,8 @@ export default function HomeScreen({ navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[paperTheme.colors.primary]}
-            tintColor={paperTheme.colors.primary}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
           />
         }
         ListFooterComponent={
