@@ -65,12 +65,17 @@ jobs:
     - name: Install mobile dependencies
       run: |
         cd mobile
-        npm install
+        npm install --legacy-peer-deps
 
     - name: Run mobile unit tests
       run: |
         cd mobile
         npm run test -- --passWithNoTests
+
+    - name: Test mobile build
+      run: |
+        cd mobile
+        npm run build
 
   deploy-backend:
     runs-on: ubuntu-latest
