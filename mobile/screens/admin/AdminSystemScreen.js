@@ -4,16 +4,17 @@ import {
   ScrollView,
   StyleSheet,
   RefreshControl,
-  TouchableOpacity,
+  Pressable,
+  Text as RNText,
 } from 'react-native';
 import {
   Text,
   Card,
   Button,
   useTheme,
-  ActivityIndicator,
   Chip,
 } from 'react-native-paper';
+import { LoadingState } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
@@ -118,37 +119,36 @@ export default function AdminSystemScreen({ navigation }) {
 
   if (!isAdmin) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.errorContainer}>
-          <Text variant="headlineSmall">Access Denied</Text>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg" style={{ backgroundColor: theme.colors.background }}>
+        <RNText className="font-serif-bold text-headline-small" style={{ color: theme.colors.onSurface }}>
+          Access Denied
+        </RNText>
       </View>
     );
   }
 
   if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      </View>
-    );
+    return <LoadingState />;
   }
 
   if (error) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.errorContainer}>
-          <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
-          <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
-            onPress={loadData}
-          >
-            <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg" style={{ backgroundColor: theme.colors.background }}>
+        <RNText className="font-serif-bold text-headline-small mb-sm" style={{ color: theme.colors.onSurface }}>
+          Something went wrong
+        </RNText>
+        <RNText className="font-sans text-body-medium mb-lg text-center" style={{ color: theme.colors.onSurfaceVariant }}>
+          {error}
+        </RNText>
+        <Pressable
+          className="py-md px-xl rounded-button"
+          style={{ backgroundColor: theme.colors.primary }}
+          onPress={loadData}
+        >
+          <RNText className="font-sans-bold text-label-large" style={{ color: '#FFFFFF' }}>
+            Try Again
+          </RNText>
+        </Pressable>
       </View>
     );
   }
@@ -505,20 +505,5 @@ const styles = StyleSheet.create({
   dbValue: {
     fontSize: 24,
     fontWeight: '700',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  retryButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
   },
 });
