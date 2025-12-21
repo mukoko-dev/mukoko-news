@@ -90,6 +90,12 @@ module.exports = {
           'on-container': '#331200',
         },
 
+        // Social brand colors (official brand colors preserved per style guide)
+        'brand-twitter': '#1DA1F2',
+        'brand-whatsapp': '#25D366',
+        'brand-facebook': '#1877F2',
+        'brand-linkedin': '#0A66C2',
+
         // Text colors
         'on-surface': '#1C1B1F',
         'on-surface-variant': '#4a4a4a',
