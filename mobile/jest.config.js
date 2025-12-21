@@ -1,5 +1,5 @@
 module.exports = {
-  preset: 'react-native',
+  preset: 'jest-expo',
   setupFilesAfterEnv: ['./jest.setup.js'],
   testMatch: ['**/__tests__/**/*.test.js', '**/*.test.js'],
   testPathIgnorePatterns: ['/node_modules/', '/dist/'],
@@ -18,6 +18,5 @@ module.exports = {
     '!**/node_modules/**',
   ],
   coverageReporters: ['text', 'json', 'html'],
-  testEnvironment: 'node',
   moduleFileExtensions: ['js', 'jsx', 'json', 'node'],
 };

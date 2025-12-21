@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import { Zap, ZapOff, Globe, Search, Compass, User, ShieldCheck } from 'lucide-react-native';
-import { useTheme as usePaperTheme } from 'react-native-paper';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
@@ -113,8 +112,7 @@ function AdminStack() {
 // Insights is integrated into Search (shows when search is empty)
 function MainTabs({ currentRoute }) {
   const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
-  const { isDark } = useTheme();
-  const paperTheme = usePaperTheme();
+  const { isDark, theme } = useTheme();
   const { isAdmin } = useAuth();
 
   useEffect(() => {
@@ -133,9 +131,9 @@ function MainTabs({ currentRoute }) {
     }
     return {
       position: 'relative',
-      backgroundColor: paperTheme.colors.surface,
+      backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
-      borderTopColor: paperTheme.colors.outline,
+      borderTopColor: theme.colors.outline,
       height: 60,
       paddingBottom: 8,
       paddingTop: 8,
@@ -156,7 +154,7 @@ function MainTabs({ currentRoute }) {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: iconColor,
-        tabBarInactiveTintColor: paperTheme.colors.onSurfaceVariant,
+        tabBarInactiveTintColor: theme.colors['on-surface-variant'],
         tabBarStyle: getTabBarStyle(),
         tabBarItemStyle: {
           flex: 1,
@@ -263,7 +261,7 @@ function getRouteFromState(state) {
 
 // Root Navigator
 export default function AppNavigator() {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
   const [isNavigationReady, setIsNavigationReady] = useState(false);
   const [currentRoute, setCurrentRoute] = useState('Bytes');
@@ -380,7 +378,8 @@ export default function AppNavigator() {
       }}
     >
       <SafeAreaView
-        style={[styles.container, { backgroundColor: paperTheme.colors.background }]}
+        className="flex-1"
+        style={{ backgroundColor: theme.colors.background }}
         edges={['bottom']}
       >
         <ZimbabweFlagStrip />
@@ -396,9 +395,3 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
