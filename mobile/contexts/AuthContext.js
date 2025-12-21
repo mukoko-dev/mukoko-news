@@ -107,7 +107,9 @@ export function AuthProvider({ children }) {
         }
       }
     } catch (error) {
-      console.error('[Auth] Check auth error:', error);
+      if (__DEV__) {
+        console.error('[Auth] Check auth error:', error);
+      }
       await clearAuthData();
     } finally {
       setIsLoading(false);
@@ -131,7 +133,9 @@ export function AuthProvider({ children }) {
     try {
       await Linking.openURL(authUrl);
     } catch (error) {
-      console.error('[Auth] Failed to open OIDC login:', error);
+      if (__DEV__) {
+        console.error('[Auth] Failed to open OIDC login:', error);
+      }
       return { error: error.message };
     }
   }, []);
@@ -148,7 +152,9 @@ export function AuthProvider({ children }) {
       const error = url.searchParams.get('error');
 
       if (error) {
-        console.error('[Auth] OIDC error:', error);
+        if (__DEV__) {
+          console.error('[Auth] OIDC error:', error);
+        }
         return { error };
       }
 
@@ -189,7 +195,9 @@ export function AuthProvider({ children }) {
 
       return { error: 'Invalid response from server' };
     } catch (error) {
-      console.error('[Auth] OIDC callback error:', error);
+      if (__DEV__) {
+        console.error('[Auth] OIDC callback error:', error);
+      }
       return { error: error.message };
     } finally {
       setIsLoading(false);
@@ -229,7 +237,9 @@ export function AuthProvider({ children }) {
 
       return false;
     } catch (error) {
-      console.error('[Auth] Refresh session error:', error);
+      if (__DEV__) {
+        console.error('[Auth] Refresh session error:', error);
+      }
       return false;
     }
   };
@@ -260,7 +270,9 @@ export function AuthProvider({ children }) {
 
       return { error: null };
     } catch (error) {
-      console.error('[Auth] Logout error:', error);
+      if (__DEV__) {
+        console.error('[Auth] Logout error:', error);
+      }
       return { error: error.message };
     }
   };
@@ -307,7 +319,9 @@ export async function getAuthToken() {
   try {
     return await AsyncStorage.getItem(AUTH_TOKEN_KEY);
   } catch (error) {
-    console.error('[Auth] Get token error:', error);
+    if (__DEV__) {
+      console.error('[Auth] Get token error:', error);
+    }
     return null;
   }
 }
