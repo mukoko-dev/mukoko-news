@@ -1,8 +1,161 @@
 /**
  * Mukoko News Global Styles
- * Tailwind CSS directives for NativeWind
+ * Nyuchi Brand System v6 - Five African Minerals Design System
+ *
+ * WCAG AAA Accessibility:
+ * - 7:1+ contrast ratios for all text
+ * - 44px minimum touch targets
+ * - Clear visual hierarchy
  */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  :root {
+    /* ===== NYUCHI BRAND COLORS - FIVE AFRICAN MINERALS ===== */
+
+    /* Tanzanite - Premium, creativity, social connection */
+    --color-tanzanite: 75 0 130;
+    --color-tanzanite-light: 179 136 255;
+    --color-tanzanite-hover: 92 16 154;
+    --color-tanzanite-active: 58 0 102;
+    --color-tanzanite-container: 232 213 249;
+    --color-tanzanite-on-container: 26 0 51;
+
+    /* Cobalt - Digital future, knowledge, education */
+    --color-cobalt: 0 71 171;
+    --color-cobalt-light: 0 176 255;
+    --color-cobalt-container: 214 228 249;
+    --color-cobalt-on-container: 0 26 64;
+
+    /* Malachite - Success, growth, nature, wellness */
+    --color-malachite: 0 77 64;
+    --color-malachite-light: 100 255 218;
+    --color-malachite-container: 200 230 201;
+    --color-malachite-on-container: 13 51 17;
+
+    /* Gold - Honey, rewards, achievement, warmth */
+    --color-gold: 93 64 55;
+    --color-gold-light: 255 215 64;
+    --color-gold-container: 245 230 211;
+    --color-gold-on-container: 45 31 26;
+
+    /* Terracotta - Community, Ubuntu, earth connection */
+    --color-terracotta: 139 69 19;
+    --color-terracotta-light: 212 165 116;
+    --color-terracotta-container: 244 232 220;
+    --color-terracotta-on-container: 58 29 10;
+
+    /* ===== SURFACE COLORS ===== */
+    --color-surface: 255 255 255;
+    --color-surface-variant: 243 242 238;
+    --color-surface-subtle: 250 249 245;
+    --color-surface-dim: 243 242 238;
+
+    /* ===== SEMANTIC COLORS ===== */
+    --color-error: 179 38 30;
+    --color-error-container: 249 222 220;
+    --color-error-on-container: 65 14 11;
+
+    --color-success: 27 94 32;
+    --color-success-container: 232 245 233;
+    --color-success-on-container: 13 51 17;
+
+    --color-warning: 230 81 0;
+    --color-warning-container: 255 243 224;
+    --color-warning-on-container: 51 18 0;
+
+    /* ===== SOCIAL BRAND COLORS (official brand colors) ===== */
+    --color-brand-twitter: 29 161 242;
+    --color-brand-whatsapp: 37 211 102;
+    --color-brand-facebook: 24 119 242;
+    --color-brand-linkedin: 10 102 194;
+
+    /* ===== TEXT COLORS ===== */
+    --color-on-surface: 28 27 31;
+    --color-on-surface-variant: 74 74 74;
+    --color-on-primary: 255 255 255;
+    --color-on-secondary: 255 255 255;
+    --color-on-accent: 255 255 255;
+
+    /* ===== BORDERS ===== */
+    --color-outline: 224 223 220;
+    --color-outline-variant: 240 239 236;
+
+    /* ===== BACKGROUND ===== */
+    --color-background: 250 249 245;
+    --color-on-background: 28 27 31;
+
+    /* ===== SPACING SYSTEM (4px base, mobile-first) ===== */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 24px;
+    --spacing-xxl: 32px;
+
+    /* ===== BORDER RADIUS ===== */
+    --radius-button: 12px;
+    --radius-card: 16px;
+    --radius-modal: 20px;
+
+    /* ===== TYPOGRAPHY SIZES ===== */
+    /* Display sizes */
+    --font-size-display-large: 48px;
+    --font-size-display-medium: 36px;
+    --font-size-display-small: 32px;
+
+    /* Headlines */
+    --font-size-headline-large: 26px;
+    --font-size-headline-medium: 22px;
+    --font-size-headline-small: 20px;
+
+    /* Titles */
+    --font-size-title-large: 18px;
+    --font-size-title-medium: 16px;
+    --font-size-title-small: 14px;
+
+    /* Body */
+    --font-size-body-large: 16px;
+    --font-size-body-medium: 14px;
+    --font-size-body-small: 12px;
+
+    /* Labels */
+    --font-size-label-large: 13px;
+    --font-size-label-medium: 12px;
+    --font-size-label-small: 11px;
+
+    /* Special */
+    --font-size-stats: 28px;
+    --font-size-caption: 10px;
+
+    /* ===== FONT FAMILIES ===== */
+    --font-sans: 'PlusJakartaSans-Regular', system-ui, sans-serif;
+    --font-sans-medium: 'PlusJakartaSans-Medium', system-ui, sans-serif;
+    --font-sans-bold: 'PlusJakartaSans-Bold', system-ui, sans-serif;
+    --font-serif: 'NotoSerif-Regular', Georgia, serif;
+    --font-serif-bold: 'NotoSerif-Bold', Georgia, serif;
+
+    /* ===== SHADOWS (subtle, brand-appropriate) ===== */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
+
+    /* ===== ANIMATION TIMINGS ===== */
+    --duration-fast: 150ms;
+    --duration-normal: 250ms;
+    --duration-slow: 350ms;
+
+    /* ===== TOUCH TARGETS (WCAG AAA) ===== */
+    --touch-target: 44px;
+    --touch-target-compact: 40px;
+    --touch-target-large: 56px;
+  }
+
+  /* Set default font family on html */
+  html {
+    font-family: var(--font-sans);
+  }
+}

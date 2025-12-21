@@ -1,12 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 /**
  * Mukoko News Tailwind Configuration
- * Nyuchi Brand System v6 - Five African Minerals Color Palette
- *
- * WCAG AAA Accessibility:
- * - 7:1+ contrast ratios for all text
- * - 44px minimum touch targets
- * - Clear visual hierarchy
+ * References Nyuchi Brand System from global.css
  */
 
 module.exports = {
@@ -19,181 +14,147 @@ module.exports = {
   presets: [require('nativewind/preset')],
   theme: {
     extend: {
-      // Mukoko Brand Colors - Five African Minerals
+      // Colors reference CSS variables from global.css
       colors: {
-        // Tanzanite - Premium, creativity, social connection
         tanzanite: {
-          DEFAULT: '#4B0082',
-          light: '#B388FF',
-          hover: '#5C109A',
-          active: '#3A0066',
-          container: '#E8D5F9',
-          'on-container': '#1A0033',
+          DEFAULT: 'rgb(var(--color-tanzanite) / <alpha-value>)',
+          light: 'rgb(var(--color-tanzanite-light) / <alpha-value>)',
+          hover: 'rgb(var(--color-tanzanite-hover) / <alpha-value>)',
+          active: 'rgb(var(--color-tanzanite-active) / <alpha-value>)',
+          container: 'rgb(var(--color-tanzanite-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--color-tanzanite-on-container) / <alpha-value>)',
         },
-
-        // Cobalt - Digital future, knowledge, education
         cobalt: {
-          DEFAULT: '#0047AB',
-          light: '#00B0FF',
-          container: '#D6E4F9',
-          'on-container': '#001A40',
+          DEFAULT: 'rgb(var(--color-cobalt) / <alpha-value>)',
+          light: 'rgb(var(--color-cobalt-light) / <alpha-value>)',
+          container: 'rgb(var(--color-cobalt-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--color-cobalt-on-container) / <alpha-value>)',
         },
-
-        // Malachite - Success, growth, nature, wellness
         malachite: {
-          DEFAULT: '#004D40',
-          light: '#64FFDA',
-          container: '#C8E6C9',
-          'on-container': '#0D3311',
+          DEFAULT: 'rgb(var(--color-malachite) / <alpha-value>)',
+          light: 'rgb(var(--color-malachite-light) / <alpha-value>)',
+          container: 'rgb(var(--color-malachite-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--color-malachite-on-container) / <alpha-value>)',
         },
-
-        // Gold - Honey, rewards, achievement, warmth
         gold: {
-          DEFAULT: '#5D4037',
-          light: '#FFD740',
-          container: '#F5E6D3',
-          'on-container': '#2D1F1A',
+          DEFAULT: 'rgb(var(--color-gold) / <alpha-value>)',
+          light: 'rgb(var(--color-gold-light) / <alpha-value>)',
+          container: 'rgb(var(--color-gold-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--color-gold-on-container) / <alpha-value>)',
         },
-
-        // Terracotta - Community, Ubuntu, earth connection
         terracotta: {
-          DEFAULT: '#8B4513',
-          light: '#D4A574',
-          container: '#F4E8DC',
-          'on-container': '#3A1D0A',
+          DEFAULT: 'rgb(var(--color-terracotta) / <alpha-value>)',
+          light: 'rgb(var(--color-terracotta-light) / <alpha-value>)',
+          container: 'rgb(var(--color-terracotta-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--color-terracotta-on-container) / <alpha-value>)',
         },
-
-        // Surface colors
         surface: {
-          DEFAULT: '#FFFFFF',
-          variant: '#F3F2EE',
-          subtle: '#FAF9F5',
-          dim: '#F3F2EE',
+          DEFAULT: 'rgb(var(--color-surface) / <alpha-value>)',
+          variant: 'rgb(var(--color-surface-variant) / <alpha-value>)',
+          subtle: 'rgb(var(--color-surface-subtle) / <alpha-value>)',
+          dim: 'rgb(var(--color-surface-dim) / <alpha-value>)',
         },
-
-        // Semantic colors
         error: {
-          DEFAULT: '#B3261E',
-          container: '#F9DEDC',
-          'on-container': '#410E0B',
+          DEFAULT: 'rgb(var(--color-error) / <alpha-value>)',
+          container: 'rgb(var(--color-error-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--color-error-on-container) / <alpha-value>)',
         },
-
         success: {
-          DEFAULT: '#1B5E20',
-          container: '#E8F5E9',
-          'on-container': '#0D3311',
+          DEFAULT: 'rgb(var(--color-success) / <alpha-value>)',
+          container: 'rgb(var(--color-success-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--color-success-on-container) / <alpha-value>)',
         },
-
         warning: {
-          DEFAULT: '#E65100',
-          container: '#FFF3E0',
-          'on-container': '#331200',
+          DEFAULT: 'rgb(var(--color-warning) / <alpha-value>)',
+          container: 'rgb(var(--color-warning-container) / <alpha-value>)',
+          'on-container': 'rgb(var(--color-warning-on-container) / <alpha-value>)',
         },
-
-        // Social brand colors (official brand colors preserved per style guide)
-        'brand-twitter': '#1DA1F2',
-        'brand-whatsapp': '#25D366',
-        'brand-facebook': '#1877F2',
-        'brand-linkedin': '#0A66C2',
-
-        // Text colors
-        'on-surface': '#1C1B1F',
-        'on-surface-variant': '#4a4a4a',
-        'on-primary': '#FFFFFF',
-        'on-secondary': '#FFFFFF',
-        'on-accent': '#FFFFFF',
-
-        // Borders
-        outline: '#e0dfdc',
-        'outline-variant': '#f0efec',
-
-        // Background
-        background: '#FAF9F5',
-        'on-background': '#1C1B1F',
+        'brand-twitter': 'rgb(var(--color-brand-twitter) / <alpha-value>)',
+        'brand-whatsapp': 'rgb(var(--color-brand-whatsapp) / <alpha-value>)',
+        'brand-facebook': 'rgb(var(--color-brand-facebook) / <alpha-value>)',
+        'brand-linkedin': 'rgb(var(--color-brand-linkedin) / <alpha-value>)',
+        'on-surface': 'rgb(var(--color-on-surface) / <alpha-value>)',
+        'on-surface-variant': 'rgb(var(--color-on-surface-variant) / <alpha-value>)',
+        'on-primary': 'rgb(var(--color-on-primary) / <alpha-value>)',
+        'on-secondary': 'rgb(var(--color-on-secondary) / <alpha-value>)',
+        'on-accent': 'rgb(var(--color-on-accent) / <alpha-value>)',
+        outline: 'rgb(var(--color-outline) / <alpha-value>)',
+        'outline-variant': 'rgb(var(--color-outline-variant) / <alpha-value>)',
+        background: 'rgb(var(--color-background) / <alpha-value>)',
+        'on-background': 'rgb(var(--color-on-background) / <alpha-value>)',
       },
 
-      // Typography - Mukoko brand fonts
-      fontFamily: {
-        sans: ['PlusJakartaSans-Regular', 'system-ui', 'sans-serif'],
-        'sans-medium': ['PlusJakartaSans-Medium', 'system-ui', 'sans-serif'],
-        'sans-bold': ['PlusJakartaSans-Bold', 'system-ui', 'sans-serif'],
-        serif: ['NotoSerif-Regular', 'Georgia', 'serif'],
-        'serif-bold': ['NotoSerif-Bold', 'Georgia', 'serif'],
-      },
-
-      // Spacing system (4px base, mobile-first)
+      // Spacing references CSS variables
       spacing: {
-        'xs': '4px',
-        'sm': '8px',
-        'md': '12px',
-        'lg': '16px',
-        'xl': '24px',
-        'xxl': '32px',
+        xs: 'var(--spacing-xs)',
+        sm: 'var(--spacing-sm)',
+        md: 'var(--spacing-md)',
+        lg: 'var(--spacing-lg)',
+        xl: 'var(--spacing-xl)',
+        xxl: 'var(--spacing-xxl)',
       },
 
-      // Border radius
+      // Border radius references CSS variables
       borderRadius: {
-        'button': '12px',
-        'card': '16px',
-        'modal': '20px',
+        button: 'var(--radius-button)',
+        card: 'var(--radius-card)',
+        modal: 'var(--radius-modal)',
       },
 
-      // Shadows (subtle, brand-appropriate)
+      // Shadows reference CSS variables
       boxShadow: {
-        'sm': '0 1px 3px rgba(0, 0, 0, 0.04)',
-        'DEFAULT': '0 2px 8px rgba(0, 0, 0, 0.06)',
-        'lg': '0 4px 12px rgba(0, 0, 0, 0.08)',
+        sm: 'var(--shadow-sm)',
+        DEFAULT: 'var(--shadow-md)',
+        lg: 'var(--shadow-lg)',
       },
 
-      // Animation timings
+      // Animation timings reference CSS variables
       transitionDuration: {
-        'fast': '150ms',
-        'DEFAULT': '250ms',
-        'slow': '350ms',
+        fast: 'var(--duration-fast)',
+        DEFAULT: 'var(--duration-normal)',
+        slow: 'var(--duration-slow)',
       },
 
-      // Touch targets (WCAG AAA)
+      // Touch targets reference CSS variables
       minHeight: {
-        'touch': '44px',
-        'touch-compact': '40px',
-        'touch-large': '56px',
+        touch: 'var(--touch-target)',
+        'touch-compact': 'var(--touch-target-compact)',
+        'touch-large': 'var(--touch-target-large)',
       },
       minWidth: {
-        'touch': '44px',
-        'touch-compact': '40px',
-        'touch-large': '56px',
+        touch: 'var(--touch-target)',
+        'touch-compact': 'var(--touch-target-compact)',
+        'touch-large': 'var(--touch-target-large)',
       },
 
-      // Typography sizes
+      // Typography sizes reference CSS variables
       fontSize: {
-        // Display sizes
-        'display-large': '48px',
-        'display-medium': '36px',
-        'display-small': '32px',
+        'display-large': 'var(--font-size-display-large)',
+        'display-medium': 'var(--font-size-display-medium)',
+        'display-small': 'var(--font-size-display-small)',
+        'headline-large': 'var(--font-size-headline-large)',
+        'headline-medium': 'var(--font-size-headline-medium)',
+        'headline-small': 'var(--font-size-headline-small)',
+        'title-large': 'var(--font-size-title-large)',
+        'title-medium': 'var(--font-size-title-medium)',
+        'title-small': 'var(--font-size-title-small)',
+        'body-large': 'var(--font-size-body-large)',
+        'body-medium': 'var(--font-size-body-medium)',
+        'body-small': 'var(--font-size-body-small)',
+        'label-large': 'var(--font-size-label-large)',
+        'label-medium': 'var(--font-size-label-medium)',
+        'label-small': 'var(--font-size-label-small)',
+        stats: 'var(--font-size-stats)',
+        caption: 'var(--font-size-caption)',
+      },
 
-        // Headlines
-        'headline-large': '26px',
-        'headline-medium': '22px',
-        'headline-small': '20px',
-
-        // Titles
-        'title-large': '18px',
-        'title-medium': '16px',
-        'title-small': '14px',
-
-        // Body
-        'body-large': '16px',
-        'body-medium': '14px',
-        'body-small': '12px',
-
-        // Labels
-        'label-large': '13px',
-        'label-medium': '12px',
-        'label-small': '11px',
-
-        // Special
-        'stats': '28px',
-        'caption': '10px',
+      // Font families reference CSS variables
+      fontFamily: {
+        sans: 'var(--font-sans)',
+        'sans-medium': 'var(--font-sans-medium)',
+        'sans-bold': 'var(--font-sans-bold)',
+        serif: 'var(--font-serif)',
+        'serif-bold': 'var(--font-serif-bold)',
       },
     },
   },
