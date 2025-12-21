@@ -10,8 +10,9 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Text,
 } from 'react-native';
-import { Text, useTheme as usePaperTheme } from 'react-native-paper';
+import { useTheme } from '../contexts/ThemeContext';
 import mukokoTheme from '../theme';
 
 // Category emoji mapping - adds visual interest and quick recognition
@@ -57,7 +58,7 @@ export default function CategoryChips({
   showEmojis = true,
   style,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   const allCategories = showAll
     ? [{ id: 'all', name: 'All', slug: null }, ...categories]
@@ -75,14 +76,14 @@ export default function CategoryChips({
 
   // Dynamic glass styles based on theme
   const chipGlassStyle = {
-    backgroundColor: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.08)',
+    backgroundColor: theme.colors.surface || 'rgba(94, 87, 114, 0.08)',
     borderWidth: 1,
-    borderColor: paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
+    borderColor: theme.colors.surfaceBorder || 'rgba(94, 87, 114, 0.12)',
   };
 
   const chipSelectedStyle = {
-    backgroundColor: paperTheme.colors.primary,
-    borderColor: paperTheme.colors.primary,
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   };
 
   return (
@@ -120,8 +121,8 @@ export default function CategoryChips({
               <Text
                 style={[
                   styles.chipText,
-                  { color: paperTheme.colors.onSurface },
-                  selected && { color: paperTheme.colors.onPrimary },
+                  { color: theme.colors['on-surface'] },
+                  selected && { color: theme.colors['on-primary'] },
                 ]}
                 numberOfLines={1}
               >
@@ -133,16 +134,16 @@ export default function CategoryChips({
                   {
                     backgroundColor: selected
                       ? 'rgba(255,255,255,0.25)'
-                      : paperTheme.colors.glass || 'rgba(94, 87, 114, 0.12)',
+                      : theme.colors.surface || 'rgba(94, 87, 114, 0.12)',
                     borderWidth: 1,
                     borderColor: selected
                       ? 'rgba(255,255,255,0.15)'
-                      : paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.15)',
+                      : theme.colors.surfaceBorder || 'rgba(94, 87, 114, 0.15)',
                   }
                 ]}>
                   <Text style={[
                     styles.countText,
-                    { color: selected ? paperTheme.colors.onPrimary : paperTheme.colors.onSurfaceVariant }
+                    { color: selected ? theme.colors['on-primary'] : theme.colors['on-surface']Variant }
                   ]}>
                     {(category.article_count || category.count) > 99 ? '99+' : (category.article_count || category.count)}
                   </Text>
@@ -167,7 +168,7 @@ export function CategoryPills({
   showEmojis = true,
   style,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   const isSelected = (categorySlug) => selectedCategories.includes(categorySlug);
 
@@ -178,14 +179,14 @@ export function CategoryPills({
 
   // Dynamic glass styles based on theme
   const pillGlassStyle = {
-    backgroundColor: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.08)',
+    backgroundColor: theme.colors.surface || 'rgba(94, 87, 114, 0.08)',
     borderWidth: 1,
-    borderColor: paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
+    borderColor: theme.colors.surfaceBorder || 'rgba(94, 87, 114, 0.12)',
   };
 
   const pillSelectedStyle = {
-    backgroundColor: paperTheme.colors.primary,
-    borderColor: paperTheme.colors.primary,
+    backgroundColor: theme.colors.primary,
+    borderColor: theme.colors.primary,
   };
 
   return (
@@ -215,14 +216,14 @@ export function CategoryPills({
             <Text
               style={[
                 styles.pillText,
-                { color: paperTheme.colors.onSurface },
-                selected && { color: paperTheme.colors.onPrimary },
+                { color: theme.colors['on-surface'] },
+                selected && { color: theme.colors['on-primary'] },
               ]}
             >
               {category.name}
             </Text>
             {selected && (
-              <Text style={[styles.pillCheck, { color: paperTheme.colors.onPrimary }]}>✓</Text>
+              <Text style={[styles.pillCheck, { color: theme.colors['on-primary'] }]}>✓</Text>
             )}
           </TouchableOpacity>
         );
