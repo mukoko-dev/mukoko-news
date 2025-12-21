@@ -1,19 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
+  Text as RNText,
+  Pressable,
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { useTheme as usePaperTheme } from 'react-native-paper';
-import { TrendingUp, Hash, ExternalLink, RefreshCw } from 'lucide-react-native';
+import { TrendingUp, Hash, ExternalLink } from 'lucide-react-native';
 import { navigate } from '../../navigation/navigationRef';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { categories as categoriesAPI, insights as insightsAPI } from '../../api/client';
-import mukokoTheme from '../../theme';
 import Logo from '../Logo';
 
 /**
@@ -24,10 +21,11 @@ import Logo from '../Logo';
  * - Trending topics/hashtags
  * - Quick category access
  * - Footer links
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function RightSidebar() {
-  const paperTheme = usePaperTheme();
-  const { isDark } = useTheme();
+  const { theme, isDark } = useTheme();
   const { user, isAuthenticated } = useAuth();
   const [trending, setTrending] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -93,314 +91,132 @@ export default function RightSidebar() {
     // Search would be pre-filled with the tag
   };
 
-  // Dynamic styles
-  const dynamicStyles = {
-    container: {
-      backgroundColor: paperTheme.colors.background,
-    },
-    sectionTitle: {
-      color: paperTheme.colors.onSurfaceVariant,
-    },
-    text: {
-      color: paperTheme.colors.onSurface,
-    },
-    textSecondary: {
-      color: paperTheme.colors.onSurfaceVariant,
-    },
-    card: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
-    },
-    border: {
-      borderColor: paperTheme.colors.outline,
-    },
-    chip: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
-    },
-  };
-
-  const iconColor = paperTheme.colors.onSurfaceVariant;
+  const iconColor = theme.colors['on-surface-variant'];
 
   return (
     <ScrollView
-      style={[styles.container, dynamicStyles.container]}
+      className="flex-1"
+      style={{ backgroundColor: theme.colors.background }}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.scrollContent}
+      contentContainerStyle={{ padding: 16, paddingTop: 24 }}
     >
       {/* User Profile Card (if logged in) */}
       {isAuthenticated && user && (
-        <TouchableOpacity
-          style={[styles.profileCard, dynamicStyles.card]}
+        <Pressable
+          className="flex-row items-center p-md rounded-button mb-xl gap-md bg-surface-variant"
           onPress={() => navigate('Profile')}
-          activeOpacity={0.7}
           accessibilityLabel={`View profile for ${user.username}`}
           accessibilityRole="button"
         >
-          <View style={styles.profileAvatar}>
-            <Text style={[styles.avatarText, { color: paperTheme.colors.primary }]}>
+          <View className="w-[44px] h-[44px] rounded-full items-center justify-center bg-tanzanite/10">
+            <RNText className="font-sans-bold text-[18px]" style={{ color: theme.colors.tanzanite }}>
               {user.username?.charAt(0).toUpperCase() || 'U'}
-            </Text>
+            </RNText>
           </View>
-          <View style={styles.profileInfo}>
-            <Text style={[styles.profileName, dynamicStyles.text]} numberOfLines={1}>
+          <View className="flex-1">
+            <RNText className="font-sans-bold text-[14px] mb-[2px] text-on-surface" numberOfLines={1}>
               {user.username}
-            </Text>
-            <Text style={[styles.profileEmail, dynamicStyles.textSecondary]} numberOfLines={1}>
+            </RNText>
+            <RNText className="font-sans text-[12px] text-on-surface-variant" numberOfLines={1}>
               {user.email}
-            </Text>
+            </RNText>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {/* Login Prompt (if not logged in) */}
       {!isAuthenticated && (
-        <View style={[styles.loginPrompt, dynamicStyles.card]}>
-          <Text style={[styles.loginPromptTitle, dynamicStyles.text]}>
+        <View className="p-lg rounded-button mb-xl items-center bg-surface-variant">
+          <RNText className="font-sans-bold text-[16px] mb-xs text-on-surface">
             Welcome to Mukoko
-          </Text>
-          <Text style={[styles.loginPromptText, dynamicStyles.textSecondary]}>
+          </RNText>
+          <RNText className="font-sans text-[13px] text-center mb-md text-on-surface-variant">
             Sign in to save articles and personalize your feed
-          </Text>
-          <TouchableOpacity
-            style={[styles.loginButton, { backgroundColor: paperTheme.colors.primary }]}
+          </RNText>
+          <Pressable
+            className="px-xl py-sm rounded-button bg-tanzanite"
             onPress={() => navigate('Profile')}
-            activeOpacity={0.7}
           >
-            <Text style={[styles.loginButtonText, { color: paperTheme.colors.onPrimary }]}>
+            <RNText className="font-sans-bold text-[14px] text-on-primary">
               Sign In
-            </Text>
-          </TouchableOpacity>
+            </RNText>
+          </Pressable>
         </View>
       )}
 
       {/* Trending Topics */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
+      <View className="mb-xl">
+        <View className="flex-row items-center gap-sm mb-md">
           <TrendingUp size={18} color={iconColor} strokeWidth={1.5} />
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
+          <RNText className="font-sans-bold text-[13px] uppercase text-on-surface-variant" style={{ letterSpacing: 0.5 }}>
             Trending
-          </Text>
+          </RNText>
         </View>
 
         {loading ? (
-          <ActivityIndicator size="small" color={paperTheme.colors.primary} />
+          <ActivityIndicator size="small" color={theme.colors.tanzanite} />
         ) : (
-          <View style={styles.trendingList}>
+          <View className="gap-sm">
             {trending.map((item) => (
-              <TouchableOpacity
+              <Pressable
                 key={item.id}
-                style={styles.trendingItem}
+                className="py-sm"
                 onPress={() => handleTrendingPress(item.tag)}
-                activeOpacity={0.7}
               >
-                <View style={styles.trendingContent}>
-                  <Hash size={14} color={paperTheme.colors.primary} strokeWidth={2} />
-                  <Text style={[styles.trendingTag, dynamicStyles.text]}>
+                <View className="flex-row items-center gap-xs">
+                  <Hash size={14} color={theme.colors.tanzanite} strokeWidth={2} />
+                  <RNText className="font-sans-medium text-[14px] text-on-surface">
                     {item.tag}
-                  </Text>
+                  </RNText>
                 </View>
-                <Text style={[styles.trendingCount, dynamicStyles.textSecondary]}>
+                <RNText className="font-sans text-[12px] mt-[2px] ml-[18px] text-on-surface-variant">
                   {item.count} articles
-                </Text>
-              </TouchableOpacity>
+                </RNText>
+              </Pressable>
             ))}
           </View>
         )}
       </View>
 
       {/* Categories */}
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
+      <View className="mb-xl">
+        <View className="flex-row items-center gap-sm mb-md">
           <ExternalLink size={18} color={iconColor} strokeWidth={1.5} />
-          <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
+          <RNText className="font-sans-bold text-[13px] uppercase text-on-surface-variant" style={{ letterSpacing: 0.5 }}>
             Categories
-          </Text>
+          </RNText>
         </View>
 
-        <View style={styles.categoriesGrid}>
+        <View className="flex-row flex-wrap gap-sm">
           {categories.map((category, index) => (
-            <TouchableOpacity
+            <Pressable
               key={category.slug || index}
-              style={[styles.categoryChip, dynamicStyles.chip]}
+              className="px-md py-sm rounded-[16px] bg-surface-variant"
               onPress={() => handleCategoryPress(category)}
-              activeOpacity={0.7}
             >
-              <Text style={[styles.categoryText, dynamicStyles.text]}>
+              <RNText className="font-sans text-[13px] text-on-surface">
                 {category.name || category}
-              </Text>
-            </TouchableOpacity>
+              </RNText>
+            </Pressable>
           ))}
         </View>
       </View>
 
       {/* Footer */}
-      <View style={styles.footer}>
-        <View style={styles.footerBrand}>
+      <View className="mt-xl pt-lg items-center">
+        <View className="flex-row items-center gap-sm mb-sm">
           <Logo size="icon" theme={isDark ? 'light' : 'dark'} />
-          <Text style={[styles.footerBrandText, dynamicStyles.textSecondary]}>
+          <RNText className="font-sans-bold text-[14px] text-on-surface-variant">
             Mukoko News
-          </Text>
+          </RNText>
         </View>
-        <Text style={[styles.footerText, dynamicStyles.textSecondary]}>
+        <RNText className="font-sans text-[12px] mb-sm text-on-surface-variant">
           Africa's News, Your Way
-        </Text>
-        <Text style={[styles.footerCopyright, dynamicStyles.textSecondary]}>
+        </RNText>
+        <RNText className="font-sans text-[11px] text-on-surface-variant">
           © 2025 Mukoko News
-        </Text>
+        </RNText>
       </View>
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: mukokoTheme.spacing.lg,
-    paddingTop: mukokoTheme.spacing.xl,
-  },
-
-  // Profile Card
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness,
-    marginBottom: mukokoTheme.spacing.xl,
-    gap: mukokoTheme.spacing.md,
-  },
-  profileAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(75, 0, 130, 0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 18,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    marginBottom: 2,
-  },
-  profileEmail: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
-
-  // Login Prompt
-  loginPrompt: {
-    padding: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    marginBottom: mukokoTheme.spacing.xl,
-    alignItems: 'center',
-  },
-  loginPromptTitle: {
-    fontSize: 16,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  loginPromptText: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  loginButton: {
-    paddingHorizontal: mukokoTheme.spacing.xl,
-    paddingVertical: mukokoTheme.spacing.sm,
-    borderRadius: mukokoTheme.roundness,
-  },
-  loginButtonText: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-
-  // Section
-  section: {
-    marginBottom: mukokoTheme.spacing.xl,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-
-  // Trending
-  trendingList: {
-    gap: mukokoTheme.spacing.sm,
-  },
-  trendingItem: {
-    paddingVertical: mukokoTheme.spacing.sm,
-  },
-  trendingContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.xs,
-  },
-  trendingTag: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-  trendingCount: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    marginTop: 2,
-    marginLeft: 18, // Align with tag text
-  },
-
-  // Categories
-  categoriesGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
-  },
-  categoryChip: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-    borderRadius: 16,
-  },
-  categoryText: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
-
-  // Footer
-  footer: {
-    marginTop: mukokoTheme.spacing.xl,
-    paddingTop: mukokoTheme.spacing.lg,
-    alignItems: 'center',
-  },
-  footerBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  footerBrandText: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  footerText: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  footerCopyright: {
-    fontSize: 11,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
-});

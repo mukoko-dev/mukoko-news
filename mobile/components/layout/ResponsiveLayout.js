@@ -1,6 +1,6 @@
 import React, { useState, useEffect, createContext, useContext } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-import { useTheme as usePaperTheme } from 'react-native-paper';
+import { View, Dimensions } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 /**
  * Responsive breakpoints matching Instagram-style layout
@@ -55,6 +55,8 @@ export const useLayout = () => useContext(LayoutContext);
  * - Left sidebar navigation
  * - Centered content area with max-width
  * - Right sidebar with suggestions/trending
+ *
+ * Migration: NativeWind + ThemeContext only (NO React Native Paper, NO StyleSheet)
  */
 export default function ResponsiveLayout({
   children,
@@ -63,7 +65,7 @@ export default function ResponsiveLayout({
   showLeftSidebar = true,
   showRightSidebar = true,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
 
   // Listen for dimension changes (orientation, resize)
@@ -120,25 +122,11 @@ export default function ResponsiveLayout({
     isDesktop,
   };
 
-  // Dynamic styles
-  const dynamicStyles = {
-    container: {
-      backgroundColor: paperTheme.colors.background,
-    },
-    sidebar: {
-      backgroundColor: paperTheme.colors.background,
-      borderColor: paperTheme.colors.outline,
-    },
-    content: {
-      backgroundColor: paperTheme.colors.background,
-    },
-  };
-
   // Mobile layout - just render children (bottom tabs handled elsewhere)
   if (isMobile) {
     return (
       <LayoutContext.Provider value={layoutContextValue}>
-        <View style={[styles.container, dynamicStyles.container]}>
+        <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
           {children}
         </View>
       </LayoutContext.Provider>
@@ -148,35 +136,41 @@ export default function ResponsiveLayout({
   // Tablet/Desktop layout - Instagram-style three-column
   return (
     <LayoutContext.Provider value={layoutContextValue}>
-      <View style={[styles.container, styles.desktopContainer, dynamicStyles.container]}>
+      <View className="flex-1 flex-row" style={{ backgroundColor: theme.colors.background }}>
         {/* Left Sidebar - Navigation */}
         {isLeftSidebarVisible && (
-          <View style={[
-            styles.leftSidebar,
-            dynamicStyles.sidebar,
-            { width: SIDEBAR_WIDTHS.left }
-          ]}>
+          <View
+            className="border-r relative"
+            style={{
+              width: SIDEBAR_WIDTHS.left,
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.outline,
+            }}
+          >
             {leftSidebar}
           </View>
         )}
 
         {/* Main Content Area */}
-        <View style={[styles.contentArea, dynamicStyles.content]}>
-          <View style={[
-            styles.contentInner,
-            isDesktop && { maxWidth: CONTENT_WIDTHS.maxWidth },
-          ]}>
+        <View className="flex-1 items-center" style={{ backgroundColor: theme.colors.background }}>
+          <View
+            className="flex-1 w-full"
+            style={isDesktop ? { maxWidth: CONTENT_WIDTHS.maxWidth } : undefined}
+          >
             {children}
           </View>
         </View>
 
         {/* Right Sidebar - Suggestions (Tablet and Desktop) */}
         {isRightSidebarVisible && (
-          <View style={[
-            styles.rightSidebar,
-            dynamicStyles.sidebar,
-            { width: rightSidebarWidth }
-          ]}>
+          <View
+            className="border-l"
+            style={{
+              width: rightSidebarWidth,
+              backgroundColor: theme.colors.background,
+              borderColor: theme.colors.outline,
+            }}
+          >
             {rightSidebar}
           </View>
         )}
@@ -184,27 +178,3 @@ export default function ResponsiveLayout({
     </LayoutContext.Provider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  desktopContainer: {
-    flexDirection: 'row',
-  },
-  leftSidebar: {
-    borderRightWidth: 1,
-    position: 'relative',
-  },
-  contentArea: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  contentInner: {
-    flex: 1,
-    width: '100%',
-  },
-  rightSidebar: {
-    borderLeftWidth: 1,
-  },
-});
