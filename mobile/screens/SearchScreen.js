@@ -22,21 +22,20 @@ import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
   View,
   ScrollView,
-  StyleSheet,
   TouchableOpacity,
   Image,
   Platform,
   RefreshControl,
   Dimensions,
+  Pressable,
+  Text,
 } from 'react-native';
 import {
-  Text,
   Chip,
-  ActivityIndicator,
   Surface,
-  Icon,
   useTheme as usePaperTheme,
 } from 'react-native-paper';
+import { Loader2, AlertCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -77,46 +76,43 @@ const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
   const hasImage = article.image_url && !imageError;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
+    <Pressable
       onPress={() => onPress(article)}
-      style={styles.resultCard}
+      className="mb-md"
     >
       <Surface
-        style={[
-          styles.card,
-          {
-            backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-            borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
-          },
-        ]}
+        className="rounded-card border overflow-hidden"
+        style={{
+          backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
+          borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+        }}
         elevation={1}
       >
-        <View style={styles.cardRow}>
+        <View className="flex-row p-md gap-md">
           {hasImage && (
-            <View style={styles.cardImageContainer}>
+            <View className="w-20 h-20 rounded-lg overflow-hidden">
               <Image
                 source={{ uri: article.image_url }}
-                style={styles.cardImage}
+                className="w-full h-full"
                 resizeMode="cover"
                 onError={() => setImageError(true)}
               />
             </View>
           )}
-          <View style={[styles.cardContent, !hasImage && styles.cardContentNoImage]}>
-            <Text style={[styles.cardSource, { color: paperTheme.colors.primary }]}>
+          <View className={`flex-1 ${!hasImage ? 'pr-0' : ''}`}>
+            <Text className="font-sans-bold text-label-large mb-xs" style={{ color: paperTheme.colors.primary }}>
               {article.source || 'News'}
             </Text>
-            <Text style={[styles.cardTitle, { color: paperTheme.colors.onSurface }]} numberOfLines={2}>
+            <Text className="font-serif-bold text-body-large leading-5 mb-xs" style={{ color: paperTheme.colors.onSurface }} numberOfLines={2}>
               {article.title}
             </Text>
-            <Text style={[styles.cardDate, { color: paperTheme.colors.onSurfaceVariant }]}>
+            <Text className="font-sans text-label-small" style={{ color: paperTheme.colors.onSurfaceVariant }}>
               {formatDate(article.published_at)}
             </Text>
           </View>
         </View>
       </Surface>
-    </TouchableOpacity>
+    </Pressable>
   );
 }, (prevProps, nextProps) => prevProps.article.id === nextProps.article.id);
 
@@ -382,9 +378,9 @@ export default function SearchScreen({ navigation, route }) {
 
       {/* Loading - Search mode */}
       {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+        <View className="flex-1 justify-center items-center gap-md py-xl">
+          <Loader2 size={48} color={colors.primary} className="animate-spin" />
+          <Text className="font-sans-medium text-body-medium" style={{ color: colors.textMuted }}>
             Searching with AI...
           </Text>
         </View>
@@ -411,18 +407,23 @@ export default function SearchScreen({ navigation, route }) {
 
       {/* No Results - Search mode */}
       {isSearchMode && !loading && results.length === 0 && !error && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>📭</Text>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No results found</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+        <View className="flex-1 justify-center items-center px-xl gap-md">
+          <Text className="text-[64px] opacity-50">📭</Text>
+          <Text className="font-serif-bold text-headline-medium text-center" style={{ color: colors.text }}>
+            No results found
+          </Text>
+          <Text className="font-sans text-body-medium text-center" style={{ color: colors.textMuted }}>
             Try a different search term or category
           </Text>
-          <TouchableOpacity
-            style={[styles.clearButton, { borderColor: colors.primary }]}
+          <Pressable
+            className="py-sm px-lg rounded-button border"
+            style={{ borderColor: colors.primary }}
             onPress={handleClearSearch}
           >
-            <Text style={{ color: colors.primary }}>Clear search</Text>
-          </TouchableOpacity>
+            <Text className="font-sans-medium text-label-large" style={{ color: colors.primary }}>
+              Clear search
+            </Text>
+          </Pressable>
         </View>
       )}
 
