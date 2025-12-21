@@ -1,13 +1,21 @@
 import React from 'react';
 import {
   View,
-  StyleSheet,
   ScrollView,
   Dimensions,
   Platform,
+  Pressable,
+  Text as RNText,
 } from 'react-native';
-import { Text, TouchableRipple, useTheme } from 'react-native-paper';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import {
+  LayoutDashboard,
+  Users,
+  Rss,
+  LineChart,
+  Settings,
+  Shield,
+} from 'lucide-react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width } = Dimensions.get('window');
 
@@ -15,79 +23,72 @@ const { width } = Dimensions.get('window');
  * Admin Header Component
  * Provides secondary navigation for admin screens
  * Responsive: horizontal tabs on mobile, sidebar-like on tablet/web
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminHeader({ navigation, currentScreen }) {
   const theme = useTheme();
   const isWideScreen = width >= 768;
 
   const navItems = [
-    { screen: 'AdminDashboard', label: 'Dashboard', icon: 'view-dashboard' },
-    { screen: 'AdminUsers', label: 'Users', icon: 'account-group' },
-    { screen: 'AdminSources', label: 'Sources', icon: 'rss' },
-    { screen: 'AdminAnalytics', label: 'Analytics', icon: 'chart-line' },
-    { screen: 'AdminSystem', label: 'System', icon: 'cog' },
+    { screen: 'AdminDashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { screen: 'AdminUsers', label: 'Users', icon: Users },
+    { screen: 'AdminSources', label: 'Sources', icon: Rss },
+    { screen: 'AdminAnalytics', label: 'Analytics', icon: LineChart },
+    { screen: 'AdminSystem', label: 'System', icon: Settings },
   ];
 
   const NavItem = ({ item }) => {
     const isActive = currentScreen === item.screen;
+    const Icon = item.icon;
 
     return (
-      <TouchableRipple
+      <Pressable
         onPress={() => navigation.navigate(item.screen)}
-        style={[
-          styles.navItem,
-          isWideScreen && styles.navItemWide,
-          isActive && {
-            backgroundColor: theme.colors.primaryContainer,
-            borderBottomColor: theme.colors.primary,
-            borderBottomWidth: isWideScreen ? 0 : 3,
-          },
-        ]}
-        rippleColor={theme.colors.primary + '20'}
+        className={`
+          px-lg py-md min-w-[70px]
+          ${isWideScreen ? 'rounded-lg min-w-[100px]' : 'rounded-none'}
+          ${isActive ? 'bg-tanzanite/10 border-b-[3px] border-b-tanzanite' : ''}
+          ${isWideScreen && isActive ? 'border-b-0' : ''}
+        `}
+        accessibilityRole="tab"
+        accessibilityState={{ selected: isActive }}
+        accessibilityLabel={`${item.label} tab`}
       >
-        <View style={styles.navItemContent}>
-          <MaterialCommunityIcons
-            name={item.icon}
+        <View className="items-center gap-[4px]">
+          <Icon
             size={isWideScreen ? 20 : 22}
-            color={isActive ? theme.colors.primary : theme.colors.onSurfaceVariant}
+            color={isActive ? theme.colors.tanzanite : theme.colors['on-surface-variant']}
           />
-          <Text
-            variant={isWideScreen ? 'labelMedium' : 'labelSmall'}
-            style={[
-              styles.navLabel,
-              { color: isActive ? theme.colors.primary : theme.colors.onSurfaceVariant },
-              isActive && { fontWeight: '700' },
-            ]}
+          <RNText
+            className={`
+              text-center
+              ${isWideScreen ? 'text-label-medium' : 'text-label-small'}
+              ${isActive ? 'font-sans-bold text-tanzanite' : 'font-sans text-on-surface-variant'}
+            `}
             numberOfLines={1}
           >
             {item.label}
-          </Text>
+          </RNText>
         </View>
-      </TouchableRipple>
+      </Pressable>
     );
   };
 
+  const containerClasses = `
+    border-b border-outline-variant bg-surface
+    ${Platform.OS === 'web' ? 'sticky top-0 z-[100]' : ''}
+  `.trim().replace(/\s+/g, ' ');
+
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          backgroundColor: theme.colors.surface,
-          borderBottomColor: theme.colors.outlineVariant,
-        },
-      ]}
-    >
+    <View className={containerClasses}>
       {/* Admin Title - only on wide screens */}
       {isWideScreen && (
-        <View style={styles.titleContainer}>
-          <MaterialCommunityIcons
-            name="shield-crown"
-            size={20}
-            color={theme.colors.primary}
-          />
-          <Text variant="titleSmall" style={{ fontWeight: '700', marginLeft: 8 }}>
+        <View className="flex-row items-center px-lg pt-md pb-sm">
+          <Shield size={20} color={theme.colors.tanzanite} />
+          <RNText className="font-sans-bold text-title-small ml-sm">
             Admin Panel
-          </Text>
+          </RNText>
         </View>
       )}
 
@@ -95,10 +96,11 @@ export default function AdminHeader({ navigation, currentScreen }) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[
-          styles.navContainer,
-          isWideScreen && styles.navContainerWide,
-        ]}
+        contentContainerStyle={{
+          flexDirection: 'row',
+          paddingHorizontal: isWideScreen ? 16 : 8,
+          gap: isWideScreen ? 8 : 0,
+        }}
       >
         {navItems.map((item) => (
           <NavItem key={item.screen} item={item} />
@@ -107,48 +109,3 @@ export default function AdminHeader({ navigation, currentScreen }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    borderBottomWidth: 1,
-    ...Platform.select({
-      web: {
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
-      },
-    }),
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 8,
-  },
-  navContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 8,
-  },
-  navContainerWide: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  navItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 0,
-    minWidth: 70,
-  },
-  navItemWide: {
-    borderRadius: 8,
-    minWidth: 100,
-  },
-  navItemContent: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  navLabel: {
-    textAlign: 'center',
-  },
-});
