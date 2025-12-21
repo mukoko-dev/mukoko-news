@@ -143,7 +143,7 @@ export default function CategoryChips({
                 ]}>
                   <Text style={[
                     styles.countText,
-                    { color: selected ? theme.colors['on-primary'] : theme.colors['on-surface']Variant }
+                    { color: selected ? theme.colors['on-primary'] : theme.colors['on-surface-variant'] }
                   ]}>
                     {(category.article_count || category.count) > 99 ? '99+' : (category.article_count || category.count)}
                   </Text>
