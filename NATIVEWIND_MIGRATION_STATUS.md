@@ -6,12 +6,12 @@
 ## Progress Overview
 
 **Completed**: 6/15 items (40%)
-**Partially Migrated**: 2 screens (ProfileSettings, Search)
-**Status**: 🟡 Active Migration
+**Partially Migrated**: 4 screens (ProfileSettings, Search, Onboarding, AdminSources)
+**Status**: 🟡 Active Migration - 67% of screens touched
 
 ---
 
-## ✅ Completed (6/15) + 2 Partial
+## ✅ Completed (6/15) + 4 Partial
 
 ### Infrastructure & Components
 1. **✅ NativeWind Setup**
@@ -71,7 +71,7 @@
    - Kept textShadow styles inline (NativeWind limitation)
    - Removed 92 lines of StyleSheet code
 
-### Partially Migrated (2 screens)
+### Partially Migrated (4 screens)
 9. **⚠️ ProfileSettingsScreen** (719 → 722 lines, +0.4%)
    - Replaced all MaterialCommunityIcons with Lucide icons
    - Converted error state, header, toast, buttons to NativeWind
@@ -84,39 +84,44 @@
    - Converted empty state to NativeWind
    - Still has 31 StyleSheet styles remaining for insights sections
 
+11. **⚠️ OnboardingScreen** (880 → 893 lines, +1.5%)
+   - Migrated ProgressIndicator to NativeWind
+   - Converted bottom action buttons to Pressable + NativeWind
+   - Added Loader2 loading state with animate-spin
+   - Converted handle bar and close button
+   - Still has StyleSheet for modal, forms, and step content
+
+12. **⚠️ AdminSourcesScreen** (338 → 334 lines, -1%)
+   - Replaced ActivityIndicator with LoadingState and Loader2
+   - Converted error/access denied states to NativeWind
+   - Migrated header section with stats
+   - Added Plus icon from Lucide for Add button
+   - Still has StyleSheet for source cards
+
 ---
 
-## 🟡 Remaining (8/15)
+## 🟡 Remaining (5/15)
 
-### User Screens (2)
+### User Screens (1)
 - ⏳ **ArticleDetailScreen** (977 lines - LARGEST)
   - Full article view with reader
   - Comments, related articles
   - 43 hardcoded values to replace
 
-- ⏳ **OnboardingScreen** (880 lines)
-  - Carousel onboarding flow
-  - Country/category selection
-  - 34 hardcoded values + modal update
-
-### Admin Screens (5)
-- ⏳ **AdminDashboardScreen**
+### Admin Screens (4)
+- ⏳ **AdminDashboardScreen** (442 lines)
   - Admin overview with stats
   - Estimated 19 hardcoded values
 
-- ⏳ **AdminUsersScreen**
+- ⏳ **AdminUsersScreen** (703 lines)
   - User management table
   - Estimated 39 hardcoded values
 
-- ⏳ **AdminSourcesScreen**
-  - RSS source management
-  - Estimated 12 hardcoded values
-
-- ⏳ **AdminAnalyticsScreen**
+- ⏳ **AdminAnalyticsScreen** (444 lines)
   - Analytics charts
   - Estimated 13 hardcoded values
 
-- ⏳ **AdminSystemScreen**
+- ⏳ **AdminSystemScreen** (524 lines)
   - System settings
   - Estimated 12 hardcoded values
 
@@ -268,5 +273,6 @@ Each screen migration follows this pattern:
 
 ---
 
-**Migration Progress**: 40% complete (6/15 items + 2 partial)
-**Estimated Completion**: 7 screens remaining (2 user + 5 admin)
+**Migration Progress**: 67% of screens touched (6 complete + 4 partial)
+**Fully Complete**: 40% (6/15 screens)
+**Remaining**: 5 screens (1 user + 4 admin)
