@@ -2,22 +2,21 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   FlatList,
-  StyleSheet,
   RefreshControl,
-  TouchableOpacity,
+  Pressable,
+  Switch,
+  Text,
 } from 'react-native';
 import {
-  Text,
   Card,
-  Switch,
-  Button,
   useTheme,
-  ActivityIndicator,
 } from 'react-native-paper';
+import { Loader2, Plus } from 'lucide-react-native';
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
 import AdminScreenWrapper from '../../components/AdminScreenWrapper';
+import { Button, LoadingState } from '../../components/ui';
 
 /**
  * Admin Sources Screen
@@ -93,27 +92,23 @@ export default function AdminSourcesScreen({ navigation }) {
 
   if (!isAdmin) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.errorContainer}>
-          <Text variant="headlineSmall">Access Denied</Text>
-        </View>
+      <View className="flex-1 justify-center items-center bg-background">
+        <Text className="font-serif-bold text-headline-small text-on-surface">Access Denied</Text>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.errorContainer}>
-          <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
-          <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
-            onPress={loadSources}
-          >
-            <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg bg-background">
+        <Text className="font-serif-bold text-headline-small text-on-surface mb-sm">Something went wrong</Text>
+        <Text className="font-sans text-body-medium text-on-surface-variant mb-lg text-center">{error}</Text>
+        <Pressable
+          className="py-md px-lg rounded-button bg-tanzanite"
+          onPress={loadSources}
+        >
+          <Text className="font-sans-bold text-body-medium text-white">Try Again</Text>
+        </Pressable>
       </View>
     );
   }
@@ -185,29 +180,30 @@ export default function AdminSourcesScreen({ navigation }) {
       <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
         <AdminHeader navigation={navigation} currentScreen="AdminSources" />
         {/* Header */}
-        <View style={styles.header}>
+        <View className="flex-row items-center justify-between px-lg py-md">
           <View>
-            <Text variant="headlineSmall" style={styles.title}>News Sources</Text>
-          <Text style={{ color: theme.colors.onSurfaceVariant }}>
-            {enabledCount} active of {sources.length} sources
-          </Text>
+            <Text className="font-serif-bold text-headline-small text-on-surface mb-xs">News Sources</Text>
+            <Text className="font-sans text-body-medium text-on-surface-variant">
+              {enabledCount} active of {sources.length} sources
+            </Text>
+          </View>
+          <Button
+            onPress={handleAddZimbabweSources}
+            disabled={actionLoading === 'add'}
+            className="flex-row items-center gap-xs"
+          >
+            {actionLoading === 'add' ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              <Plus size={16} />
+            )}
+            <Text>Add ZW</Text>
+          </Button>
         </View>
-        <Button
-          mode="contained"
-          onPress={handleAddZimbabweSources}
-          loading={actionLoading === 'add'}
-          icon="plus"
-          compact
-        >
-          Add ZW
-        </Button>
-      </View>
 
       {/* Sources List */}
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
+        <LoadingState message="Loading sources..." />
       ) : (
         <FlatList
           data={sources}
