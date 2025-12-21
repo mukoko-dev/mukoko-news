@@ -23,8 +23,8 @@ import {
   KeyboardAvoidingView,
   Pressable,
   Text,
+  TextInput,
 } from 'react-native';
-import { TextInput } from 'react-native-paper';
 import { Check, Loader2 } from 'lucide-react-native';
 import { mukokoTheme } from '../theme';
 import { categories as categoriesAPI, countries as countriesAPI, user as userAPI } from '../api/client';
@@ -120,7 +120,9 @@ export default function OnboardingScreen({ navigation }) {
         setCategories(categoriesResult.data.categories);
       }
     } catch (err) {
-      console.error('Failed to load onboarding data:', err);
+      if (__DEV__) {
+        console.error('Failed to load onboarding data:', err);
+      }
     }
   };
 
@@ -440,34 +442,35 @@ export default function OnboardingScreen({ navigation }) {
             {step === 2 && (
               <View style={styles.stepContent}>
                 <View style={styles.usernameContainer}>
-                  <TextInput
-                    mode="outlined"
-                    label="Username"
-                    value={username}
-                    onChangeText={handleUsernameChange}
-                    autoCapitalize="none"
-                    style={styles.input}
-                    outlineColor="rgba(255, 255, 255, 0.3)"
-                    activeOutlineColor={mukokoTheme.colors.primary}
-                    textColor="#FFFFFF"
-                    theme={{
-                      colors: {
-                        onSurfaceVariant: 'rgba(255, 255, 255, 0.7)',
-                        background: 'transparent',
-                      },
-                    }}
-                    error={!!usernameError}
-                    accessibilityLabel="Username input"
-                    right={
-                      checkingUsername ? (
-                        <TextInput.Icon icon="loading" color="rgba(255, 255, 255, 0.7)" />
+                  <Text style={styles.inputLabel}>Username</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      value={username}
+                      onChangeText={handleUsernameChange}
+                      autoCapitalize="none"
+                      placeholder="Enter username"
+                      placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                      style={[
+                        styles.input,
+                        {
+                          color: '#FFFFFF',
+                          borderColor: usernameError
+                            ? mukokoTheme.colors.error
+                            : 'rgba(255, 255, 255, 0.3)',
+                        }
+                      ]}
+                      accessibilityLabel="Username input"
+                    />
+                    <View style={styles.inputIcon}>
+                      {checkingUsername ? (
+                        <Loader2 size={20} color="rgba(255, 255, 255, 0.7)" className="animate-spin" />
                       ) : (
                         username.length >= 3 && !usernameError && (
-                          <TextInput.Icon icon="check" color={mukokoTheme.colors.success} />
+                          <Check size={20} color={mukokoTheme.colors.success} />
                         )
-                      )
-                    }
-                  />
+                      )}
+                    </View>
+                  </View>
                   {usernameError ? (
                     <Text style={styles.helperTextError}>{usernameError}</Text>
                   ) : (
@@ -770,9 +773,30 @@ const styles = StyleSheet.create({
   usernameContainer: {
     marginTop: mukokoTheme.spacing.lg,
   },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: mukokoTheme.spacing.xs,
+  },
+  inputWrapper: {
+    position: 'relative',
+    marginBottom: mukokoTheme.spacing.xs,
+  },
   input: {
     backgroundColor: 'transparent',
-    marginBottom: mukokoTheme.spacing.xs,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: mukokoTheme.spacing.md,
+    fontSize: 16,
+    paddingRight: 40,
+  },
+  inputIcon: {
+    position: 'absolute',
+    right: mukokoTheme.spacing.md,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
   },
   helperText: {
     fontSize: 12,
