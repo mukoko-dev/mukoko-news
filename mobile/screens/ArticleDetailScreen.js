@@ -466,7 +466,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
         {loading && (
           <View className="flex-1 justify-center items-center py-xl gap-md">
             <Loader2 size={48} color={theme.colors.primary} className="animate-spin" />
-            <RNText className="font-sans-medium text-body-medium" style={{ color: theme.colors['on-surface']Variant }}>
+            <RNText className="font-sans-medium text-body-medium" style={{ color: theme.colors['on-surface-variant'] }}>
               Loading article...
             </RNText>
           </View>
@@ -478,12 +478,12 @@ export default function ArticleDetailScreen({ route, navigation }) {
             <View className="items-center gap-md px-xl py-lg rounded-card border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }}>
               <AlertCircle
                 size={64}
-                color={theme.colors['on-surface']Variant}
+                color={theme.colors['on-surface-variant']}
               />
               <RNText className="font-serif-bold text-headline-small text-center" style={{ color: theme.colors['on-surface'] }}>
                 Article Not Found
               </RNText>
-              <RNText className="font-sans text-body-medium text-center mb-md" style={{ color: theme.colors['on-surface']Variant }}>
+              <RNText className="font-sans text-body-medium text-center mb-md" style={{ color: theme.colors['on-surface-variant'] }}>
                 {error}
               </RNText>
               <Pressable
@@ -626,7 +626,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
             <View style={styles.articleBody}>
               {/* Description */}
               {article.description && (
-                <RNText style={[styles.articleDescription, { color: theme.colors['on-surface']Variant }]}>
+                <RNText style={[styles.articleDescription, { color: theme.colors['on-surface-variant'] }]}>
                   {article.description}
                 </RNText>
               )}
