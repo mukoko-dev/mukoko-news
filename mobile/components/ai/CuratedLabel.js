@@ -1,8 +1,7 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
+import { View, Text as RNText } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 import AISparkleIcon from './AISparkleIcon';
-import mukokoTheme from '../../theme';
 
 /**
  * CuratedLabel - Subtle AI indicator label
@@ -15,6 +14,8 @@ import mukokoTheme from '../../theme';
  * - "Curated for you" - Personalized content
  *
  * Design: Small, elegant label with optional sparkle icon
+ *
+ * Migration: NativeWind + ThemeContext only (NO React Native Paper, NO StyleSheet)
  */
 
 const LABEL_PRESETS = {
@@ -34,79 +35,47 @@ export default function CuratedLabel({
   size = 'medium',
   style,
 }) {
-  const theme = useTheme();
+  const { theme, isDark } = useTheme();
 
   const displayLabel = label || LABEL_PRESETS[variant] || LABEL_PRESETS.enhanced;
 
-  const sizeStyles = {
-    small: {
-      fontSize: 10,
-      iconSize: 10,
-      paddingVertical: 2,
-      paddingHorizontal: 6,
-    },
-    medium: {
-      fontSize: 11,
-      iconSize: 12,
-      paddingVertical: 4,
-      paddingHorizontal: 8,
-    },
-    large: {
-      fontSize: 12,
-      iconSize: 14,
-      paddingVertical: 6,
-      paddingHorizontal: 10,
-    },
+  const sizeConfig = {
+    small: { fontSize: 10, iconSize: 10, padding: 'px-[6px] py-[2px]' },
+    medium: { fontSize: 11, iconSize: 12, padding: 'px-sm py-xs' },
+    large: { fontSize: 12, iconSize: 14, padding: 'px-[10px] py-[6px]' },
   };
 
-  const currentSize = sizeStyles[size] || sizeStyles.medium;
+  const currentSize = sizeConfig[size] || sizeConfig.medium;
 
-  const containerStyle = {
-    backgroundColor: theme.dark
-      ? 'rgba(179, 136, 255, 0.12)'
-      : 'rgba(75, 0, 130, 0.08)',
-    paddingVertical: currentSize.paddingVertical,
-    paddingHorizontal: currentSize.paddingHorizontal,
-    borderRadius: mukokoTheme.roundness / 2,
-  };
-
-  const textStyle = {
-    fontSize: currentSize.fontSize,
-    color: theme.colors.primary,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  };
+  const backgroundColor = isDark
+    ? 'rgba(179, 136, 255, 0.12)'
+    : 'rgba(75, 0, 130, 0.08)';
 
   return (
-    <View style={[styles.container, containerStyle, style]}>
+    <View
+      className={`flex-row items-center self-start rounded-sm ${currentSize.padding}`}
+      style={[{ backgroundColor }, style]}
+    >
       {showIcon && iconPosition === 'left' && (
         <AISparkleIcon
           size={currentSize.iconSize}
-          style={styles.iconLeft}
+          style={{ marginRight: 4 }}
           animated={false}
         />
       )}
-      <Text style={textStyle}>{displayLabel}</Text>
+      <RNText
+        className="font-sans-medium"
+        style={{ fontSize: currentSize.fontSize, color: theme.colors.tanzanite }}
+      >
+        {displayLabel}
+      </RNText>
       {showIcon && iconPosition === 'right' && (
         <AISparkleIcon
           size={currentSize.iconSize}
-          style={styles.iconRight}
+          style={{ marginLeft: 4 }}
           animated={false}
         />
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-  },
-  iconLeft: {
-    marginRight: 4,
-  },
-  iconRight: {
-    marginLeft: 4,
-  },
-});

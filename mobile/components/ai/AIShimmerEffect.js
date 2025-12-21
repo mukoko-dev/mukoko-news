@@ -1,12 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
-import { useTheme } from 'react-native-paper';
+import { View, Animated } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 /**
  * AIShimmerEffect - Brief shimmer animation on load
  *
  * Design: 800ms gradient animation that runs once on mount
  * Use: Wrap content that's AI-enhanced, shimmer plays on first load
+ *
+ * Migration: NativeWind + ThemeContext only (NO React Native Paper, NO StyleSheet)
  */
 export default function AIShimmerEffect({
   children,
@@ -14,7 +16,7 @@ export default function AIShimmerEffect({
   duration = 800,
   enabled = true,
 }) {
-  const theme = useTheme();
+  const { isDark } = useTheme();
   const shimmerAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(1)).current;
 
@@ -41,41 +43,24 @@ export default function AIShimmerEffect({
     outputRange: [-100, 100],
   });
 
-  const shimmerColor = theme.dark
+  const shimmerColor = isDark
     ? 'rgba(179, 136, 255, 0.15)' // Tanzanite for dark mode
     : 'rgba(75, 0, 130, 0.08)';   // Tanzanite for light mode
 
   return (
-    <View style={[styles.container, style]}>
+    <View className="relative overflow-hidden" style={style}>
       {children}
       {enabled && (
         <Animated.View
-          style={[
-            styles.shimmer,
-            {
-              opacity: opacityAnim,
-              transform: [{ translateX }],
-              backgroundColor: shimmerColor,
-            }
-          ]}
+          className="absolute top-0 bottom-0 w-[80px] left-1/2 -ml-[40px]"
+          style={{
+            opacity: opacityAnim,
+            transform: [{ translateX }],
+            backgroundColor: shimmerColor,
+          }}
           pointerEvents="none"
         />
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  shimmer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    width: 80,
-    left: '50%',
-    marginLeft: -40,
-  },
-});
