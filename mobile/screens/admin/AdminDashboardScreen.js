@@ -5,17 +5,19 @@ import {
   StyleSheet,
   RefreshControl,
   Dimensions,
-  TouchableOpacity,
+  Pressable,
   Platform,
+  Text as RNText,
 } from 'react-native';
 import {
   Text,
   Card,
   Button,
   useTheme,
-  ActivityIndicator,
   Divider,
 } from 'react-native-paper';
+import { Loader2 } from 'lucide-react-native';
+import { LoadingState } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
@@ -93,39 +95,39 @@ export default function AdminDashboardScreen({ navigation }) {
 
   if (!isAdmin) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.errorContainer}>
-          <Text variant="headlineSmall">Access Denied</Text>
-          <Text style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}>
-            You don't have permission to access the admin panel.
-          </Text>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg" style={{ backgroundColor: theme.colors.background }}>
+        <RNText className="font-serif-bold text-headline-small mb-sm" style={{ color: theme.colors.onSurface }}>
+          Access Denied
+        </RNText>
+        <RNText className="font-sans text-body-medium text-center" style={{ color: theme.colors.onSurfaceVariant }}>
+          You don't have permission to access the admin panel.
+        </RNText>
       </View>
     );
   }
 
   if (loading) {
-    return (
-      <View style={[styles.container, styles.centered, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ marginTop: 16, color: theme.colors.onSurfaceVariant }}>
-          Loading dashboard...
-        </Text>
-      </View>
-    );
+    return <LoadingState message="Loading dashboard..." />;
   }
 
   if (error) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: theme.colors.background }]}>
-        <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
-        <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
-        <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+      <View className="flex-1 justify-center items-center px-lg" style={{ backgroundColor: theme.colors.background }}>
+        <RNText className="font-serif-bold text-headline-small mb-sm" style={{ color: theme.colors.onSurface }}>
+          Something went wrong
+        </RNText>
+        <RNText className="font-sans text-body-medium mb-lg text-center" style={{ color: theme.colors.onSurfaceVariant }}>
+          {error}
+        </RNText>
+        <Pressable
+          className="py-md px-xl rounded-button"
+          style={{ backgroundColor: theme.colors.primary }}
           onPress={loadData}
         >
-          <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
-        </TouchableOpacity>
+          <RNText className="font-sans-bold text-label-large" style={{ color: '#FFFFFF' }}>
+            Try Again
+          </RNText>
+        </Pressable>
       </View>
     );
   }
@@ -151,7 +153,7 @@ export default function AdminDashboardScreen({ navigation }) {
   );
 
   const QuickAction = ({ icon, title, subtitle, onPress, loading: isLoading }) => (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
       disabled={isLoading}
       style={[
@@ -164,9 +166,9 @@ export default function AdminDashboardScreen({ navigation }) {
       accessibilityHint={`Activates ${title.toLowerCase()}`}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color={theme.colors.primary} />
+        <Loader2 size={24} color={theme.colors.primary} className="animate-spin" />
       ) : (
-        <Text style={styles.quickActionIcon} accessibilityElementsHidden>{icon}</Text>
+        <RNText style={styles.quickActionIcon} accessibilityElementsHidden>{icon}</RNText>
       )}
       <View style={{ flex: 1 }}>
         <Text variant="titleSmall">{title}</Text>
@@ -174,21 +176,21 @@ export default function AdminDashboardScreen({ navigation }) {
           {subtitle}
         </Text>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 
   const NavItem = ({ icon, title, screen }) => (
-    <TouchableOpacity
+    <Pressable
       onPress={() => navigation.navigate(screen)}
       style={[styles.navItem, { borderColor: theme.colors.outline }]}
       accessibilityLabel={`${title} management`}
       accessibilityRole="button"
       accessibilityHint={`Navigate to ${title.toLowerCase()} screen`}
     >
-      <Text style={styles.navIcon} accessibilityElementsHidden>{icon}</Text>
+      <RNText style={styles.navIcon} accessibilityElementsHidden>{icon}</RNText>
       <Text variant="titleSmall">{title}</Text>
-      <Text style={{ color: theme.colors.onSurfaceVariant }} accessibilityElementsHidden>→</Text>
-    </TouchableOpacity>
+      <RNText style={{ color: theme.colors.onSurfaceVariant }} accessibilityElementsHidden>→</RNText>
+    </Pressable>
   );
 
   return (
@@ -333,19 +335,9 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   content: {
     padding: 16,
     paddingBottom: 100,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
   },
   header: {
     marginBottom: 24,
@@ -433,10 +425,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-  },
-  retryButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
   },
 });
