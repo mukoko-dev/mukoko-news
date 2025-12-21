@@ -8,13 +8,13 @@ import React, { useState, useCallback, memo } from 'react';
 import {
   View,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   Image,
   Dimensions,
   Platform,
 } from 'react-native';
 import { Text, Surface, useTheme as usePaperTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ImageIcon } from 'lucide-react-native';
 import mukokoTheme from '../theme';
 import SourceIcon from './SourceIcon';
 
@@ -63,8 +63,7 @@ const ArticleImage = memo(({ uri, style, onError }) => {
       {/* Show placeholder until image loads */}
       {!loaded && (
         <View style={[StyleSheet.absoluteFill, styles.imagePlaceholder]}>
-          <MaterialCommunityIcons
-            name="image-outline"
+          <ImageIcon
             size={32}
             color={mukokoTheme.colors.outline}
           />
@@ -162,8 +161,7 @@ function ArticleCard({
   // Render different variants
   if (variant === 'horizontal') {
     return (
-      <TouchableOpacity
-        activeOpacity={0.85}
+      <Pressable
         onPress={onPress}
         style={[styles.horizontalCard, cardWidth && { width: cardWidth }, style]}
         accessibilityLabel={`${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}`}
@@ -198,14 +196,13 @@ function ArticleCard({
             </View>
           </View>
         </Surface>
-      </TouchableOpacity>
+      </Pressable>
     );
   }
 
   if (variant === 'compact') {
     return (
-      <TouchableOpacity
-        activeOpacity={0.85}
+      <Pressable
         onPress={onPress}
         style={[styles.compactCard, style]}
         accessibilityLabel={`${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}`}
@@ -239,14 +236,13 @@ function ArticleCard({
             )}
           </View>
         </Surface>
-      </TouchableOpacity>
+      </Pressable>
     );
   }
 
   if (variant === 'featured') {
     return (
-      <TouchableOpacity
-        activeOpacity={0.85}
+      <Pressable
         onPress={onPress}
         style={[styles.featuredCard, cardWidth && { width: cardWidth }, style]}
         accessibilityLabel={`Featured article: ${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}`}
@@ -286,14 +282,13 @@ function ArticleCard({
             </View>
           </View>
         </Surface>
-      </TouchableOpacity>
+      </Pressable>
     );
   }
 
   // Default variant
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
+    <Pressable
       onPress={onPress}
       style={[styles.defaultCard, cardWidth && { width: cardWidth }, style]}
       accessibilityLabel={`${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}`}
@@ -338,7 +333,7 @@ function ArticleCard({
           )}
         </View>
       </Surface>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
