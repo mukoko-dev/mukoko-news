@@ -10,7 +10,6 @@ import {
   Pressable,
   Text as RNText,
 } from 'react-native';
-import { Text, Divider, useTheme as usePaperTheme } from 'react-native-paper';
 import {
   Heart,
   Bookmark,
@@ -27,7 +26,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import Markdown from 'react-native-markdown-display';
-import mukokoTheme, { paperTheme, paperThemeDark } from '../theme';
+import mukokoTheme from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI } from '../api/client';
 import { useTheme } from '../contexts/ThemeContext';
@@ -48,8 +47,7 @@ import ArticleEngagementBar from '../components/ArticleEngagementBar';
 export default function ArticleDetailScreen({ route, navigation }) {
   const { articleId, source, slug } = route.params || {};
   const { user, isAuthenticated } = useAuth();
-  const currentTheme = usePaperTheme();
-  const { isDark } = useTheme();
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [article, setArticle] = useState(null);
@@ -68,51 +66,51 @@ export default function ArticleDetailScreen({ route, navigation }) {
   // Dynamic styles based on theme
   const dynamicStyles = {
     container: {
-      backgroundColor: currentTheme.colors.background,
+      backgroundColor: theme.colors.background,
     },
     loadingText: {
-      color: currentTheme.colors.onSurfaceVariant,
+      color: theme.colors['on-surface-variant'],
     },
     errorCard: {
-      backgroundColor: currentTheme.colors.surface,
-      borderColor: currentTheme.colors.outline,
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.outline,
     },
     errorTitle: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
     },
     errorMessage: {
-      color: currentTheme.colors.onSurfaceVariant,
+      color: theme.colors['on-surface-variant'],
     },
     contentParagraph: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
     },
     actionsDivider: {
-      backgroundColor: currentTheme.colors.outline,
+      backgroundColor: theme.colors.outline,
     },
     actionButton: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
+      backgroundColor: theme.colors['surface-variant'],
     },
     actionText: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
     },
     readOriginalButton: {
-      backgroundColor: currentTheme.colors.primary,
+      backgroundColor: theme.colors.primary,
     },
     readOriginalText: {
-      color: currentTheme.colors.onPrimary,
+      color: theme.colors['on-primary'],
     },
   };
 
   // Markdown styles for article content
   const markdownStyles = useMemo(() => ({
     body: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       fontSize: 16,
       lineHeight: 26,
       fontFamily: mukokoTheme.fonts.regular.fontFamily,
     },
     heading1: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       fontSize: 24,
       fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
       marginTop: 24,
@@ -120,7 +118,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
       lineHeight: 32,
     },
     heading2: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       fontSize: 20,
       fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
       marginTop: 20,
@@ -128,7 +126,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
       lineHeight: 28,
     },
     heading3: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       fontSize: 18,
       fontFamily: mukokoTheme.fonts.bold.fontFamily,
       marginTop: 16,
@@ -146,12 +144,12 @@ export default function ArticleDetailScreen({ route, navigation }) {
       fontStyle: 'italic',
     },
     link: {
-      color: currentTheme.colors.primary,
+      color: theme.colors.primary,
       textDecorationLine: 'underline',
     },
     blockquote: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
-      borderLeftColor: currentTheme.colors.primary,
+      backgroundColor: theme.colors['surface-variant'],
+      borderLeftColor: theme.colors.primary,
       borderLeftWidth: 4,
       paddingLeft: 16,
       paddingVertical: 8,
@@ -159,8 +157,8 @@ export default function ArticleDetailScreen({ route, navigation }) {
       borderRadius: 4,
     },
     code_inline: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
-      color: currentTheme.colors.onSurface,
+      backgroundColor: theme.colors['surface-variant'],
+      color: theme.colors['on-surface'],
       fontFamily: 'monospace',
       fontSize: 14,
       paddingHorizontal: 6,
@@ -168,8 +166,8 @@ export default function ArticleDetailScreen({ route, navigation }) {
       borderRadius: 4,
     },
     code_block: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
-      color: currentTheme.colors.onSurface,
+      backgroundColor: theme.colors['surface-variant'],
+      color: theme.colors['on-surface'],
       fontFamily: 'monospace',
       fontSize: 14,
       padding: 12,
@@ -177,8 +175,8 @@ export default function ArticleDetailScreen({ route, navigation }) {
       marginVertical: 12,
     },
     fence: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
-      color: currentTheme.colors.onSurface,
+      backgroundColor: theme.colors['surface-variant'],
+      color: theme.colors['on-surface'],
       fontFamily: 'monospace',
       fontSize: 14,
       padding: 12,
@@ -195,15 +193,15 @@ export default function ArticleDetailScreen({ route, navigation }) {
       marginVertical: 4,
     },
     bullet_list_icon: {
-      color: currentTheme.colors.primary,
+      color: theme.colors.primary,
       marginRight: 8,
     },
     ordered_list_icon: {
-      color: currentTheme.colors.primary,
+      color: theme.colors.primary,
       marginRight: 8,
     },
     hr: {
-      backgroundColor: currentTheme.colors.outline,
+      backgroundColor: theme.colors.outline,
       height: 1,
       marginVertical: 16,
     },
@@ -213,26 +211,26 @@ export default function ArticleDetailScreen({ route, navigation }) {
       marginVertical: 12,
     },
     table: {
-      borderColor: currentTheme.colors.outline,
+      borderColor: theme.colors.outline,
       borderWidth: 1,
       borderRadius: 8,
       marginVertical: 12,
     },
     thead: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
+      backgroundColor: theme.colors['surface-variant'],
     },
     th: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       fontFamily: mukokoTheme.fonts.bold.fontFamily,
       padding: 8,
     },
     td: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       padding: 8,
-      borderTopColor: currentTheme.colors.outline,
+      borderTopColor: theme.colors.outline,
       borderTopWidth: 1,
     },
-  }), [currentTheme.colors]);
+  }), [theme.colors]);
 
   useEffect(() => {
     loadArticle();
@@ -281,7 +279,9 @@ export default function ArticleDetailScreen({ route, navigation }) {
         setError('Article not found');
       }
     } catch (err) {
-      console.error('[ArticleDetail] Load error:', err);
+      if (__DEV__) {
+        console.error('[ArticleDetail] Load error:', err);
+      }
       setError(err.message);
     } finally {
       setLoading(false);
@@ -358,7 +358,9 @@ export default function ArticleDetailScreen({ route, navigation }) {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setShareModalVisible(true);
     } catch (error) {
-      console.error('[ArticleDetail] Share error:', error);
+      if (__DEV__) {
+        console.error('[ArticleDetail] Share error:', error);
+      }
     }
   };
 
@@ -372,7 +374,9 @@ export default function ArticleDetailScreen({ route, navigation }) {
         await Linking.openURL(article.original_url);
       }
     } catch (error) {
-      console.error('[ArticleDetail] Open URL error:', error);
+      if (__DEV__) {
+        console.error('[ArticleDetail] Open URL error:', error);
+      }
     }
   };
 
@@ -461,8 +465,8 @@ export default function ArticleDetailScreen({ route, navigation }) {
         {/* Loading State */}
         {loading && (
           <View className="flex-1 justify-center items-center py-xl gap-md">
-            <Loader2 size={48} color={currentTheme.colors.primary} className="animate-spin" />
-            <RNText className="font-sans-medium text-body-medium" style={{ color: currentTheme.colors.onSurfaceVariant }}>
+            <Loader2 size={48} color={theme.colors.primary} className="animate-spin" />
+            <RNText className="font-sans-medium text-body-medium" style={{ color: theme.colors['on-surface']Variant }}>
               Loading article...
             </RNText>
           </View>
@@ -471,23 +475,23 @@ export default function ArticleDetailScreen({ route, navigation }) {
         {/* Error State */}
         {error && !loading && (
           <View className="flex-1 justify-center items-center py-xl">
-            <View className="items-center gap-md px-xl py-lg rounded-card border" style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.outline }}>
+            <View className="items-center gap-md px-xl py-lg rounded-card border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }}>
               <AlertCircle
                 size={64}
-                color={currentTheme.colors.onSurfaceVariant}
+                color={theme.colors['on-surface']Variant}
               />
-              <RNText className="font-serif-bold text-headline-small text-center" style={{ color: currentTheme.colors.onSurface }}>
+              <RNText className="font-serif-bold text-headline-small text-center" style={{ color: theme.colors['on-surface'] }}>
                 Article Not Found
               </RNText>
-              <RNText className="font-sans text-body-medium text-center mb-md" style={{ color: currentTheme.colors.onSurfaceVariant }}>
+              <RNText className="font-sans text-body-medium text-center mb-md" style={{ color: theme.colors['on-surface']Variant }}>
                 {error}
               </RNText>
               <Pressable
                 className="py-md px-xl rounded-button"
                 onPress={() => navigation.goBack()}
-                style={{ backgroundColor: currentTheme.colors.primary }}
+                style={{ backgroundColor: theme.colors.primary }}
               >
-                <RNText className="font-sans-bold text-label-large" style={{ color: currentTheme.colors.onPrimary }}>
+                <RNText className="font-sans-bold text-label-large" style={{ color: theme.colors['on-primary'] }}>
                   Go Back
                 </RNText>
               </Pressable>
@@ -504,7 +508,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 styles.heroSection,
                 {
                   paddingTop: insets.top + 16,
-                  backgroundColor: currentTheme.colors.primary,
+                  backgroundColor: theme.colors.primary,
                 }
               ]}
             >
@@ -514,14 +518,14 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 style={[
                   styles.heroBackButton,
                   {
-                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
+                    backgroundColor: `${theme.colors['on-primary']}33`,
                     top: insets.top + 16,
                   }
                 ]}
               >
                 <ChevronLeft
                   size={24}
-                  color={currentTheme.colors.onPrimary}
+                  color={theme.colors['on-primary']}
                 />
               </Pressable>
 
@@ -531,14 +535,14 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 style={[
                   styles.heroShareButton,
                   {
-                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
+                    backgroundColor: `${theme.colors['on-primary']}33`,
                     top: insets.top + 16,
                   }
                 ]}
               >
                 <Share2
                   size={22}
-                  color={currentTheme.colors.onPrimary}
+                  color={theme.colors['on-primary']}
                 />
               </Pressable>
 
@@ -546,48 +550,48 @@ export default function ArticleDetailScreen({ route, navigation }) {
               {article.category && (
                 <View style={styles.categoryContainer}>
                   <View style={[styles.categoryBadge, {
-                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
-                    borderColor: `${currentTheme.colors.onPrimary}4D`,
+                    backgroundColor: `${theme.colors['on-primary']}33`,
+                    borderColor: `${theme.colors['on-primary']}4D`,
                   }]}>
                     <Tag
                       size={14}
-                      color={currentTheme.colors.onPrimary}
+                      color={theme.colors['on-primary']}
                     />
-                    <Text style={[styles.categoryText, { color: currentTheme.colors.onPrimary }]}>
+                    <RNText style={[styles.categoryText, { color: theme.colors['on-primary'] }]}>
                       {article.category.toUpperCase()}
-                    </Text>
+                    </RNText>
                   </View>
                 </View>
               )}
 
               {/* Title */}
-              <Text style={[styles.heroTitle, { color: currentTheme.colors.onPrimary }]} accessibilityRole="header">
+              <RNText style={[styles.heroTitle, { color: theme.colors['on-primary'] }]} accessibilityRole="header">
                 {article.title}
-              </Text>
+              </RNText>
 
               {/* Author Profile */}
               {article.author && (
                 <View style={styles.authorContainer}>
-                  <View style={[styles.authorAvatar, { backgroundColor: `${currentTheme.colors.onPrimary}33` }]}>
+                  <View style={[styles.authorAvatar, { backgroundColor: `${theme.colors['on-primary']}33` }]}>
                     <User
                       size={20}
-                      color={currentTheme.colors.onPrimary}
+                      color={theme.colors['on-primary']}
                     />
                   </View>
-                  <Text style={[styles.authorName, { color: currentTheme.colors.onPrimary }]}>
+                  <RNText style={[styles.authorName, { color: theme.colors['on-primary'] }]}>
                     {article.author}
-                  </Text>
+                  </RNText>
                 </View>
               )}
 
               {/* Source and Date */}
               <View style={styles.heroMeta}>
-                <Text style={[styles.heroSource, { color: currentTheme.colors.onPrimary }]}>
+                <RNText style={[styles.heroSource, { color: theme.colors['on-primary'] }]}>
                   {article.source || 'Unknown Source'}
-                </Text>
-                <Text style={[styles.heroDate, { color: `${currentTheme.colors.onPrimary}B3` }]}>
+                </RNText>
+                <RNText style={[styles.heroDate, { color: `${theme.colors['on-primary']}B3` }]}>
                   {formatDate(article.published_at)}
-                </Text>
+                </RNText>
               </View>
 
               {/* Keywords/Tags */}
@@ -595,12 +599,12 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 <View style={styles.keywordsContainer}>
                   {getKeywords().map((keyword, index) => (
                     <View key={index} style={[styles.keywordTag, {
-                      backgroundColor: `${currentTheme.colors.onPrimary}33`,
-                      borderColor: `${currentTheme.colors.onPrimary}4D`,
+                      backgroundColor: `${theme.colors['on-primary']}33`,
+                      borderColor: `${theme.colors['on-primary']}4D`,
                     }]}>
-                      <Text style={[styles.keywordText, { color: `${currentTheme.colors.onPrimary}E6` }]}>
+                      <RNText style={[styles.keywordText, { color: `${theme.colors['on-primary']}E6` }]}>
                         {keyword}
-                      </Text>
+                      </RNText>
                     </View>
                   ))}
                 </View>
@@ -622,9 +626,9 @@ export default function ArticleDetailScreen({ route, navigation }) {
             <View style={styles.articleBody}>
               {/* Description */}
               {article.description && (
-                <Text style={[styles.articleDescription, { color: currentTheme.colors.onSurfaceVariant }]}>
+                <RNText style={[styles.articleDescription, { color: theme.colors['on-surface']Variant }]}>
                   {article.description}
-                </Text>
+                </RNText>
               )}
 
               {/* Full Content - Markdown Rendering */}
@@ -642,7 +646,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 </View>
               )}
 
-              <Divider style={[styles.actionsDivider, dynamicStyles.actionsDivider]} />
+              <View style={[styles.actionsDivider, dynamicStyles.actionsDivider]} />
 
               {/* Action Buttons - Glass Morphism Effect */}
               <View style={styles.actionsContainer}>
@@ -663,12 +667,12 @@ export default function ArticleDetailScreen({ route, navigation }) {
                   style={[styles.readOriginalButton, dynamicStyles.readOriginalButton]}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.readOriginalText, dynamicStyles.readOriginalText]}>
+                  <RNText style={[styles.readOriginalText, dynamicStyles.readOriginalText]}>
                     Read Original
-                  </Text>
+                  </RNText>
                   <ExternalLink
                     size={18}
-                    color={currentTheme.colors.onPrimary}
+                    color={theme.colors['on-primary']}
                   />
                 </TouchableOpacity>
               </View>
@@ -683,7 +687,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
           style={[
             styles.floatingHeader,
             {
-              backgroundColor: currentTheme.colors.primary,
+              backgroundColor: theme.colors.primary,
               transform: [{ translateY: headerTranslateY }],
               paddingTop: insets.top + mukokoTheme.spacing.sm,
             },
@@ -695,36 +699,36 @@ export default function ArticleDetailScreen({ route, navigation }) {
               onPress={handleBack}
               style={[
                 styles.floatingButton,
-                { backgroundColor: `${currentTheme.colors.onPrimary}33` },
+                { backgroundColor: `${theme.colors['on-primary']}33` },
               ]}
               activeOpacity={0.7}
             >
               <ChevronLeft
                 size={24}
-                color={currentTheme.colors.onPrimary}
+                color={theme.colors['on-primary']}
               />
             </TouchableOpacity>
 
             {/* Article Title (truncated) */}
-            <Text
-              style={[styles.floatingTitle, { color: currentTheme.colors.onPrimary }]}
+            <RNText
+              style={[styles.floatingTitle, { color: theme.colors['on-primary'] }]}
               numberOfLines={1}
             >
               {article.title}
-            </Text>
+            </RNText>
 
             {/* Share Button */}
             <TouchableOpacity
               onPress={handleShare}
               style={[
                 styles.floatingButton,
-                { backgroundColor: `${currentTheme.colors.onPrimary}33` },
+                { backgroundColor: `${theme.colors['on-primary']}33` },
               ]}
               activeOpacity={0.7}
             >
               <Share2
                 size={22}
-                color={currentTheme.colors.onPrimary}
+                color={theme.colors['on-primary']}
               />
             </TouchableOpacity>
           </View>
