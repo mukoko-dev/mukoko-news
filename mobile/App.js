@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './navigation/AppNavigator';
 import { AuthProvider } from './contexts/AuthContext';
@@ -65,12 +64,10 @@ function AppContent() {
   }, []);
 
   return (
-    <PaperProvider theme={theme}>
-      <AuthProvider>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <AppNavigator />
-      </AuthProvider>
-    </PaperProvider>
+    <AuthProvider>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <AppNavigator />
+    </AuthProvider>
   );
 }
 
