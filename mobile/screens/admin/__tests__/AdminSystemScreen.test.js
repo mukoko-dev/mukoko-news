@@ -32,8 +32,8 @@ jest.mock('../../../contexts/ThemeContext', () => ({
     },
   }),
 }));
-jest.mock('../AdminHeader', () => 'AdminHeader');
-jest.mock('../AdminScreenWrapper', () => ({ children }) => children);
+jest.mock('../../../components/AdminHeader', () => 'AdminHeader');
+jest.mock('../../../components/AdminScreenWrapper', () => ({ children }) => children);
 
 describe('AdminSystemScreen', () => {
   const mockNavigation = {};
