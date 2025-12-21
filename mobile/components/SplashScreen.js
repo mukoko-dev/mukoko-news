@@ -589,7 +589,7 @@ export default function SplashScreen({
                 countries={countries}
                 selectedCountries={selectedCountries}
                 onToggle={toggleCountry}
-                theme={paperTheme}
+                theme={theme}
               />
 
               <Text style={styles.selectionHint}>
@@ -613,7 +613,7 @@ export default function SplashScreen({
                 categories={categories}
                 selectedCategories={selectedCategories}
                 onToggle={toggleCategory}
-                theme={paperTheme}
+                theme={theme}
               />
 
               <Text style={styles.selectionHint}>

@@ -21,7 +21,7 @@ const RANK_COLORS = {
   3: '#CD7F32', // Bronze
 };
 
-function TrendingSearchItem({ item, rank, onPress, paperTheme }) {
+function TrendingSearchItem({ item, rank, onPress, theme }) {
   const isTopThree = rank <= 3;
 
   return (
@@ -128,7 +128,7 @@ function TrendingSearches({
             item={item}
             rank={index + 1}
             onPress={() => onSearchPress?.(item)}
-            paperTheme={paperTheme}
+            theme={theme}
           />
         ))}
       </View>

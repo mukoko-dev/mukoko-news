@@ -337,7 +337,7 @@ export default function ProfileSettingsScreen({ navigation }) {
         <View style={[styles.sectionCard, dynamicStyles.card]}>
           <SettingItem
             Icon={User}
-            iconColor={paperTheme.colors.primary}
+            iconColor={theme.colors.primary}
             label="Profile"
             onPress={() => setEditingProfile(!editingProfile)}
           />
