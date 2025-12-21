@@ -12,9 +12,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   Switch,
-  Text,
+  Text as RNText,
+  TextInput as RNTextInput,
+  StyleSheet,
 } from 'react-native';
-import { useTheme as usePaperTheme } from 'react-native-paper';
 import {
   User,
   Mail,
@@ -43,12 +44,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLayout } from '../components/layout';
 import { user as userAPI } from '../api/client';
-import { LoadingState, TextInput } from '../components/ui';
+import { LoadingState, FormField, TextInput } from '../components/ui';
 
 export default function ProfileSettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const paperTheme = usePaperTheme();
-  const { isDark, toggleTheme } = useTheme();
+  const { theme, isDark, toggleTheme } = useTheme();
   const { signOut } = useAuth();
   const layout = useLayout();
 
@@ -107,7 +107,9 @@ export default function ProfileSettingsScreen({ navigation }) {
       setDisplayName(data.name || data.displayName || data.display_name || '');
       setBio(data.bio || '');
     } catch (err) {
-      console.error('Error loading profile:', err);
+      if (__DEV__) {
+        console.error('Error loading profile:', err);
+      }
       // For errors, show guest profile
       setProfile({
         username: 'Guest',
@@ -194,17 +196,17 @@ export default function ProfileSettingsScreen({ navigation }) {
 
   // Dynamic styles
   const dynamicStyles = {
-    container: { backgroundColor: paperTheme.colors.background },
-    text: { color: paperTheme.colors.onSurface },
-    textMuted: { color: paperTheme.colors.onSurfaceVariant },
+    container: { backgroundColor: theme.colors.background },
+    text: { color: theme.colors['on-surface'] },
+    textMuted: { color: theme.colors['on-surface-variant'] },
     card: {
-      backgroundColor: paperTheme.colors.surface,
-      borderColor: paperTheme.colors.outline,
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.outline,
     },
-    divider: { backgroundColor: paperTheme.colors.outline },
+    divider: { backgroundColor: theme.colors.outline },
     input: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
-      color: paperTheme.colors.onSurface,
+      backgroundColor: theme.colors['surface-variant'],
+      color: theme.colors['on-surface'],
     },
   };
 
@@ -215,10 +217,10 @@ export default function ProfileSettingsScreen({ navigation }) {
   if (error) {
     return (
       <View className="flex-1 justify-center items-center gap-md px-xl bg-background">
-        <AlertCircle size={48} color={paperTheme.colors.error} />
-        <Text className="font-sans text-body-medium text-on-surface-variant text-center">
+        <AlertCircle size={48} color={theme.colors.error} />
+        <RNText className="font-sans text-body-medium text-on-surface-variant text-center">
           {error}
-        </Text>
+        </RNText>
         <Pressable
           className="flex-row items-center justify-center gap-sm py-sm px-lg rounded-button bg-tanzanite"
           onPress={loadProfile}
@@ -226,9 +228,9 @@ export default function ProfileSettingsScreen({ navigation }) {
           accessibilityLabel="Retry loading settings"
         >
           <RefreshCw size={16} color="#FFFFFF" />
-          <Text className="font-sans-medium text-body-medium text-white">
+          <RNText className="font-sans-medium text-body-medium text-white">
             Try Again
-          </Text>
+          </RNText>
         </Pressable>
       </View>
     );
@@ -250,18 +252,18 @@ export default function ProfileSettingsScreen({ navigation }) {
         <Icon size={20} color={iconColor} />
       </View>
       <View className="flex-1">
-        <Text className="font-sans-medium text-body-medium text-on-surface">{label}</Text>
+        <RNText className="font-sans-medium text-body-medium text-on-surface">{label}</RNText>
       </View>
       {value && (
-        <Text className="font-sans text-body-small text-on-surface-variant mr-sm">
+        <RNText className="font-sans text-body-small text-on-surface-variant mr-sm">
           {value}
-        </Text>
+        </RNText>
       )}
       {rightElement}
       {showChevron && onPress && (
         <ChevronRight
           size={22}
-          color={paperTheme.colors.onSurfaceVariant}
+          color={theme.colors['on-surface-variant']}
         />
       )}
     </Pressable>
@@ -286,17 +288,17 @@ export default function ProfileSettingsScreen({ navigation }) {
         >
           <X
             size={24}
-            color={paperTheme.colors.onSurface}
+            color={theme.colors['on-surface']}
           />
         </Pressable>
-        <Text className="font-serif-bold text-headline-small text-on-surface">Settings</Text>
+        <RNText className="font-serif-bold text-headline-small text-on-surface">Settings</RNText>
         <Pressable
           className="w-10 h-10 items-center justify-center"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Info
             size={24}
-            color={paperTheme.colors.onSurface}
+            color={theme.colors['on-surface']}
           />
         </Pressable>
       </View>
@@ -316,7 +318,7 @@ export default function ProfileSettingsScreen({ navigation }) {
           ) : (
             <AlertCircle size={18} color="#fff" />
           )}
-          <Text className="font-sans-medium text-body-small text-white flex-1">{message.text}</Text>
+          <RNText className="font-sans-medium text-body-small text-white flex-1">{message.text}</RNText>
         </View>
       )}
 
@@ -328,7 +330,7 @@ export default function ProfileSettingsScreen({ navigation }) {
       >
         {/* Email Display */}
         <View style={[styles.emailContainer, dynamicStyles.card]}>
-          <Text style={[styles.emailText, dynamicStyles.text]}>{email}</Text>
+          <RNText style={[styles.emailText, dynamicStyles.text]}>{email}</RNText>
         </View>
 
         {/* Profile Section */}
@@ -343,40 +345,39 @@ export default function ProfileSettingsScreen({ navigation }) {
           {/* Profile Edit Form */}
           {editingProfile && (
             <View style={styles.editForm}>
-              <TextInput
-                mode="flat"
-                label="Display Name"
-                value={displayName}
-                onChangeText={setDisplayName}
-                style={[styles.input, dynamicStyles.input]}
-                underlineColor="transparent"
-                activeUnderlineColor={paperTheme.colors.primary}
-              />
-              <TextInput
-                mode="flat"
-                label="Bio"
-                value={bio}
-                onChangeText={setBio}
-                multiline
-                numberOfLines={3}
-                maxLength={160}
-                style={[styles.input, styles.bioInput, dynamicStyles.input]}
-                underlineColor="transparent"
-                activeUnderlineColor={paperTheme.colors.primary}
-              />
-              <Text style={[styles.charCount, dynamicStyles.textMuted]}>
-                {bio.length}/160
-              </Text>
+              <FormField label="Display Name">
+                <RNTextInput
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  placeholder="Enter your display name"
+                  className="px-md py-sm rounded-button border border-outline bg-surface font-sans text-body-medium"
+                  style={{ color: theme.colors['on-surface'] }}
+                  placeholderTextColor={theme.colors['on-surface-variant']}
+                />
+              </FormField>
+              <FormField label="Bio" hint={`${bio.length}/160`}>
+                <RNTextInput
+                  value={bio}
+                  onChangeText={setBio}
+                  placeholder="Tell us about yourself"
+                  multiline
+                  numberOfLines={3}
+                  maxLength={160}
+                  className="px-md py-sm rounded-button border border-outline bg-surface font-sans text-body-medium min-h-[100px]"
+                  style={{ color: theme.colors['on-surface'], textAlignVertical: 'top' }}
+                  placeholderTextColor={theme.colors['on-surface-variant']}
+                />
+              </FormField>
               <Pressable
-                className="py-md rounded-lg items-center"
-                style={{ backgroundColor: paperTheme.colors.primary }}
+                className="py-md rounded-lg items-center mt-sm"
+                style={{ backgroundColor: theme.colors.primary }}
                 onPress={handleUpdateProfile}
                 disabled={saving}
               >
                 {saving ? (
                   <Loader2 size={16} color="#fff" className="animate-spin" />
                 ) : (
-                  <Text className="font-sans-bold text-body-medium text-white">Save Changes</Text>
+                  <RNText className="font-sans-bold text-body-medium text-white">Save Changes</RNText>
                 )}
               </Pressable>
             </View>
@@ -400,31 +401,34 @@ export default function ProfileSettingsScreen({ navigation }) {
                   size={18}
                   color={mukokoTheme.colors.warning}
                 />
-                <Text className="flex-1 font-sans text-body-small" style={{ color: mukokoTheme.colors.warning }}>
+                <RNText className="flex-1 font-sans text-body-small" style={{ color: mukokoTheme.colors.warning }}>
                   Changing username will update your profile URL
-                </Text>
+                </RNText>
               </View>
-              <TextInput
-                mode="flat"
-                label="New Username"
-                value={newUsername}
-                onChangeText={setNewUsername}
-                autoCapitalize="none"
-                style={[styles.input, dynamicStyles.input]}
-                underlineColor="transparent"
-                activeUnderlineColor={paperTheme.colors.primary}
-                left={<TextInput.Affix text="@" />}
-              />
+              <FormField label="New Username">
+                <View className="flex-row items-center px-md rounded-button border border-outline bg-surface">
+                  <RNText className="font-sans text-body-medium" style={{ color: theme.colors['on-surface-variant'] }}>@</RNText>
+                  <RNTextInput
+                    value={newUsername}
+                    onChangeText={setNewUsername}
+                    placeholder="username"
+                    autoCapitalize="none"
+                    className="flex-1 py-sm font-sans text-body-medium ml-xs"
+                    style={{ color: theme.colors['on-surface'] }}
+                    placeholderTextColor={theme.colors['on-surface-variant']}
+                  />
+                </View>
+              </FormField>
               <Pressable
-                className="py-md rounded-lg items-center"
-                style={{ backgroundColor: paperTheme.colors.primary }}
+                className="py-md rounded-lg items-center mt-sm"
+                style={{ backgroundColor: theme.colors.primary }}
                 onPress={handleUpdateUsername}
                 disabled={saving || !newUsername}
               >
                 {saving ? (
                   <Loader2 size={16} color="#fff" className="animate-spin" />
                 ) : (
-                  <Text className="font-sans-bold text-body-medium text-white">Update Username</Text>
+                  <RNText className="font-sans-bold text-body-medium text-white">Update Username</RNText>
                 )}
               </Pressable>
             </View>
@@ -482,13 +486,13 @@ export default function ProfileSettingsScreen({ navigation }) {
               <Vibrate size={20} color="#9C27B0" />
             </View>
             <View className="flex-1">
-              <Text className="font-sans-medium text-body-medium text-on-surface">Haptic feedback</Text>
+              <RNText className="font-sans-medium text-body-medium text-on-surface">Haptic feedback</RNText>
             </View>
             <Switch
               value={hapticFeedback}
               onValueChange={handleHapticToggle}
-              trackColor={{ true: paperTheme.colors.primary }}
-              thumbColor={hapticFeedback ? paperTheme.colors.primary : '#f4f3f4'}
+              trackColor={{ true: theme.colors.primary }}
+              thumbColor={hapticFeedback ? theme.colors.primary : '#f4f3f4'}
             />
           </View>
         </View>
@@ -505,16 +509,16 @@ export default function ProfileSettingsScreen({ navigation }) {
               <LogOut size={20} color={mukokoTheme.colors.error} />
             </View>
             <View className="flex-1">
-              <Text className="font-sans-medium text-body-medium" style={{ color: mukokoTheme.colors.error }}>Log out</Text>
+              <RNText className="font-sans-medium text-body-medium" style={{ color: mukokoTheme.colors.error }}>Log out</RNText>
             </View>
           </Pressable>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.versionText, dynamicStyles.textMuted]}>
+          <RNText style={[styles.versionText, dynamicStyles.textMuted]}>
             Version 1.0.0
-          </Text>
+          </RNText>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
