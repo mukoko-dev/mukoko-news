@@ -76,8 +76,12 @@ export function FormMessage({ error, className = '' }) {
 export function TextInput({
   value,
   onChangeText,
+  onBlur,
   placeholder,
   error,
+  setError,
+  validate,
+  required = false,
   leftIcon: LeftIcon,
   rightIcon: RightIcon,
   multiline = false,
@@ -86,6 +90,36 @@ export function TextInput({
 }) {
   const { theme } = useTheme();
   const hasError = Boolean(error);
+
+  const handleChangeText = (text) => {
+    // Clear error when user starts typing
+    if (hasError && setError) {
+      setError(null);
+    }
+
+    if (onChangeText) {
+      onChangeText(text);
+    }
+  };
+
+  const handleBlur = (e) => {
+    // Validate on blur if validation function provided
+    if (validate && setError) {
+      const validationError = validate(value);
+      if (validationError) {
+        setError(validationError);
+      }
+    }
+
+    // Check required field
+    if (required && !value && setError) {
+      setError('This field is required');
+    }
+
+    if (onBlur) {
+      onBlur(e);
+    }
+  };
 
   return (
     <View
@@ -107,7 +141,8 @@ export function TextInput({
         className={`flex-1 font-sans text-body-medium text-on-surface ${multiline ? 'text-top' : ''}`}
         placeholderTextColor={theme.colors['on-surface-variant']}
         value={value}
-        onChangeText={onChangeText}
+        onChangeText={handleChangeText}
+        onBlur={handleBlur}
         placeholder={placeholder}
         multiline={multiline}
         {...props}
@@ -128,6 +163,9 @@ export function Select({
   placeholder,
   options = [],
   error,
+  setError,
+  required = false,
+  validate,
   className = '',
 }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -136,10 +174,31 @@ export function Select({
   const displayText = selectedOption?.label || value || placeholder;
 
   const handleSelect = (optionValue) => {
+    // Clear error when user selects
+    if (error && setError) {
+      setError(null);
+    }
+
+    // Validate new value if validation function provided
+    if (validate && setError) {
+      const validationError = validate(optionValue);
+      if (validationError) {
+        setError(validationError);
+      }
+    }
+
     if (onValueChange) {
       onValueChange(optionValue);
     }
     setIsOpen(false);
+  };
+
+  const handleOpen = () => {
+    // Validate on open if required and empty
+    if (required && !value && setError) {
+      setError('Please select an option');
+    }
+    setIsOpen(true);
   };
 
   return (
@@ -151,7 +210,10 @@ export function Select({
           bg-surface
           ${className}
         `.trim().replace(/\s+/g, ' ')}
-        onPress={() => setIsOpen(true)}
+        onPress={handleOpen}
+        accessibilityRole="button"
+        accessibilityLabel={`Select ${placeholder || 'option'}`}
+        accessibilityHint={value ? `Currently selected: ${displayText}` : 'Tap to select an option'}
       >
         <Text className={`font-sans text-body-medium ${value ? 'text-on-surface' : 'text-on-surface-variant'}`}>
           {displayText}
@@ -164,18 +226,28 @@ export function Select({
         transparent
         animationType="fade"
         onRequestClose={() => setIsOpen(false)}
+        accessibilityViewIsModal
       >
         <Pressable
           className="flex-1 bg-black/50 justify-center items-center"
           onPress={() => setIsOpen(false)}
+          accessibilityRole="button"
+          accessibilityLabel="Close selection"
         >
-          <View className="bg-surface rounded-card max-h-[400px] w-[80%] max-w-[300px]" onStartShouldSetResponder={() => true}>
+          <View
+            className="bg-surface rounded-card max-h-[400px] w-[80%] max-w-[300px]"
+            onStartShouldSetResponder={() => true}
+            accessibilityRole="menu"
+          >
             <ScrollView className="max-h-[400px]">
               {options.map((option, index) => (
                 <Pressable
                   key={option.value || index}
                   className={`px-lg py-md border-b border-outline ${value === option.value ? 'bg-tanzanite-container' : ''}`}
                   onPress={() => handleSelect(option.value)}
+                  accessibilityRole="menuitem"
+                  accessibilityLabel={option.label}
+                  accessibilityState={{ selected: value === option.value }}
                 >
                   <Text className={`font-sans text-body-medium ${value === option.value ? 'text-tanzanite font-sans-medium' : 'text-on-surface'}`}>
                     {option.label}
@@ -195,6 +267,7 @@ export function Checkbox({
   onCheckedChange,
   label,
   error,
+  required = false,
   className = '',
 }) {
   const handlePress = () => {
@@ -204,7 +277,13 @@ export function Checkbox({
   };
 
   return (
-    <Pressable className={className} onPress={handlePress}>
+    <Pressable
+      className={className}
+      onPress={handlePress}
+      accessibilityRole="checkbox"
+      accessibilityState={{ checked }}
+      accessibilityLabel={label}
+    >
       <View className="flex-row items-center">
         <View
           className={`
@@ -220,6 +299,7 @@ export function Checkbox({
         {label && (
           <Text className="font-sans text-body-medium text-on-surface flex-1">
             {label}
+            {required && <Text className="text-error"> *</Text>}
           </Text>
         )}
       </View>

@@ -18,24 +18,41 @@ import SplashScreen from '../components/SplashScreen';
 import localPreferences from '../services/LocalPreferencesService';
 
 // Screens
-import NewsBytesScreen from '../screens/NewsBytesScreen';
+import NewsBytesScreenBase from '../screens/NewsBytesScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
-import ProfileSettingsScreen from '../screens/ProfileSettingsScreen';
+import ProfileSettingsScreenBase from '../screens/ProfileSettingsScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
-import ArticleDetailScreen from '../screens/ArticleDetailScreen';
-import SearchScreen from '../screens/SearchScreen';
+import ArticleDetailScreenBase from '../screens/ArticleDetailScreen';
+import SearchScreenBase from '../screens/SearchScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
-import HomeScreen from '../screens/HomeScreen';
+import HomeScreenBase from '../screens/HomeScreen';
 // Auth screens removed - authentication handled by OIDC (id.mukoko.com)
 
 // Admin Screens
 import {
-  AdminDashboardScreen,
-  AdminUsersScreen,
-  AdminSourcesScreen,
-  AdminAnalyticsScreen,
-  AdminSystemScreen,
+  AdminDashboardScreen as AdminDashboardScreenBase,
+  AdminUsersScreen as AdminUsersScreenBase,
+  AdminSourcesScreen as AdminSourcesScreenBase,
+  AdminAnalyticsScreen as AdminAnalyticsScreenBase,
+  AdminSystemScreen as AdminSystemScreenBase,
 } from '../screens/admin';
+
+// Error boundary HOC
+import withScreenErrorBoundary from '../components/withScreenErrorBoundary';
+
+// Wrap critical screens with error boundaries
+const NewsBytesScreen = withScreenErrorBoundary(NewsBytesScreenBase, 'News Bytes');
+const ArticleDetailScreen = withScreenErrorBoundary(ArticleDetailScreenBase, 'Article Detail');
+const SearchScreen = withScreenErrorBoundary(SearchScreenBase, 'Search');
+const HomeScreen = withScreenErrorBoundary(HomeScreenBase, 'Pulse Feed');
+const ProfileSettingsScreen = withScreenErrorBoundary(ProfileSettingsScreenBase, 'Profile Settings');
+
+// Wrap admin screens with error boundaries
+const AdminDashboardScreen = withScreenErrorBoundary(AdminDashboardScreenBase, 'Admin Dashboard');
+const AdminUsersScreen = withScreenErrorBoundary(AdminUsersScreenBase, 'Admin Users');
+const AdminSourcesScreen = withScreenErrorBoundary(AdminSourcesScreenBase, 'Admin Sources');
+const AdminAnalyticsScreen = withScreenErrorBoundary(AdminAnalyticsScreenBase, 'Admin Analytics');
+const AdminSystemScreen = withScreenErrorBoundary(AdminSystemScreenBase, 'Admin System');
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
