@@ -6,6 +6,7 @@
 
 import React, { useState } from 'react';
 import { View, Text, TextInput as RNTextInput, Pressable, Modal, ScrollView } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export function Form({ children, className = '' }) {
   return <View className={`gap-lg ${className}`}>{children}</View>;
@@ -83,6 +84,7 @@ export function TextInput({
   className = '',
   ...props
 }) {
+  const { theme } = useTheme();
   const hasError = Boolean(error);
 
   return (
@@ -97,13 +99,13 @@ export function TextInput({
     >
       {LeftIcon && (
         <View className="mr-sm">
-          <LeftIcon size={20} color={hasError ? '#B3261E' : '#4a4a4a'} />
+          <LeftIcon size={20} color={hasError ? theme.colors.error : theme.colors['on-surface-variant']} />
         </View>
       )}
 
       <RNTextInput
         className={`flex-1 font-sans text-body-medium text-on-surface ${multiline ? 'text-top' : ''}`}
-        placeholderTextColor="#4a4a4a"
+        placeholderTextColor={theme.colors['on-surface-variant']}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -113,7 +115,7 @@ export function TextInput({
 
       {RightIcon && (
         <View className="ml-sm">
-          <RightIcon size={20} color="#4a4a4a" />
+          <RightIcon size={20} color={theme.colors['on-surface-variant']} />
         </View>
       )}
     </View>
