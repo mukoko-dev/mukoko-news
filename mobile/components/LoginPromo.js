@@ -12,7 +12,8 @@ import {
   Linking,
   Platform,
 } from 'react-native';
-import { Text, useTheme as usePaperTheme } from 'react-native-paper';
+import { Text } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import mukokoTheme from '../theme';
@@ -43,10 +44,10 @@ export default function LoginPromo({
   articleLimit = 20,
   style,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   // Bold accent colors for prominence
-  const accentColor = paperTheme.colors.tertiary || '#D4634A';
+  const accentColor = theme.colors.tertiary || '#D4634A';
   const accentDark = '#B84D38';
 
   // Redirect to OIDC provider for authentication
@@ -165,7 +166,7 @@ export default function LoginPromo({
   // CARD variant - Large card with visual impact
   if (variant === 'card') {
     return (
-      <View style={[styles.cardContainer, { backgroundColor: paperTheme.colors.surface }, style]}>
+      <View style={[styles.cardContainer, { backgroundColor: theme.colors.surface }, style]}>
         {/* Accent header strip */}
         <View style={[styles.cardHeader, { backgroundColor: accentColor }]}>
           <MaterialCommunityIcons name="star-circle" size={28} color="#FFFFFF" />
@@ -183,11 +184,11 @@ export default function LoginPromo({
             </LinearGradient>
           </View>
 
-          <Text style={[styles.cardTitle, { color: paperTheme.colors.onSurface }]}>
+          <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
             Your Free News Pass
           </Text>
 
-          <Text style={[styles.cardDescription, { color: paperTheme.colors.onSurfaceVariant }]}>
+          <Text style={[styles.cardDescription, { color: theme.colors.onSurfaceVariant }]}>
             You're viewing {articleLimit} free articles. Create a free account for unlimited access to all stories.
           </Text>
 
@@ -201,7 +202,7 @@ export default function LoginPromo({
             ].map((benefit, index) => (
               <View key={index} style={styles.cardBenefitRow}>
                 <MaterialCommunityIcons name={benefit.icon} size={22} color={accentColor} />
-                <Text style={[styles.cardBenefitText, { color: paperTheme.colors.onSurface }]}>
+                <Text style={[styles.cardBenefitText, { color: theme.colors.onSurface }]}>
                   {benefit.text}
                 </Text>
               </View>
@@ -291,10 +292,10 @@ export default function LoginPromo({
       >
         <MaterialCommunityIcons name="account-plus" size={24} color={accentColor} />
         <View style={styles.minimalTextContainer}>
-          <Text style={[styles.minimalTitle, { color: paperTheme.colors.onSurface }]}>
+          <Text style={[styles.minimalTitle, { color: theme.colors.onSurface }]}>
             Create a free account
           </Text>
-          <Text style={[styles.minimalSubtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
+          <Text style={[styles.minimalSubtitle, { color: theme.colors.onSurfaceVariant }]}>
             Get unlimited articles
           </Text>
         </View>
