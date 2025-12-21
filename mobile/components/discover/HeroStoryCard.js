@@ -7,21 +7,21 @@
  * - Large serif title (22-24px)
  * - Source badge + time
  * - NO personalization labels (Discover = everything)
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 
 import React, { useState, useCallback, memo } from 'react';
 import {
   View,
-  StyleSheet,
-  TouchableOpacity,
+  Pressable,
   Image,
   Dimensions,
-  Platform,
+  Text as RNText,
 } from 'react-native';
-import { Text, useTheme as usePaperTheme } from 'react-native-paper';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import mukokoTheme from '../../theme';
+import { Image as ImageIcon, Newspaper } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 import SourceIcon from '../SourceIcon';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -55,7 +55,7 @@ function HeroStoryCard({
 }) {
   const [imageError, setImageError] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   const imageUrl = article?.imageUrl || article?.image_url;
   const hasImage = imageUrl && !imageError;
@@ -68,207 +68,102 @@ function HeroStoryCard({
     setImageLoaded(true);
   }, []);
 
-  const cardWidth = width || SCREEN_WIDTH - mukokoTheme.spacing.md * 2;
+  const cardWidth = width || SCREEN_WIDTH - 32; // 16px padding on each side
 
   if (!article) return null;
 
-  const dynamicStyles = {
-    card: {
-      backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-      borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
-    },
-    title: {
-      color: '#FFFFFF', // Always white on gradient
-    },
-    description: {
-      color: 'rgba(255, 255, 255, 0.85)',
-    },
-    meta: {
-      color: 'rgba(255, 255, 255, 0.75)',
-    },
-    sourceBadge: {
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
-    },
-    placeholder: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
-    },
-  };
-
   return (
-    <TouchableOpacity
-      activeOpacity={0.9}
+    <Pressable
       onPress={onPress}
-      style={[styles.card, { width: cardWidth }, style]}
+      className="rounded-card overflow-hidden shadow-md"
+      style={[{ width: cardWidth }, style]}
       accessibilityLabel={`${article.title}. ${article.source}. ${formatRelativeTime(article.pubDate || article.published_at)}`}
       accessibilityRole="button"
       accessibilityHint="Opens article for reading"
     >
       {/* Hero Image Container */}
-      <View style={[styles.imageContainer, dynamicStyles.card]}>
+      <View
+        className="w-full aspect-[16/10] relative rounded-card overflow-hidden"
+        style={{
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.outline,
+        }}
+      >
         {hasImage ? (
           <>
             {/* Placeholder while loading */}
             {!imageLoaded && (
-              <View style={[styles.imagePlaceholder, dynamicStyles.placeholder]}>
-                <MaterialCommunityIcons
-                  name="image-outline"
+              <View className="absolute inset-0 justify-center items-center" style={{ backgroundColor: theme.colors['surface-variant'] }}>
+                <ImageIcon
                   size={48}
-                  color={mukokoTheme.colors.outline}
+                  color={theme.colors.outline}
+                  strokeWidth={1.5}
                 />
               </View>
             )}
             <Image
               source={{ uri: imageUrl }}
-              style={[styles.image, { opacity: imageLoaded ? 1 : 0 }]}
+              className="absolute inset-0"
+              style={{ opacity: imageLoaded ? 1 : 0 }}
               resizeMode="cover"
               onLoad={handleImageLoad}
               onError={handleImageError}
             />
-            {/* Gradient Overlay - Bottom 50% */}
+            {/* Gradient Overlay - Bottom 60% */}
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.85)']}
-              style={styles.gradient}
+              className="absolute left-0 right-0 bottom-0 h-[60%]"
               start={{ x: 0, y: 0 }}
               end={{ x: 0, y: 1 }}
             />
           </>
         ) : (
-          <View style={[styles.noImagePlaceholder, dynamicStyles.placeholder]}>
-            <MaterialCommunityIcons
-              name="newspaper-variant-outline"
+          <View className="absolute inset-0 justify-center items-center" style={{ backgroundColor: theme.colors['surface-variant'] }}>
+            <Newspaper
               size={64}
-              color={mukokoTheme.colors.outline}
+              color={theme.colors.outline}
+              strokeWidth={1.5}
             />
           </View>
         )}
 
         {/* Content Overlay */}
-        <View style={styles.contentOverlay}>
+        <View className="absolute left-0 right-0 bottom-0 p-lg gap-sm">
           {/* Category Badge */}
           {article.category && (
-            <View style={[styles.categoryBadge, { backgroundColor: paperTheme.colors.primary }]}>
-              <Text style={styles.categoryText}>{article.category}</Text>
+            <View className="self-start px-sm py-xs rounded-sm" style={{ backgroundColor: theme.colors.tanzanite }}>
+              <RNText className="text-white text-[10px] font-sans-bold uppercase tracking-widest">{article.category}</RNText>
             </View>
           )}
 
           {/* Title */}
-          <Text style={[styles.title, dynamicStyles.title]} numberOfLines={3}>
+          <RNText className="font-serif-bold text-[22px] leading-[28px] tracking-tight text-white" numberOfLines={3}>
             {article.title}
-          </Text>
+          </RNText>
 
           {/* Description */}
           {article.description && hasImage && (
-            <Text style={[styles.description, dynamicStyles.description]} numberOfLines={2}>
+            <RNText className="font-sans text-[14px] leading-[20px] text-white/85" numberOfLines={2}>
               {article.description}
-            </Text>
+            </RNText>
           )}
 
           {/* Source and Time Row */}
-          <View style={styles.metaRow}>
-            <View style={[styles.sourceBadge, dynamicStyles.sourceBadge]}>
+          <View className="flex-row items-center justify-between mt-xs">
+            <View className="flex-row items-center px-sm py-xs rounded-sm gap-[6px] bg-black/40">
               <SourceIcon source={article.source} size={14} showBorder={false} />
-              <Text style={styles.sourceText}>{article.source}</Text>
+              <RNText className="text-white text-[12px] font-sans-medium">{article.source}</RNText>
             </View>
-            <Text style={[styles.timeText, dynamicStyles.meta]}>
+            <RNText className="text-white/75 text-[12px] font-sans">
               {formatRelativeTime(article.pubDate || article.published_at)}
-            </Text>
+            </RNText>
           </View>
         </View>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
 export default memo(HeroStoryCard, (prevProps, nextProps) => {
   return prevProps.article?.id === nextProps.article?.id && prevProps.width === nextProps.width;
-});
-
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: mukokoTheme.roundness,
-    overflow: 'hidden',
-    ...mukokoTheme.shadows.medium,
-  },
-  imageContainer: {
-    width: '100%',
-    aspectRatio: 16 / 10,
-    position: 'relative',
-    borderRadius: mukokoTheme.roundness,
-    overflow: 'hidden',
-  },
-  image: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  imagePlaceholder: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  noImagePlaceholder: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  gradient: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: '60%',
-  },
-  contentOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    padding: mukokoTheme.spacing.lg,
-    gap: mukokoTheme.spacing.sm,
-  },
-  categoryBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: mukokoTheme.spacing.sm,
-    paddingVertical: mukokoTheme.spacing.xs,
-    borderRadius: mukokoTheme.roundness / 2,
-  },
-  categoryText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  title: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 22,
-    lineHeight: 28,
-    letterSpacing: -0.3,
-  },
-  description: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: mukokoTheme.spacing.xs,
-  },
-  sourceBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: mukokoTheme.spacing.sm,
-    paddingVertical: mukokoTheme.spacing.xs,
-    borderRadius: mukokoTheme.roundness / 2,
-    gap: 6,
-  },
-  sourceText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-  timeText: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
 });
