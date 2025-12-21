@@ -22,19 +22,15 @@ import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
   View,
   ScrollView,
-  TouchableOpacity,
   Image,
   Platform,
   RefreshControl,
   Dimensions,
   Pressable,
-  Text,
+  Text as RNText,
+  ActivityIndicator,
+  StyleSheet,
 } from 'react-native';
-import {
-  Chip,
-  Surface,
-  useTheme as usePaperTheme,
-} from 'react-native-paper';
 import { Loader2, AlertCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
@@ -43,6 +39,7 @@ import { useLayout } from '../components/layout';
 import CategoryChips from '../components/CategoryChips';
 import { CuratedLabel, AISparkleIcon, AIShimmerEffect } from '../components/ai';
 import { EnhancedSearchBar, TrendingSearches, AuthorResultCard } from '../components/search';
+import { FilterChip } from '../components/ui';
 import {
   search as searchAPI,
   categories as categoriesAPI,
@@ -54,7 +51,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 /**
  * Memoized Search Result Card
  */
-const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
+const SearchResultCard = memo(({ article, onPress, theme }) => {
   const [imageError, setImageError] = useState(false);
 
   const formatDate = (dateString) => {
@@ -80,13 +77,12 @@ const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
       onPress={() => onPress(article)}
       className="mb-md"
     >
-      <Surface
+      <View
         className="rounded-card border overflow-hidden"
         style={{
-          backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-          borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.outline,
         }}
-        elevation={1}
       >
         <View className="flex-row p-md gap-md">
           {hasImage && (
@@ -100,18 +96,18 @@ const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
             </View>
           )}
           <View className={`flex-1 ${!hasImage ? 'pr-0' : ''}`}>
-            <Text className="font-sans-bold text-label-large mb-xs" style={{ color: paperTheme.colors.primary }}>
+            <RNText className="font-sans-bold text-label-large mb-xs" style={{ color: theme.colors.primary }}>
               {article.source || 'News'}
-            </Text>
-            <Text className="font-serif-bold text-body-large leading-5 mb-xs" style={{ color: paperTheme.colors.onSurface }} numberOfLines={2}>
+            </RNText>
+            <RNText className="font-serif-bold text-body-large leading-5 mb-xs" style={{ color: theme.colors['on-surface'] }} numberOfLines={2}>
               {article.title}
-            </Text>
-            <Text className="font-sans text-label-small" style={{ color: paperTheme.colors.onSurfaceVariant }}>
+            </RNText>
+            <RNText className="font-sans text-label-small" style={{ color: theme.colors['on-surface-variant'] }}>
               {formatDate(article.published_at)}
-            </Text>
+            </RNText>
           </View>
         </View>
-      </Surface>
+      </View>
     </Pressable>
   );
 }, (prevProps, nextProps) => prevProps.article.id === nextProps.article.id);
@@ -120,8 +116,7 @@ const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
  * SearchScreen - Search + Insights combined
  */
 export default function SearchScreen({ navigation, route }) {
-  const { isDark } = useTheme();
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
   const layout = useLayout();
 
   // On tablet/desktop, no bottom tab bar, so reduce padding
@@ -194,7 +189,9 @@ export default function SearchScreen({ navigation, route }) {
         setAuthors(results[3].value.data.trending_authors);
       }
     } catch (err) {
-      console.error('[Search] Load insights error:', err);
+      if (__DEV__) {
+        console.error('[Search] Load insights error:', err);
+      }
     } finally {
       setInsightsLoading(false);
     }
@@ -230,7 +227,9 @@ export default function SearchScreen({ navigation, route }) {
         setTotal(result.data.total || 0);
       }
     } catch (err) {
-      console.error('[Search] Search error:', err);
+      if (__DEV__) {
+        console.error('[Search] Search error:', err);
+      }
       setError('Search failed. Please try again.');
       setResults([]);
       setTotal(0);
@@ -313,14 +312,14 @@ export default function SearchScreen({ navigation, route }) {
 
   // Colors
   const colors = {
-    bg: paperTheme.colors.background,
-    surface: paperTheme.colors.surface,
-    text: paperTheme.colors.onSurface,
-    textMuted: paperTheme.colors.onSurfaceVariant,
-    primary: paperTheme.colors.primary,
-    border: paperTheme.colors.outline,
-    card: paperTheme.colors.glassCard || paperTheme.colors.surface,
-    cardBorder: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+    bg: theme.colors.background,
+    surface: theme.colors.surface,
+    text: theme.colors['on-surface'],
+    textMuted: theme.colors['on-surface-variant'],
+    primary: theme.colors.primary,
+    border: theme.colors.outline,
+    card: theme.colors.surface,
+    cardBorder: theme.colors.outline,
   };
 
   const isSearchMode = activeQuery.length > 0;
@@ -357,22 +356,22 @@ export default function SearchScreen({ navigation, route }) {
           <View style={[styles.resultsInfo, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <View style={styles.resultsRow}>
               <AISparkleIcon size={14} animated={false} />
-              <Text style={[styles.resultsInfoText, { color: colors.textMuted }]}>
+              <RNText style={[styles.resultsInfoText, { color: colors.textMuted }]}>
                 AI found {total} result{total !== 1 ? 's' : ''}
-              </Text>
+              </RNText>
             </View>
-            <Text style={[styles.resultsSubtext, { color: colors.textMuted }]}>
+            <RNText style={[styles.resultsSubtext, { color: colors.textMuted }]}>
               Most relevant first
-            </Text>
+            </RNText>
           </View>
         </AIShimmerEffect>
       )}
 
       {/* Error State */}
       {error && (
-        <View style={[styles.errorBanner, { backgroundColor: paperTheme.colors.errorContainer }]}>
-          <Icon source="alert-circle" size={16} color={paperTheme.colors.error} />
-          <Text style={{ color: paperTheme.colors.error, flex: 1 }}>{error}</Text>
+        <View style={[styles.errorBanner, { backgroundColor: theme.colors['error-container'] }]}>
+          <AlertCircle size={16} color={theme.colors.error} />
+          <RNText style={{ color: theme.colors.error, flex: 1 }}>{error}</RNText>
         </View>
       )}
 
@@ -380,9 +379,9 @@ export default function SearchScreen({ navigation, route }) {
       {loading && (
         <View className="flex-1 justify-center items-center gap-md py-xl">
           <Loader2 size={48} color={colors.primary} className="animate-spin" />
-          <Text className="font-sans-medium text-body-medium" style={{ color: colors.textMuted }}>
+          <RNText className="font-sans-medium text-body-medium" style={{ color: colors.textMuted }}>
             Searching with AI...
-          </Text>
+          </RNText>
         </View>
       )}
 
@@ -398,7 +397,7 @@ export default function SearchScreen({ navigation, route }) {
               key={article.id}
               article={article}
               onPress={handleArticlePress}
-              paperTheme={paperTheme}
+              theme={theme}
             />
           ))}
           <View style={{ height: bottomPadding }} />
@@ -408,21 +407,21 @@ export default function SearchScreen({ navigation, route }) {
       {/* No Results - Search mode */}
       {isSearchMode && !loading && results.length === 0 && !error && (
         <View className="flex-1 justify-center items-center px-xl gap-md">
-          <Text className="text-[64px] opacity-50">📭</Text>
-          <Text className="font-serif-bold text-headline-medium text-center" style={{ color: colors.text }}>
+          <RNText className="text-[64px] opacity-50">📭</RNText>
+          <RNText className="font-serif-bold text-headline-medium text-center" style={{ color: colors.text }}>
             No results found
-          </Text>
-          <Text className="font-sans text-body-medium text-center" style={{ color: colors.textMuted }}>
+          </RNText>
+          <RNText className="font-sans text-body-medium text-center" style={{ color: colors.textMuted }}>
             Try a different search term or category
-          </Text>
+          </RNText>
           <Pressable
             className="py-sm px-lg rounded-button border"
             style={{ borderColor: colors.primary }}
             onPress={handleClearSearch}
           >
-            <Text className="font-sans-medium text-label-large" style={{ color: colors.primary }}>
+            <RNText className="font-sans-medium text-label-large" style={{ color: colors.primary }}>
               Clear search
-            </Text>
+            </RNText>
           </Pressable>
         </View>
       )}
@@ -452,24 +451,22 @@ export default function SearchScreen({ navigation, route }) {
                 <View style={styles.suggestionsSection}>
                   <View style={styles.sectionHeader}>
                     <AISparkleIcon size={14} />
-                    <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                    <RNText style={[styles.sectionLabel, { color: colors.text }]}>
                       AI-POWERED SUGGESTIONS
-                    </Text>
+                    </RNText>
                   </View>
-                  <Text style={[styles.suggestionsSubtext, { color: colors.textMuted }]}>
+                  <RNText style={[styles.suggestionsSubtext, { color: colors.textMuted }]}>
                     Based on trending topics
-                  </Text>
+                  </RNText>
                   <View style={styles.suggestionsRow}>
                     {suggestions.map((suggestion, i) => (
-                      <Chip
+                      <FilterChip
                         key={i}
-                        mode="outlined"
+                        selected={false}
                         onPress={() => handleSuggestionPress(suggestion)}
-                        style={[styles.suggestionChip, { borderColor: colors.primary }]}
-                        textStyle={[styles.suggestionText, { color: colors.primary }]}
                       >
                         {suggestion}
-                      </Chip>
+                      </FilterChip>
                     ))}
                   </View>
                 </View>
@@ -490,9 +487,9 @@ export default function SearchScreen({ navigation, route }) {
               {authors.length > 0 && (
                 <View style={styles.authorsSection}>
                   <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                    <RNText style={[styles.sectionLabel, { color: colors.text }]}>
                       TOP AUTHORS
-                    </Text>
+                    </RNText>
                     <CuratedLabel variant="popular" size="small" showIcon={false} />
                   </View>
                   <View
@@ -520,9 +517,9 @@ export default function SearchScreen({ navigation, route }) {
               {/* Platform Stats */}
               {stats && (
                 <View style={styles.statsSection}>
-                  <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                  <RNText style={[styles.sectionLabel, { color: colors.text }]}>
                     PLATFORM STATS
-                  </Text>
+                  </RNText>
                   <View
                     style={[
                       styles.statsCard,
@@ -534,27 +531,27 @@ export default function SearchScreen({ navigation, route }) {
                   >
                     <View style={styles.statsRow}>
                       <View style={styles.stat}>
-                        <Text style={[styles.statEmoji]}>📰</Text>
-                        <Text style={[styles.statValue, { color: colors.primary }]}>
+                        <RNText style={[styles.statEmoji]}>📰</RNText>
+                        <RNText style={[styles.statValue, { color: colors.primary }]}>
                           {(stats.total_articles || 0).toLocaleString()}
-                        </Text>
-                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>Articles</Text>
+                        </RNText>
+                        <RNText style={[styles.statLabel, { color: colors.textMuted }]}>Articles</RNText>
                       </View>
                       <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                       <View style={styles.stat}>
-                        <Text style={[styles.statEmoji]}>📡</Text>
-                        <Text style={[styles.statValue, { color: colors.primary }]}>
+                        <RNText style={[styles.statEmoji]}>📡</RNText>
+                        <RNText style={[styles.statValue, { color: colors.primary }]}>
                           {stats.active_sources || 0}
-                        </Text>
-                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sources</Text>
+                        </RNText>
+                        <RNText style={[styles.statLabel, { color: colors.textMuted }]}>Sources</RNText>
                       </View>
                       <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                       <View style={styles.stat}>
-                        <Text style={[styles.statEmoji]}>🗂️</Text>
-                        <Text style={[styles.statValue, { color: colors.primary }]}>
+                        <RNText style={[styles.statEmoji]}>🗂️</RNText>
+                        <RNText style={[styles.statValue, { color: colors.primary }]}>
                           {stats.categories || 0}
-                        </Text>
-                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>Topics</Text>
+                        </RNText>
+                        <RNText style={[styles.statLabel, { color: colors.textMuted }]}>Topics</RNText>
                       </View>
                     </View>
                   </View>
@@ -564,11 +561,11 @@ export default function SearchScreen({ navigation, route }) {
               {/* No Data */}
               {!stats && trending.length === 0 && authors.length === 0 && (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyEmoji}>🔍</Text>
-                  <Text style={[styles.emptyTitle, { color: colors.text }]}>Search African News</Text>
-                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+                  <RNText style={styles.emptyEmoji}>🔍</RNText>
+                  <RNText style={[styles.emptyTitle, { color: colors.text }]}>Search African News</RNText>
+                  <RNText style={[styles.emptySubtitle, { color: colors.textMuted }]}>
                     Find articles from trusted sources across Africa
-                  </Text>
+                  </RNText>
                 </View>
               )}
             </>
