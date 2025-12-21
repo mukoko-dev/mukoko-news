@@ -15,7 +15,6 @@ import {
   Pressable,
   Text,
 } from 'react-native';
-import { useTheme as usePaperTheme } from 'react-native-paper';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
@@ -30,13 +29,14 @@ import {
 import * as Haptics from 'expo-haptics';
 import { newsBytes, articles as articlesAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useLayout, CONTENT_WIDTHS } from '../components/layout';
 import mukokoTheme from '../theme';
 import SourceIcon from '../components/SourceIcon';
 
 export default function NewsBytesScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
   const { user, isAuthenticated } = useAuth();
   const layout = useLayout();
   const [loading, setLoading] = useState(true);
@@ -74,11 +74,11 @@ export default function NewsBytesScreen({ navigation }) {
     whiteTranslucent: 'rgba(255, 255, 255, 0.8)',
     whiteFaded: 'rgba(255, 255, 255, 0.6)',
     // Use theme accent color for highlights
-    accent: paperTheme.colors.tertiary || paperTheme.colors.accent || '#d4634a',
+    accent: theme.colors.tertiary || theme.colors.cobalt || '#d4634a',
     // Like color from theme
-    liked: paperTheme.colors.error || '#EF4444',
+    liked: theme.colors.error || '#EF4444',
     // Saved color from theme
-    saved: paperTheme.colors.tertiary || '#d4634a',
+    saved: theme.colors.tertiary || '#d4634a',
     // Glass effects
     glassBackground: 'rgba(0, 0, 0, 0.3)',
     glassBorder: 'rgba(255, 255, 255, 0.15)',
@@ -140,7 +140,9 @@ export default function NewsBytesScreen({ navigation }) {
         setBytes(transformedBytes);
       }
     } catch (err) {
-      console.error('[NewsBytes] Load error:', err);
+      if (__DEV__) {
+        console.error('[NewsBytes] Load error:', err);
+      }
       setError('Failed to load NewsBytes. Please try again.');
     } finally {
       setLoading(false);
@@ -184,7 +186,9 @@ export default function NewsBytesScreen({ navigation }) {
         }));
       }
     } catch (error) {
-      console.error('[NewsBytes] Like error:', error);
+      if (__DEV__) {
+        console.error('[NewsBytes] Like error:', error);
+      }
       // Revert to original values on error
       setBytesState(prev => ({
         ...prev,
@@ -231,7 +235,9 @@ export default function NewsBytesScreen({ navigation }) {
         }));
       }
     } catch (error) {
-      console.error('[NewsBytes] Save error:', error);
+      if (__DEV__) {
+        console.error('[NewsBytes] Save error:', error);
+      }
       // Revert to original value on error
       setBytesState(prev => ({
         ...prev,
@@ -252,7 +258,9 @@ export default function NewsBytesScreen({ navigation }) {
         title: byte.title,
       });
     } catch (error) {
-      console.error('[NewsBytes] Share error:', error);
+      if (__DEV__) {
+        console.error('[NewsBytes] Share error:', error);
+      }
     }
   };
 
