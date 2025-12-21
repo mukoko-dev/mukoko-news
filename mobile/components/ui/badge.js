@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
 
 const badgeVariants = {
   default: 'bg-tanzanite',
@@ -78,5 +78,45 @@ export function CountBadge({ count, className = '', ...props }) {
     <Badge variant="error" size="sm" className={`min-w-[18px] ${className}`} {...props}>
       {displayCount}
     </Badge>
+  );
+}
+
+/**
+ * FilterChip - Pressable chip for filters with selected state
+ * Used in admin screens for role/status filtering
+ */
+export function FilterChip({
+  selected = false,
+  onPress,
+  icon: Icon,
+  className = '',
+  children,
+  ...props
+}) {
+  const chipClasses = `
+    flex-row items-center gap-xs px-md py-sm rounded-full border min-h-touch-compact
+    ${selected
+      ? 'bg-tanzanite border-tanzanite'
+      : 'bg-surface border-outline'
+    }
+    ${className}
+  `.trim().replace(/\s+/g, ' ');
+
+  const textClasses = `
+    font-sans-medium text-label-large
+    ${selected ? 'text-on-primary' : 'text-on-surface'}
+  `.trim().replace(/\s+/g, ' ');
+
+  return (
+    <Pressable
+      onPress={onPress}
+      className={chipClasses}
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
+      {...props}
+    >
+      {Icon && <Icon size={14} color={selected ? '#FFFFFF' : '#4a4a4a'} />}
+      <Text className={textClasses}>{children}</Text>
+    </Pressable>
   );
 }

@@ -23,7 +23,7 @@ export { EmptyState } from './empty';
 export { Input, SearchBar } from './input';
 
 // Badges
-export { Badge, CountBadge } from './badge';
+export { Badge, CountBadge, FilterChip } from './badge';
 
 // Avatar
 export { Avatar, AvatarGroup } from './avatar';
