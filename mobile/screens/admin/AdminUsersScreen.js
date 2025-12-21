@@ -12,9 +12,10 @@ import {
   RefreshControl,
   Alert,
   Platform,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   Image,
+  Text as RNText,
 } from 'react-native';
 import {
   Text,
@@ -22,9 +23,14 @@ import {
   Chip,
   Menu,
   useTheme as usePaperTheme,
-  ActivityIndicator,
 } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  ShieldAlert, AlertCircle, RefreshCw, ShieldCheck, Headphones,
+  Pencil, User, CheckCircle2, PauseCircle, XCircle, HelpCircle,
+  Settings, Trash2, Users, Search, UserSearch, ChevronLeft, ChevronRight,
+  Loader2,
+} from 'lucide-react-native';
+import { LoadingState } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
@@ -146,20 +152,20 @@ export default function AdminUsersScreen({ navigation }) {
 
   const getRoleConfig = (role) => {
     switch (role) {
-      case 'admin': return { color: '#EF4444', icon: 'shield-crown' };
-      case 'moderator': return { color: '#8B5CF6', icon: 'shield-check' };
-      case 'support': return { color: '#3B82F6', icon: 'headset' };
-      case 'author': return { color: '#10B981', icon: 'pencil' };
-      default: return { color: '#6B7280', icon: 'account' };
+      case 'admin': return { color: '#EF4444', Icon: ShieldCheck };
+      case 'moderator': return { color: '#8B5CF6', Icon: ShieldCheck };
+      case 'support': return { color: '#3B82F6', Icon: Headphones };
+      case 'author': return { color: '#10B981', Icon: Pencil };
+      default: return { color: '#6B7280', Icon: User };
     }
   };
 
   const getStatusConfig = (status) => {
     switch (status) {
-      case 'active': return { color: '#10B981', icon: 'check-circle' };
-      case 'suspended': return { color: '#F59E0B', icon: 'pause-circle' };
-      case 'deleted': return { color: '#EF4444', icon: 'close-circle' };
-      default: return { color: '#6B7280', icon: 'help-circle' };
+      case 'active': return { color: '#10B981', Icon: CheckCircle2 };
+      case 'suspended': return { color: '#F59E0B', Icon: PauseCircle };
+      case 'deleted': return { color: '#EF4444', Icon: XCircle };
+      default: return { color: '#6B7280', Icon: HelpCircle };
     }
   };
 
@@ -170,33 +176,38 @@ export default function AdminUsersScreen({ navigation }) {
 
   if (!isAdmin) {
     return (
-      <View style={[styles.container, dynamicStyles.container]}>
-        <View style={styles.errorContainer}>
-          <MaterialCommunityIcons name="shield-alert" size={48} color={theme.colors.error} />
-          <Text style={[styles.errorTitle, dynamicStyles.text]}>Access Denied</Text>
-          <Text style={[styles.errorText, dynamicStyles.textMuted]}>
-            You don't have permission to access this page.
-          </Text>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg" style={{ backgroundColor: theme.colors.background }}>
+        <ShieldAlert size={48} color={theme.colors.error} />
+        <RNText className="font-serif-bold text-headline-small mt-md mb-sm" style={{ color: theme.colors.onSurface }}>
+          Access Denied
+        </RNText>
+        <RNText className="font-sans text-body-medium text-center" style={{ color: theme.colors.onSurfaceVariant }}>
+          You don't have permission to access this page.
+        </RNText>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.container, dynamicStyles.container]}>
-        <View style={styles.errorContainer}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={theme.colors.error} />
-          <Text style={[styles.errorTitle, dynamicStyles.text]}>Something went wrong</Text>
-          <Text style={[styles.errorText, dynamicStyles.textMuted]}>{error}</Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
-            onPress={loadUsers}
-          >
-            <MaterialCommunityIcons name="refresh" size={16} color="#FFFFFF" />
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg" style={{ backgroundColor: theme.colors.background }}>
+        <AlertCircle size={48} color={theme.colors.error} />
+        <RNText className="font-serif-bold text-headline-small mt-md mb-sm" style={{ color: theme.colors.onSurface }}>
+          Something went wrong
+        </RNText>
+        <RNText className="font-sans text-body-medium mb-lg text-center" style={{ color: theme.colors.onSurfaceVariant }}>
+          {error}
+        </RNText>
+        <Pressable
+          className="flex-row items-center gap-sm py-md px-xl rounded-button"
+          style={{ backgroundColor: theme.colors.primary }}
+          onPress={loadUsers}
+        >
+          <RefreshCw size={16} color="#FFFFFF" />
+          <RNText className="font-sans-bold text-label-large" style={{ color: '#FFFFFF' }}>
+            Try Again
+          </RNText>
+        </Pressable>
       </View>
     );
   }
@@ -240,13 +251,13 @@ export default function AdminUsersScreen({ navigation }) {
         {/* Badges Row */}
         <View style={styles.badgesRow}>
           <View style={[styles.badge, { backgroundColor: `${roleConfig.color}15` }]}>
-            <MaterialCommunityIcons name={roleConfig.icon} size={12} color={roleConfig.color} />
+            <roleConfig.Icon size={12} color={roleConfig.color} />
             <Text style={[styles.badgeText, { color: roleConfig.color }]}>
               {user.role}
             </Text>
           </View>
           <View style={[styles.badge, { backgroundColor: `${statusConfig.color}15` }]}>
-            <MaterialCommunityIcons name={statusConfig.icon} size={12} color={statusConfig.color} />
+            <statusConfig.Icon size={12} color={statusConfig.color} />
             <Text style={[styles.badgeText, { color: statusConfig.color }]}>
               {user.status}
             </Text>
@@ -266,31 +277,30 @@ export default function AdminUsersScreen({ navigation }) {
             visible={menuVisible === `role-${user.id}`}
             onDismiss={() => setMenuVisible(null)}
             anchor={
-              <TouchableOpacity
+              <Pressable
                 style={styles.actionButton}
                 onPress={() => setMenuVisible(`role-${user.id}`)}
               >
                 <View style={[styles.actionIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                  <MaterialCommunityIcons name="shield-edit" size={16} color="#3B82F6" />
+                  <ShieldCheck size={16} color="#3B82F6" />
                 </View>
                 <Text style={[styles.actionText, dynamicStyles.text]}>Role</Text>
-              </TouchableOpacity>
+              </Pressable>
             }
           >
-            {ROLES.map((role) => (
-              <Menu.Item
-                key={role}
-                onPress={() => handleRoleChange(user.id, role)}
-                title={role}
-                leadingIcon={() => (
-                  <MaterialCommunityIcons
-                    name={getRoleConfig(role).icon}
-                    size={18}
-                    color={getRoleConfig(role).color}
-                  />
-                )}
-              />
-            ))}
+            {ROLES.map((role) => {
+              const config = getRoleConfig(role);
+              return (
+                <Menu.Item
+                  key={role}
+                  onPress={() => handleRoleChange(user.id, role)}
+                  title={role}
+                  leadingIcon={() => (
+                    <config.Icon size={18} color={config.color} />
+                  )}
+                />
+              );
+            })}
           </Menu>
 
           {/* Status Menu */}
@@ -298,43 +308,42 @@ export default function AdminUsersScreen({ navigation }) {
             visible={menuVisible === `status-${user.id}`}
             onDismiss={() => setMenuVisible(null)}
             anchor={
-              <TouchableOpacity
+              <Pressable
                 style={styles.actionButton}
                 onPress={() => setMenuVisible(`status-${user.id}`)}
               >
                 <View style={[styles.actionIcon, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-                  <MaterialCommunityIcons name="account-cog" size={16} color="#F59E0B" />
+                  <Settings size={16} color="#F59E0B" />
                 </View>
                 <Text style={[styles.actionText, dynamicStyles.text]}>Status</Text>
-              </TouchableOpacity>
+              </Pressable>
             }
           >
-            {STATUSES.map((status) => (
-              <Menu.Item
-                key={status}
-                onPress={() => handleStatusChange(user.id, status)}
-                title={status}
-                leadingIcon={() => (
-                  <MaterialCommunityIcons
-                    name={getStatusConfig(status).icon}
-                    size={18}
-                    color={getStatusConfig(status).color}
-                  />
-                )}
-              />
-            ))}
+            {STATUSES.map((status) => {
+              const config = getStatusConfig(status);
+              return (
+                <Menu.Item
+                  key={status}
+                  onPress={() => handleStatusChange(user.id, status)}
+                  title={status}
+                  leadingIcon={() => (
+                    <config.Icon size={18} color={config.color} />
+                  )}
+                />
+              );
+            })}
           </Menu>
 
           {/* Delete Button */}
-          <TouchableOpacity
+          <Pressable
             style={styles.actionButton}
             onPress={() => handleDelete(user.id, user.email)}
           >
             <View style={[styles.actionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-              <MaterialCommunityIcons name="delete" size={16} color="#EF4444" />
+              <Trash2 size={16} color="#EF4444" />
             </View>
             <Text style={[styles.actionText, { color: '#EF4444' }]}>Delete</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     );
@@ -349,7 +358,7 @@ export default function AdminUsersScreen({ navigation }) {
         <View style={styles.header}>
           <Text style={[styles.title, dynamicStyles.text]}>Users</Text>
           <View style={styles.statsBadge}>
-            <MaterialCommunityIcons name="account-group" size={14} color={theme.colors.primary} />
+            <Users size={14} color={theme.colors.primary} />
             <Text style={[styles.statsText, { color: theme.colors.primary }]}>
               {total.toLocaleString()}
             </Text>
@@ -367,7 +376,7 @@ export default function AdminUsersScreen({ navigation }) {
             value={searchQuery}
             style={[styles.searchbar, dynamicStyles.card]}
             inputStyle={{ fontSize: 15 }}
-            icon={() => <MaterialCommunityIcons name="magnify" size={20} color={theme.colors.onSurfaceVariant} />}
+            icon={() => <Search size={20} color={theme.colors.onSurfaceVariant} />}
           />
         </View>
 
@@ -396,7 +405,7 @@ export default function AdminUsersScreen({ navigation }) {
                 style={styles.chip}
                 textStyle={styles.chipText}
                 icon={() => (
-                  <MaterialCommunityIcons name={config.icon} size={14} color={config.color} />
+                  <config.Icon size={14} color={config.color} />
                 )}
               >
                 {role}
@@ -407,10 +416,7 @@ export default function AdminUsersScreen({ navigation }) {
 
         {/* Users List */}
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={[styles.loadingText, dynamicStyles.textMuted]}>Loading users...</Text>
-          </View>
+          <LoadingState message="Loading users..." />
         ) : (
           <FlatList
             data={users}
@@ -426,18 +432,14 @@ export default function AdminUsersScreen({ navigation }) {
             }
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
-                <MaterialCommunityIcons
-                  name="account-search"
-                  size={48}
-                  color={theme.colors.onSurfaceVariant}
-                />
+                <UserSearch size={48} color={theme.colors.onSurfaceVariant} />
                 <Text style={[styles.emptyText, dynamicStyles.textMuted]}>No users found</Text>
               </View>
             }
             ListFooterComponent={
               users.length > 0 && (
                 <View style={styles.pagination}>
-                  <TouchableOpacity
+                  <Pressable
                     style={[
                       styles.pageButton,
                       dynamicStyles.card,
@@ -446,16 +448,15 @@ export default function AdminUsersScreen({ navigation }) {
                     onPress={() => setPage((p) => Math.max(0, p - 1))}
                     disabled={page === 0}
                   >
-                    <MaterialCommunityIcons
-                      name="chevron-left"
+                    <ChevronLeft
                       size={20}
                       color={page === 0 ? theme.colors.onSurfaceDisabled : theme.colors.onSurface}
                     />
-                  </TouchableOpacity>
+                  </Pressable>
                   <Text style={[styles.pageText, dynamicStyles.textMuted]}>
                     Page {page + 1} of {Math.ceil(total / LIMIT)}
                   </Text>
-                  <TouchableOpacity
+                  <Pressable
                     style={[
                       styles.pageButton,
                       dynamicStyles.card,
@@ -464,12 +465,11 @@ export default function AdminUsersScreen({ navigation }) {
                     onPress={() => setPage((p) => p + 1)}
                     disabled={(page + 1) * LIMIT >= total}
                   >
-                    <MaterialCommunityIcons
-                      name="chevron-right"
+                    <ChevronRight
                       size={20}
                       color={(page + 1) * LIMIT >= total ? theme.colors.onSurfaceDisabled : theme.colors.onSurface}
                     />
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
               )
             }
@@ -632,15 +632,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-  },
   emptyContainer: {
     padding: 48,
     alignItems: 'center',
@@ -669,35 +660,5 @@ const styles = StyleSheet.create({
   },
   pageText: {
     fontSize: 13,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  errorTitle: {
-    fontSize: 18,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  errorText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
 });
