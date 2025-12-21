@@ -2,16 +2,25 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   ScrollView,
-  StyleSheet,
   Image,
   TouchableOpacity,
   Linking,
-  ActivityIndicator,
   Share,
   Animated,
+  Pressable,
+  Text as RNText,
 } from 'react-native';
-import { Text, IconButton, Button, Divider, useTheme as usePaperTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Text, Divider, useTheme as usePaperTheme } from 'react-native-paper';
+import {
+  Heart,
+  Bookmark,
+  Share2,
+  ChevronLeft,
+  ExternalLink,
+  Loader2,
+  AlertCircle,
+  RefreshCw
+} from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
@@ -449,31 +458,37 @@ export default function ArticleDetailScreen({ route, navigation }) {
       >
         {/* Loading State */}
         {loading && (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={currentTheme.colors.primary} />
-            <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Loading article...</Text>
+          <View className="flex-1 justify-center items-center py-xl gap-md">
+            <Loader2 size={48} color={currentTheme.colors.primary} className="animate-spin" />
+            <RNText className="font-sans-medium text-body-medium" style={{ color: currentTheme.colors.onSurfaceVariant }}>
+              Loading article...
+            </RNText>
           </View>
         )}
 
         {/* Error State */}
         {error && !loading && (
-          <View style={styles.centerContainer}>
-            <View style={[styles.errorCard, dynamicStyles.errorCard]}>
-              <MaterialCommunityIcons
-                name="newspaper-variant-outline"
+          <View className="flex-1 justify-center items-center py-xl">
+            <View className="items-center gap-md px-xl py-lg rounded-card border" style={{ backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.outline }}>
+              <AlertCircle
                 size={64}
                 color={currentTheme.colors.onSurfaceVariant}
               />
-              <Text style={[styles.errorTitle, dynamicStyles.errorTitle]}>Article Not Found</Text>
-              <Text style={[styles.errorMessage, dynamicStyles.errorMessage]}>{error}</Text>
-              <Button
-                mode="contained"
+              <RNText className="font-serif-bold text-headline-small text-center" style={{ color: currentTheme.colors.onSurface }}>
+                Article Not Found
+              </RNText>
+              <RNText className="font-sans text-body-medium text-center mb-md" style={{ color: currentTheme.colors.onSurfaceVariant }}>
+                {error}
+              </RNText>
+              <Pressable
+                className="py-md px-xl rounded-button"
                 onPress={() => navigation.goBack()}
-                style={styles.errorButton}
-                buttonColor={currentTheme.colors.primary}
+                style={{ backgroundColor: currentTheme.colors.primary }}
               >
-                Go Back
-              </Button>
+                <RNText className="font-sans-bold text-label-large" style={{ color: currentTheme.colors.onPrimary }}>
+                  Go Back
+                </RNText>
+              </Pressable>
             </View>
           </View>
         )}
@@ -492,7 +507,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
               ]}
             >
               {/* Back Button */}
-              <TouchableOpacity
+              <Pressable
                 onPress={handleBack}
                 style={[
                   styles.heroBackButton,
@@ -501,17 +516,15 @@ export default function ArticleDetailScreen({ route, navigation }) {
                     top: insets.top + 16,
                   }
                 ]}
-                activeOpacity={0.7}
               >
-                <MaterialCommunityIcons
-                  name="arrow-left"
+                <ChevronLeft
                   size={24}
                   color={currentTheme.colors.onPrimary}
                 />
-              </TouchableOpacity>
+              </Pressable>
 
               {/* Share Button */}
-              <TouchableOpacity
+              <Pressable
                 onPress={handleShare}
                 style={[
                   styles.heroShareButton,
@@ -520,14 +533,12 @@ export default function ArticleDetailScreen({ route, navigation }) {
                     top: insets.top + 16,
                   }
                 ]}
-                activeOpacity={0.7}
               >
-                <MaterialCommunityIcons
-                  name="share-variant-outline"
+                <Share2
                   size={22}
                   color={currentTheme.colors.onPrimary}
                 />
-              </TouchableOpacity>
+              </Pressable>
 
               {/* Category Badge */}
               {article.category && (
