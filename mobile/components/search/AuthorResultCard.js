@@ -10,7 +10,8 @@
 
 import React, { memo } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, Icon, useTheme as usePaperTheme } from 'react-native-paper';
+import { Text } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 import mukokoTheme from '../../theme';
 
 // Generate initials from name
@@ -49,7 +50,7 @@ function AuthorResultCard({
   variant = 'list', // 'list' or 'card'
   style,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   const name = author?.name || 'Unknown Author';
   const articleCount = author?.article_count || author?.count || 0;
@@ -67,8 +68,8 @@ function AuthorResultCard({
         style={[
           styles.card,
           {
-            backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-            borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+            backgroundColor: theme.colors.glassCard || theme.colors.surface,
+            borderColor: theme.colors.glassBorder || theme.colors.outline,
           },
           style,
         ]}
@@ -97,20 +98,20 @@ function AuthorResultCard({
 
         {/* Name */}
         <Text
-          style={[styles.cardName, { color: paperTheme.colors.onSurface }]}
+          style={[styles.cardName, { color: theme.colors.onSurface }]}
           numberOfLines={1}
         >
           {name}
         </Text>
 
         {/* Stats */}
-        <Text style={[styles.cardStats, { color: paperTheme.colors.onSurfaceVariant }]}>
+        <Text style={[styles.cardStats, { color: theme.colors.onSurfaceVariant }]}>
           {articleCount} articles
         </Text>
 
         {source && (
           <Text
-            style={[styles.cardSource, { color: paperTheme.colors.primary }]}
+            style={[styles.cardSource, { color: theme.colors.primary }]}
             numberOfLines={1}
           >
             {source}
@@ -127,7 +128,7 @@ function AuthorResultCard({
       onPress={onPress}
       style={[
         styles.listItem,
-        { borderBottomColor: paperTheme.colors.outline },
+        { borderBottomColor: theme.colors.outline },
         style,
       ]}
       accessibilityLabel={`${name}. ${articleCount} articles`}
@@ -145,14 +146,14 @@ function AuthorResultCard({
                   : rank === 2
                   ? '#C0C0C0'
                   : '#CD7F32'
-                : paperTheme.colors.surfaceVariant,
+                : theme.colors.surfaceVariant,
             },
           ]}
         >
           <Text
             style={[
               styles.listRankText,
-              { color: isTopThree ? '#FFFFFF' : paperTheme.colors.onSurfaceVariant },
+              { color: isTopThree ? '#FFFFFF' : theme.colors.onSurfaceVariant },
             ]}
           >
             {rank}
@@ -168,22 +169,22 @@ function AuthorResultCard({
       {/* Info */}
       <View style={styles.listInfo}>
         <Text
-          style={[styles.listName, { color: paperTheme.colors.onSurface }]}
+          style={[styles.listName, { color: theme.colors.onSurface }]}
           numberOfLines={1}
         >
           {name}
         </Text>
         <View style={styles.listMeta}>
-          <Text style={[styles.listStats, { color: paperTheme.colors.onSurfaceVariant }]}>
+          <Text style={[styles.listStats, { color: theme.colors.onSurfaceVariant }]}>
             {articleCount} articles
           </Text>
           {source && (
             <>
-              <Text style={[styles.listDot, { color: paperTheme.colors.onSurfaceVariant }]}>
+              <Text style={[styles.listDot, { color: theme.colors.onSurfaceVariant }]}>
                 ·
               </Text>
               <Text
-                style={[styles.listSource, { color: paperTheme.colors.primary }]}
+                style={[styles.listSource, { color: theme.colors.primary }]}
                 numberOfLines={1}
               >
                 {source}
@@ -197,7 +198,7 @@ function AuthorResultCard({
       <Icon
         source="chevron-right"
         size={18}
-        color={paperTheme.colors.onSurfaceVariant}
+        color={theme.colors.onSurfaceVariant}
       />
     </TouchableOpacity>
   );

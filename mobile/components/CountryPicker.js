@@ -2,17 +2,18 @@
  * CountryPicker Component
  * Horizontal scrollable and multi-select country filter for Pan-African news feed
  * Following 2025 news app design patterns
+ *
+ * Migration: NativeWind + ThemeContext only (NO React Native Paper, NO StyleSheet)
  */
 
 import React from 'react';
 import {
   View,
   ScrollView,
-  StyleSheet,
-  TouchableOpacity,
+  Pressable,
+  Text as RNText,
 } from 'react-native';
-import { Text, useTheme as usePaperTheme } from 'react-native-paper';
-import mukokoTheme from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
 
 /**
  * CountryChips - Horizontal scrollable country filter with flags
@@ -31,7 +32,7 @@ export default function CountryChips({
   showCounts = true,
   style,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   const allCountries = showAll
     ? [{ id: 'all', name: 'All Africa', code: 'all', emoji: '🌍' }, ...countries]
@@ -44,24 +45,12 @@ export default function CountryChips({
     return selectedCountries?.includes(country.code) || selectedCountries?.includes(country.id);
   };
 
-  // Dynamic glass styles based on theme
-  const chipGlassStyle = {
-    backgroundColor: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.08)',
-    borderWidth: 1,
-    borderColor: paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
-  };
-
-  const chipSelectedStyle = {
-    backgroundColor: paperTheme.colors.primary,
-    borderColor: paperTheme.colors.primary,
-  };
-
   return (
-    <View style={[styles.container, style]}>
+    <View className="bg-transparent" style={style}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerClassName="px-md py-xs pb-sm gap-sm"
         bounces={true}
         decelerationRate="fast"
       >
@@ -69,54 +58,48 @@ export default function CountryChips({
           const selected = isSelected(country);
 
           return (
-            <TouchableOpacity
+            <Pressable
               key={country.id || country.code || index}
-              activeOpacity={0.7}
+              className={`flex-row items-center px-md py-sm min-h-touch rounded-[22px] gap-xs mr-xs ${
+                index === 0 ? 'ml-0' : ''
+              } ${
+                selected
+                  ? 'bg-tanzanite border border-tanzanite'
+                  : 'bg-surface-variant border border-outline'
+              }`}
               onPress={() => onCountryPress(country.code === 'all' ? null : country.code)}
-              style={[
-                styles.chip,
-                chipGlassStyle,
-                selected && chipSelectedStyle,
-                index === 0 && styles.chipFirst,
-              ]}
               accessibilityLabel={`${country.name}${country.article_count ? `, ${country.article_count} articles` : ''}`}
               accessibilityRole="button"
               accessibilityState={{ selected }}
               accessibilityHint={`Filter news from ${country.name}`}
             >
-              <Text style={styles.chipEmoji}>{country.emoji}</Text>
-              <Text
-                style={[
-                  styles.chipText,
-                  { color: paperTheme.colors.onSurface },
-                  selected && { color: paperTheme.colors.onPrimary },
-                ]}
+              <RNText className="text-[16px]">{country.emoji}</RNText>
+              <RNText
+                className={`font-sans-medium text-[14px] ${
+                  selected ? 'text-on-primary' : 'text-on-surface'
+                }`}
                 numberOfLines={1}
               >
                 {country.name}
-              </Text>
+              </RNText>
               {showCounts && (country.article_count > 0 || country.count > 0) && (
-                <View style={[
-                  styles.countBadge,
-                  {
-                    backgroundColor: selected
-                      ? 'rgba(255,255,255,0.25)'
-                      : paperTheme.colors.glass || 'rgba(94, 87, 114, 0.12)',
-                    borderWidth: 1,
-                    borderColor: selected
-                      ? 'rgba(255,255,255,0.15)'
-                      : paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.15)',
-                  }
-                ]}>
-                  <Text style={[
-                    styles.countText,
-                    { color: selected ? paperTheme.colors.onPrimary : paperTheme.colors.onSurfaceVariant }
-                  ]}>
+                <View
+                  className={`ml-xs px-sm py-[3px] rounded-[12px] min-w-[24px] items-center justify-center border ${
+                    selected
+                      ? 'bg-white/25 border-white/15'
+                      : 'bg-surface-variant border-outline'
+                  }`}
+                >
+                  <RNText
+                    className={`font-sans-bold text-[12px] text-center ${
+                      selected ? 'text-on-primary' : 'text-on-surface-variant'
+                    }`}
+                  >
                     {(country.article_count || country.count) > 99 ? '99+' : (country.article_count || country.count)}
-                  </Text>
+                  </RNText>
                 </View>
               )}
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </ScrollView>
@@ -143,50 +126,33 @@ export function CountryPills({
   showPrimaryBadge = true,
   style,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   const isSelected = (countryCode) => selectedCountries.includes(countryCode);
   const isPrimary = (countryCode) => primaryCountry === countryCode;
 
-  // Dynamic glass styles based on theme
-  const pillGlassStyle = {
-    backgroundColor: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.08)',
-    borderWidth: 1,
-    borderColor: paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
-  };
-
-  const pillSelectedStyle = {
-    backgroundColor: paperTheme.colors.primary,
-    borderColor: paperTheme.colors.primary,
-  };
-
-  const pillPrimaryStyle = {
-    backgroundColor: paperTheme.colors.success || '#779b63',
-    borderColor: paperTheme.colors.success || '#779b63',
-  };
-
   return (
-    <View style={[styles.pillsContainer, style]}>
+    <View className="flex-row flex-wrap gap-sm px-md py-sm" style={style}>
       {countries.map((country, index) => {
         const selected = isSelected(country.code || country.id);
         const primary = isPrimary(country.code || country.id);
 
         return (
-          <TouchableOpacity
+          <Pressable
             key={country.id || country.code || index}
-            activeOpacity={0.7}
+            className={`flex-row items-center px-md py-sm min-h-touch rounded-[22px] gap-xs border ${
+              primary
+                ? 'bg-success border-success'
+                : selected
+                ? 'bg-tanzanite border-tanzanite'
+                : 'bg-surface-variant border-outline'
+            }`}
             onPress={() => onCountryToggle(country.code || country.id)}
             onLongPress={() => {
               if (selected && onSetPrimary) {
                 onSetPrimary(country.code || country.id);
               }
             }}
-            style={[
-              styles.pill,
-              pillGlassStyle,
-              selected && pillSelectedStyle,
-              primary && pillPrimaryStyle,
-            ]}
             accessibilityLabel={`${country.name}${primary ? ', primary country' : ''}`}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: selected }}
@@ -196,25 +162,23 @@ export function CountryPills({
                 : `Select ${country.name} for your news feed`
             }
           >
-            <Text style={styles.pillEmoji}>{country.emoji}</Text>
-            <Text
-              style={[
-                styles.pillText,
-                { color: paperTheme.colors.onSurface },
-                selected && { color: paperTheme.colors.onPrimary },
-              ]}
+            <RNText className="text-[16px]">{country.emoji}</RNText>
+            <RNText
+              className={`font-sans-medium text-[14px] ${
+                selected ? 'text-on-primary' : 'text-on-surface'
+              }`}
             >
               {country.name}
-            </Text>
+            </RNText>
             {selected && !primary && (
-              <Text style={[styles.pillCheck, { color: paperTheme.colors.onPrimary }]}>✓</Text>
+              <RNText className="font-sans-bold text-[12px] text-on-primary">✓</RNText>
             )}
             {primary && showPrimaryBadge && (
-              <View style={styles.primaryBadge}>
-                <Text style={styles.primaryBadgeText}>★</Text>
+              <View className="ml-[2px] w-[18px] h-[18px] rounded-[9px] bg-white/30 items-center justify-center">
+                <RNText className="font-sans-bold text-[12px] text-white">★</RNText>
               </View>
             )}
-          </TouchableOpacity>
+          </Pressable>
         );
       })}
     </View>
@@ -234,203 +198,54 @@ export function CountryGrid({
   onCountryToggle,
   style,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   const isSelected = (countryCode) => selectedCountries.includes(countryCode);
 
   return (
-    <View style={[styles.gridContainer, style]}>
+    <View className="flex-row flex-wrap px-md py-sm gap-sm" style={style}>
       {countries.map((country, index) => {
         const selected = isSelected(country.code || country.id);
 
         return (
-          <TouchableOpacity
+          <Pressable
             key={country.id || country.code || index}
-            activeOpacity={0.7}
+            className={`w-[47%] p-md rounded-card border items-center relative ${
+              selected
+                ? 'bg-tanzanite border-tanzanite'
+                : 'bg-surface-variant border-outline'
+            }`}
             onPress={() => onCountryToggle(country.code || country.id)}
-            style={[
-              styles.gridItem,
-              {
-                backgroundColor: selected
-                  ? paperTheme.colors.primary
-                  : paperTheme.colors.glass || 'rgba(94, 87, 114, 0.08)',
-                borderColor: selected
-                  ? paperTheme.colors.primary
-                  : paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
-              },
-            ]}
             accessibilityLabel={`${country.name}${country.source_count ? `, ${country.source_count} news sources` : ''}`}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: selected }}
           >
-            <Text style={styles.gridEmoji}>{country.emoji}</Text>
-            <Text
-              style={[
-                styles.gridName,
-                { color: selected ? paperTheme.colors.onPrimary : paperTheme.colors.onSurface },
-              ]}
+            <RNText className="text-[32px] mb-xs">{country.emoji}</RNText>
+            <RNText
+              className={`font-sans-medium text-[14px] text-center ${
+                selected ? 'text-on-primary' : 'text-on-surface'
+              }`}
               numberOfLines={1}
             >
               {country.name}
-            </Text>
+            </RNText>
             {country.source_count > 0 && (
-              <Text
-                style={[
-                  styles.gridSourceCount,
-                  { color: selected ? 'rgba(255,255,255,0.7)' : paperTheme.colors.onSurfaceVariant },
-                ]}
+              <RNText
+                className={`font-sans text-[12px] mt-[2px] ${
+                  selected ? 'text-white/70' : 'text-on-surface-variant'
+                }`}
               >
                 {country.source_count} sources
-              </Text>
+              </RNText>
             )}
             {selected && (
-              <View style={styles.gridCheck}>
-                <Text style={{ color: paperTheme.colors.onPrimary, fontSize: 16 }}>✓</Text>
+              <View className="absolute top-[8px] right-[8px] w-[24px] h-[24px] rounded-[12px] bg-white/30 items-center justify-center">
+                <RNText className="text-on-primary text-[16px]">✓</RNText>
               </View>
             )}
-          </TouchableOpacity>
+          </Pressable>
         );
       })}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  // ============ CHIPS (Horizontal Scroll) ============
-  container: {
-    backgroundColor: 'transparent',
-  },
-  scrollContent: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.xs,
-    paddingBottom: mukokoTheme.spacing.sm,
-    gap: mukokoTheme.spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.06)',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm + 2,
-    minHeight: 44,
-    borderRadius: 22,
-    marginRight: mukokoTheme.spacing.xs,
-    gap: mukokoTheme.spacing.xs,
-  },
-  chipFirst: {
-    marginLeft: 0,
-  },
-  chipEmoji: {
-    fontSize: 16,
-  },
-  chipText: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurface,
-    letterSpacing: 0.1,
-  },
-  countBadge: {
-    marginLeft: mukokoTheme.spacing.xs,
-    paddingHorizontal: mukokoTheme.spacing.sm,
-    paddingVertical: 3,
-    borderRadius: 12,
-    minWidth: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countText: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    textAlign: 'center',
-  },
-
-  // ============ PILLS (Wrap Layout) ============
-  pillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-  },
-  pill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.06)',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm + 2,
-    minHeight: 44,
-    borderRadius: 22,
-    gap: mukokoTheme.spacing.xs,
-  },
-  pillEmoji: {
-    fontSize: 16,
-  },
-  pillText: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurface,
-  },
-  pillCheck: {
-    fontSize: 12,
-    color: mukokoTheme.colors.onPrimary,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  primaryBadge: {
-    marginLeft: 2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  primaryBadgeText: {
-    fontSize: 12,
-    color: '#fff',
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-
-  // ============ GRID (Settings/Onboarding) ============
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-    gap: mukokoTheme.spacing.sm,
-  },
-  gridItem: {
-    width: '47%',
-    padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness.md,
-    borderWidth: 1,
-    alignItems: 'center',
-    position: 'relative',
-  },
-  gridEmoji: {
-    fontSize: 32,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  gridName: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    textAlign: 'center',
-  },
-  gridSourceCount: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    marginTop: 2,
-  },
-  gridCheck: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

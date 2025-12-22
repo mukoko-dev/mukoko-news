@@ -6,17 +6,19 @@
  * - Rank badges (1, 2, 3) for top items
  * - Growth indicators
  * - Article counts
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 
 import React, { memo } from 'react';
 import {
   View,
   ScrollView,
-  StyleSheet,
-  TouchableOpacity,
+  Pressable,
+  Text as RNText,
 } from 'react-native';
-import { Text, Icon, useTheme as usePaperTheme } from 'react-native-paper';
-import mukokoTheme from '../../theme';
+import { TrendingUp } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 import { CuratedLabel } from '../ai';
 
 // Category emoji mapping
@@ -59,7 +61,7 @@ function TrendingTopicCard({
   topic,
   rank,
   onPress,
-  paperTheme,
+  theme,
 }) {
   const name = topic?.name || topic?.category_name || 'Topic';
   const count = topic?.article_count || topic?.count || 0;
@@ -68,52 +70,53 @@ function TrendingTopicCard({
   const showRank = rank && rank <= 3;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
+    <Pressable
       onPress={onPress}
-      style={[
-        styles.topicCard,
-        {
-          backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-          borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
-        }
-      ]}
+      className="w-[120px] p-md rounded-card border items-center relative"
+      style={{
+        backgroundColor: theme.colors.surface,
+        borderColor: theme.colors.outline,
+      }}
       accessibilityLabel={`${name}. ${count} articles. Rank ${rank}`}
       accessibilityRole="button"
     >
       {/* Rank Badge */}
       {showRank && (
-        <View style={[styles.rankBadge, { backgroundColor: RANK_COLORS[rank] }]}>
-          <Text style={styles.rankText}>{rank}</Text>
+        <View
+          className="absolute -top-[6px] -right-[6px] w-[20px] h-[20px] rounded-[10px] justify-center items-center shadow-sm"
+          style={{ backgroundColor: RANK_COLORS[rank] }}
+        >
+          <RNText className="text-white text-[10px] font-sans-bold">{rank}</RNText>
         </View>
       )}
 
       {/* Emoji */}
-      <Text style={styles.topicEmoji}>{getEmoji(name)}</Text>
+      <RNText className="text-[28px] mb-xs">{getEmoji(name)}</RNText>
 
       {/* Name */}
-      <Text
-        style={[styles.topicName, { color: paperTheme.colors.onSurface }]}
+      <RNText
+        className="font-sans-medium text-[13px] text-center capitalize"
+        style={{ color: theme.colors['on-surface'] }}
         numberOfLines={1}
       >
         {name}
-      </Text>
+      </RNText>
 
       {/* Count and Growth */}
-      <View style={styles.topicMeta}>
-        <Text style={[styles.topicCount, { color: paperTheme.colors.onSurfaceVariant }]}>
+      <View className="flex-row items-center gap-[4px] mt-xs flex-wrap justify-center">
+        <RNText className="text-[11px]" style={{ color: theme.colors['on-surface-variant'] }}>
           {count} {count === 1 ? 'story' : 'stories'}
-        </Text>
+        </RNText>
         {growth > 0 && (
-          <View style={[styles.growthBadge, { backgroundColor: mukokoTheme.colors.success + '20' }]}>
-            <Icon source="trending-up" size={10} color={mukokoTheme.colors.success} />
-            <Text style={[styles.growthText, { color: mukokoTheme.colors.success }]}>
+          <View className="flex-row items-center px-xs py-[2px] rounded-[6px] gap-[2px]" style={{ backgroundColor: theme.colors.success + '20' }}>
+            <TrendingUp size={10} color={theme.colors.success} strokeWidth={2} />
+            <RNText className="font-sans-medium text-[9px]" style={{ color: theme.colors.success }}>
               +{Math.round(growth * 100)}%
-            </Text>
+            </RNText>
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -124,17 +127,20 @@ function TrendingTopicRow({
   showAILabel = true,
   style,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   if (!topics || topics.length === 0) return null;
 
   return (
-    <View style={[styles.container, style]}>
+    <View className="mb-lg" style={style}>
       {/* Section Header */}
-      <View style={styles.header}>
-        <Text style={[styles.sectionTitle, { color: paperTheme.colors.onSurface }]}>
+      <View className="flex-row items-center justify-between px-md mb-sm">
+        <RNText
+          className="font-sans-bold text-[14px] uppercase tracking-wide"
+          style={{ color: theme.colors['on-surface'] }}
+        >
           {title}
-        </Text>
+        </RNText>
         {showAILabel && (
           <CuratedLabel variant="trending" size="small" />
         )}
@@ -144,7 +150,7 @@ function TrendingTopicRow({
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerClassName="px-md gap-sm"
       >
         {topics.map((topic, index) => (
           <TrendingTopicCard
@@ -152,7 +158,7 @@ function TrendingTopicRow({
             topic={topic}
             rank={index + 1}
             onPress={() => onTopicPress?.(topic)}
-            paperTheme={paperTheme}
+            theme={theme}
           />
         ))}
       </ScrollView>
@@ -161,83 +167,3 @@ function TrendingTopicRow({
 }
 
 export default memo(TrendingTopicRow);
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: mukokoTheme.spacing.lg,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  scrollContent: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    gap: mukokoTheme.spacing.sm,
-  },
-  topicCard: {
-    width: 120,
-    padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness,
-    borderWidth: 1,
-    alignItems: 'center',
-    position: 'relative',
-  },
-  rankBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...mukokoTheme.shadows.small,
-  },
-  rankText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  topicEmoji: {
-    fontSize: 28,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  topicName: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    textAlign: 'center',
-    textTransform: 'capitalize',
-  },
-  topicMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: mukokoTheme.spacing.xs,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  topicCount: {
-    fontSize: 11,
-  },
-  growthBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 6,
-    gap: 2,
-  },
-  growthText: {
-    fontSize: 9,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-});

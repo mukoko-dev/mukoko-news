@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Animated, PanResponder } from 'react-native';
-import { Text, useTheme, ActivityIndicator, Portal } from 'react-native-paper';
+import { View, TouchableOpacity, Modal, ScrollView, Platform, Animated, PanResponder, Dimensions, Text as RNText, ActivityIndicator, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { ChevronDown, X, Check } from 'lucide-react-native';
 import { countries as countriesAPI } from '../api/client';
-import mukokoTheme from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
  * CountryPickerButton - Compact button showing current country with flag
@@ -34,11 +35,19 @@ export default function CountryPickerButton({ compact = false, showLabel = true 
         opacity.setValue(newOpacity);
       },
       onPanResponderRelease: (_, gestureState) => {
-        // If dragged more than 80px in any direction, close
-        if (Math.abs(gestureState.dy) > 80) {
+        // If dragged down more than 150px threshold, close
+        if (gestureState.dy > 150) {
           setModalVisible(false);
-          panY.setValue(0);
-          opacity.setValue(1);
+          Animated.timing(panY, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }).start();
         } else {
           // Spring back
           Animated.parallel([
@@ -185,220 +194,131 @@ export default function CountryPickerButton({ compact = false, showLabel = true 
 
   if (loading || !selectedCountry) {
     return (
-      <View style={[styles.container, compact && styles.containerCompact]}>
-        <ActivityIndicator size="small" color={theme.colors.primary} />
+      <View className={`${compact ? 'p-xs' : 'p-sm'}`}>
+        <ActivityIndicator size="small" color={theme.colors.tanzanite} />
       </View>
     );
   }
 
   return (
     <>
-      <TouchableOpacity
-        style={[
-          styles.button,
-          compact && styles.buttonCompact,
-          { backgroundColor: theme.colors.glassCard || theme.colors.surface }
-        ]}
+      <Pressable
+        className={`flex-row items-center rounded-button gap-xs min-h-touch ${
+          compact ? 'px-sm py-xs' : 'px-md py-sm'
+        }`}
+        style={{ backgroundColor: theme.colors.surface }}
         onPress={() => setModalVisible(true)}
         accessibilityLabel={`Selected country: ${selectedCountry.name}`}
         accessibilityHint="Tap to change country"
+        accessibilityRole="button"
       >
-        <Text style={styles.flag}>{selectedCountry.emoji}</Text>
+        <RNText className="text-[20px]">{selectedCountry.emoji}</RNText>
         {showLabel && !compact && (
-          <Text
-            style={[styles.countryName, { color: theme.colors.onSurface }]}
+          <RNText
+            className="font-sans-medium text-[14px]"
+            style={{ color: theme.colors['on-surface'] }}
             numberOfLines={1}
           >
             {selectedCountry.name}
-          </Text>
+          </RNText>
         )}
-        <MaterialCommunityIcons
-          name="chevron-down"
+        <ChevronDown
           size={compact ? 16 : 20}
-          color={theme.colors.onSurfaceVariant}
+          color={theme.colors['on-surface-variant']}
+          strokeWidth={1.5}
         />
-      </TouchableOpacity>
+      </Pressable>
 
-      <Portal>
-        <Modal
-          visible={modalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setModalVisible(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <TouchableOpacity
-              style={StyleSheet.absoluteFill}
-              activeOpacity={1}
-              onPress={() => setModalVisible(false)}
-            />
-            <Animated.View
-              style={[
-                styles.modalContent,
-                { backgroundColor: theme.colors.surface },
-                {
-                  transform: [{ translateY: panY }],
-                  opacity: opacity,
-                }
-              ]}
-              onStartShouldSetResponder={() => true}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0, 0, 0, 0.5)' }}>
+          <Pressable
+            className="absolute inset-0"
+            onPress={() => setModalVisible(false)}
+          />
+          <Animated.View
+            className="w-full rounded-t-card border-t"
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outline,
+              maxHeight: SCREEN_HEIGHT * 0.85,
+              minHeight: SCREEN_HEIGHT * 0.5,
+              transform: [{ translateY: panY }],
+              opacity: opacity,
+            }}
+            onStartShouldSetResponder={() => true}
+            {...panResponder.panHandlers}
+          >
+            <View
+              className="w-[36px] h-[4px] rounded-full self-center mt-sm mb-lg opacity-30"
+              style={{ backgroundColor: theme.colors['on-surface-variant'] }}
               {...panResponder.panHandlers}
-            >
-              <View style={styles.modalHeader}>
-                <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
-                  Select Country
-                </Text>
-                <TouchableOpacity
-                  onPress={() => setModalVisible(false)}
-                  style={styles.closeButton}
-                >
-                  <MaterialCommunityIcons
-                    name="close"
-                    size={24}
-                    color={theme.colors.onSurface}
-                  />
-                </TouchableOpacity>
-              </View>
+            />
 
-              <ScrollView style={styles.countriesList}>
-                {countries.map((country) => (
-                  <TouchableOpacity
-                    key={country.id}
-                    style={[
-                      styles.countryItem,
-                      selectedCountry.id === country.id && {
-                        backgroundColor: theme.colors.primaryContainer
-                      }
-                    ]}
-                    onPress={() => handleCountrySelect(country)}
-                  >
-                    <Text style={styles.countryFlag}>{country.emoji}</Text>
-                    <View style={styles.countryInfo}>
-                      <Text
-                        style={[
-                          styles.countryItemName,
-                          { color: theme.colors.onSurface }
-                        ]}
+            <View className="flex-row justify-between items-center mx-lg mb-lg">
+              <RNText className="text-[20px] font-sans-bold" style={{ color: theme.colors['on-surface'] }}>
+                Select Country
+              </RNText>
+              <Pressable
+                onPress={() => setModalVisible(false)}
+                className="p-xs min-w-touch min-h-touch items-center justify-center"
+                accessibilityLabel="Close"
+                accessibilityRole="button"
+              >
+                <X
+                  size={24}
+                  color={theme.colors['on-surface']}
+                  strokeWidth={1.5}
+                />
+              </Pressable>
+            </View>
+
+            <ScrollView className="px-lg" showsVerticalScrollIndicator={false}>
+              {countries.map((country) => (
+                <Pressable
+                  key={country.id}
+                  className={`flex-row items-center p-md rounded-button mb-sm gap-md min-h-touch ${
+                    selectedCountry.id === country.id ? 'bg-tanzanite-container' : ''
+                  }`}
+                  onPress={() => handleCountrySelect(country)}
+                  accessibilityLabel={`${country.name}${country.articleCount ? `, ${country.articleCount} articles` : ''}`}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: selectedCountry.id === country.id }}
+                >
+                  <RNText className="text-[28px]">{country.emoji}</RNText>
+                  <View className="flex-1">
+                    <RNText
+                      className="font-sans-medium text-[16px] mb-[2px]"
+                      style={{ color: theme.colors['on-surface'] }}
+                    >
+                      {country.name}
+                    </RNText>
+                    {country.articleCount > 0 && (
+                      <RNText
+                        className="font-sans text-[12px]"
+                        style={{ color: theme.colors['on-surface-variant'] }}
                       >
-                        {country.name}
-                      </Text>
-                      {country.articleCount > 0 && (
-                        <Text
-                          style={[
-                            styles.articleCount,
-                            { color: theme.colors.onSurfaceVariant }
-                          ]}
-                        >
-                          {country.articleCount} articles
-                        </Text>
-                      )}
-                    </View>
-                    {selectedCountry.id === country.id && (
-                      <MaterialCommunityIcons
-                        name="check"
-                        size={24}
-                        color={theme.colors.primary}
-                      />
+                        {country.articleCount} articles
+                      </RNText>
                     )}
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-            </Animated.View>
-          </View>
-        </Modal>
-      </Portal>
+                  </View>
+                  {selectedCountry.id === country.id && (
+                    <Check
+                      size={24}
+                      color={theme.colors.tanzanite}
+                      strokeWidth={2}
+                    />
+                  )}
+                </Pressable>
+              ))}
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
     </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 8,
-  },
-  containerCompact: {
-    padding: 4,
-  },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    gap: 6,
-    minHeight: 44,
-  },
-  buttonCompact: {
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    borderRadius: 16,
-    gap: 4,
-  },
-  flag: {
-    fontSize: 20,
-  },
-  countryName: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    width: '100%',
-    maxWidth: 400,
-    maxHeight: '80%',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  closeButton: {
-    padding: 4,
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  countriesList: {
-    flexGrow: 0,
-    flexShrink: 1,
-  },
-  countryItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    marginBottom: 8,
-    gap: 12,
-    minHeight: 44,
-  },
-  countryFlag: {
-    fontSize: 28,
-  },
-  countryInfo: {
-    flex: 1,
-  },
-  countryItemName: {
-    fontSize: 16,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    marginBottom: 2,
-  },
-  articleCount: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
-});

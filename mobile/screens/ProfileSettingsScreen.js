@@ -7,20 +7,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
-  StyleSheet,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
   KeyboardAvoidingView,
   Platform,
+  Switch,
+  Text as RNText,
+  TextInput as RNTextInput,
+  StyleSheet,
 } from 'react-native';
 import {
-  Text,
-  TextInput,
-  Switch,
-  ActivityIndicator,
-  useTheme as usePaperTheme,
-} from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+  User,
+  Mail,
+  AtSign,
+  Moon,
+  Sun,
+  Vibrate,
+  LogOut,
+  Edit3,
+  Check,
+  X,
+  RefreshCw,
+  AlertCircle,
+  ChevronRight,
+  Loader2,
+  Bell,
+  ShieldCheck,
+  Link2,
+  Info,
+  CheckCircle2
+} from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { mukokoTheme } from '../theme';
@@ -28,11 +44,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLayout } from '../components/layout';
 import { user as userAPI } from '../api/client';
+import { LoadingState, FormField, TextInput } from '../components/ui';
 
 export default function ProfileSettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const paperTheme = usePaperTheme();
-  const { isDark, toggleTheme } = useTheme();
+  const { theme, isDark, toggleTheme } = useTheme();
   const { signOut } = useAuth();
   const layout = useLayout();
 
@@ -91,7 +107,9 @@ export default function ProfileSettingsScreen({ navigation }) {
       setDisplayName(data.name || data.displayName || data.display_name || '');
       setBio(data.bio || '');
     } catch (err) {
-      console.error('Error loading profile:', err);
+      if (__DEV__) {
+        console.error('Error loading profile:', err);
+      }
       // For errors, show guest profile
       setProfile({
         username: 'Guest',
@@ -178,46 +196,42 @@ export default function ProfileSettingsScreen({ navigation }) {
 
   // Dynamic styles
   const dynamicStyles = {
-    container: { backgroundColor: paperTheme.colors.background },
-    text: { color: paperTheme.colors.onSurface },
-    textMuted: { color: paperTheme.colors.onSurfaceVariant },
+    container: { backgroundColor: theme.colors.background },
+    text: { color: theme.colors['on-surface'] },
+    textMuted: { color: theme.colors['on-surface-variant'] },
     card: {
-      backgroundColor: paperTheme.colors.surface,
-      borderColor: paperTheme.colors.outline,
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.outline,
     },
-    divider: { backgroundColor: paperTheme.colors.outline },
+    divider: { backgroundColor: theme.colors.outline },
     input: {
-      backgroundColor: paperTheme.colors.surfaceVariant,
-      color: paperTheme.colors.onSurface,
+      backgroundColor: theme.colors['surface-variant'],
+      color: theme.colors['on-surface'],
     },
   };
 
   if (loading) {
-    return (
-      <View style={[styles.loadingContainer, dynamicStyles.container]}>
-        <ActivityIndicator size="large" color={paperTheme.colors.primary} />
-      </View>
-    );
+    return <LoadingState message="Loading settings..." />;
   }
 
   if (error) {
     return (
-      <View style={[styles.errorContainer, dynamicStyles.container]}>
-        <MaterialCommunityIcons
-          name="alert-circle-outline"
-          size={48}
-          color={paperTheme.colors.error}
-        />
-        <Text style={[styles.errorText, dynamicStyles.textMuted]}>{error}</Text>
-        <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: paperTheme.colors.primary }]}
+      <View className="flex-1 justify-center items-center gap-md px-xl bg-background">
+        <AlertCircle size={48} color={theme.colors.error} />
+        <RNText className="font-sans text-body-medium text-on-surface-variant text-center">
+          {error}
+        </RNText>
+        <Pressable
+          className="flex-row items-center justify-center gap-sm py-sm px-lg rounded-button bg-tanzanite"
           onPress={loadProfile}
           accessibilityRole="button"
           accessibilityLabel="Retry loading settings"
         >
-          <MaterialCommunityIcons name="refresh" size={16} color="#FFFFFF" />
-          <Text style={styles.retryButtonText}>Try Again</Text>
-        </TouchableOpacity>
+          <RefreshCw size={16} color="#FFFFFF" />
+          <RNText className="font-sans-medium text-body-medium text-white">
+            Try Again
+          </RNText>
+        </Pressable>
       </View>
     );
   }
@@ -225,32 +239,34 @@ export default function ProfileSettingsScreen({ navigation }) {
   const email = profile?.email || '';
 
   // Setting item component
-  const SettingItem = ({ icon, iconColor, label, value, onPress, rightElement, showChevron = true }) => (
-    <TouchableOpacity
-      style={styles.settingItem}
+  const SettingItem = ({ Icon, iconColor, label, value, onPress, rightElement, showChevron = true }) => (
+    <Pressable
+      className="flex-row items-center py-md px-lg"
       onPress={onPress}
-      activeOpacity={onPress ? 0.7 : 1}
       disabled={!onPress}
     >
-      <View style={[styles.settingIcon, { backgroundColor: `${iconColor}15` }]}>
-        <MaterialCommunityIcons name={icon} size={20} color={iconColor} />
+      <View
+        className="w-9 h-9 rounded-lg items-center justify-center mr-md"
+        style={{ backgroundColor: `${iconColor}15` }}
+      >
+        <Icon size={20} color={iconColor} />
       </View>
-      <View style={styles.settingContent}>
-        <Text style={[styles.settingLabel, dynamicStyles.text]}>{label}</Text>
+      <View className="flex-1">
+        <RNText className="font-sans-medium text-body-medium text-on-surface">{label}</RNText>
       </View>
       {value && (
-        <Text style={[styles.settingValue, dynamicStyles.textMuted]}>{value}</Text>
+        <RNText className="font-sans text-body-small text-on-surface-variant mr-sm">
+          {value}
+        </RNText>
       )}
       {rightElement}
       {showChevron && onPress && (
-        <MaterialCommunityIcons
-          name="chevron-right"
+        <ChevronRight
           size={22}
-          color={paperTheme.colors.onSurfaceVariant}
-          style={styles.chevron}
+          color={theme.colors['on-surface-variant']}
         />
       )}
-    </TouchableOpacity>
+    </Pressable>
   );
 
   // Divider between sections
@@ -264,47 +280,45 @@ export default function ProfileSettingsScreen({ navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       {/* Header */}
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity
-          style={styles.headerButton}
+      <View className="flex-row items-center justify-between px-lg py-md" style={{ paddingTop: insets.top + 8 }}>
+        <Pressable
+          className="w-10 h-10 items-center justify-center"
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <MaterialCommunityIcons
-            name="close"
+          <X
             size={24}
-            color={paperTheme.colors.onSurface}
+            color={theme.colors['on-surface']}
           />
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, dynamicStyles.text]}>Settings</Text>
-        <TouchableOpacity
-          style={styles.headerButton}
+        </Pressable>
+        <RNText className="font-serif-bold text-headline-small text-on-surface">Settings</RNText>
+        <Pressable
+          className="w-10 h-10 items-center justify-center"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <MaterialCommunityIcons
-            name="information-outline"
+          <Info
             size={24}
-            color={paperTheme.colors.onSurface}
+            color={theme.colors['on-surface']}
           />
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {/* Toast Message */}
       {message.text !== '' && (
         <View
-          style={[
-            styles.toast,
-            message.type === 'success'
-              ? { backgroundColor: mukokoTheme.colors.success }
-              : { backgroundColor: mukokoTheme.colors.error },
-          ]}
+          className="flex-row items-center gap-sm py-sm px-lg mx-lg rounded-button"
+          style={{
+            backgroundColor: message.type === 'success'
+              ? mukokoTheme.colors.success
+              : mukokoTheme.colors.error,
+          }}
         >
-          <MaterialCommunityIcons
-            name={message.type === 'success' ? 'check-circle' : 'alert-circle'}
-            size={18}
-            color="#fff"
-          />
-          <Text style={styles.toastText}>{message.text}</Text>
+          {message.type === 'success' ? (
+            <CheckCircle2 size={18} color="#fff" />
+          ) : (
+            <AlertCircle size={18} color="#fff" />
+          )}
+          <RNText className="font-sans-medium text-body-small text-white flex-1">{message.text}</RNText>
         </View>
       )}
 
@@ -316,14 +330,14 @@ export default function ProfileSettingsScreen({ navigation }) {
       >
         {/* Email Display */}
         <View style={[styles.emailContainer, dynamicStyles.card]}>
-          <Text style={[styles.emailText, dynamicStyles.text]}>{email}</Text>
+          <RNText style={[styles.emailText, dynamicStyles.text]}>{email}</RNText>
         </View>
 
         {/* Profile Section */}
         <View style={[styles.sectionCard, dynamicStyles.card]}>
           <SettingItem
-            icon="account-outline"
-            iconColor={paperTheme.colors.primary}
+            Icon={User}
+            iconColor={theme.colors.primary}
             label="Profile"
             onPress={() => setEditingProfile(!editingProfile)}
           />
@@ -331,49 +345,48 @@ export default function ProfileSettingsScreen({ navigation }) {
           {/* Profile Edit Form */}
           {editingProfile && (
             <View style={styles.editForm}>
-              <TextInput
-                mode="flat"
-                label="Display Name"
-                value={displayName}
-                onChangeText={setDisplayName}
-                style={[styles.input, dynamicStyles.input]}
-                underlineColor="transparent"
-                activeUnderlineColor={paperTheme.colors.primary}
-              />
-              <TextInput
-                mode="flat"
-                label="Bio"
-                value={bio}
-                onChangeText={setBio}
-                multiline
-                numberOfLines={3}
-                maxLength={160}
-                style={[styles.input, styles.bioInput, dynamicStyles.input]}
-                underlineColor="transparent"
-                activeUnderlineColor={paperTheme.colors.primary}
-              />
-              <Text style={[styles.charCount, dynamicStyles.textMuted]}>
-                {bio.length}/160
-              </Text>
-              <TouchableOpacity
-                style={[styles.saveButton, { backgroundColor: paperTheme.colors.primary }]}
+              <FormField label="Display Name">
+                <RNTextInput
+                  value={displayName}
+                  onChangeText={setDisplayName}
+                  placeholder="Enter your display name"
+                  className="px-md py-sm rounded-button border border-outline bg-surface font-sans text-body-medium"
+                  style={{ color: theme.colors['on-surface'] }}
+                  placeholderTextColor={theme.colors['on-surface-variant']}
+                />
+              </FormField>
+              <FormField label="Bio" hint={`${bio.length}/160`}>
+                <RNTextInput
+                  value={bio}
+                  onChangeText={setBio}
+                  placeholder="Tell us about yourself"
+                  multiline
+                  numberOfLines={3}
+                  maxLength={160}
+                  className="px-md py-sm rounded-button border border-outline bg-surface font-sans text-body-medium min-h-[100px]"
+                  style={{ color: theme.colors['on-surface'], textAlignVertical: 'top' }}
+                  placeholderTextColor={theme.colors['on-surface-variant']}
+                />
+              </FormField>
+              <Pressable
+                className="py-md rounded-lg items-center mt-sm"
+                style={{ backgroundColor: theme.colors.primary }}
                 onPress={handleUpdateProfile}
                 disabled={saving}
-                activeOpacity={0.8}
               >
                 {saving ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <Loader2 size={16} color="#fff" className="animate-spin" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Save Changes</Text>
+                  <RNText className="font-sans-bold text-body-medium text-white">Save Changes</RNText>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             </View>
           )}
 
           <View style={[styles.itemDivider, dynamicStyles.divider]} />
 
           <SettingItem
-            icon="at"
+            Icon={AtSign}
             iconColor="#00B0FF"
             label="Username"
             value={`@${profile?.username || ''}`}
@@ -383,39 +396,41 @@ export default function ProfileSettingsScreen({ navigation }) {
           {/* Username Edit Form */}
           {editingUsername && (
             <View style={styles.editForm}>
-              <View style={[styles.warningBox, { backgroundColor: `${mukokoTheme.colors.warning}15` }]}>
-                <MaterialCommunityIcons
-                  name="alert-outline"
+              <View className="flex-row items-center gap-sm p-md rounded-lg mb-md" style={{ backgroundColor: `${mukokoTheme.colors.warning}15` }}>
+                <AlertCircle
                   size={18}
                   color={mukokoTheme.colors.warning}
                 />
-                <Text style={[styles.warningText, { color: mukokoTheme.colors.warning }]}>
+                <RNText className="flex-1 font-sans text-body-small" style={{ color: mukokoTheme.colors.warning }}>
                   Changing username will update your profile URL
-                </Text>
+                </RNText>
               </View>
-              <TextInput
-                mode="flat"
-                label="New Username"
-                value={newUsername}
-                onChangeText={setNewUsername}
-                autoCapitalize="none"
-                style={[styles.input, dynamicStyles.input]}
-                underlineColor="transparent"
-                activeUnderlineColor={paperTheme.colors.primary}
-                left={<TextInput.Affix text="@" />}
-              />
-              <TouchableOpacity
-                style={[styles.saveButton, { backgroundColor: paperTheme.colors.primary }]}
+              <FormField label="New Username">
+                <View className="flex-row items-center px-md rounded-button border border-outline bg-surface">
+                  <RNText className="font-sans text-body-medium" style={{ color: theme.colors['on-surface-variant'] }}>@</RNText>
+                  <RNTextInput
+                    value={newUsername}
+                    onChangeText={setNewUsername}
+                    placeholder="username"
+                    autoCapitalize="none"
+                    className="flex-1 py-sm font-sans text-body-medium ml-xs"
+                    style={{ color: theme.colors['on-surface'] }}
+                    placeholderTextColor={theme.colors['on-surface-variant']}
+                  />
+                </View>
+              </FormField>
+              <Pressable
+                className="py-md rounded-lg items-center mt-sm"
+                style={{ backgroundColor: theme.colors.primary }}
                 onPress={handleUpdateUsername}
                 disabled={saving || !newUsername}
-                activeOpacity={0.8}
               >
                 {saving ? (
-                  <ActivityIndicator size="small" color="#fff" />
+                  <Loader2 size={16} color="#fff" className="animate-spin" />
                 ) : (
-                  <Text style={styles.saveButtonText}>Update Username</Text>
+                  <RNText className="font-sans-bold text-body-medium text-white">Update Username</RNText>
                 )}
-              </TouchableOpacity>
+              </Pressable>
             </View>
           )}
         </View>
@@ -425,27 +440,19 @@ export default function ProfileSettingsScreen({ navigation }) {
         {/* Preferences Section */}
         <View style={[styles.sectionCard, dynamicStyles.card]}>
           <SettingItem
-            icon={isDark ? 'moon-waning-crescent' : 'white-balance-sunny'}
+            Icon={isDark ? Moon : Sun}
             iconColor={isDark ? '#7C83FD' : '#FFB74D'}
             label="Appearance"
             value={isDark ? 'Dark' : 'System'}
             onPress={handleThemeToggle}
             showChevron={false}
-            rightElement={
-              <View style={styles.dropdownIcon}>
-                <MaterialCommunityIcons
-                  name="unfold-more-horizontal"
-                  size={20}
-                  color={paperTheme.colors.onSurfaceVariant}
-                />
-              </View>
-            }
+            rightElement={null}
           />
 
           <View style={[styles.itemDivider, dynamicStyles.divider]} />
 
           <SettingItem
-            icon="bell-outline"
+            Icon={Bell}
             iconColor="#FF7043"
             label="Notifications"
             onPress={() => {}}
@@ -454,7 +461,7 @@ export default function ProfileSettingsScreen({ navigation }) {
           <View style={[styles.itemDivider, dynamicStyles.divider]} />
 
           <SettingItem
-            icon="shield-lock-outline"
+            Icon={ShieldCheck}
             iconColor="#26A69A"
             label="Privacy"
             onPress={() => {}}
@@ -463,7 +470,7 @@ export default function ProfileSettingsScreen({ navigation }) {
           <View style={[styles.itemDivider, dynamicStyles.divider]} />
 
           <SettingItem
-            icon="link-variant"
+            Icon={Link2}
             iconColor="#5C6BC0"
             label="Shared links"
             onPress={() => {}}
@@ -474,17 +481,18 @@ export default function ProfileSettingsScreen({ navigation }) {
 
         {/* Haptic Feedback */}
         <View style={[styles.sectionCard, dynamicStyles.card]}>
-          <View style={styles.settingItem}>
-            <View style={[styles.settingIcon, { backgroundColor: 'rgba(156, 39, 176, 0.15)' }]}>
-              <MaterialCommunityIcons name="vibrate" size={20} color="#9C27B0" />
+          <View className="flex-row items-center py-md px-lg">
+            <View className="w-9 h-9 rounded-lg items-center justify-center mr-md" style={{ backgroundColor: 'rgba(156, 39, 176, 0.15)' }}>
+              <Vibrate size={20} color="#9C27B0" />
             </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingLabel, dynamicStyles.text]}>Haptic feedback</Text>
+            <View className="flex-1">
+              <RNText className="font-sans-medium text-body-medium text-on-surface">Haptic feedback</RNText>
             </View>
             <Switch
               value={hapticFeedback}
               onValueChange={handleHapticToggle}
-              color={paperTheme.colors.primary}
+              trackColor={{ true: theme.colors.primary }}
+              thumbColor={hapticFeedback ? theme.colors.primary : '#f4f3f4'}
             />
           </View>
         </View>
@@ -493,25 +501,24 @@ export default function ProfileSettingsScreen({ navigation }) {
 
         {/* Log Out */}
         <View style={[styles.sectionCard, dynamicStyles.card]}>
-          <TouchableOpacity
-            style={styles.settingItem}
+          <Pressable
+            className="flex-row items-center py-md px-lg"
             onPress={handleSignOut}
-            activeOpacity={0.7}
           >
-            <View style={[styles.settingIcon, { backgroundColor: 'rgba(244, 67, 54, 0.15)' }]}>
-              <MaterialCommunityIcons name="logout" size={20} color={mukokoTheme.colors.error} />
+            <View className="w-9 h-9 rounded-lg items-center justify-center mr-md" style={{ backgroundColor: 'rgba(244, 67, 54, 0.15)' }}>
+              <LogOut size={20} color={mukokoTheme.colors.error} />
             </View>
-            <View style={styles.settingContent}>
-              <Text style={[styles.settingLabel, { color: mukokoTheme.colors.error }]}>Log out</Text>
+            <View className="flex-1">
+              <RNText className="font-sans-medium text-body-medium" style={{ color: mukokoTheme.colors.error }}>Log out</RNText>
             </View>
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         {/* Footer */}
         <View style={styles.footer}>
-          <Text style={[styles.versionText, dynamicStyles.textMuted]}>
+          <RNText style={[styles.versionText, dynamicStyles.textMuted]}>
             Version 1.0.0
-          </Text>
+          </RNText>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

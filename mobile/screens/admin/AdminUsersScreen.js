@@ -2,34 +2,34 @@
  * AdminUsersScreen - Modern user management
  * Design inspired by ProfileSettingsScreen for consistency
  * Features: Clean cards, icon-based actions, OIDC-aligned schema
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   FlatList,
-  StyleSheet,
   RefreshControl,
   Alert,
   Platform,
-  TouchableOpacity,
+  Pressable,
   ScrollView,
   Image,
+  Text as RNText,
+  Modal,
 } from 'react-native';
 import {
-  Text,
-  Searchbar,
-  Chip,
-  Menu,
-  useTheme as usePaperTheme,
-  ActivityIndicator,
-} from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+  ShieldAlert, AlertCircle, RefreshCw, ShieldCheck, Headphones,
+  Pencil, User, CheckCircle2, PauseCircle, XCircle, HelpCircle,
+  Settings, Trash2, Users, UserSearch, ChevronLeft, ChevronRight,
+} from 'lucide-react-native';
+import { LoadingState, SearchBar, FilterChip } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
 import AdminScreenWrapper from '../../components/AdminScreenWrapper';
-import { mukokoTheme } from '../../theme';
 
 // Updated roles to match OIDC schema
 const ROLES = ['user', 'author', 'support', 'moderator', 'admin'];
@@ -40,7 +40,7 @@ const STATUSES = ['active', 'suspended', 'deleted'];
  * Manage users, roles, and status
  */
 export default function AdminUsersScreen({ navigation }) {
-  const theme = usePaperTheme();
+  const theme = useTheme();
   const { isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
@@ -51,21 +51,10 @@ export default function AdminUsersScreen({ navigation }) {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [page, setPage] = useState(0);
   const [menuVisible, setMenuVisible] = useState(null);
+  const [menuOptions, setMenuOptions] = useState([]);
   const [error, setError] = useState(null);
 
   const LIMIT = 20;
-
-  // Dynamic styles for theme
-  const dynamicStyles = {
-    container: { backgroundColor: theme.colors.background },
-    text: { color: theme.colors.onSurface },
-    textMuted: { color: theme.colors.onSurfaceVariant },
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderColor: theme.colors.outline,
-    },
-    divider: { backgroundColor: theme.colors.outline },
-  };
 
   const loadUsers = useCallback(async () => {
     setError(null);
@@ -146,20 +135,20 @@ export default function AdminUsersScreen({ navigation }) {
 
   const getRoleConfig = (role) => {
     switch (role) {
-      case 'admin': return { color: '#EF4444', icon: 'shield-crown' };
-      case 'moderator': return { color: '#8B5CF6', icon: 'shield-check' };
-      case 'support': return { color: '#3B82F6', icon: 'headset' };
-      case 'author': return { color: '#10B981', icon: 'pencil' };
-      default: return { color: '#6B7280', icon: 'account' };
+      case 'admin': return { color: theme.colors.error, Icon: ShieldCheck };
+      case 'moderator': return { color: '#8B5CF6', Icon: ShieldCheck };
+      case 'support': return { color: theme.colors.cobalt, Icon: Headphones };
+      case 'author': return { color: theme.colors.success, Icon: Pencil };
+      default: return { color: theme.colors['on-surface-variant'], Icon: User };
     }
   };
 
   const getStatusConfig = (status) => {
     switch (status) {
-      case 'active': return { color: '#10B981', icon: 'check-circle' };
-      case 'suspended': return { color: '#F59E0B', icon: 'pause-circle' };
-      case 'deleted': return { color: '#EF4444', icon: 'close-circle' };
-      default: return { color: '#6B7280', icon: 'help-circle' };
+      case 'active': return { color: theme.colors.success, Icon: CheckCircle2 };
+      case 'suspended': return { color: theme.colors.warning, Icon: PauseCircle };
+      case 'deleted': return { color: theme.colors.error, Icon: XCircle };
+      default: return { color: theme.colors['on-surface-variant'], Icon: HelpCircle };
     }
   };
 
@@ -168,38 +157,97 @@ export default function AdminUsersScreen({ navigation }) {
     return new Date(dateString).toLocaleDateString();
   };
 
+  const openRoleMenu = (userId) => {
+    const options = ROLES.map((role) => ({
+      value: role,
+      config: getRoleConfig(role),
+      onPress: () => handleRoleChange(userId, role),
+    }));
+    setMenuOptions(options);
+    setMenuVisible(`role-${userId}`);
+  };
+
+  const openStatusMenu = (userId) => {
+    const options = STATUSES.map((status) => ({
+      value: status,
+      config: getStatusConfig(status),
+      onPress: () => handleStatusChange(userId, status),
+    }));
+    setMenuOptions(options);
+    setMenuVisible(`status-${userId}`);
+  };
+
   if (!isAdmin) {
     return (
-      <View style={[styles.container, dynamicStyles.container]}>
-        <View style={styles.errorContainer}>
-          <MaterialCommunityIcons name="shield-alert" size={48} color={theme.colors.error} />
-          <Text style={[styles.errorTitle, dynamicStyles.text]}>Access Denied</Text>
-          <Text style={[styles.errorText, dynamicStyles.textMuted]}>
-            You don't have permission to access this page.
-          </Text>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg bg-background">
+        <ShieldAlert size={48} color={theme.colors.error} />
+        <RNText className="font-serif-bold text-headline-small mt-md mb-sm text-on-surface">
+          Access Denied
+        </RNText>
+        <RNText className="font-sans text-body-medium text-center text-on-surface-variant">
+          You don't have permission to access this page.
+        </RNText>
       </View>
     );
   }
 
   if (error) {
     return (
-      <View style={[styles.container, dynamicStyles.container]}>
-        <View style={styles.errorContainer}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={48} color={theme.colors.error} />
-          <Text style={[styles.errorTitle, dynamicStyles.text]}>Something went wrong</Text>
-          <Text style={[styles.errorText, dynamicStyles.textMuted]}>{error}</Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
-            onPress={loadUsers}
-          >
-            <MaterialCommunityIcons name="refresh" size={16} color="#FFFFFF" />
-            <Text style={styles.retryButtonText}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg bg-background">
+        <AlertCircle size={48} color={theme.colors.error} />
+        <RNText className="font-serif-bold text-headline-small mt-md mb-sm text-on-surface">
+          Something went wrong
+        </RNText>
+        <RNText className="font-sans text-body-medium mb-lg text-center text-on-surface-variant">
+          {error}
+        </RNText>
+        <Pressable
+          className="flex-row items-center gap-sm py-md px-xl rounded-button bg-tanzanite"
+          onPress={loadUsers}
+        >
+          <RefreshCw size={16} color="#FFFFFF" />
+          <RNText className="font-sans-bold text-label-large text-on-primary">
+            Try Again
+          </RNText>
+        </Pressable>
       </View>
     );
   }
+
+  // Action Menu Modal
+  const ActionMenu = () => (
+    <Modal
+      visible={!!menuVisible}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setMenuVisible(null)}
+    >
+      <Pressable
+        className="flex-1 bg-black/50 justify-center items-center"
+        onPress={() => setMenuVisible(null)}
+      >
+        <View className="bg-surface rounded-card max-h-[400px] w-[80%] max-w-[300px]" onStartShouldSetResponder={() => true}>
+          <ScrollView className="max-h-[400px]">
+            {menuOptions.map((option, index) => {
+              const OptionIcon = option.config.Icon;
+              return (
+                <Pressable
+                  key={option.value || index}
+                  className="flex-row items-center gap-md px-lg py-md border-b border-outline"
+                  onPress={option.onPress}
+                >
+                  <OptionIcon size={18} color={option.config.color} />
+                  <RNText className="font-sans text-body-medium text-on-surface capitalize">
+                    {option.value}
+                  </RNText>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </Pressable>
+    </Modal>
+  );
 
   // User card component - consistent with ProfileSettingsScreen design
   const UserCard = ({ user }) => {
@@ -207,134 +255,101 @@ export default function AdminUsersScreen({ navigation }) {
     const statusConfig = getStatusConfig(user.status);
 
     return (
-      <View style={[styles.userCard, dynamicStyles.card]}>
+      <View className="rounded-card bg-surface border border-outline p-lg mb-md">
         {/* User Header */}
-        <View style={styles.userHeader}>
+        <View className="flex-row items-center mb-md">
           {user.picture ? (
             <Image
               source={{ uri: user.picture }}
-              style={styles.userAvatar}
+              className="w-[48px] h-[48px] rounded-full mr-md"
             />
           ) : (
-            <View style={[styles.userAvatarPlaceholder, { backgroundColor: `${roleConfig.color}15` }]}>
-              <Text style={[styles.avatarText, { color: roleConfig.color }]}>
+            <View
+              className="w-[48px] h-[48px] rounded-full justify-center items-center mr-md"
+              style={{ backgroundColor: `${roleConfig.color}15` }}
+            >
+              <RNText className="font-sans-bold text-[18px]" style={{ color: roleConfig.color }}>
                 {(user.name || user.username || user.email || 'U').charAt(0).toUpperCase()}
-              </Text>
+              </RNText>
             </View>
           )}
-          <View style={styles.userInfo}>
-            <Text style={[styles.userName, dynamicStyles.text]} numberOfLines={1}>
+          <View className="flex-1">
+            <RNText className="font-sans-medium text-body-large text-on-surface mb-[2px]" numberOfLines={1}>
               {user.name || user.username || 'Unknown'}
-            </Text>
-            <Text style={[styles.userEmail, dynamicStyles.textMuted]} numberOfLines={1}>
+            </RNText>
+            <RNText className="font-sans text-body-small text-on-surface-variant" numberOfLines={1}>
               {user.email}
-            </Text>
+            </RNText>
             {user.username && (
-              <Text style={[styles.userUsername, dynamicStyles.textMuted]}>
+              <RNText className="font-sans text-body-small text-on-surface-variant mt-[2px]">
                 @{user.username}
-              </Text>
+              </RNText>
             )}
           </View>
         </View>
 
         {/* Badges Row */}
-        <View style={styles.badgesRow}>
-          <View style={[styles.badge, { backgroundColor: `${roleConfig.color}15` }]}>
-            <MaterialCommunityIcons name={roleConfig.icon} size={12} color={roleConfig.color} />
-            <Text style={[styles.badgeText, { color: roleConfig.color }]}>
+        <View className="flex-row items-center gap-sm mb-md">
+          <View
+            className="flex-row items-center gap-[4px] px-sm py-[4px] rounded-lg"
+            style={{ backgroundColor: `${roleConfig.color}15` }}
+          >
+            <roleConfig.Icon size={12} color={roleConfig.color} />
+            <RNText className="font-sans-medium text-[11px] capitalize" style={{ color: roleConfig.color }}>
               {user.role}
-            </Text>
+            </RNText>
           </View>
-          <View style={[styles.badge, { backgroundColor: `${statusConfig.color}15` }]}>
-            <MaterialCommunityIcons name={statusConfig.icon} size={12} color={statusConfig.color} />
-            <Text style={[styles.badgeText, { color: statusConfig.color }]}>
+          <View
+            className="flex-row items-center gap-[4px] px-sm py-[4px] rounded-lg"
+            style={{ backgroundColor: `${statusConfig.color}15` }}
+          >
+            <statusConfig.Icon size={12} color={statusConfig.color} />
+            <RNText className="font-sans-medium text-[11px] capitalize" style={{ color: statusConfig.color }}>
               {user.status}
-            </Text>
+            </RNText>
           </View>
-          <Text style={[styles.dateText, dynamicStyles.textMuted]}>
+          <RNText className="font-sans text-[11px] text-on-surface-variant ml-auto">
             Joined {formatDate(user.created_at)}
-          </Text>
+          </RNText>
         </View>
 
         {/* Divider */}
-        <View style={[styles.divider, dynamicStyles.divider]} />
+        <View className="h-[1px] bg-outline mb-md" />
 
         {/* Actions Row */}
-        <View style={styles.actionsRow}>
-          {/* Role Menu */}
-          <Menu
-            visible={menuVisible === `role-${user.id}`}
-            onDismiss={() => setMenuVisible(null)}
-            anchor={
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => setMenuVisible(`role-${user.id}`)}
-              >
-                <View style={[styles.actionIcon, { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]}>
-                  <MaterialCommunityIcons name="shield-edit" size={16} color="#3B82F6" />
-                </View>
-                <Text style={[styles.actionText, dynamicStyles.text]}>Role</Text>
-              </TouchableOpacity>
-            }
+        <View className="flex-row justify-around">
+          {/* Role Button */}
+          <Pressable
+            className="items-center gap-[4px] py-[4px] px-md"
+            onPress={() => openRoleMenu(user.id)}
           >
-            {ROLES.map((role) => (
-              <Menu.Item
-                key={role}
-                onPress={() => handleRoleChange(user.id, role)}
-                title={role}
-                leadingIcon={() => (
-                  <MaterialCommunityIcons
-                    name={getRoleConfig(role).icon}
-                    size={18}
-                    color={getRoleConfig(role).color}
-                  />
-                )}
-              />
-            ))}
-          </Menu>
+            <View className="w-[32px] h-[32px] rounded-lg justify-center items-center bg-cobalt/10">
+              <ShieldCheck size={16} color={theme.colors.cobalt} />
+            </View>
+            <RNText className="font-sans-medium text-[11px] text-on-surface">Role</RNText>
+          </Pressable>
 
-          {/* Status Menu */}
-          <Menu
-            visible={menuVisible === `status-${user.id}`}
-            onDismiss={() => setMenuVisible(null)}
-            anchor={
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => setMenuVisible(`status-${user.id}`)}
-              >
-                <View style={[styles.actionIcon, { backgroundColor: 'rgba(245, 158, 11, 0.1)' }]}>
-                  <MaterialCommunityIcons name="account-cog" size={16} color="#F59E0B" />
-                </View>
-                <Text style={[styles.actionText, dynamicStyles.text]}>Status</Text>
-              </TouchableOpacity>
-            }
+          {/* Status Button */}
+          <Pressable
+            className="items-center gap-[4px] py-[4px] px-md"
+            onPress={() => openStatusMenu(user.id)}
           >
-            {STATUSES.map((status) => (
-              <Menu.Item
-                key={status}
-                onPress={() => handleStatusChange(user.id, status)}
-                title={status}
-                leadingIcon={() => (
-                  <MaterialCommunityIcons
-                    name={getStatusConfig(status).icon}
-                    size={18}
-                    color={getStatusConfig(status).color}
-                  />
-                )}
-              />
-            ))}
-          </Menu>
+            <View className="w-[32px] h-[32px] rounded-lg justify-center items-center bg-warning/10">
+              <Settings size={16} color={theme.colors.warning} />
+            </View>
+            <RNText className="font-sans-medium text-[11px] text-on-surface">Status</RNText>
+          </Pressable>
 
           {/* Delete Button */}
-          <TouchableOpacity
-            style={styles.actionButton}
+          <Pressable
+            className="items-center gap-[4px] py-[4px] px-md"
             onPress={() => handleDelete(user.id, user.email)}
           >
-            <View style={[styles.actionIcon, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-              <MaterialCommunityIcons name="delete" size={16} color="#EF4444" />
+            <View className="w-[32px] h-[32px] rounded-lg justify-center items-center bg-error/10">
+              <Trash2 size={16} color={theme.colors.error} />
             </View>
-            <Text style={[styles.actionText, { color: '#EF4444' }]}>Delete</Text>
-          </TouchableOpacity>
+            <RNText className="font-sans-medium text-[11px]" style={{ color: theme.colors.error }}>Delete</RNText>
+          </Pressable>
         </View>
       </View>
     );
@@ -342,32 +357,29 @@ export default function AdminUsersScreen({ navigation }) {
 
   return (
     <AdminScreenWrapper>
-      <View style={[styles.container, dynamicStyles.container]}>
+      <View className="flex-1 bg-background">
         <AdminHeader navigation={navigation} currentScreen="AdminUsers" />
 
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, dynamicStyles.text]}>Users</Text>
-          <View style={styles.statsBadge}>
-            <MaterialCommunityIcons name="account-group" size={14} color={theme.colors.primary} />
-            <Text style={[styles.statsText, { color: theme.colors.primary }]}>
+        <View className="flex-row justify-between items-center px-lg py-md">
+          <RNText className="font-serif-bold text-headline-small text-on-surface">Users</RNText>
+          <View className="flex-row items-center gap-[4px] px-[10px] py-[4px] rounded-button bg-tanzanite/10">
+            <Users size={14} color={theme.colors.tanzanite} />
+            <RNText className="font-sans-medium text-body-small" style={{ color: theme.colors.tanzanite }}>
               {total.toLocaleString()}
-            </Text>
+            </RNText>
           </View>
         </View>
 
         {/* Search */}
-        <View style={styles.searchContainer}>
-          <Searchbar
+        <View className="px-lg pb-sm">
+          <SearchBar
             placeholder="Search users..."
+            value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);
               setPage(0);
             }}
-            value={searchQuery}
-            style={[styles.searchbar, dynamicStyles.card]}
-            inputStyle={{ fontSize: 15 }}
-            icon={() => <MaterialCommunityIcons name="magnify" size={20} color={theme.colors.onSurfaceVariant} />}
           />
         </View>
 
@@ -375,329 +387,87 @@ export default function AdminUsersScreen({ navigation }) {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={styles.filtersContainer}
-          contentContainerStyle={styles.filtersContent}
+          className="max-h-[44px]"
+          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 8 }}
         >
-          <Chip
+          <FilterChip
             selected={!selectedRole}
             onPress={() => { setSelectedRole(''); setPage(0); }}
-            style={styles.chip}
-            textStyle={styles.chipText}
           >
             All
-          </Chip>
+          </FilterChip>
           {ROLES.map((role) => {
             const config = getRoleConfig(role);
             return (
-              <Chip
+              <FilterChip
                 key={role}
                 selected={selectedRole === role}
                 onPress={() => { setSelectedRole(role); setPage(0); }}
-                style={styles.chip}
-                textStyle={styles.chipText}
-                icon={() => (
-                  <MaterialCommunityIcons name={config.icon} size={14} color={config.color} />
-                )}
+                icon={config.Icon}
               >
                 {role}
-              </Chip>
+              </FilterChip>
             );
           })}
         </ScrollView>
 
         {/* Users List */}
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={theme.colors.primary} />
-            <Text style={[styles.loadingText, dynamicStyles.textMuted]}>Loading users...</Text>
-          </View>
+          <LoadingState message="Loading users..." />
         ) : (
           <FlatList
             data={users}
             renderItem={({ item }) => <UserCard user={item} />}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={{ padding: 16, paddingTop: 4, paddingBottom: 100 }}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                colors={[theme.colors.primary]}
+                colors={[theme.colors.tanzanite]}
               />
             }
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <MaterialCommunityIcons
-                  name="account-search"
-                  size={48}
-                  color={theme.colors.onSurfaceVariant}
-                />
-                <Text style={[styles.emptyText, dynamicStyles.textMuted]}>No users found</Text>
+              <View className="p-xxl items-center gap-md">
+                <UserSearch size={48} color={theme.colors['on-surface-variant']} />
+                <RNText className="font-sans text-body-medium text-on-surface-variant">No users found</RNText>
               </View>
             }
             ListFooterComponent={
               users.length > 0 && (
-                <View style={styles.pagination}>
-                  <TouchableOpacity
-                    style={[
-                      styles.pageButton,
-                      dynamicStyles.card,
-                      page === 0 && styles.pageButtonDisabled,
-                    ]}
+                <View className="flex-row justify-center items-center gap-lg py-lg">
+                  <Pressable
+                    className={`w-[40px] h-[40px] rounded-full justify-center items-center border border-outline bg-surface ${page === 0 ? 'opacity-50' : ''}`}
                     onPress={() => setPage((p) => Math.max(0, p - 1))}
                     disabled={page === 0}
                   >
-                    <MaterialCommunityIcons
-                      name="chevron-left"
+                    <ChevronLeft
                       size={20}
-                      color={page === 0 ? theme.colors.onSurfaceDisabled : theme.colors.onSurface}
+                      color={page === 0 ? theme.colors['on-surface-variant'] : theme.colors['on-surface']}
                     />
-                  </TouchableOpacity>
-                  <Text style={[styles.pageText, dynamicStyles.textMuted]}>
+                  </Pressable>
+                  <RNText className="font-sans text-body-small text-on-surface-variant">
                     Page {page + 1} of {Math.ceil(total / LIMIT)}
-                  </Text>
-                  <TouchableOpacity
-                    style={[
-                      styles.pageButton,
-                      dynamicStyles.card,
-                      (page + 1) * LIMIT >= total && styles.pageButtonDisabled,
-                    ]}
+                  </RNText>
+                  <Pressable
+                    className={`w-[40px] h-[40px] rounded-full justify-center items-center border border-outline bg-surface ${(page + 1) * LIMIT >= total ? 'opacity-50' : ''}`}
                     onPress={() => setPage((p) => p + 1)}
                     disabled={(page + 1) * LIMIT >= total}
                   >
-                    <MaterialCommunityIcons
-                      name="chevron-right"
+                    <ChevronRight
                       size={20}
-                      color={(page + 1) * LIMIT >= total ? theme.colors.onSurfaceDisabled : theme.colors.onSurface}
+                      color={(page + 1) * LIMIT >= total ? theme.colors['on-surface-variant'] : theme.colors['on-surface']}
                     />
-                  </TouchableOpacity>
+                  </Pressable>
                 </View>
               )
             }
           />
         )}
+
+        {/* Action Menu */}
+        <ActionMenu />
       </View>
     </AdminScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  title: {
-    fontSize: 24,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  statsBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    backgroundColor: 'rgba(94, 87, 114, 0.1)',
-  },
-  statsText: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-  searchContainer: {
-    paddingHorizontal: 16,
-    paddingBottom: 8,
-  },
-  searchbar: {
-    elevation: 0,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  filtersContainer: {
-    maxHeight: 44,
-  },
-  filtersContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    gap: 8,
-  },
-  chip: {
-    marginRight: 8,
-  },
-  chipText: {
-    fontSize: 13,
-    textTransform: 'capitalize',
-  },
-  list: {
-    padding: 16,
-    paddingTop: 4,
-    paddingBottom: 100,
-  },
-  userCard: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 12,
-  },
-  userHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  userAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
-  },
-  userAvatarPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 18,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 16,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    marginBottom: 2,
-  },
-  userEmail: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
-  userUsername: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    marginTop: 2,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    textTransform: 'capitalize',
-  },
-  dateText: {
-    fontSize: 11,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    marginLeft: 'auto',
-  },
-  divider: {
-    height: 1,
-    marginBottom: 12,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  actionButton: {
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 4,
-    paddingHorizontal: 12,
-  },
-  actionIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  actionText: {
-    fontSize: 11,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 12,
-  },
-  loadingText: {
-    fontSize: 14,
-  },
-  emptyContainer: {
-    padding: 48,
-    alignItems: 'center',
-    gap: 12,
-  },
-  emptyText: {
-    fontSize: 15,
-  },
-  pagination: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 16,
-    paddingVertical: 16,
-  },
-  pageButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  pageButtonDisabled: {
-    opacity: 0.5,
-  },
-  pageText: {
-    fontSize: 13,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  errorTitle: {
-    fontSize: 18,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    marginTop: 12,
-    marginBottom: 4,
-  },
-  errorText: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-});

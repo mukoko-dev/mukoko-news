@@ -10,7 +10,8 @@ import {
   StyleSheet,
   TouchableOpacity,
 } from 'react-native';
-import { Text, useTheme as usePaperTheme } from 'react-native-paper';
+import { Text } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
@@ -31,10 +32,10 @@ export default function InsightsPromo({
   style,
 }) {
   const navigation = useNavigation();
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   // Bold accent colors for prominence (matching LoginPromo)
-  const accentColor = paperTheme.colors.tertiary || '#D4634A';
+  const accentColor = theme.colors.tertiary || '#D4634A';
   const accentDark = '#B84D38';
 
   // Default metrics if not provided
@@ -152,7 +153,7 @@ export default function InsightsPromo({
   if (variant === 'card') {
     return (
       <TouchableOpacity
-        style={[styles.cardContainer, { backgroundColor: paperTheme.colors.surface }, style]}
+        style={[styles.cardContainer, { backgroundColor: theme.colors.surface }, style]}
         onPress={handlePress}
         activeOpacity={0.9}
         accessibilityLabel="View platform insights"
@@ -166,11 +167,11 @@ export default function InsightsPromo({
 
         {/* Main content */}
         <View style={styles.cardContent}>
-          <Text style={[styles.cardTitle, { color: paperTheme.colors.onSurface }]}>
+          <Text style={[styles.cardTitle, { color: theme.colors.onSurface }]}>
             African News Coverage
           </Text>
 
-          <Text style={[styles.cardDescription, { color: paperTheme.colors.onSurfaceVariant }]}>
+          <Text style={[styles.cardDescription, { color: theme.colors.onSurfaceVariant }]}>
             Real-time aggregation from trusted sources across the continent
           </Text>
 
@@ -180,17 +181,17 @@ export default function InsightsPromo({
               { icon: 'newspaper-variant-multiple', value: formatNumber(defaultMetrics.articles), label: 'Articles', color: accentColor },
               { icon: 'source-branch', value: formatNumber(defaultMetrics.sources), label: 'Sources', color: accentColor },
               { icon: 'folder-multiple', value: formatNumber(defaultMetrics.categories), label: 'Categories', color: accentColor },
-              { icon: 'eye', value: formatNumber(defaultMetrics.views), label: 'Views', color: paperTheme.colors.onSurfaceVariant },
+              { icon: 'eye', value: formatNumber(defaultMetrics.views), label: 'Views', color: theme.colors.onSurfaceVariant },
             ].map((stat, index) => (
               <View
                 key={index}
                 style={[styles.cardStatItem, { backgroundColor: `${accentColor}10`, borderColor: `${accentColor}25` }]}
               >
                 <MaterialCommunityIcons name={stat.icon} size={24} color={stat.color} />
-                <Text style={[styles.cardStatValue, { color: paperTheme.colors.onSurface }]}>
+                <Text style={[styles.cardStatValue, { color: theme.colors.onSurface }]}>
                   {stat.value}
                 </Text>
-                <Text style={[styles.cardStatLabel, { color: paperTheme.colors.onSurfaceVariant }]}>
+                <Text style={[styles.cardStatLabel, { color: theme.colors.onSurfaceVariant }]}>
                   {stat.label}
                 </Text>
               </View>
@@ -202,7 +203,7 @@ export default function InsightsPromo({
             <View style={styles.cardTrending}>
               <View style={styles.cardTrendingHeader}>
                 <MaterialCommunityIcons name="fire" size={18} color={accentColor} />
-                <Text style={[styles.cardTrendingTitle, { color: paperTheme.colors.onSurface }]}>
+                <Text style={[styles.cardTrendingTitle, { color: theme.colors.onSurface }]}>
                   Trending Now
                 </Text>
               </View>
@@ -212,7 +213,7 @@ export default function InsightsPromo({
                     key={index}
                     style={[styles.cardTrendingChip, { backgroundColor: `${accentColor}12`, borderColor: `${accentColor}20` }]}
                   >
-                    <Text style={[styles.cardTrendingChipText, { color: paperTheme.colors.onSurface }]}>
+                    <Text style={[styles.cardTrendingChipText, { color: theme.colors.onSurface }]}>
                       {topic}
                     </Text>
                   </View>
@@ -290,10 +291,10 @@ export default function InsightsPromo({
       >
         <MaterialCommunityIcons name="chart-line" size={24} color={accentColor} />
         <View style={styles.minimalTextContainer}>
-          <Text style={[styles.minimalTitle, { color: paperTheme.colors.onSurface }]}>
+          <Text style={[styles.minimalTitle, { color: theme.colors.onSurface }]}>
             {formatNumber(defaultMetrics.articles)} articles
           </Text>
-          <Text style={[styles.minimalSubtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
+          <Text style={[styles.minimalSubtitle, { color: theme.colors.onSurfaceVariant }]}>
             From {defaultMetrics.sources} sources
           </Text>
         </View>

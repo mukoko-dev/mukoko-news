@@ -2,31 +2,19 @@
  * HomeScreen - Main news feed
  * Displays articles in a clean, scannable layout following 2025 news app patterns
  * Now with Pan-African country filtering and guest preferences
+ * shadcn-style with NativeWind + Lucide icons
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  FlatList,
-  StyleSheet,
-  RefreshControl,
-  Dimensions,
-  TouchableOpacity,
-} from 'react-native';
-import {
-  Text,
-  ActivityIndicator,
-  Button,
-  Snackbar,
-  useTheme as usePaperTheme,
-} from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { View, FlatList, RefreshControl, Dimensions, Text, Pressable } from 'react-native';
+import { Newspaper, RefreshCw, X } from 'lucide-react-native';
 import { articles, categories as categoriesAPI } from '../api/client';
-import mukokoTheme from '../theme';
+import { ErrorState, EmptyState, Button } from '../components/ui';
 import ArticleCard from '../components/ArticleCard';
 import CategoryChips from '../components/CategoryChips';
 import LoginPromo from '../components/LoginPromo';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { useLayout } from '../components/layout';
 import localPreferences, { PREF_KEYS } from '../services/LocalPreferencesService';
 import cacheService from '../services/CacheService';
@@ -59,7 +47,7 @@ export default function HomeScreen({ navigation }) {
   const [guestCountries, setGuestCountries] = useState([]);
   const [guestCategories, setGuestCategories] = useState([]);
 
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
   const layout = useLayout();
   const preferencesLoadedRef = useRef(false);
@@ -102,7 +90,9 @@ export default function HomeScreen({ navigation }) {
         preferencesLoadedRef.current = true;
         loadInitialData();
       } catch (error) {
-        console.error('[Home] Failed to load preferences:', error);
+        if (__DEV__) {
+          console.error('[Home] Failed to load preferences:', error);
+        }
         loadInitialData();
       }
     };
@@ -142,7 +132,9 @@ export default function HomeScreen({ navigation }) {
       // Load articles
       await loadArticles();
     } catch (err) {
-      console.error('[Home] Initial load error:', err);
+      if (__DEV__) {
+        console.error('[Home] Initial load error:', err);
+      }
       setError('Failed to load news. Please try again.');
     } finally {
       setLoading(false);
@@ -188,13 +180,17 @@ export default function HomeScreen({ navigation }) {
       try {
         await cacheService.cacheArticles(data.articles);
       } catch (cacheError) {
-        console.warn('[Home] Failed to cache articles:', cacheError);
+        if (__DEV__) {
+          console.warn('[Home] Failed to cache articles:', cacheError);
+        }
         // Don't block UI on cache errors
       }
     }
 
     if (error) {
-      console.error('Failed to load articles:', error);
+      if (__DEV__) {
+        console.error('Failed to load articles:', error);
+      }
     }
   };
 
@@ -207,12 +203,16 @@ export default function HomeScreen({ navigation }) {
 
     try {
       // Step 1: Trigger backend RSS collection (TikTok-style)
-      console.log('[Home] Triggering backend RSS collection...');
+      if (__DEV__) {
+        console.log('[Home] Triggering backend RSS collection...');
+      }
       const collectResult = await articles.collectFeed();
 
       if (collectResult.data?.success) {
         const newArticlesCount = collectResult.data.newArticles || 0;
-        console.log(`[Home] Collection complete: ${newArticlesCount} new articles`);
+        if (__DEV__) {
+          console.log(`[Home] Collection complete: ${newArticlesCount} new articles`);
+        }
 
         // Show feedback message
         if (newArticlesCount > 0) {
@@ -224,7 +224,9 @@ export default function HomeScreen({ navigation }) {
         }
       } else if (collectResult.error) {
         // Handle rate limiting or other errors
-        console.log('[Home] Collection info:', collectResult.error);
+        if (__DEV__) {
+          console.log('[Home] Collection info:', collectResult.error);
+        }
 
         // Show rate limit message if applicable
         if (collectResult.error.includes('wait')) {
@@ -237,7 +239,9 @@ export default function HomeScreen({ navigation }) {
       await loadArticles(selectedCategory);
 
     } catch (err) {
-      console.error('[Home] Refresh error:', err);
+      if (__DEV__) {
+        console.error('[Home] Refresh error:', err);
+      }
       setError('Failed to refresh. Please try again.');
     } finally {
       setRefreshing(false);
@@ -262,8 +266,8 @@ export default function HomeScreen({ navigation }) {
   // Calculate card width for multi-column layouts
   const getCardWidth = () => {
     if (layoutConfig.numColumns === 1) return undefined;
-    const totalPadding = mukokoTheme.spacing.md * 2;
-    const gap = mukokoTheme.spacing.md * (layoutConfig.numColumns - 1);
+    const totalPadding = 12 * 2; // 12px = md spacing
+    const gap = 12 * (layoutConfig.numColumns - 1);
     return (screenWidth - totalPadding - gap) / layoutConfig.numColumns;
   };
 
@@ -299,52 +303,23 @@ export default function HomeScreen({ navigation }) {
         variant="default"
         width={cardWidth}
         onPress={() => handleArticlePress(article)}
-        style={layoutConfig.numColumns > 1 ? styles.gridCard : undefined}
+        className={layoutConfig.numColumns > 1 ? 'flex-1 mb-0' : undefined}
       />
     );
   };
 
-  // Dynamic styles based on theme
-  const dynamicStyles = {
-    container: {
-      backgroundColor: paperTheme.colors.background,
-    },
-    loadingText: {
-      color: paperTheme.colors.onSurfaceVariant,
-    },
-    emptyTitle: {
-      color: paperTheme.colors.onSurface,
-    },
-    emptyDescription: {
-      color: paperTheme.colors.onSurfaceVariant,
-    },
-  };
-
   if (error) {
     return (
-      <View style={[styles.container, dynamicStyles.container, styles.centered]}>
-        <MaterialCommunityIcons
-          name="alert-circle-outline"
-          size={64}
-          color={paperTheme.colors.error}
-        />
-        <Text style={[styles.errorTitle, dynamicStyles.emptyTitle]}>Something went wrong</Text>
-        <Text style={[styles.errorMessage, dynamicStyles.emptyDescription]}>{error}</Text>
-        <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: paperTheme.colors.primary }]}
-          onPress={loadInitialData}
-          accessibilityRole="button"
-          accessibilityLabel="Retry loading news"
-        >
-          <MaterialCommunityIcons name="refresh" size={16} color="#FFFFFF" />
-          <Text style={styles.retryButtonText}>Try Again</Text>
-        </TouchableOpacity>
-      </View>
+      <ErrorState
+        title="Something went wrong"
+        message={error}
+        onRetry={loadInitialData}
+      />
     );
   }
 
   return (
-    <View style={[styles.container, dynamicStyles.container]}>
+    <View className="flex-1 bg-background">
       {/* Category Filter */}
       <CategoryChips
         categories={categoriesList}
@@ -354,18 +329,30 @@ export default function HomeScreen({ navigation }) {
       />
 
       {/* Feed Collection Snackbar */}
-      <Snackbar
-        visible={snackbarVisible}
-        onDismiss={() => setSnackbarVisible(false)}
-        duration={3000}
-        style={styles.snackbar}
-        action={{
-          label: 'OK',
-          onPress: () => setSnackbarVisible(false),
-        }}
-      >
-        {snackbarMessage}
-      </Snackbar>
+      {snackbarVisible && (
+        <View className="absolute bottom-24 left-md right-md z-50">
+          <View
+            className="flex-row items-center justify-between px-md py-sm rounded-button border"
+            style={{
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outline,
+            }}
+          >
+            <Text
+              className="flex-1 font-sans text-body-medium mr-sm"
+              style={{ color: theme.colors['on-surface'] }}
+            >
+              {snackbarMessage}
+            </Text>
+            <Pressable
+              onPress={() => setSnackbarVisible(false)}
+              className="p-xs"
+            >
+              <X size={20} color={theme.colors['on-surface-variant']} />
+            </Pressable>
+          </View>
+        </View>
+      )}
 
       {/* Articles Feed */}
       <FlatList
@@ -374,14 +361,14 @@ export default function HomeScreen({ navigation }) {
         renderItem={renderArticleItem}
         keyExtractor={(item) => item.id.toString()}
         numColumns={layoutConfig.numColumns > 1 ? layoutConfig.numColumns : 1}
-        contentContainerStyle={[styles.listContent, { paddingBottom: bottomPadding }]}
-        columnWrapperStyle={layoutConfig.numColumns > 1 ? styles.columnWrapper : undefined}
+        contentContainerStyle={{ padding: theme.spacing.md, paddingBottom: bottomPadding }}
+        columnWrapperStyle={layoutConfig.numColumns > 1 ? { gap: theme.spacing.md, marginBottom: theme.spacing.md } : undefined}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[paperTheme.colors.primary]}
-            tintColor={paperTheme.colors.primary}
+            colors={[theme.colors.primary]}
+            tintColor={theme.colors.primary}
           />
         }
         ListFooterComponent={
@@ -389,35 +376,22 @@ export default function HomeScreen({ navigation }) {
             <LoginPromo
               variant="compact"
               articleLimit={GUEST_ARTICLE_LIMIT}
-              style={styles.loginPromo}
+              className="mt-lg mb-xxl"
             />
           ) : null
         }
         ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons
-              name="newspaper-variant-outline"
-              size={64}
-              color={paperTheme.colors.onSurfaceVariant}
-            />
-            <Text
-              style={[styles.emptyTitle, dynamicStyles.emptyTitle]}
-              accessibilityRole="header"
-            >No articles found</Text>
-            <Text style={[styles.emptyDescription, dynamicStyles.emptyDescription]}>
-              {selectedCategory
+          <EmptyState
+            icon={Newspaper}
+            title="No articles found"
+            subtitle={
+              selectedCategory
                 ? 'No articles in this category. Try selecting a different one.'
-                : 'Pull down to refresh and load the latest news.'}
-            </Text>
-            <Button
-              mode="contained"
-              onPress={onRefresh}
-              style={styles.emptyButton}
-              icon="refresh"
-            >
-              Refresh Feed
-            </Button>
-          </View>
+                : 'Pull down to refresh and load the latest news.'
+            }
+            actionLabel="Refresh Feed"
+            onAction={onRefresh}
+          />
         }
         // Performance optimizations
         removeClippedSubviews={true}
@@ -429,107 +403,4 @@ export default function HomeScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: mukokoTheme.colors.background,
-  },
-  listContent: {
-    padding: mukokoTheme.spacing.md,
-    // paddingBottom is set dynamically based on layout (tab bar visibility)
-  },
-  columnWrapper: {
-    gap: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  gridCard: {
-    flex: 1,
-    marginBottom: 0,
-  },
-
-  // Login promo
-  loginPromo: {
-    marginTop: mukokoTheme.spacing.lg,
-    marginBottom: mukokoTheme.spacing.xxl,
-  },
-
-  // Loading state
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.md,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: mukokoTheme.colors.onSurfaceVariant,
-  },
-
-  // Empty state
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.xxl,
-    paddingHorizontal: mukokoTheme.spacing.xl,
-    gap: mukokoTheme.spacing.md,
-  },
-  emptyTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 20,
-    color: mukokoTheme.colors.onSurface,
-    textAlign: 'center',
-  },
-  emptyDescription: {
-    fontSize: 14,
-    color: mukokoTheme.colors.onSurfaceVariant,
-    textAlign: 'center',
-    lineHeight: 20,
-    maxWidth: 280,
-  },
-  emptyButton: {
-    marginTop: mukokoTheme.spacing.sm,
-    borderRadius: mukokoTheme.roundness,
-    borderWidth: 1,
-  },
-
-  // Centered layout for error/loading states
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  // Error state styles
-  errorTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 20,
-    marginTop: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.sm,
-    textAlign: 'center',
-  },
-  errorMessage: {
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.lg,
-    paddingHorizontal: mukokoTheme.spacing.xl,
-  },
-  retryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
-    paddingVertical: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    borderWidth: 1,
-  },
-  retryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-
-  // Snackbar
-  snackbar: {
-    marginBottom: mukokoTheme.spacing.xl,
-  },
-});
+// All styles removed - using NativeWind classes instead

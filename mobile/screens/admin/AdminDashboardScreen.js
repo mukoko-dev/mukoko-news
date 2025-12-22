@@ -2,21 +2,15 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
-  StyleSheet,
   RefreshControl,
   Dimensions,
-  TouchableOpacity,
-  Platform,
+  Pressable,
+  Text as RNText,
 } from 'react-native';
-import {
-  Text,
-  Card,
-  Button,
-  useTheme,
-  ActivityIndicator,
-  Divider,
-} from 'react-native-paper';
+import { Loader2 } from 'lucide-react-native';
+import { LoadingState } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
 import AdminScreenWrapper from '../../components/AdminScreenWrapper';
@@ -25,6 +19,8 @@ import AdminScreenWrapper from '../../components/AdminScreenWrapper';
  * Admin Dashboard Screen
  * Shows platform statistics and quick actions
  * Responsive: works on mobile, tablet, and web
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminDashboardScreen({ navigation }) {
   const theme = useTheme();
@@ -93,350 +89,238 @@ export default function AdminDashboardScreen({ navigation }) {
 
   if (!isAdmin) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.errorContainer}>
-          <Text variant="headlineSmall">Access Denied</Text>
-          <Text style={{ color: theme.colors.onSurfaceVariant, marginTop: 8 }}>
-            You don't have permission to access the admin panel.
-          </Text>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg bg-background">
+        <RNText className="font-serif-bold text-headline-small mb-sm text-on-surface">
+          Access Denied
+        </RNText>
+        <RNText className="font-sans text-body-medium text-center text-on-surface-variant">
+          You don't have permission to access the admin panel.
+        </RNText>
       </View>
     );
   }
 
   if (loading) {
-    return (
-      <View style={[styles.container, styles.centered, { backgroundColor: theme.colors.background }]}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
-        <Text style={{ marginTop: 16, color: theme.colors.onSurfaceVariant }}>
-          Loading dashboard...
-        </Text>
-      </View>
-    );
+    return <LoadingState message="Loading dashboard..." />;
   }
 
   if (error) {
     return (
-      <View style={[styles.container, styles.centered, { backgroundColor: theme.colors.background }]}>
-        <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
-        <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
-        <TouchableOpacity
-          style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
+      <View className="flex-1 justify-center items-center px-lg bg-background">
+        <RNText className="font-serif-bold text-headline-small mb-sm text-on-surface">
+          Something went wrong
+        </RNText>
+        <RNText className="font-sans text-body-medium mb-lg text-center text-on-surface-variant">
+          {error}
+        </RNText>
+        <Pressable
+          className="py-md px-xl rounded-button min-h-touch bg-tanzanite"
           onPress={loadData}
         >
-          <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
-        </TouchableOpacity>
+          <RNText className="font-sans-bold text-label-large text-on-primary">
+            Try Again
+          </RNText>
+        </Pressable>
       </View>
     );
   }
 
   const StatCard = ({ icon, label, value, color }) => (
-    <Card
-      style={[styles.statCard, { backgroundColor: theme.colors.surface }]}
+    <View
+      className="flex-1 rounded-card bg-surface border border-outline overflow-hidden"
+      style={{ minWidth: 150 }}
       accessibilityLabel={`${label}: ${typeof value === 'number' ? value.toLocaleString() : value}`}
       accessibilityRole="text"
     >
-      <Card.Content style={styles.statCardContent}>
-        <Text style={[styles.statIcon, { backgroundColor: color + '20', color }]} accessibilityElementsHidden>
+      <View className="items-center py-lg">
+        <RNText
+          className="text-[24px] w-[48px] h-[48px] text-center leading-[48px] rounded-button overflow-hidden"
+          style={{ backgroundColor: color + '20', color }}
+          accessibilityElementsHidden
+        >
           {icon}
-        </Text>
-        <Text variant="headlineMedium" style={styles.statValue}>
+        </RNText>
+        <RNText className="font-serif-bold text-headline-medium mt-sm text-on-surface">
           {typeof value === 'number' ? value.toLocaleString() : value}
-        </Text>
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+        </RNText>
+        <RNText className="font-sans text-body-small text-on-surface-variant">
           {label}
-        </Text>
-      </Card.Content>
-    </Card>
+        </RNText>
+      </View>
+    </View>
   );
 
   const QuickAction = ({ icon, title, subtitle, onPress, loading: isLoading }) => (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
       disabled={isLoading}
-      style={[
-        styles.quickAction,
-        { backgroundColor: theme.colors.surfaceVariant },
-      ]}
+      className="flex-row items-center p-lg rounded-button gap-md min-h-touch bg-surface-variant"
       accessibilityLabel={`${title}. ${subtitle}`}
       accessibilityRole="button"
       accessibilityState={{ disabled: isLoading }}
       accessibilityHint={`Activates ${title.toLowerCase()}`}
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color={theme.colors.primary} />
+        <Loader2 size={24} color={theme.colors.tanzanite} className="animate-spin" />
       ) : (
-        <Text style={styles.quickActionIcon} accessibilityElementsHidden>{icon}</Text>
+        <RNText className="text-[24px]" accessibilityElementsHidden>{icon}</RNText>
       )}
-      <View style={{ flex: 1 }}>
-        <Text variant="titleSmall">{title}</Text>
-        <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
+      <View className="flex-1">
+        <RNText className="font-sans-bold text-title-small text-on-surface">{title}</RNText>
+        <RNText className="font-sans text-body-small text-on-surface-variant">
           {subtitle}
-        </Text>
+        </RNText>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 
   const NavItem = ({ icon, title, screen }) => (
-    <TouchableOpacity
+    <Pressable
       onPress={() => navigation.navigate(screen)}
-      style={[styles.navItem, { borderColor: theme.colors.outline }]}
+      className="flex-row items-center p-lg rounded-button border border-outline gap-md min-h-touch"
       accessibilityLabel={`${title} management`}
       accessibilityRole="button"
       accessibilityHint={`Navigate to ${title.toLowerCase()} screen`}
     >
-      <Text style={styles.navIcon} accessibilityElementsHidden>{icon}</Text>
-      <Text variant="titleSmall">{title}</Text>
-      <Text style={{ color: theme.colors.onSurfaceVariant }} accessibilityElementsHidden>→</Text>
-    </TouchableOpacity>
+      <RNText className="text-[20px]" accessibilityElementsHidden>{icon}</RNText>
+      <RNText className="font-sans-bold text-title-small text-on-surface">{title}</RNText>
+      <RNText className="text-on-surface-variant" accessibilityElementsHidden>→</RNText>
+    </Pressable>
   );
 
   return (
     <AdminScreenWrapper>
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View className="flex-1 bg-background">
         <AdminHeader navigation={navigation} currentScreen="AdminDashboard" />
         <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.colors.primary]}
-          />
-        }
-      >
-        {/* Header */}
-        <View style={styles.header}>
-        <Text
-          variant="headlineSmall"
-          style={styles.title}
-          accessibilityRole="header"
+          className="flex-1"
+          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.tanzanite]}
+            />
+          }
         >
-          Admin Dashboard
-        </Text>
-        <Text variant="bodyMedium" style={{ color: theme.colors.onSurfaceVariant }}>
-          Welcome, {user?.displayName || user?.username || 'Admin'}
-        </Text>
-      </View>
+          {/* Header */}
+          <View className="mb-xl">
+            <RNText
+              className="font-serif-bold text-headline-small text-on-surface"
+              accessibilityRole="header"
+            >
+              Admin Dashboard
+            </RNText>
+            <RNText className="font-sans text-body-medium text-on-surface-variant">
+              Welcome, {user?.displayName || user?.username || 'Admin'}
+            </RNText>
+          </View>
 
-      {/* Stats Grid */}
-      <View style={[styles.statsGrid, isWideScreen && styles.statsGridWide]}>
-        <StatCard
-          icon="📰"
-          label="Total Articles"
-          value={stats?.database?.total_articles || 0}
-          color="#3B82F6"
-        />
-        <StatCard
-          icon="📡"
-          label="Active Sources"
-          value={stats?.database?.active_sources || 0}
-          color="#10B981"
-        />
-        <StatCard
-          icon="🏷️"
-          label="Categories"
-          value={stats?.database?.categories || 0}
-          color="#8B5CF6"
-        />
-        <StatCard
-          icon="👥"
-          label="Total Users"
-          value={userStats?.total_users || 0}
-          color="#F59E0B"
-        />
-      </View>
-
-      {/* Quick Actions */}
-      <Card style={[styles.section, { backgroundColor: theme.colors.surface }]}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            Quick Actions
-          </Text>
-          <View style={styles.quickActions}>
-            <QuickAction
-              icon="🔄"
-              title="Refresh RSS"
-              subtitle="Pull latest articles"
-              onPress={handleRefreshRSS}
-              loading={actionLoading === 'rss'}
+          {/* Stats Grid */}
+          <View
+            className="flex-row flex-wrap gap-md mb-lg"
+            style={isWideScreen && { flexWrap: 'nowrap' }}
+          >
+            <StatCard
+              icon="📰"
+              label="Total Articles"
+              value={stats?.database?.total_articles || 0}
+              color="#3B82F6"
             />
-            <QuickAction
-              icon="📥"
-              title="Bulk Pull"
-              subtitle="Fetch all sources"
-              onPress={handleBulkPull}
-              loading={actionLoading === 'bulk'}
+            <StatCard
+              icon="📡"
+              label="Active Sources"
+              value={stats?.database?.active_sources || 0}
+              color="#10B981"
+            />
+            <StatCard
+              icon="🏷️"
+              label="Categories"
+              value={stats?.database?.categories || 0}
+              color="#8B5CF6"
+            />
+            <StatCard
+              icon="👥"
+              label="Total Users"
+              value={userStats?.total_users || 0}
+              color="#F59E0B"
             />
           </View>
-        </Card.Content>
-      </Card>
 
-      {/* Navigation */}
-      <Card style={[styles.section, { backgroundColor: theme.colors.surface }]}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            Management
-          </Text>
-          <View style={styles.navList}>
-            <NavItem icon="👥" title="Users" screen="AdminUsers" />
-            <NavItem icon="📡" title="News Sources" screen="AdminSources" />
-            <NavItem icon="📊" title="Analytics" screen="AdminAnalytics" />
-            <NavItem icon="🔧" title="System Health" screen="AdminSystem" />
-          </View>
-        </Card.Content>
-      </Card>
-
-      {/* System Status */}
-      <Card style={[styles.section, { backgroundColor: theme.colors.surface }]}>
-        <Card.Content>
-          <Text variant="titleMedium" style={styles.sectionTitle}>
-            System Status
-          </Text>
-          <View style={styles.statusList}>
-            <View style={styles.statusItem}>
-              <Text>API Status</Text>
-              <View style={[styles.statusBadge, { backgroundColor: '#10B98120' }]}>
-                <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '600' }}>
-                  Operational
-                </Text>
+          {/* Quick Actions */}
+          <View className="mb-lg rounded-card bg-surface border border-outline overflow-hidden">
+            <View className="p-lg">
+              <RNText className="font-sans-bold text-title-medium mb-lg text-on-surface">
+                Quick Actions
+              </RNText>
+              <View className="gap-md">
+                <QuickAction
+                  icon="🔄"
+                  title="Refresh RSS"
+                  subtitle="Pull latest articles"
+                  onPress={handleRefreshRSS}
+                  loading={actionLoading === 'rss'}
+                />
+                <QuickAction
+                  icon="📥"
+                  title="Bulk Pull"
+                  subtitle="Fetch all sources"
+                  onPress={handleBulkPull}
+                  loading={actionLoading === 'bulk'}
+                />
               </View>
             </View>
-            <View style={styles.statusItem}>
-              <Text>Database</Text>
-              <View style={[styles.statusBadge, { backgroundColor: '#10B98120' }]}>
-                <Text style={{ color: '#10B981', fontSize: 12, fontWeight: '600' }}>
-                  Connected
-                </Text>
+          </View>
+
+          {/* Navigation */}
+          <View className="mb-lg rounded-card bg-surface border border-outline overflow-hidden">
+            <View className="p-lg">
+              <RNText className="font-sans-bold text-title-medium mb-lg text-on-surface">
+                Management
+              </RNText>
+              <View className="gap-sm">
+                <NavItem icon="👥" title="Users" screen="AdminUsers" />
+                <NavItem icon="📡" title="News Sources" screen="AdminSources" />
+                <NavItem icon="📊" title="Analytics" screen="AdminAnalytics" />
+                <NavItem icon="🔧" title="System Health" screen="AdminSystem" />
               </View>
             </View>
-            <View style={styles.statusItem}>
-              <Text>Last Updated</Text>
-              <Text style={{ color: theme.colors.onSurfaceVariant, fontSize: 12 }}>
-                {stats?.timestamp ? new Date(stats.timestamp).toLocaleTimeString() : 'N/A'}
-              </Text>
+          </View>
+
+          {/* System Status */}
+          <View className="mb-lg rounded-card bg-surface border border-outline overflow-hidden">
+            <View className="p-lg">
+              <RNText className="font-sans-bold text-title-medium mb-lg text-on-surface">
+                System Status
+              </RNText>
+              <View className="gap-md">
+                <View className="flex-row justify-between items-center">
+                  <RNText className="font-sans text-body-medium text-on-surface">API Status</RNText>
+                  <View className="px-md py-xs rounded-button" style={{ backgroundColor: '#10B98120' }}>
+                    <RNText className="font-sans-bold text-[12px]" style={{ color: '#10B981' }}>
+                      Operational
+                    </RNText>
+                  </View>
+                </View>
+                <View className="flex-row justify-between items-center">
+                  <RNText className="font-sans text-body-medium text-on-surface">Database</RNText>
+                  <View className="px-md py-xs rounded-button" style={{ backgroundColor: '#10B98120' }}>
+                    <RNText className="font-sans-bold text-[12px]" style={{ color: '#10B981' }}>
+                      Connected
+                    </RNText>
+                  </View>
+                </View>
+                <View className="flex-row justify-between items-center">
+                  <RNText className="font-sans text-body-medium text-on-surface">Last Updated</RNText>
+                  <RNText className="font-sans text-[12px] text-on-surface-variant">
+                    {stats?.timestamp ? new Date(stats.timestamp).toLocaleTimeString() : 'N/A'}
+                  </RNText>
+                </View>
+              </View>
             </View>
           </View>
-        </Card.Content>
-      </Card>
         </ScrollView>
       </View>
     </AdminScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  header: {
-    marginBottom: 24,
-  },
-  title: {
-    fontWeight: '700',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-    marginBottom: 16,
-  },
-  statsGridWide: {
-    flexWrap: 'nowrap',
-  },
-  statCard: {
-    flex: 1,
-    minWidth: 150,
-    borderRadius: 12,
-  },
-  statCardContent: {
-    alignItems: 'center',
-    paddingVertical: 16,
-  },
-  statIcon: {
-    fontSize: 24,
-    width: 48,
-    height: 48,
-    textAlign: 'center',
-    lineHeight: 48,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  statValue: {
-    fontWeight: '700',
-    marginTop: 8,
-  },
-  section: {
-    marginBottom: 16,
-    borderRadius: 12,
-  },
-  sectionTitle: {
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  quickActions: {
-    gap: 12,
-  },
-  quickAction: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    gap: 12,
-    minHeight: 44, // WCAG touch target minimum
-  },
-  quickActionIcon: {
-    fontSize: 24,
-  },
-  navList: {
-    gap: 8,
-  },
-  navItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 12,
-    minHeight: 44, // WCAG touch target minimum
-  },
-  navIcon: {
-    fontSize: 20,
-  },
-  statusList: {
-    gap: 12,
-  },
-  statusItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  retryButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-});

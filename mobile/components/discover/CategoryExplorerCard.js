@@ -7,13 +7,13 @@
  * - Large emoji (32px centered)
  * - Category name (bold)
  * - Article count badge
+ *
+ * Migration: NativeWind only (NO React Native Paper, NO StyleSheet)
  */
 
 import React, { memo } from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Text, useTheme as usePaperTheme } from 'react-native-paper';
+import { View, Pressable, Text as RNText } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import mukokoTheme from '../../theme';
 
 // Category emoji and gradient mappings
 const CATEGORY_CONFIG = {
@@ -51,8 +51,6 @@ function CategoryExplorerCard({
   style,
   showCount = true,
 }) {
-  const paperTheme = usePaperTheme();
-
   const categoryName = category?.name || category?.category_name || 'General';
   const articleCount = category?.article_count || category?.count || 0;
   const config = getConfig(categoryName);
@@ -60,36 +58,36 @@ function CategoryExplorerCard({
   const cardWidth = width || 100;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.85}
+    <Pressable
       onPress={onPress}
-      style={[styles.card, { width: cardWidth }, style]}
+      className="aspect-square rounded-card overflow-hidden shadow-sm"
+      style={[{ width: cardWidth }, style]}
       accessibilityLabel={`${categoryName}. ${articleCount} articles`}
       accessibilityRole="button"
       accessibilityHint={`Browse ${categoryName} articles`}
     >
       <LinearGradient
         colors={config.gradient}
-        style={styles.gradient}
+        className="flex-1 justify-center items-center p-sm relative"
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
         {/* Emoji */}
-        <Text style={styles.emoji}>{config.emoji}</Text>
+        <RNText className="text-[32px] mb-xs">{config.emoji}</RNText>
 
         {/* Category Name */}
-        <Text style={styles.name} numberOfLines={1}>
+        <RNText className="text-white text-[12px] font-sans-bold text-center capitalize" numberOfLines={1}>
           {categoryName}
-        </Text>
+        </RNText>
 
         {/* Article Count Badge */}
         {showCount && articleCount > 0 && (
-          <View style={styles.countBadge}>
-            <Text style={styles.countText}>{articleCount}</Text>
+          <View className="absolute top-xs right-xs bg-white/25 px-[6px] py-[2px] rounded-[10px] min-w-[20px] items-center">
+            <RNText className="text-white text-[10px] font-sans-bold">{articleCount}</RNText>
           </View>
         )}
       </LinearGradient>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
@@ -99,47 +97,4 @@ export default memo(CategoryExplorerCard, (prevProps, nextProps) => {
     prevProps.category?.article_count === nextProps.category?.article_count &&
     prevProps.width === nextProps.width
   );
-});
-
-const styles = StyleSheet.create({
-  card: {
-    aspectRatio: 1,
-    borderRadius: mukokoTheme.roundness,
-    overflow: 'hidden',
-    ...mukokoTheme.shadows.small,
-  },
-  gradient: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: mukokoTheme.spacing.sm,
-    position: 'relative',
-  },
-  emoji: {
-    fontSize: 32,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  name: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    textAlign: 'center',
-    textTransform: 'capitalize',
-  },
-  countBadge: {
-    position: 'absolute',
-    top: mukokoTheme.spacing.xs,
-    right: mukokoTheme.spacing.xs,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    minWidth: 20,
-    alignItems: 'center',
-  },
-  countText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
 });

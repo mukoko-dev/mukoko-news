@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react';
 import { Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './navigation/AppNavigator';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import './global.css';
 
 // Startup diagnostics
 const logStartup = (stage, details = {}) => {
@@ -64,12 +64,10 @@ function AppContent() {
   }, []);
 
   return (
-    <PaperProvider theme={theme}>
-      <AuthProvider>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
-        <AppNavigator />
-      </AuthProvider>
-    </PaperProvider>
+    <AuthProvider>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <AppNavigator />
+    </AuthProvider>
   );
 }
 

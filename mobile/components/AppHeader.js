@@ -1,11 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
-import { useTheme as usePaperTheme, Tooltip } from 'react-native-paper';
+import React, { useState, useEffect } from 'react';
+import { View, Pressable, Text as RNText } from 'react-native';
 import { Sun, Moon, Bell } from 'lucide-react-native';
-import { navigate, navigationRef } from '../navigation/navigationRef';
+import { navigationRef } from '../navigation/navigationRef';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
-import mukokoTheme from '../theme';
 import Logo from './Logo';
 import CountryPickerButton from './CountryPickerButton';
 
@@ -37,10 +35,11 @@ function getRouteNameFromState(state) {
  * - Left: Logo + Screen title (contextual)
  * - Right: Utility icons (Discover, Pulse, Theme)
  * - No hamburger menu (navigation via tabs)
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AppHeader() {
-  const { isDark, toggleTheme } = useTheme();
-  const paperTheme = usePaperTheme();
+  const { isDark, toggleTheme, theme } = useTheme();
   const { user } = useAuth();
   const [routeName, setRouteName] = useState('Bytes');
 
@@ -97,36 +96,33 @@ export default function AppHeader() {
   // Use inverse theme color for icons (light icons in dark mode, dark icons in light mode)
   const iconColor = isDark ? '#FFFFFF' : '#000000';
 
-  // Dynamic styles based on theme
-  const dynamicStyles = {
-    header: {
-      backgroundColor: paperTheme.colors.background,
-    },
-    title: {
-      color: paperTheme.colors.onSurface,
-    },
-  };
-
   return (
-    <View style={[styles.header, dynamicStyles.header]}>
+    <View
+      className="flex-row items-center justify-between h-[56px] px-md"
+      style={{ backgroundColor: theme.colors.background }}
+    >
       {/* Left: Logo + Title */}
-      <View style={styles.leftSection}>
+      <View className="flex-row items-center gap-sm">
         <Logo size="icon" theme={isDark ? 'light' : 'dark'} />
         {screenTitle && (
-          <Text style={[styles.title, dynamicStyles.title]}>{screenTitle}</Text>
+          <RNText
+            className="font-serif-bold text-[20px]"
+            style={{ color: theme.colors['on-surface'], letterSpacing: 0, fontWeight: '600' }}
+          >
+            {screenTitle}
+          </RNText>
         )}
       </View>
 
       {/* Right: Country Picker, Theme, Notifications */}
-      <View style={styles.rightSection}>
+      <View className="flex-row items-center gap-[4px]">
         {/* Country Picker */}
         <CountryPickerButton compact={true} showLabel={false} />
 
         {/* Theme Toggle */}
-        <TouchableOpacity
+        <Pressable
           onPress={toggleTheme}
-          style={styles.iconButton}
-          activeOpacity={0.7}
+          className="p-[10px] min-w-touch min-h-touch items-center justify-center"
           accessibilityLabel={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
           accessibilityRole="button"
         >
@@ -135,54 +131,19 @@ export default function AppHeader() {
           ) : (
             <Moon size={22} color={iconColor} strokeWidth={1.5} />
           )}
-        </TouchableOpacity>
+        </Pressable>
 
         {/* Notifications - Coming Soon */}
-        <Tooltip title="Coming Soon">
-          <TouchableOpacity
-            onPress={() => {}}
-            style={styles.iconButton}
-            activeOpacity={0.7}
-            accessibilityLabel="Notifications (Coming Soon)"
-            accessibilityRole="button"
-          >
-            <Bell size={22} color={iconColor} strokeWidth={1.5} />
-          </TouchableOpacity>
-        </Tooltip>
+        <Pressable
+          onPress={() => {}}
+          className="p-[10px] min-w-touch min-h-touch items-center justify-center"
+          accessibilityLabel="Notifications (Coming Soon)"
+          accessibilityRole="button"
+          accessibilityHint="Feature not yet available"
+        >
+          <Bell size={22} color={iconColor} strokeWidth={1.5} />
+        </Pressable>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 56,
-    paddingHorizontal: mukokoTheme.spacing.md,
-  },
-  leftSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  title: {
-    fontSize: 20,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    fontWeight: '600',
-    letterSpacing: 0,
-  },
-  rightSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  iconButton: {
-    padding: 10,
-    minWidth: 44,
-    minHeight: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

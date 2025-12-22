@@ -22,21 +22,16 @@ import React, { useState, useEffect, useCallback, memo } from 'react';
 import {
   View,
   ScrollView,
-  StyleSheet,
-  TouchableOpacity,
   Image,
   Platform,
   RefreshControl,
   Dimensions,
-} from 'react-native';
-import {
-  Text,
-  Chip,
+  Pressable,
+  Text as RNText,
   ActivityIndicator,
-  Surface,
-  Icon,
-  useTheme as usePaperTheme,
-} from 'react-native-paper';
+  StyleSheet,
+} from 'react-native';
+import { Loader2, AlertCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
@@ -44,6 +39,7 @@ import { useLayout } from '../components/layout';
 import CategoryChips from '../components/CategoryChips';
 import { CuratedLabel, AISparkleIcon, AIShimmerEffect } from '../components/ai';
 import { EnhancedSearchBar, TrendingSearches, AuthorResultCard } from '../components/search';
+import { FilterChip } from '../components/ui';
 import {
   search as searchAPI,
   categories as categoriesAPI,
@@ -55,7 +51,7 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 /**
  * Memoized Search Result Card
  */
-const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
+const SearchResultCard = memo(({ article, onPress, theme }) => {
   const [imageError, setImageError] = useState(false);
 
   const formatDate = (dateString) => {
@@ -77,46 +73,42 @@ const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
   const hasImage = article.image_url && !imageError;
 
   return (
-    <TouchableOpacity
-      activeOpacity={0.8}
+    <Pressable
       onPress={() => onPress(article)}
-      style={styles.resultCard}
+      className="mb-md"
     >
-      <Surface
-        style={[
-          styles.card,
-          {
-            backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
-            borderColor: paperTheme.colors.glassBorder || paperTheme.colors.outline,
-          },
-        ]}
-        elevation={1}
+      <View
+        className="rounded-card border overflow-hidden"
+        style={{
+          backgroundColor: theme.colors.surface,
+          borderColor: theme.colors.outline,
+        }}
       >
-        <View style={styles.cardRow}>
+        <View className="flex-row p-md gap-md">
           {hasImage && (
-            <View style={styles.cardImageContainer}>
+            <View className="w-20 h-20 rounded-lg overflow-hidden">
               <Image
                 source={{ uri: article.image_url }}
-                style={styles.cardImage}
+                className="w-full h-full"
                 resizeMode="cover"
                 onError={() => setImageError(true)}
               />
             </View>
           )}
-          <View style={[styles.cardContent, !hasImage && styles.cardContentNoImage]}>
-            <Text style={[styles.cardSource, { color: paperTheme.colors.primary }]}>
+          <View className={`flex-1 ${!hasImage ? 'pr-0' : ''}`}>
+            <RNText className="font-sans-bold text-label-large mb-xs" style={{ color: theme.colors.primary }}>
               {article.source || 'News'}
-            </Text>
-            <Text style={[styles.cardTitle, { color: paperTheme.colors.onSurface }]} numberOfLines={2}>
+            </RNText>
+            <RNText className="font-serif-bold text-body-large leading-5 mb-xs" style={{ color: theme.colors['on-surface'] }} numberOfLines={2}>
               {article.title}
-            </Text>
-            <Text style={[styles.cardDate, { color: paperTheme.colors.onSurfaceVariant }]}>
+            </RNText>
+            <RNText className="font-sans text-label-small" style={{ color: theme.colors['on-surface-variant'] }}>
               {formatDate(article.published_at)}
-            </Text>
+            </RNText>
           </View>
         </View>
-      </Surface>
-    </TouchableOpacity>
+      </View>
+    </Pressable>
   );
 }, (prevProps, nextProps) => prevProps.article.id === nextProps.article.id);
 
@@ -124,12 +116,11 @@ const SearchResultCard = memo(({ article, onPress, paperTheme }) => {
  * SearchScreen - Search + Insights combined
  */
 export default function SearchScreen({ navigation, route }) {
-  const { isDark } = useTheme();
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
   const layout = useLayout();
 
   // On tablet/desktop, no bottom tab bar, so reduce padding
-  const bottomPadding = layout.isMobile ? 100 : 24;
+  const bottomPadding = layout.isMobile ? mukokoTheme.layout.bottomPaddingMobile : mukokoTheme.layout.bottomPaddingDesktop;
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -198,7 +189,9 @@ export default function SearchScreen({ navigation, route }) {
         setAuthors(results[3].value.data.trending_authors);
       }
     } catch (err) {
-      console.error('[Search] Load insights error:', err);
+      if (__DEV__) {
+        console.error('[Search] Load insights error:', err);
+      }
     } finally {
       setInsightsLoading(false);
     }
@@ -234,7 +227,9 @@ export default function SearchScreen({ navigation, route }) {
         setTotal(result.data.total || 0);
       }
     } catch (err) {
-      console.error('[Search] Search error:', err);
+      if (__DEV__) {
+        console.error('[Search] Search error:', err);
+      }
       setError('Search failed. Please try again.');
       setResults([]);
       setTotal(0);
@@ -317,14 +312,14 @@ export default function SearchScreen({ navigation, route }) {
 
   // Colors
   const colors = {
-    bg: paperTheme.colors.background,
-    surface: paperTheme.colors.surface,
-    text: paperTheme.colors.onSurface,
-    textMuted: paperTheme.colors.onSurfaceVariant,
-    primary: paperTheme.colors.primary,
-    border: paperTheme.colors.outline,
-    card: paperTheme.colors.glassCard || paperTheme.colors.surface,
-    cardBorder: paperTheme.colors.glassBorder || paperTheme.colors.outline,
+    bg: theme.colors.background,
+    surface: theme.colors.surface,
+    text: theme.colors['on-surface'],
+    textMuted: theme.colors['on-surface-variant'],
+    primary: theme.colors.primary,
+    border: theme.colors.outline,
+    card: theme.colors.surface,
+    cardBorder: theme.colors.outline,
   };
 
   const isSearchMode = activeQuery.length > 0;
@@ -361,32 +356,32 @@ export default function SearchScreen({ navigation, route }) {
           <View style={[styles.resultsInfo, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
             <View style={styles.resultsRow}>
               <AISparkleIcon size={14} animated={false} />
-              <Text style={[styles.resultsInfoText, { color: colors.textMuted }]}>
+              <RNText style={[styles.resultsInfoText, { color: colors.textMuted }]}>
                 AI found {total} result{total !== 1 ? 's' : ''}
-              </Text>
+              </RNText>
             </View>
-            <Text style={[styles.resultsSubtext, { color: colors.textMuted }]}>
+            <RNText style={[styles.resultsSubtext, { color: colors.textMuted }]}>
               Most relevant first
-            </Text>
+            </RNText>
           </View>
         </AIShimmerEffect>
       )}
 
       {/* Error State */}
       {error && (
-        <View style={[styles.errorBanner, { backgroundColor: paperTheme.colors.errorContainer }]}>
-          <Icon source="alert-circle" size={16} color={paperTheme.colors.error} />
-          <Text style={{ color: paperTheme.colors.error, flex: 1 }}>{error}</Text>
+        <View style={[styles.errorBanner, { backgroundColor: theme.colors['error-container'] }]}>
+          <AlertCircle size={16} color={theme.colors.error} />
+          <RNText style={{ color: theme.colors.error, flex: 1 }}>{error}</RNText>
         </View>
       )}
 
       {/* Loading - Search mode */}
       {loading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+        <View className="flex-1 justify-center items-center gap-md py-xl">
+          <Loader2 size={48} color={colors.primary} className="animate-spin" />
+          <RNText className="font-sans-medium text-body-medium" style={{ color: colors.textMuted }}>
             Searching with AI...
-          </Text>
+          </RNText>
         </View>
       )}
 
@@ -402,7 +397,7 @@ export default function SearchScreen({ navigation, route }) {
               key={article.id}
               article={article}
               onPress={handleArticlePress}
-              paperTheme={paperTheme}
+              theme={theme}
             />
           ))}
           <View style={{ height: bottomPadding }} />
@@ -411,18 +406,23 @@ export default function SearchScreen({ navigation, route }) {
 
       {/* No Results - Search mode */}
       {isSearchMode && !loading && results.length === 0 && !error && (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyEmoji}>📭</Text>
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No results found</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+        <View className="flex-1 justify-center items-center px-xl gap-md">
+          <RNText className="text-[64px] opacity-50">📭</RNText>
+          <RNText className="font-serif-bold text-headline-medium text-center" style={{ color: colors.text }}>
+            No results found
+          </RNText>
+          <RNText className="font-sans text-body-medium text-center" style={{ color: colors.textMuted }}>
             Try a different search term or category
-          </Text>
-          <TouchableOpacity
-            style={[styles.clearButton, { borderColor: colors.primary }]}
+          </RNText>
+          <Pressable
+            className="py-sm px-lg rounded-button border"
+            style={{ borderColor: colors.primary }}
             onPress={handleClearSearch}
           >
-            <Text style={{ color: colors.primary }}>Clear search</Text>
-          </TouchableOpacity>
+            <RNText className="font-sans-medium text-label-large" style={{ color: colors.primary }}>
+              Clear search
+            </RNText>
+          </Pressable>
         </View>
       )}
 
@@ -451,24 +451,22 @@ export default function SearchScreen({ navigation, route }) {
                 <View style={styles.suggestionsSection}>
                   <View style={styles.sectionHeader}>
                     <AISparkleIcon size={14} />
-                    <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                    <RNText style={[styles.sectionLabel, { color: colors.text }]}>
                       AI-POWERED SUGGESTIONS
-                    </Text>
+                    </RNText>
                   </View>
-                  <Text style={[styles.suggestionsSubtext, { color: colors.textMuted }]}>
+                  <RNText style={[styles.suggestionsSubtext, { color: colors.textMuted }]}>
                     Based on trending topics
-                  </Text>
+                  </RNText>
                   <View style={styles.suggestionsRow}>
                     {suggestions.map((suggestion, i) => (
-                      <Chip
+                      <FilterChip
                         key={i}
-                        mode="outlined"
+                        selected={false}
                         onPress={() => handleSuggestionPress(suggestion)}
-                        style={[styles.suggestionChip, { borderColor: colors.primary }]}
-                        textStyle={[styles.suggestionText, { color: colors.primary }]}
                       >
                         {suggestion}
-                      </Chip>
+                      </FilterChip>
                     ))}
                   </View>
                 </View>
@@ -489,9 +487,9 @@ export default function SearchScreen({ navigation, route }) {
               {authors.length > 0 && (
                 <View style={styles.authorsSection}>
                   <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                    <RNText style={[styles.sectionLabel, { color: colors.text }]}>
                       TOP AUTHORS
-                    </Text>
+                    </RNText>
                     <CuratedLabel variant="popular" size="small" showIcon={false} />
                   </View>
                   <View
@@ -519,9 +517,9 @@ export default function SearchScreen({ navigation, route }) {
               {/* Platform Stats */}
               {stats && (
                 <View style={styles.statsSection}>
-                  <Text style={[styles.sectionLabel, { color: colors.text }]}>
+                  <RNText style={[styles.sectionLabel, { color: colors.text }]}>
                     PLATFORM STATS
-                  </Text>
+                  </RNText>
                   <View
                     style={[
                       styles.statsCard,
@@ -533,27 +531,27 @@ export default function SearchScreen({ navigation, route }) {
                   >
                     <View style={styles.statsRow}>
                       <View style={styles.stat}>
-                        <Text style={[styles.statEmoji]}>📰</Text>
-                        <Text style={[styles.statValue, { color: colors.primary }]}>
+                        <RNText style={[styles.statEmoji]}>📰</RNText>
+                        <RNText style={[styles.statValue, { color: colors.primary }]}>
                           {(stats.total_articles || 0).toLocaleString()}
-                        </Text>
-                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>Articles</Text>
+                        </RNText>
+                        <RNText style={[styles.statLabel, { color: colors.textMuted }]}>Articles</RNText>
                       </View>
                       <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                       <View style={styles.stat}>
-                        <Text style={[styles.statEmoji]}>📡</Text>
-                        <Text style={[styles.statValue, { color: colors.primary }]}>
+                        <RNText style={[styles.statEmoji]}>📡</RNText>
+                        <RNText style={[styles.statValue, { color: colors.primary }]}>
                           {stats.active_sources || 0}
-                        </Text>
-                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sources</Text>
+                        </RNText>
+                        <RNText style={[styles.statLabel, { color: colors.textMuted }]}>Sources</RNText>
                       </View>
                       <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
                       <View style={styles.stat}>
-                        <Text style={[styles.statEmoji]}>🗂️</Text>
-                        <Text style={[styles.statValue, { color: colors.primary }]}>
+                        <RNText style={[styles.statEmoji]}>🗂️</RNText>
+                        <RNText style={[styles.statValue, { color: colors.primary }]}>
                           {stats.categories || 0}
-                        </Text>
-                        <Text style={[styles.statLabel, { color: colors.textMuted }]}>Topics</Text>
+                        </RNText>
+                        <RNText style={[styles.statLabel, { color: colors.textMuted }]}>Topics</RNText>
                       </View>
                     </View>
                   </View>
@@ -563,11 +561,11 @@ export default function SearchScreen({ navigation, route }) {
               {/* No Data */}
               {!stats && trending.length === 0 && authors.length === 0 && (
                 <View style={styles.emptyState}>
-                  <Text style={styles.emptyEmoji}>🔍</Text>
-                  <Text style={[styles.emptyTitle, { color: colors.text }]}>Search African News</Text>
-                  <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
+                  <RNText style={styles.emptyEmoji}>🔍</RNText>
+                  <RNText style={[styles.emptyTitle, { color: colors.text }]}>Search African News</RNText>
+                  <RNText style={[styles.emptySubtitle, { color: colors.textMuted }]}>
                     Find articles from trusted sources across Africa
-                  </Text>
+                  </RNText>
                 </View>
               )}
             </>
@@ -602,11 +600,11 @@ const styles = StyleSheet.create({
     gap: mukokoTheme.spacing.xs,
   },
   resultsInfoText: {
-    fontSize: 13,
+    fontSize: mukokoTheme.typography.labelLarge,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
   resultsSubtext: {
-    fontSize: 11,
+    fontSize: mukokoTheme.typography.labelSmall,
     marginTop: 2,
   },
 
@@ -629,7 +627,7 @@ const styles = StyleSheet.create({
     paddingVertical: mukokoTheme.spacing.xxl,
   },
   loadingText: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
     fontFamily: mukokoTheme.fonts.regular.fontFamily,
   },
 
@@ -653,9 +651,9 @@ const styles = StyleSheet.create({
     padding: mukokoTheme.spacing.sm,
   },
   cardImageContainer: {
-    width: 80,
-    height: 60,
-    borderRadius: 8,
+    width: mukokoTheme.layout.cardImageWidth,
+    height: mukokoTheme.layout.cardImageHeight,
+    borderRadius: mukokoTheme.layout.cardImageRadius,
     overflow: 'hidden',
   },
   cardImage: {
@@ -671,7 +669,7 @@ const styles = StyleSheet.create({
     marginLeft: 0,
   },
   cardSource: {
-    fontSize: 10,
+    fontSize: mukokoTheme.typography.caption,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -679,12 +677,12 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.titleSmall,
     lineHeight: 18,
     marginBottom: 2,
   },
   cardDate: {
-    fontSize: 11,
+    fontSize: mukokoTheme.typography.labelSmall,
   },
 
   // Empty State
@@ -694,16 +692,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: mukokoTheme.spacing.xl,
   },
   emptyEmoji: {
-    fontSize: 48,
+    fontSize: mukokoTheme.layout.emojiLarge,
     marginBottom: mukokoTheme.spacing.md,
   },
   emptyTitle: {
-    fontSize: 18,
+    fontSize: mukokoTheme.typography.titleLarge,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
     marginBottom: mukokoTheme.spacing.xs,
   },
   emptySubtitle: {
-    fontSize: 14,
+    fontSize: mukokoTheme.typography.bodyMedium,
     textAlign: 'center',
     marginBottom: mukokoTheme.spacing.md,
     lineHeight: 20,
@@ -728,7 +726,7 @@ const styles = StyleSheet.create({
     marginBottom: mukokoTheme.spacing.xs,
   },
   sectionLabel: {
-    fontSize: 12,
+    fontSize: mukokoTheme.typography.bodySmall,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -739,7 +737,7 @@ const styles = StyleSheet.create({
     marginBottom: mukokoTheme.spacing.lg,
   },
   suggestionsSubtext: {
-    fontSize: 12,
+    fontSize: mukokoTheme.typography.bodySmall,
     marginBottom: mukokoTheme.spacing.sm,
   },
   suggestionsRow: {
@@ -748,10 +746,10 @@ const styles = StyleSheet.create({
     gap: mukokoTheme.spacing.xs,
   },
   suggestionChip: {
-    borderRadius: 20,
+    borderRadius: mukokoTheme.modal.borderRadius,
   },
   suggestionText: {
-    fontSize: 12,
+    fontSize: mukokoTheme.typography.bodySmall,
   },
 
   // Authors Section
@@ -785,19 +783,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statEmoji: {
-    fontSize: 20,
+    fontSize: mukokoTheme.layout.emojiSmall,
     marginBottom: mukokoTheme.spacing.xs,
   },
   statValue: {
-    fontSize: 22,
+    fontSize: mukokoTheme.typography.headlineMedium,
     fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: mukokoTheme.typography.labelSmall,
     marginTop: 2,
   },
   statDivider: {
-    width: 1,
-    height: 40,
+    width: mukokoTheme.layout.dividerWidth,
+    height: mukokoTheme.touchTargets.compact,
   },
 });

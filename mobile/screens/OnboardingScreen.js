@@ -12,7 +12,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
-  StyleSheet,
   ScrollView,
   TouchableOpacity,
   Dimensions,
@@ -22,8 +21,11 @@ import {
   Animated,
   StatusBar,
   KeyboardAvoidingView,
+  Pressable,
+  Text,
+  TextInput,
 } from 'react-native';
-import { Text, TextInput, Icon } from 'react-native-paper';
+import { Check, Loader2 } from 'lucide-react-native';
 import { mukokoTheme } from '../theme';
 import { categories as categoriesAPI, countries as countriesAPI, user as userAPI } from '../api/client';
 
@@ -44,7 +46,7 @@ const MODAL_HEIGHT = SCREEN_HEIGHT * 0.85;
 function ProgressIndicator({ currentStep, totalSteps }) {
   return (
     <View
-      style={styles.progressContainer}
+      className="flex-row gap-xs justify-center py-md"
       accessibilityRole="progressbar"
       accessibilityLabel={`Step ${currentStep} of ${totalSteps}`}
       accessibilityValue={{ min: 1, max: totalSteps, now: currentStep }}
@@ -52,11 +54,13 @@ function ProgressIndicator({ currentStep, totalSteps }) {
       {Array.from({ length: totalSteps }, (_, i) => (
         <View
           key={i}
-          style={[
-            styles.progressBar,
-            i < currentStep && styles.progressBarActive,
-            i === currentStep - 1 && styles.progressBarCurrent,
-          ]}
+          className={`h-1 rounded-full ${
+            i < currentStep
+              ? 'bg-tanzanite w-8'
+              : i === currentStep - 1
+                ? 'bg-tanzanite w-12'
+                : 'bg-outline w-8'
+          }`}
         />
       ))}
     </View>
@@ -116,7 +120,9 @@ export default function OnboardingScreen({ navigation }) {
         setCategories(categoriesResult.data.categories);
       }
     } catch (err) {
-      console.error('Failed to load onboarding data:', err);
+      if (__DEV__) {
+        console.error('Failed to load onboarding data:', err);
+      }
     }
   };
 
@@ -329,18 +335,18 @@ export default function OnboardingScreen({ navigation }) {
         ]}
       >
         {/* Handle bar */}
-        <View style={styles.handleBar} />
+        <View className="w-12 h-1 rounded-full bg-outline self-center mt-md mb-sm" />
 
         {/* Close Button */}
-        <TouchableOpacity
-          style={styles.closeButton}
+        <Pressable
+          className="absolute top-md right-md w-10 h-10 items-center justify-center rounded-full bg-surface-variant z-10"
           onPress={handleSkip}
           accessibilityRole="button"
           accessibilityLabel="Skip onboarding"
           hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
         >
-          <Icon source="close" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
+          <Text className="text-white text-2xl">×</Text>
+        </Pressable>
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -436,34 +442,35 @@ export default function OnboardingScreen({ navigation }) {
             {step === 2 && (
               <View style={styles.stepContent}>
                 <View style={styles.usernameContainer}>
-                  <TextInput
-                    mode="outlined"
-                    label="Username"
-                    value={username}
-                    onChangeText={handleUsernameChange}
-                    autoCapitalize="none"
-                    style={styles.input}
-                    outlineColor="rgba(255, 255, 255, 0.3)"
-                    activeOutlineColor={mukokoTheme.colors.primary}
-                    textColor="#FFFFFF"
-                    theme={{
-                      colors: {
-                        onSurfaceVariant: 'rgba(255, 255, 255, 0.7)',
-                        background: 'transparent',
-                      },
-                    }}
-                    error={!!usernameError}
-                    accessibilityLabel="Username input"
-                    right={
-                      checkingUsername ? (
-                        <TextInput.Icon icon="loading" color="rgba(255, 255, 255, 0.7)" />
+                  <Text style={styles.inputLabel}>Username</Text>
+                  <View style={styles.inputWrapper}>
+                    <TextInput
+                      value={username}
+                      onChangeText={handleUsernameChange}
+                      autoCapitalize="none"
+                      placeholder="Enter username"
+                      placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                      style={[
+                        styles.input,
+                        {
+                          color: '#FFFFFF',
+                          borderColor: usernameError
+                            ? mukokoTheme.colors.error
+                            : 'rgba(255, 255, 255, 0.3)',
+                        }
+                      ]}
+                      accessibilityLabel="Username input"
+                    />
+                    <View style={styles.inputIcon}>
+                      {checkingUsername ? (
+                        <Loader2 size={20} color="rgba(255, 255, 255, 0.7)" className="animate-spin" />
                       ) : (
                         username.length >= 3 && !usernameError && (
-                          <TextInput.Icon icon="check" color={mukokoTheme.colors.success} />
+                          <Check size={20} color={mukokoTheme.colors.success} />
                         )
-                      )
-                    }
-                  />
+                      )}
+                    </View>
+                  </View>
                   {usernameError ? (
                     <Text style={styles.helperTextError}>{usernameError}</Text>
                   ) : (
@@ -521,24 +528,26 @@ export default function OnboardingScreen({ navigation }) {
         </KeyboardAvoidingView>
 
         {/* Bottom Actions */}
-        <View style={styles.bottomActions}>
-          <View style={styles.buttonRow}>
+        <View className="p-lg pt-md border-t border-outline bg-surface">
+          <View className="flex-row gap-md mb-md">
             {step > 1 && (
-              <TouchableOpacity
-                style={styles.backButton}
+              <Pressable
+                className="flex-1 py-md px-lg rounded-button border border-outline items-center justify-center min-h-touch"
                 onPress={handleBack}
                 accessibilityRole="button"
                 accessibilityLabel="Go back"
               >
-                <Text style={styles.backButtonText}>Back</Text>
-              </TouchableOpacity>
+                <Text className="font-sans-medium text-body-medium text-on-surface">Back</Text>
+              </Pressable>
             )}
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                step === 2 && (!username || username.length < 3 || !!usernameError || checkingUsername) && styles.primaryButtonDisabled,
-                step === 3 && selectedCategories.length < 3 && styles.primaryButtonDisabled,
-              ]}
+            <Pressable
+              className={`flex-1 py-md px-lg rounded-button items-center justify-center min-h-touch ${
+                loading ||
+                (step === 2 && (!username || username.length < 3 || !!usernameError || checkingUsername)) ||
+                (step === 3 && selectedCategories.length < 3)
+                  ? 'bg-outline'
+                  : 'bg-tanzanite'
+              }`}
               onPress={handleContinue}
               disabled={
                 loading ||
@@ -548,20 +557,27 @@ export default function OnboardingScreen({ navigation }) {
               accessibilityRole="button"
               accessibilityLabel={step === 3 ? 'Get Started' : step === 1 ? (selectedCountries.length === 0 ? 'Skip' : 'Next') : 'Next'}
             >
-              <Text style={styles.primaryButtonText}>
-                {loading ? 'Setting up...' : step === 3 ? 'Get Started' : step === 1 && selectedCountries.length === 0 ? 'Skip' : 'Next'}
-              </Text>
-            </TouchableOpacity>
+              {loading ? (
+                <View className="flex-row items-center gap-sm">
+                  <Loader2 size={16} color="#FFFFFF" className="animate-spin" />
+                  <Text className="font-sans-bold text-body-medium text-white">Setting up...</Text>
+                </View>
+              ) : (
+                <Text className="font-sans-bold text-body-medium text-white">
+                  {step === 3 ? 'Get Started' : step === 1 && selectedCountries.length === 0 ? 'Skip' : 'Next'}
+                </Text>
+              )}
+            </Pressable>
           </View>
 
-          <TouchableOpacity
-            style={styles.skipButton}
+          <Pressable
+            className="py-sm items-center min-h-touch justify-center"
             onPress={handleSkip}
             accessibilityRole="button"
             accessibilityLabel="Skip onboarding"
           >
-            <Text style={styles.skipButtonText}>Skip for now</Text>
-          </TouchableOpacity>
+            <Text className="font-sans text-label-large text-on-surface-variant">Skip for now</Text>
+          </Pressable>
         </View>
       </Animated.View>
     </Modal>
@@ -757,9 +773,30 @@ const styles = StyleSheet.create({
   usernameContainer: {
     marginTop: mukokoTheme.spacing.lg,
   },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    marginBottom: mukokoTheme.spacing.xs,
+  },
+  inputWrapper: {
+    position: 'relative',
+    marginBottom: mukokoTheme.spacing.xs,
+  },
   input: {
     backgroundColor: 'transparent',
-    marginBottom: mukokoTheme.spacing.xs,
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: mukokoTheme.spacing.md,
+    fontSize: 16,
+    paddingRight: 40,
+  },
+  inputIcon: {
+    position: 'absolute',
+    right: mukokoTheme.spacing.md,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
   },
   helperText: {
     fontSize: 12,

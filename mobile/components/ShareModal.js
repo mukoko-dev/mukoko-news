@@ -1,9 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, TouchableOpacity, Modal, Platform, Share as RNShare, Clipboard, Animated, PanResponder } from 'react-native';
-import { Text, Portal, useTheme, IconButton } from 'react-native-paper';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { View, Pressable, Modal, Platform, Share as RNShare, Clipboard, Animated, PanResponder, Dimensions, ScrollView, Text as RNText, StyleSheet } from 'react-native';
+import { Twitter, Share2, Link, Check, X, MessageCircle, Facebook, Linkedin } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useTheme } from '../contexts/ThemeContext';
 import mukokoTheme from '../theme';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 /**
  * ShareModal - Beautiful share modal for articles
@@ -11,7 +13,7 @@ import mukokoTheme from '../theme';
  * On web: Shows custom modal with share options
  */
 export default function ShareModal({ visible, onDismiss, article }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const [copied, setCopied] = useState(false);
   const panY = useRef(new Animated.Value(0)).current;
 
@@ -30,8 +32,13 @@ export default function ShareModal({ visible, onDismiss, article }) {
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > 100) {
+        if (gestureState.dy > mukokoTheme.modal.dragThreshold) {
           onDismiss();
+          Animated.timing(panY, {
+            toValue: 0,
+            duration: mukokoTheme.animation.fast,
+            useNativeDriver: true,
+          }).start();
         } else {
           Animated.spring(panY, {
             toValue: 0,
@@ -121,247 +128,286 @@ export default function ShareModal({ visible, onDismiss, article }) {
   // On mobile, use native share sheet
   if (Platform.OS !== 'web') {
     return (
-      <Portal>
-        <Modal
-          visible={visible}
-          transparent
-          animationType="slide"
-          onRequestClose={onDismiss}
-        >
-          <TouchableOpacity
-            style={styles.mobileOverlay}
-            activeOpacity={1}
-            onPress={onDismiss}
-          >
-            <Animated.View
-              style={[
-                styles.mobileContent,
-                { backgroundColor: theme.colors.surface },
-                { transform: [{ translateY: panY }] }
-              ]}
-              onStartShouldSetResponder={() => true}
-              {...panResponder.panHandlers}
-            >
-              <View
-                style={styles.handle}
-                {...panResponder.panHandlers}
-              />
-
-              <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
-                Share Article
-              </Text>
-
-              <TouchableOpacity
-                style={[styles.shareOption, { borderColor: theme.colors.outline }]}
-                onPress={handleCopyLink}
-              >
-                <MaterialCommunityIcons
-                  name={copied ? 'check' : 'link-variant'}
-                  size={24}
-                  color={copied ? theme.colors.primary : theme.colors.onSurface}
-                />
-                <Text style={[styles.shareOptionText, { color: theme.colors.onSurface }]}>
-                  {copied ? 'Copied!' : 'Copy Link'}
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.shareOption, { borderColor: theme.colors.outline }]}
-                onPress={handleNativeShare}
-              >
-                <MaterialCommunityIcons
-                  name="share-variant"
-                  size={24}
-                  color={theme.colors.onSurface}
-                />
-                <Text style={[styles.shareOptionText, { color: theme.colors.onSurface }]}>
-                  More Options
-                </Text>
-              </TouchableOpacity>
-            </Animated.View>
-          </TouchableOpacity>
-        </Modal>
-      </Portal>
-    );
-  }
-
-  // On web, show full share modal
-  return (
-    <Portal>
       <Modal
         visible={visible}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={onDismiss}
       >
-        <TouchableOpacity
-          style={styles.overlay}
-          activeOpacity={1}
+        <Pressable
+          style={styles.mobileOverlay}
           onPress={onDismiss}
         >
-          <View
-            style={[styles.modalContent, { backgroundColor: theme.colors.surface }]}
+          <Animated.View
+            style={[
+              styles.mobileContent,
+              {
+                backgroundColor: theme.colors.surface,
+                maxHeight: SCREEN_HEIGHT * mukokoTheme.modal.maxHeight,
+                minHeight: SCREEN_HEIGHT * mukokoTheme.modal.initialHeight,
+                borderColor: theme.colors.outline,
+              },
+              { transform: [{ translateY: panY }] }
+            ]}
             onStartShouldSetResponder={() => true}
+            {...panResponder.panHandlers}
+          >
+            <View
+              style={[
+                styles.handle,
+                { backgroundColor: theme.colors.onSurfaceVariant }
+              ]}
+              {...panResponder.panHandlers}
+            />
+
+            <ScrollView
+              style={styles.scrollContent}
+              contentContainerStyle={styles.scrollContentContainer}
+              showsVerticalScrollIndicator={false}
+            >
+              <RNText style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+                Share Article
+              </RNText>
+
+              <Pressable
+                style={[styles.shareOption, { borderColor: theme.colors.outline }]}
+                onPress={handleCopyLink}
+              >
+                {copied ? (
+                  <Check size={24} color={theme.colors.primary} />
+                ) : (
+                  <Link size={24} color={theme.colors.onSurface} />
+                )}
+                <RNText style={[styles.shareOptionText, { color: theme.colors.onSurface }]}>
+                  {copied ? 'Copied!' : 'Copy Link'}
+                </RNText>
+              </Pressable>
+
+              <Pressable
+                style={[styles.shareOption, { borderColor: theme.colors.outline }]}
+                onPress={handleNativeShare}
+              >
+                <Share2 size={24} color={theme.colors.onSurface} />
+                <RNText style={[styles.shareOptionText, { color: theme.colors.onSurface }]}>
+                  More Options
+                </RNText>
+              </Pressable>
+            </ScrollView>
+          </Animated.View>
+        </Pressable>
+      </Modal>
+    );
+  }
+
+  // On web, show full share modal (slide-up from bottom like mobile)
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onDismiss}
+    >
+      <Pressable
+        style={styles.overlay}
+        onPress={onDismiss}
+      >
+        <Animated.View
+          style={[
+            styles.modalContent,
+            {
+              backgroundColor: theme.colors.surface,
+              borderColor: theme.colors.outline,
+              maxHeight: SCREEN_HEIGHT * mukokoTheme.modal.maxHeight,
+              minHeight: SCREEN_HEIGHT * mukokoTheme.modal.initialHeight,
+            },
+            { transform: [{ translateY: panY }] }
+          ]}
+          onStartShouldSetResponder={() => true}
+          {...panResponder.panHandlers}
+        >
+          <View
+            style={[
+              styles.handle,
+              { backgroundColor: theme.colors.onSurfaceVariant }
+            ]}
+            {...panResponder.panHandlers}
+          />
+
+          <ScrollView
+            style={styles.scrollContent}
+            contentContainerStyle={styles.scrollContentContainer}
+            showsVerticalScrollIndicator={false}
           >
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
+              <RNText style={[styles.modalTitle, { color: theme.colors.onSurface }]}>
                 Share Article
-              </Text>
-              <IconButton
-                icon="close"
-                size={24}
+              </RNText>
+              <Pressable
                 onPress={onDismiss}
-                iconColor={theme.colors.onSurface}
-              />
+                style={styles.closeButton}
+              >
+                <X size={24} color={theme.colors.onSurface} />
+              </Pressable>
             </View>
 
             <View style={styles.shareGrid}>
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShareTwitter}
-              >
-                <View style={[styles.shareIconCircle, { backgroundColor: '#1DA1F2' }]}>
-                  <MaterialCommunityIcons name="twitter" size={28} color="#fff" />
-                </View>
-                <Text style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
-                  Twitter
-                </Text>
-              </TouchableOpacity>
+            <Pressable
+              style={styles.shareButton}
+              onPress={handleShareTwitter}
+            >
+              <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-twitter'] }]}>
+                <Twitter size={28} color="#fff" />
+              </View>
+              <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                Twitter
+              </RNText>
+            </Pressable>
 
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShareWhatsApp}
-              >
-                <View style={[styles.shareIconCircle, { backgroundColor: '#25D366' }]}>
-                  <MaterialCommunityIcons name="whatsapp" size={28} color="#fff" />
-                </View>
-                <Text style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
-                  WhatsApp
-                </Text>
-              </TouchableOpacity>
+            <Pressable
+              style={styles.shareButton}
+              onPress={handleShareWhatsApp}
+            >
+              <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-whatsapp'] }]}>
+                <MessageCircle size={28} color="#fff" />
+              </View>
+              <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                WhatsApp
+              </RNText>
+            </Pressable>
 
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShareFacebook}
-              >
-                <View style={[styles.shareIconCircle, { backgroundColor: '#1877F2' }]}>
-                  <MaterialCommunityIcons name="facebook" size={28} color="#fff" />
-                </View>
-                <Text style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
-                  Facebook
-                </Text>
-              </TouchableOpacity>
+            <Pressable
+              style={styles.shareButton}
+              onPress={handleShareFacebook}
+            >
+              <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-facebook'] }]}>
+                <Facebook size={28} color="#fff" />
+              </View>
+              <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                Facebook
+              </RNText>
+            </Pressable>
 
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleShareLinkedIn}
-              >
-                <View style={[styles.shareIconCircle, { backgroundColor: '#0A66C2' }]}>
-                  <MaterialCommunityIcons name="linkedin" size={28} color="#fff" />
-                </View>
-                <Text style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
-                  LinkedIn
-                </Text>
-              </TouchableOpacity>
+            <Pressable
+              style={styles.shareButton}
+              onPress={handleShareLinkedIn}
+            >
+              <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-linkedin'] }]}>
+                <Linkedin size={28} color="#fff" />
+              </View>
+              <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                LinkedIn
+              </RNText>
+            </Pressable>
 
-              <TouchableOpacity
-                style={styles.shareButton}
-                onPress={handleCopyLink}
-              >
-                <View style={[styles.shareIconCircle, { backgroundColor: theme.colors.primaryContainer }]}>
-                  <MaterialCommunityIcons
-                    name={copied ? 'check' : 'link-variant'}
-                    size={28}
-                    color={theme.colors.primary}
-                  />
-                </View>
-                <Text style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
-                  {copied ? 'Copied!' : 'Copy Link'}
-                </Text>
-              </TouchableOpacity>
-            </View>
+            <Pressable
+              style={styles.shareButton}
+              onPress={handleCopyLink}
+            >
+              <View style={[styles.shareIconCircle, { backgroundColor: theme.colors.primaryContainer }]}>
+                {copied ? (
+                  <Check size={28} color={theme.colors.primary} />
+                ) : (
+                  <Link size={28} color={theme.colors.primary} />
+                )}
+              </View>
+              <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
+                {copied ? 'Copied!' : 'Copy Link'}
+              </RNText>
+            </Pressable>
+          </View>
 
             {article.source_name && (
-              <View style={styles.articlePreview}>
-                <Text style={[styles.previewSource, { color: theme.colors.onSurfaceVariant }]}>
+              <View style={[styles.articlePreview, { borderTopColor: theme.colors.outline }]}>
+                <RNText style={[styles.previewSource, { color: theme.colors.onSurfaceVariant }]}>
                   {article.source_name}
-                </Text>
-                <Text
+                </RNText>
+                <RNText
                   style={[styles.previewTitle, { color: theme.colors.onSurface }]}
                   numberOfLines={2}
                 >
                   {article.title}
-                </Text>
+                </RNText>
               </View>
             )}
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </Portal>
+          </ScrollView>
+        </Animated.View>
+      </Pressable>
+    </Modal>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: mukokoTheme.modal.overlayColor,
+    justifyContent: 'flex-end',
   },
   mobileOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: mukokoTheme.modal.overlayColor,
     justifyContent: 'flex-end',
   },
   modalContent: {
     width: '100%',
-    maxWidth: 500,
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-  },
-  mobileContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
+    borderTopLeftRadius: mukokoTheme.modal.borderRadius,
+    borderTopRightRadius: mukokoTheme.modal.borderRadius,
     borderTopWidth: 1,
   },
+  mobileContent: {
+    borderTopLeftRadius: mukokoTheme.modal.borderRadius,
+    borderTopRightRadius: mukokoTheme.modal.borderRadius,
+    borderTopWidth: 1,
+  },
+  scrollContent: {
+    flex: 1,
+  },
+  scrollContentContainer: {
+    paddingHorizontal: mukokoTheme.spacing.xl,
+    paddingBottom: mukokoTheme.spacing.xl,
+  },
   handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    borderRadius: 2,
+    width: mukokoTheme.modal.handleWidth,
+    height: mukokoTheme.modal.handleHeight,
+    borderRadius: mukokoTheme.modal.handleHeight / 2,
     alignSelf: 'center',
-    marginBottom: 16,
+    marginTop: mukokoTheme.spacing.sm,
+    marginBottom: mukokoTheme.spacing.lg,
+    opacity: 0.3,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: mukokoTheme.spacing.xl,
   },
   modalTitle: {
     fontSize: 20,
     fontFamily: mukokoTheme.fonts.bold.fontFamily,
   },
+  closeButton: {
+    width: mukokoTheme.touchTargets.minimum,
+    height: mukokoTheme.touchTargets.minimum,
+    borderRadius: mukokoTheme.touchTargets.minimum / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   shareGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 16,
-    marginBottom: 24,
+    gap: mukokoTheme.spacing.lg,
+    marginBottom: mukokoTheme.spacing.xl,
   },
   shareButton: {
     alignItems: 'center',
     width: 80,
   },
   shareIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: mukokoTheme.touchTargets.large,
+    height: mukokoTheme.touchTargets.large,
+    borderRadius: mukokoTheme.touchTargets.large / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: mukokoTheme.spacing.sm,
   },
   shareButtonLabel: {
     fontSize: 12,
@@ -371,25 +417,26 @@ const styles = StyleSheet.create({
   shareOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
+    padding: mukokoTheme.spacing.lg,
+    borderRadius: mukokoTheme.roundness,
     borderWidth: 1,
-    marginBottom: 12,
-    gap: 16,
+    marginBottom: mukokoTheme.spacing.md,
+    gap: mukokoTheme.spacing.lg,
+    minHeight: mukokoTheme.touchTargets.large,
   },
   shareOptionText: {
     fontSize: 16,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
   },
   articlePreview: {
-    paddingTop: 16,
+    paddingTop: mukokoTheme.spacing.lg,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    marginTop: mukokoTheme.spacing.md,
   },
   previewSource: {
     fontSize: 12,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    marginBottom: 4,
+    marginBottom: mukokoTheme.spacing.xs,
     textTransform: 'uppercase',
   },
   previewTitle: {
