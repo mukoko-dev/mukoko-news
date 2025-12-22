@@ -1,5 +1,6 @@
 /**
  * DiscoverScreen - Premium Visual Exploration
+ * shadcn-style with NativeWind + Lucide icons
  *
  * Purpose: Browse EVERYTHING (not personalized)
  * Design: Apple News + The Athletic + Artifact inspired
@@ -19,24 +20,11 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  RefreshControl,
-  Dimensions,
-  Platform,
-  TouchableOpacity,
-} from 'react-native';
-import {
-  Text,
-  ActivityIndicator,
-  useTheme as usePaperTheme,
-} from 'react-native-paper';
+import { View, ScrollView, RefreshControl, Dimensions, Pressable, Text } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLayout } from '../components/layout';
+import { LoadingState, EmptyState } from '../components/ui';
 import ArticleCard from '../components/ArticleCard';
 import { CuratedLabel } from '../components/ai';
 import { HeroStoryCard, CategoryExplorerCard, TrendingTopicRow } from '../components/discover';
@@ -50,7 +38,6 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function DiscoverScreen({ navigation }) {
   const { isDark } = useTheme();
-  const paperTheme = usePaperTheme();
   const layout = useLayout();
 
   const [loading, setLoading] = useState(true);
@@ -199,8 +186,8 @@ export default function DiscoverScreen({ navigation }) {
   }, [navigation]);
 
   // Calculate grid dimensions based on screen size
-  const padding = mukokoTheme.spacing.md;
-  const gap = mukokoTheme.spacing.sm;
+  const padding = 12;
+  const gap = 8;
 
   // Responsive column counts - defensive checks for layout properties
   const getCategoryColumns = () => {
@@ -258,60 +245,40 @@ export default function DiscoverScreen({ navigation }) {
   const categoryItemsToShow = categoryColumns * 2; // 2 rows
   const articleItemsToShow = articleColumns * 4; // 4 rows
 
-  // Dynamic styles
-  const dynamicStyles = {
-    container: {
-      backgroundColor: paperTheme.colors.background,
-    },
-    sectionTitle: {
-      color: paperTheme.colors.onSurface,
-    },
-    subtitle: {
-      color: paperTheme.colors.onSurfaceVariant,
-    },
-  };
-
   if (loading) {
-    return (
-      <View style={[styles.container, dynamicStyles.container, styles.centered]}>
-        <ActivityIndicator size="large" color={paperTheme.colors.primary} />
-        <Text style={[styles.loadingText, dynamicStyles.subtitle]}>
-          Loading discoveries...
-        </Text>
-      </View>
-    );
+    return <LoadingState message="Loading discoveries..." />;
   }
 
   return (
-    <View style={[styles.container, dynamicStyles.container]}>
+    <View className="flex-1 bg-background">
       <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
+        className="flex-1"
+        contentContainerStyle={{ paddingBottom: 12 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[paperTheme.colors.primary]}
-            tintColor={paperTheme.colors.primary}
+            colors={['#4B0082']}
+            tintColor="#4B0082"
           />
         }
       >
         {/* Header Section */}
-        <View style={styles.header}>
-          <Text style={[styles.headerTitle, dynamicStyles.sectionTitle]}>
+        <View className="px-md pt-lg pb-md">
+          <Text className="font-serif-bold text-[28px] text-on-surface" style={{ letterSpacing: -0.5 }}>
             Explore Africa's News
           </Text>
-          <Text style={[styles.headerSubtitle, dynamicStyles.subtitle]}>
+          <Text className="font-sans text-body-medium text-on-surface-variant mt-xs">
             Browse {stats.countries} countries, {stats.categories} topics
           </Text>
         </View>
 
         {/* Hero Story */}
         {heroArticle && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
+          <View className="px-md mb-lg">
+            <View className="flex-row items-center justify-between mb-sm">
+              <Text className="font-sans-bold text-label-medium text-on-surface uppercase" style={{ letterSpacing: 0.8 }}>
                 TRENDING NOW
               </Text>
               <CuratedLabel variant="trending" size="small" />
@@ -331,19 +298,19 @@ export default function DiscoverScreen({ navigation }) {
             onTopicPress={handleCategoryPress}
             title="HOT TOPICS"
             showAILabel={true}
-            style={styles.trendingSection}
+            className="mb-md"
           />
         )}
 
         {/* Browse by Category */}
         {categories.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
+          <View className="px-md mb-lg">
+            <View className="flex-row items-center justify-between mb-sm">
+              <Text className="font-sans-bold text-label-medium text-on-surface uppercase" style={{ letterSpacing: 0.8 }}>
                 BROWSE BY CATEGORY
               </Text>
             </View>
-            <View style={styles.categoryGrid}>
+            <View className="flex-row flex-wrap gap-sm">
               {categories.slice(0, categoryItemsToShow).map((category, index) => (
                 <CategoryExplorerCard
                   key={category.id || category.slug || index}
@@ -355,28 +322,28 @@ export default function DiscoverScreen({ navigation }) {
               ))}
             </View>
             {categories.length > categoryItemsToShow && (
-              <TouchableOpacity
-                style={[styles.viewAllButton, { borderColor: paperTheme.colors.primary }]}
+              <Pressable
+                className="self-center mt-md py-sm px-lg rounded-button border border-tanzanite"
                 onPress={() => navigation.navigate('AllCategories')}
               >
-                <Text style={[styles.viewAllText, { color: paperTheme.colors.primary }]}>
+                <Text className="font-sans-medium text-label-large text-tanzanite">
                   View all {categories.length} categories
                 </Text>
-              </TouchableOpacity>
+              </Pressable>
             )}
           </View>
         )}
 
         {/* Latest from All Sources */}
         {latestArticles.length > 0 && (
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, dynamicStyles.sectionTitle]}>
+          <View className="px-md mb-lg">
+            <View className="flex-row items-center justify-between mb-sm">
+              <Text className="font-sans-bold text-label-medium text-on-surface uppercase" style={{ letterSpacing: 0.8 }}>
                 LATEST FROM ALL SOURCES
               </Text>
               <CuratedLabel variant="popular" size="small" showIcon={false} />
             </View>
-            <View style={styles.articleGrid}>
+            <View className="flex-row flex-wrap gap-sm">
               {latestArticles.slice(0, articleItemsToShow).map((article) => (
                 <View key={article.id} style={{ width: articleCardWidth }}>
                   <ArticleCard
@@ -389,8 +356,8 @@ export default function DiscoverScreen({ navigation }) {
               ))}
             </View>
             {latestArticles.length > articleItemsToShow && (
-              <TouchableOpacity
-                style={[styles.loadMoreButton, { backgroundColor: paperTheme.colors.primary }]}
+              <Pressable
+                className="self-center mt-md py-sm px-xl rounded-button bg-tanzanite"
                 onPress={async () => {
                   // Could load more articles or navigate to a full feed
                   if (Platform.OS !== 'web') {
@@ -398,153 +365,25 @@ export default function DiscoverScreen({ navigation }) {
                   }
                 }}
               >
-                <Text style={styles.loadMoreText}>Load more stories</Text>
-              </TouchableOpacity>
+                <Text className="font-sans-medium text-body-medium text-white">
+                  Load more stories
+                </Text>
+              </Pressable>
             )}
           </View>
         )}
 
         {/* Empty State */}
         {!heroArticle && latestArticles.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🌍</Text>
-            <Text style={[styles.emptyTitle, dynamicStyles.sectionTitle]}>
-              No stories to explore
-            </Text>
-            <Text style={[styles.emptySubtitle, dynamicStyles.subtitle]}>
-              Pull to refresh and discover news from across Africa
-            </Text>
-          </View>
+          <EmptyState
+            emoji="🌍"
+            title="No stories to explore"
+            subtitle="Pull to refresh and discover news from across Africa"
+          />
         )}
-
-        <View style={{ height: bottomPadding }} />
       </ScrollView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: mukokoTheme.spacing.md,
-  },
-  loadingText: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-  },
-
-  // Scroll
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: mukokoTheme.spacing.md,
-  },
-
-  // Header
-  header: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingTop: mukokoTheme.spacing.lg,
-    paddingBottom: mukokoTheme.spacing.md,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    letterSpacing: -0.5,
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    marginTop: mukokoTheme.spacing.xs,
-  },
-
-  // Sections
-  section: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-
-  // Trending section (uses TrendingTopicRow which handles its own padding)
-  trendingSection: {
-    marginBottom: mukokoTheme.spacing.md,
-  },
-
-  // Category Grid (3 columns)
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
-  },
-
-  // Article Grid (2 columns)
-  articleGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
-  },
-
-  // Buttons
-  viewAllButton: {
-    alignSelf: 'center',
-    marginTop: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
-    borderWidth: 1,
-  },
-  viewAllText: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-  loadMoreButton: {
-    alignSelf: 'center',
-    marginTop: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.xl,
-    borderRadius: mukokoTheme.roundness,
-  },
-  loadMoreText: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-
-  // Empty state
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.xxl * 2,
-    paddingHorizontal: mukokoTheme.spacing.xl,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.sm,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-});
+// All styles removed - using NativeWind classes instead

@@ -17,7 +17,8 @@ import {
   Animated,
   Platform,
 } from 'react-native';
-import { Icon, ActivityIndicator, useTheme as usePaperTheme } from 'react-native-paper';
+import { ActivityIndicator, Text } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 import * as Haptics from 'expo-haptics';
 import mukokoTheme from '../../theme';
 import { AISparkleIcon } from '../ai';
@@ -34,7 +35,7 @@ export default function EnhancedSearchBar({
   showAIIndicator = true,
   style,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef(null);
   const focusAnim = useRef(new Animated.Value(0)).current;
@@ -78,8 +79,8 @@ export default function EnhancedSearchBar({
   const borderColor = focusAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [
-      paperTheme.colors.glassBorder || 'rgba(0,0,0,0.1)',
-      paperTheme.colors.primary,
+      theme.colors.glassBorder || 'rgba(0,0,0,0.1)',
+      theme.colors.primary,
     ],
   });
 
@@ -93,10 +94,10 @@ export default function EnhancedSearchBar({
       style={[
         styles.container,
         {
-          backgroundColor: paperTheme.colors.glassCard || paperTheme.colors.surface,
+          backgroundColor: theme.colors.glassCard || theme.colors.surface,
           borderColor: borderColor,
           shadowOpacity: shadowOpacity,
-          shadowColor: paperTheme.colors.primary,
+          shadowColor: theme.colors.primary,
         },
         style,
       ]}
@@ -109,7 +110,7 @@ export default function EnhancedSearchBar({
           <Icon
             source="magnify"
             size={20}
-            color={isFocused ? paperTheme.colors.primary : paperTheme.colors.onSurfaceVariant}
+            color={isFocused ? theme.colors.primary : theme.colors.onSurfaceVariant}
           />
         )}
       </View>
@@ -120,7 +121,7 @@ export default function EnhancedSearchBar({
         style={[
           styles.input,
           {
-            color: paperTheme.colors.onSurface,
+            color: theme.colors.onSurface,
           },
         ]}
         value={value}
@@ -129,7 +130,7 @@ export default function EnhancedSearchBar({
         onBlur={handleBlur}
         onSubmitEditing={handleSubmit}
         placeholder={placeholder}
-        placeholderTextColor={paperTheme.colors.onSurfaceVariant}
+        placeholderTextColor={theme.colors.onSurfaceVariant}
         returnKeyType="search"
         autoCapitalize="none"
         autoCorrect={false}
@@ -139,7 +140,7 @@ export default function EnhancedSearchBar({
       {/* Loading / Clear Button */}
       <View style={styles.rightContainer}>
         {loading ? (
-          <ActivityIndicator size={18} color={paperTheme.colors.primary} />
+          <ActivityIndicator size={18} color={theme.colors.primary} />
         ) : value.length > 0 ? (
           <TouchableOpacity
             onPress={handleClear}
@@ -149,7 +150,7 @@ export default function EnhancedSearchBar({
             <Icon
               source="close-circle"
               size={18}
-              color={paperTheme.colors.onSurfaceVariant}
+              color={theme.colors.onSurfaceVariant}
             />
           </TouchableOpacity>
         ) : null}

@@ -1,21 +1,33 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   ScrollView,
-  StyleSheet,
   Image,
   TouchableOpacity,
   Linking,
-  ActivityIndicator,
   Share,
+  Animated,
+  Pressable,
+  Text as RNText,
+  StyleSheet,
 } from 'react-native';
-import { Text, IconButton, Button, Divider, useTheme as usePaperTheme } from 'react-native-paper';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  Heart,
+  Bookmark,
+  Share2,
+  ChevronLeft,
+  ExternalLink,
+  Loader2,
+  AlertCircle,
+  RefreshCw,
+  Tag,
+  User,
+} from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import Markdown from 'react-native-markdown-display';
-import mukokoTheme, { paperTheme, paperThemeDark } from '../theme';
+import mukokoTheme from '../theme';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI } from '../api/client';
 import { useTheme } from '../contexts/ThemeContext';
@@ -36,8 +48,7 @@ import ArticleEngagementBar from '../components/ArticleEngagementBar';
 export default function ArticleDetailScreen({ route, navigation }) {
   const { articleId, source, slug } = route.params || {};
   const { user, isAuthenticated } = useAuth();
-  const currentTheme = usePaperTheme();
-  const { isDark } = useTheme();
+  const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
 
   const [article, setArticle] = useState(null);
@@ -48,54 +59,59 @@ export default function ArticleDetailScreen({ route, navigation }) {
   const [likesCount, setLikesCount] = useState(0);
   const [shareModalVisible, setShareModalVisible] = useState(false);
 
+  // Scroll tracking for collapsible header
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+  const headerTranslateY = useRef(new Animated.Value(-mukokoTheme.scroll.headerHeight)).current; // Start hidden
+
   // Dynamic styles based on theme
   const dynamicStyles = {
     container: {
-      backgroundColor: currentTheme.colors.background,
+      backgroundColor: theme.colors.background,
     },
     loadingText: {
-      color: currentTheme.colors.onSurfaceVariant,
+      color: theme.colors['on-surface-variant'],
     },
     errorCard: {
-      backgroundColor: currentTheme.colors.surface,
-      borderColor: currentTheme.colors.outline,
+      backgroundColor: theme.colors.surface,
+      borderColor: theme.colors.outline,
     },
     errorTitle: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
     },
     errorMessage: {
-      color: currentTheme.colors.onSurfaceVariant,
+      color: theme.colors['on-surface-variant'],
     },
     contentParagraph: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
     },
     actionsDivider: {
-      backgroundColor: currentTheme.colors.outline,
+      backgroundColor: theme.colors.outline,
     },
     actionButton: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
+      backgroundColor: theme.colors['surface-variant'],
     },
     actionText: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
     },
     readOriginalButton: {
-      backgroundColor: currentTheme.colors.primary,
+      backgroundColor: theme.colors.primary,
     },
     readOriginalText: {
-      color: currentTheme.colors.onPrimary,
+      color: theme.colors['on-primary'],
     },
   };
 
   // Markdown styles for article content
   const markdownStyles = useMemo(() => ({
     body: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       fontSize: 16,
       lineHeight: 26,
       fontFamily: mukokoTheme.fonts.regular.fontFamily,
     },
     heading1: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       fontSize: 24,
       fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
       marginTop: 24,
@@ -103,7 +119,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
       lineHeight: 32,
     },
     heading2: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       fontSize: 20,
       fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
       marginTop: 20,
@@ -111,7 +127,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
       lineHeight: 28,
     },
     heading3: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       fontSize: 18,
       fontFamily: mukokoTheme.fonts.bold.fontFamily,
       marginTop: 16,
@@ -129,12 +145,12 @@ export default function ArticleDetailScreen({ route, navigation }) {
       fontStyle: 'italic',
     },
     link: {
-      color: currentTheme.colors.primary,
+      color: theme.colors.primary,
       textDecorationLine: 'underline',
     },
     blockquote: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
-      borderLeftColor: currentTheme.colors.primary,
+      backgroundColor: theme.colors['surface-variant'],
+      borderLeftColor: theme.colors.primary,
       borderLeftWidth: 4,
       paddingLeft: 16,
       paddingVertical: 8,
@@ -142,8 +158,8 @@ export default function ArticleDetailScreen({ route, navigation }) {
       borderRadius: 4,
     },
     code_inline: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
-      color: currentTheme.colors.onSurface,
+      backgroundColor: theme.colors['surface-variant'],
+      color: theme.colors['on-surface'],
       fontFamily: 'monospace',
       fontSize: 14,
       paddingHorizontal: 6,
@@ -151,8 +167,8 @@ export default function ArticleDetailScreen({ route, navigation }) {
       borderRadius: 4,
     },
     code_block: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
-      color: currentTheme.colors.onSurface,
+      backgroundColor: theme.colors['surface-variant'],
+      color: theme.colors['on-surface'],
       fontFamily: 'monospace',
       fontSize: 14,
       padding: 12,
@@ -160,8 +176,8 @@ export default function ArticleDetailScreen({ route, navigation }) {
       marginVertical: 12,
     },
     fence: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
-      color: currentTheme.colors.onSurface,
+      backgroundColor: theme.colors['surface-variant'],
+      color: theme.colors['on-surface'],
       fontFamily: 'monospace',
       fontSize: 14,
       padding: 12,
@@ -178,15 +194,15 @@ export default function ArticleDetailScreen({ route, navigation }) {
       marginVertical: 4,
     },
     bullet_list_icon: {
-      color: currentTheme.colors.primary,
+      color: theme.colors.primary,
       marginRight: 8,
     },
     ordered_list_icon: {
-      color: currentTheme.colors.primary,
+      color: theme.colors.primary,
       marginRight: 8,
     },
     hr: {
-      backgroundColor: currentTheme.colors.outline,
+      backgroundColor: theme.colors.outline,
       height: 1,
       marginVertical: 16,
     },
@@ -196,26 +212,26 @@ export default function ArticleDetailScreen({ route, navigation }) {
       marginVertical: 12,
     },
     table: {
-      borderColor: currentTheme.colors.outline,
+      borderColor: theme.colors.outline,
       borderWidth: 1,
       borderRadius: 8,
       marginVertical: 12,
     },
     thead: {
-      backgroundColor: currentTheme.colors.surfaceVariant,
+      backgroundColor: theme.colors['surface-variant'],
     },
     th: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       fontFamily: mukokoTheme.fonts.bold.fontFamily,
       padding: 8,
     },
     td: {
-      color: currentTheme.colors.onSurface,
+      color: theme.colors['on-surface'],
       padding: 8,
-      borderTopColor: currentTheme.colors.outline,
+      borderTopColor: theme.colors.outline,
       borderTopWidth: 1,
     },
-  }), [currentTheme.colors]);
+  }), [theme.colors]);
 
   useEffect(() => {
     loadArticle();
@@ -264,7 +280,9 @@ export default function ArticleDetailScreen({ route, navigation }) {
         setError('Article not found');
       }
     } catch (err) {
-      console.error('[ArticleDetail] Load error:', err);
+      if (__DEV__) {
+        console.error('[ArticleDetail] Load error:', err);
+      }
       setError(err.message);
     } finally {
       setLoading(false);
@@ -341,7 +359,9 @@ export default function ArticleDetailScreen({ route, navigation }) {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       setShareModalVisible(true);
     } catch (error) {
-      console.error('[ArticleDetail] Share error:', error);
+      if (__DEV__) {
+        console.error('[ArticleDetail] Share error:', error);
+      }
     }
   };
 
@@ -355,7 +375,9 @@ export default function ArticleDetailScreen({ route, navigation }) {
         await Linking.openURL(article.original_url);
       }
     } catch (error) {
-      console.error('[ArticleDetail] Open URL error:', error);
+      if (__DEV__) {
+        console.error('[ArticleDetail] Open URL error:', error);
+      }
     }
   };
 
@@ -377,6 +399,38 @@ export default function ArticleDetailScreen({ route, navigation }) {
       navigation.navigate('Home');
     }
   };
+
+  // Handle scroll to show/hide header
+  const handleScroll = Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    {
+      useNativeDriver: false,
+      listener: (event) => {
+        const currentScrollY = event.nativeEvent.contentOffset.y;
+        const scrollDirection = currentScrollY > lastScrollY.current ? 'down' : 'up';
+
+        // Only show header when scrolling up and past threshold
+        // Hide when scrolling down or at top of page
+        if (scrollDirection === 'up' && currentScrollY > mukokoTheme.scroll.headerThreshold) {
+          // Show header
+          Animated.timing(headerTranslateY, {
+            toValue: 0,
+            duration: mukokoTheme.animation.medium,
+            useNativeDriver: true,
+          }).start();
+        } else if (scrollDirection === 'down' || currentScrollY <= mukokoTheme.scroll.headerThreshold) {
+          // Hide header
+          Animated.timing(headerTranslateY, {
+            toValue: -mukokoTheme.scroll.headerHeight,
+            duration: mukokoTheme.animation.medium,
+            useNativeDriver: true,
+          }).start();
+        }
+
+        lastScrollY.current = currentScrollY;
+      },
+    }
+  );
 
   // Extract keywords/tags from article
   const getKeywords = () => {
@@ -406,34 +460,42 @@ export default function ArticleDetailScreen({ route, navigation }) {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         {/* Loading State */}
         {loading && (
-          <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={currentTheme.colors.primary} />
-            <Text style={[styles.loadingText, dynamicStyles.loadingText]}>Loading article...</Text>
+          <View className="flex-1 justify-center items-center py-xl gap-md">
+            <Loader2 size={48} color={theme.colors.primary} className="animate-spin" />
+            <RNText className="font-sans-medium text-body-medium" style={{ color: theme.colors['on-surface-variant'] }}>
+              Loading article...
+            </RNText>
           </View>
         )}
 
         {/* Error State */}
         {error && !loading && (
-          <View style={styles.centerContainer}>
-            <View style={[styles.errorCard, dynamicStyles.errorCard]}>
-              <MaterialCommunityIcons
-                name="newspaper-variant-outline"
+          <View className="flex-1 justify-center items-center py-xl">
+            <View className="items-center gap-md px-xl py-lg rounded-card border" style={{ backgroundColor: theme.colors.surface, borderColor: theme.colors.outline }}>
+              <AlertCircle
                 size={64}
-                color={currentTheme.colors.onSurfaceVariant}
+                color={theme.colors['on-surface-variant']}
               />
-              <Text style={[styles.errorTitle, dynamicStyles.errorTitle]}>Article Not Found</Text>
-              <Text style={[styles.errorMessage, dynamicStyles.errorMessage]}>{error}</Text>
-              <Button
-                mode="contained"
+              <RNText className="font-serif-bold text-headline-small text-center" style={{ color: theme.colors['on-surface'] }}>
+                Article Not Found
+              </RNText>
+              <RNText className="font-sans text-body-medium text-center mb-md" style={{ color: theme.colors['on-surface-variant'] }}>
+                {error}
+              </RNText>
+              <Pressable
+                className="py-md px-xl rounded-button"
                 onPress={() => navigation.goBack()}
-                style={styles.errorButton}
-                buttonColor={currentTheme.colors.primary}
+                style={{ backgroundColor: theme.colors.primary }}
               >
-                Go Back
-              </Button>
+                <RNText className="font-sans-bold text-label-large" style={{ color: theme.colors['on-primary'] }}>
+                  Go Back
+                </RNText>
+              </Pressable>
             </View>
           </View>
         )}
@@ -447,96 +509,90 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 styles.heroSection,
                 {
                   paddingTop: insets.top + 16,
-                  backgroundColor: currentTheme.colors.primary,
+                  backgroundColor: theme.colors.primary,
                 }
               ]}
             >
               {/* Back Button */}
-              <TouchableOpacity
+              <Pressable
                 onPress={handleBack}
                 style={[
                   styles.heroBackButton,
                   {
-                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
+                    backgroundColor: `${theme.colors['on-primary']}33`,
                     top: insets.top + 16,
                   }
                 ]}
-                activeOpacity={0.7}
               >
-                <MaterialCommunityIcons
-                  name="arrow-left"
+                <ChevronLeft
                   size={24}
-                  color={currentTheme.colors.onPrimary}
+                  color={theme.colors['on-primary']}
                 />
-              </TouchableOpacity>
+              </Pressable>
 
               {/* Share Button */}
-              <TouchableOpacity
+              <Pressable
                 onPress={handleShare}
                 style={[
                   styles.heroShareButton,
                   {
-                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
+                    backgroundColor: `${theme.colors['on-primary']}33`,
                     top: insets.top + 16,
                   }
                 ]}
-                activeOpacity={0.7}
               >
-                <MaterialCommunityIcons
-                  name="share-variant-outline"
+                <Share2
                   size={22}
-                  color={currentTheme.colors.onPrimary}
+                  color={theme.colors['on-primary']}
                 />
-              </TouchableOpacity>
+              </Pressable>
 
               {/* Category Badge */}
               {article.category && (
                 <View style={styles.categoryContainer}>
                   <View style={[styles.categoryBadge, {
-                    backgroundColor: `${currentTheme.colors.onPrimary}33`,
-                    borderColor: `${currentTheme.colors.onPrimary}4D`,
+                    backgroundColor: `${theme.colors['on-primary']}33`,
+                    borderColor: `${theme.colors['on-primary']}4D`,
                   }]}>
-                    <MaterialCommunityIcons
-                      name="tag-outline"
+                    <Tag
                       size={14}
-                      color={currentTheme.colors.onPrimary}
+                      color={theme.colors['on-primary']}
                     />
-                    <Text style={[styles.categoryText, { color: currentTheme.colors.onPrimary }]}>
+                    <RNText style={[styles.categoryText, { color: theme.colors['on-primary'] }]}>
                       {article.category.toUpperCase()}
-                    </Text>
+                    </RNText>
                   </View>
                 </View>
               )}
 
               {/* Title */}
-              <Text style={[styles.heroTitle, { color: currentTheme.colors.onPrimary }]} accessibilityRole="header">
+              <RNText style={[styles.heroTitle, { color: theme.colors['on-primary'] }]} accessibilityRole="header">
                 {article.title}
-              </Text>
+              </RNText>
 
               {/* Author Profile */}
               {article.author && (
                 <View style={styles.authorContainer}>
-                  <View style={[styles.authorAvatar, { backgroundColor: `${currentTheme.colors.onPrimary}33` }]}>
-                    <MaterialCommunityIcons
-                      name="account"
+                  <View style={[styles.authorAvatar, { backgroundColor: `${theme.colors['on-primary']}33` }]}>
+                    <User
                       size={20}
-                      color={currentTheme.colors.onPrimary}
+                      color={theme.colors['on-primary']}
                     />
                   </View>
-                  <Text style={[styles.authorName, { color: currentTheme.colors.onPrimary }]}>
+                  <RNText style={[styles.authorName, { color: theme.colors['on-primary'] }]}>
                     {article.author}
-                  </Text>
+                  </RNText>
                 </View>
               )}
 
               {/* Source and Date */}
               <View style={styles.heroMeta}>
-                <Text style={[styles.heroSource, { color: currentTheme.colors.onPrimary }]}>
+                <RNText style={[styles.heroSource, { color: theme.colors['on-primary'] }]}>
                   {article.source || 'Unknown Source'}
-                </Text>
-                <Text style={[styles.heroDate, { color: `${currentTheme.colors.onPrimary}B3` }]}>
+                </RNText>
+                <RNText style={[styles.heroDate, { color: `${theme.colors['on-primary']}B3` }]}>
                   {formatDate(article.published_at)}
-                </Text>
+                </RNText>
               </View>
 
               {/* Keywords/Tags */}
@@ -544,12 +600,12 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 <View style={styles.keywordsContainer}>
                   {getKeywords().map((keyword, index) => (
                     <View key={index} style={[styles.keywordTag, {
-                      backgroundColor: `${currentTheme.colors.onPrimary}33`,
-                      borderColor: `${currentTheme.colors.onPrimary}4D`,
+                      backgroundColor: `${theme.colors['on-primary']}33`,
+                      borderColor: `${theme.colors['on-primary']}4D`,
                     }]}>
-                      <Text style={[styles.keywordText, { color: `${currentTheme.colors.onPrimary}E6` }]}>
+                      <RNText style={[styles.keywordText, { color: `${theme.colors['on-primary']}E6` }]}>
                         {keyword}
-                      </Text>
+                      </RNText>
                     </View>
                   ))}
                 </View>
@@ -571,9 +627,9 @@ export default function ArticleDetailScreen({ route, navigation }) {
             <View style={styles.articleBody}>
               {/* Description */}
               {article.description && (
-                <Text style={[styles.articleDescription, { color: currentTheme.colors.onSurfaceVariant }]}>
+                <RNText style={[styles.articleDescription, { color: theme.colors['on-surface-variant'] }]}>
                   {article.description}
-                </Text>
+                </RNText>
               )}
 
               {/* Full Content - Markdown Rendering */}
@@ -591,7 +647,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
                 </View>
               )}
 
-              <Divider style={[styles.actionsDivider, dynamicStyles.actionsDivider]} />
+              <View style={[styles.actionsDivider, dynamicStyles.actionsDivider]} />
 
               {/* Action Buttons - Glass Morphism Effect */}
               <View style={styles.actionsContainer}>
@@ -612,13 +668,12 @@ export default function ArticleDetailScreen({ route, navigation }) {
                   style={[styles.readOriginalButton, dynamicStyles.readOriginalButton]}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.readOriginalText, dynamicStyles.readOriginalText]}>
+                  <RNText style={[styles.readOriginalText, dynamicStyles.readOriginalText]}>
                     Read Original
-                  </Text>
-                  <MaterialCommunityIcons
-                    name="open-in-new"
+                  </RNText>
+                  <ExternalLink
                     size={18}
-                    color={currentTheme.colors.onPrimary}
+                    color={theme.colors['on-primary']}
                   />
                 </TouchableOpacity>
               </View>
@@ -626,6 +681,60 @@ export default function ArticleDetailScreen({ route, navigation }) {
           </>
         )}
       </ScrollView>
+
+      {/* Floating Header - Shows when scrolling up */}
+      {article && !loading && !error && (
+        <Animated.View
+          style={[
+            styles.floatingHeader,
+            {
+              backgroundColor: theme.colors.primary,
+              transform: [{ translateY: headerTranslateY }],
+              paddingTop: insets.top + mukokoTheme.spacing.sm,
+            },
+          ]}
+        >
+          <View style={styles.floatingHeaderContent}>
+            {/* Back Button */}
+            <TouchableOpacity
+              onPress={handleBack}
+              style={[
+                styles.floatingButton,
+                { backgroundColor: `${theme.colors['on-primary']}33` },
+              ]}
+              activeOpacity={0.7}
+            >
+              <ChevronLeft
+                size={24}
+                color={theme.colors['on-primary']}
+              />
+            </TouchableOpacity>
+
+            {/* Article Title (truncated) */}
+            <RNText
+              style={[styles.floatingTitle, { color: theme.colors['on-primary'] }]}
+              numberOfLines={1}
+            >
+              {article.title}
+            </RNText>
+
+            {/* Share Button */}
+            <TouchableOpacity
+              onPress={handleShare}
+              style={[
+                styles.floatingButton,
+                { backgroundColor: `${theme.colors['on-primary']}33` },
+              ]}
+              activeOpacity={0.7}
+            >
+              <Share2
+                size={22}
+                color={theme.colors['on-primary']}
+              />
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      )}
 
       <ShareModal
         visible={shareModalVisible}
@@ -681,43 +790,43 @@ const styles = StyleSheet.create({
 
   // Hero Section
   heroSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 32,
+    paddingHorizontal: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
+    paddingBottom: mukokoTheme.spacing.xxl,
     position: 'relative',
   },
   heroBackButton: {
     position: 'absolute',
-    left: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    left: mukokoTheme.spacing.lg,
+    width: mukokoTheme.touchTargets.minimum,
+    height: mukokoTheme.touchTargets.minimum,
+    borderRadius: mukokoTheme.touchTargets.minimum / 2,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
   heroShareButton: {
     position: 'absolute',
-    right: 16,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    right: mukokoTheme.spacing.lg,
+    width: mukokoTheme.touchTargets.minimum,
+    height: mukokoTheme.touchTargets.minimum,
+    borderRadius: mukokoTheme.touchTargets.minimum / 2,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
   categoryContainer: {
-    marginTop: 60,
-    marginBottom: 20,
+    marginTop: mukokoTheme.spacing.xxl + mukokoTheme.spacing.xl + mukokoTheme.spacing.sm,
+    marginBottom: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
     flexDirection: 'row',
   },
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: mukokoTheme.spacing.xs + 2,
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingHorizontal: mukokoTheme.spacing.md,
+    paddingVertical: mukokoTheme.spacing.xs + 2,
+    borderRadius: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
   },
   categoryText: {
     fontSize: 12,
@@ -847,5 +956,35 @@ const styles = StyleSheet.create({
   readOriginalText: {
     fontSize: 14,
     fontFamily: mukokoTheme.fonts.medium.fontFamily,
+  },
+
+  // Floating Header (appears on scroll up)
+  floatingHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: mukokoTheme.spacing.md,
+    zIndex: 100,
+    ...mukokoTheme.shadows.medium,
+  },
+  floatingHeaderContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: mukokoTheme.spacing.lg,
+    gap: mukokoTheme.spacing.md,
+  },
+  floatingButton: {
+    width: mukokoTheme.touchTargets.compact,
+    height: mukokoTheme.touchTargets.compact,
+    borderRadius: mukokoTheme.touchTargets.compact / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  floatingTitle: {
+    flex: 1,
+    fontSize: 16,
+    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    letterSpacing: -0.2,
   },
 });

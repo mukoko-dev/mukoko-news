@@ -2,19 +2,14 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
-  StyleSheet,
   RefreshControl,
-  TouchableOpacity,
+  Pressable,
+  Text as RNText,
 } from 'react-native';
-import {
-  Text,
-  Card,
-  Button,
-  useTheme,
-  ActivityIndicator,
-  Chip,
-} from 'react-native-paper';
+import { RefreshCw, Download } from 'lucide-react-native';
+import { LoadingState, Badge } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { admin } from '../../api/client';
 import AdminHeader from '../../components/AdminHeader';
 import AdminScreenWrapper from '../../components/AdminScreenWrapper';
@@ -22,6 +17,8 @@ import AdminScreenWrapper from '../../components/AdminScreenWrapper';
 /**
  * Admin System Screen
  * Monitor system health and manage cron jobs
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminSystemScreen({ navigation }) {
   const theme = useTheme();
@@ -103,422 +100,322 @@ export default function AdminSystemScreen({ navigation }) {
       case 'healthy':
       case 'success':
       case 'ok':
-        return '#00A651';
+        return theme.colors.success;
       case 'warning':
       case 'degraded':
-        return '#FDD116';
+        return theme.colors.warning;
       case 'error':
       case 'failed':
       case 'critical':
-        return '#EF3340';
+        return theme.colors.error;
       default:
-        return theme.colors.onSurfaceVariant;
+        return theme.colors['on-surface-variant'];
+    }
+  };
+
+  const getStatusBadgeVariant = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'success':
+        return 'success';
+      case 'failed':
+      case 'error':
+        return 'error';
+      default:
+        return 'outline';
     }
   };
 
   if (!isAdmin) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.errorContainer}>
-          <Text variant="headlineSmall">Access Denied</Text>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg bg-background">
+        <RNText className="font-serif-bold text-headline-small text-on-surface">
+          Access Denied
+        </RNText>
       </View>
     );
   }
 
   if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.colors.primary} />
-        </View>
-      </View>
-    );
+    return <LoadingState />;
   }
 
   if (error) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
-        <View style={styles.errorContainer}>
-          <Text variant="headlineSmall" style={{ marginBottom: 8 }}>Something went wrong</Text>
-          <Text style={{ color: theme.colors.onSurfaceVariant, marginBottom: 16 }}>{error}</Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: theme.colors.primary }]}
-            onPress={loadData}
-          >
-            <Text style={{ color: '#FFFFFF' }}>Try Again</Text>
-          </TouchableOpacity>
-        </View>
+      <View className="flex-1 justify-center items-center px-lg bg-background">
+        <RNText className="font-serif-bold text-headline-small mb-sm text-on-surface">
+          Something went wrong
+        </RNText>
+        <RNText className="font-sans text-body-medium mb-lg text-center text-on-surface-variant">
+          {error}
+        </RNText>
+        <Pressable
+          className="py-md px-xl rounded-button min-h-touch bg-tanzanite"
+          onPress={loadData}
+        >
+          <RNText className="font-sans-bold text-label-large text-on-primary">
+            Try Again
+          </RNText>
+        </Pressable>
       </View>
     );
   }
 
   return (
     <AdminScreenWrapper>
-      <View style={[styles.container, { backgroundColor: theme.colors.background }]}>
+      <View className="flex-1 bg-background">
         <AdminHeader navigation={navigation} currentScreen="AdminSystem" />
         <ScrollView
-          style={styles.scrollView}
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.colors.primary]}
-          />
-        }
-      >
-        {/* Header */}
-        <View style={styles.header}>
-          <Text variant="headlineSmall" style={styles.title}>System</Text>
-        <Text style={{ color: theme.colors.onSurfaceVariant }}>
-          Health monitoring and operations
-        </Text>
-      </View>
-
-      {/* Quick Actions */}
-      <Text variant="titleMedium" style={styles.sectionTitle}>Quick Actions</Text>
-      <View style={styles.actionsRow}>
-        <Button
-          mode="contained"
-          onPress={handleRefreshRSS}
-          loading={actionLoading === 'rss'}
-          disabled={actionLoading !== null}
-          icon="refresh"
-          style={styles.actionButton}
+          className="flex-1"
+          contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[theme.colors.tanzanite]}
+            />
+          }
         >
-          Refresh RSS
-        </Button>
-        <Button
-          mode="outlined"
-          onPress={handleBulkPull}
-          loading={actionLoading === 'bulk'}
-          disabled={actionLoading !== null}
-          icon="download"
-          style={styles.actionButton}
-        >
-          Bulk Pull
-        </Button>
-      </View>
+          {/* Header */}
+          <View className="mb-lg">
+            <RNText className="font-serif-bold text-headline-small text-on-surface">
+              System
+            </RNText>
+            <RNText className="font-sans text-body-medium text-on-surface-variant">
+              Health monitoring and operations
+            </RNText>
+          </View>
 
-      {/* System Health */}
-      <Text variant="titleMedium" style={styles.sectionTitle}>System Health</Text>
-      <Card style={[styles.healthCard, { backgroundColor: theme.colors.surface }]}>
-        <Card.Content>
-          <View style={styles.healthGrid}>
-            <View style={styles.healthItem}>
-              <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: getStatusColor(systemHealth?.database?.status) },
-                ]}
-              />
-              <View>
-                <Text variant="bodyMedium">Database</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {systemHealth?.database?.status || 'Unknown'}
-                </Text>
-              </View>
-            </View>
+          {/* Quick Actions */}
+          <RNText className="font-sans-bold text-title-medium mb-md mt-sm text-on-surface">
+            Quick Actions
+          </RNText>
+          <View className="flex-row gap-md mb-lg">
+            <Pressable
+              onPress={handleRefreshRSS}
+              disabled={actionLoading !== null}
+              className="flex-1 flex-row items-center justify-center gap-sm py-md px-lg rounded-button min-h-touch bg-tanzanite"
+            >
+              <RefreshCw size={18} color="#FFFFFF" />
+              <RNText className="font-sans-bold text-label-large text-on-primary">
+                Refresh RSS
+              </RNText>
+            </Pressable>
+            <Pressable
+              onPress={handleBulkPull}
+              disabled={actionLoading !== null}
+              className="flex-1 flex-row items-center justify-center gap-sm py-md px-lg rounded-button min-h-touch border border-tanzanite bg-surface"
+            >
+              <Download size={18} color={theme.colors.tanzanite} />
+              <RNText className="font-sans-bold text-label-large text-tanzanite">
+                Bulk Pull
+              </RNText>
+            </Pressable>
+          </View>
 
-            <View style={styles.healthItem}>
-              <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: getStatusColor(systemHealth?.kv?.status) },
-                ]}
-              />
-              <View>
-                <Text variant="bodyMedium">KV Storage</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {systemHealth?.kv?.status || 'Unknown'}
-                </Text>
-              </View>
-            </View>
+          {/* System Health */}
+          <RNText className="font-sans-bold text-title-medium mb-md mt-sm text-on-surface">
+            System Health
+          </RNText>
+          <View className="rounded-card bg-surface border border-outline overflow-hidden mb-lg">
+            <View className="p-lg">
+              <View className="flex-row flex-wrap gap-lg">
+                <View className="flex-row items-center gap-md" style={{ minWidth: '45%' }}>
+                  <View
+                    className="w-[12px] h-[12px] rounded-full"
+                    style={{ backgroundColor: getStatusColor(systemHealth?.database?.status) }}
+                  />
+                  <View>
+                    <RNText className="font-sans text-body-medium text-on-surface">
+                      Database
+                    </RNText>
+                    <RNText className="font-sans text-body-small text-on-surface-variant">
+                      {systemHealth?.database?.status || 'Unknown'}
+                    </RNText>
+                  </View>
+                </View>
 
-            <View style={styles.healthItem}>
-              <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: getStatusColor(systemHealth?.rss?.status) },
-                ]}
-              />
-              <View>
-                <Text variant="bodyMedium">RSS Feeds</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {systemHealth?.rss?.active_sources || 0} active
-                </Text>
-              </View>
-            </View>
+                <View className="flex-row items-center gap-md" style={{ minWidth: '45%' }}>
+                  <View
+                    className="w-[12px] h-[12px] rounded-full"
+                    style={{ backgroundColor: getStatusColor(systemHealth?.kv?.status) }}
+                  />
+                  <View>
+                    <RNText className="font-sans text-body-medium text-on-surface">
+                      KV Storage
+                    </RNText>
+                    <RNText className="font-sans text-body-small text-on-surface-variant">
+                      {systemHealth?.kv?.status || 'Unknown'}
+                    </RNText>
+                  </View>
+                </View>
 
-            <View style={styles.healthItem}>
-              <View
-                style={[
-                  styles.statusDot,
-                  { backgroundColor: getStatusColor(systemHealth?.ai?.status) },
-                ]}
-              />
-              <View>
-                <Text variant="bodyMedium">AI Pipeline</Text>
-                <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                  {systemHealth?.ai?.status || 'Unknown'}
-                </Text>
+                <View className="flex-row items-center gap-md" style={{ minWidth: '45%' }}>
+                  <View
+                    className="w-[12px] h-[12px] rounded-full"
+                    style={{ backgroundColor: getStatusColor(systemHealth?.rss?.status) }}
+                  />
+                  <View>
+                    <RNText className="font-sans text-body-medium text-on-surface">
+                      RSS Feeds
+                    </RNText>
+                    <RNText className="font-sans text-body-small text-on-surface-variant">
+                      {systemHealth?.rss?.active_sources || 0} active
+                    </RNText>
+                  </View>
+                </View>
+
+                <View className="flex-row items-center gap-md" style={{ minWidth: '45%' }}>
+                  <View
+                    className="w-[12px] h-[12px] rounded-full"
+                    style={{ backgroundColor: getStatusColor(systemHealth?.ai?.status) }}
+                  />
+                  <View>
+                    <RNText className="font-sans text-body-medium text-on-surface">
+                      AI Pipeline
+                    </RNText>
+                    <RNText className="font-sans text-body-small text-on-surface-variant">
+                      {systemHealth?.ai?.status || 'Unknown'}
+                    </RNText>
+                  </View>
+                </View>
               </View>
             </View>
           </View>
-        </Card.Content>
-      </Card>
 
-      {/* AI Pipeline Status */}
-      {aiStatus && (
-        <>
-          <Text variant="titleMedium" style={styles.sectionTitle}>AI Pipeline</Text>
-          <Card style={[styles.aiCard, { backgroundColor: theme.colors.surface }]}>
-            <Card.Content>
-              <View style={styles.aiStats}>
-                <View style={styles.aiStat}>
-                  <Text style={styles.aiValue}>{aiStatus.processed_today || 0}</Text>
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    Processed Today
-                  </Text>
-                </View>
-                <View style={styles.aiStat}>
-                  <Text style={styles.aiValue}>{aiStatus.pending || 0}</Text>
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    Pending
-                  </Text>
-                </View>
-                <View style={styles.aiStat}>
-                  <Text style={styles.aiValue}>{aiStatus.failed || 0}</Text>
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    Failed
-                  </Text>
+          {/* AI Pipeline Status */}
+          {aiStatus && (
+            <>
+              <RNText className="font-sans-bold text-title-medium mb-md mt-sm text-on-surface">
+                AI Pipeline
+              </RNText>
+              <View className="rounded-card bg-surface border border-outline overflow-hidden mb-lg">
+                <View className="p-lg">
+                  <View className="flex-row justify-around">
+                    <View className="items-center">
+                      <RNText className="font-serif-bold text-stats text-on-surface">
+                        {aiStatus.processed_today || 0}
+                      </RNText>
+                      <RNText className="font-sans text-body-small text-on-surface-variant">
+                        Processed Today
+                      </RNText>
+                    </View>
+                    <View className="items-center">
+                      <RNText className="font-serif-bold text-stats text-on-surface">
+                        {aiStatus.pending || 0}
+                      </RNText>
+                      <RNText className="font-sans text-body-small text-on-surface-variant">
+                        Pending
+                      </RNText>
+                    </View>
+                    <View className="items-center">
+                      <RNText className="font-serif-bold text-stats text-on-surface">
+                        {aiStatus.failed || 0}
+                      </RNText>
+                      <RNText className="font-sans text-body-small text-on-surface-variant">
+                        Failed
+                      </RNText>
+                    </View>
+                  </View>
+
+                  {aiStatus.last_processed && (
+                    <RNText className="font-sans text-body-small text-on-surface-variant mt-md">
+                      Last processed: {formatTimestamp(aiStatus.last_processed)}
+                    </RNText>
+                  )}
                 </View>
               </View>
-
-              {aiStatus.last_processed && (
-                <Text
-                  variant="bodySmall"
-                  style={{ color: theme.colors.onSurfaceVariant, marginTop: 12 }}
-                >
-                  Last processed: {formatTimestamp(aiStatus.last_processed)}
-                </Text>
-              )}
-            </Card.Content>
-          </Card>
-        </>
-      )}
-
-      {/* Cron Logs */}
-      <Text variant="titleMedium" style={styles.sectionTitle}>Recent Jobs</Text>
-      <Card style={[styles.logsCard, { backgroundColor: theme.colors.surface }]}>
-        <Card.Content>
-          {cronLogs.length > 0 ? (
-            cronLogs.slice(0, 10).map((log, index) => (
-              <View key={index} style={styles.logItem}>
-                <View style={styles.logHeader}>
-                  <Chip
-                    compact
-                    textStyle={{ fontSize: 11 }}
-                    style={{
-                      backgroundColor:
-                        log.status === 'success'
-                          ? '#00A65120'
-                          : log.status === 'failed'
-                          ? '#EF334020'
-                          : '#FDD11620',
-                    }}
-                  >
-                    {log.status || 'Unknown'}
-                  </Chip>
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    {formatTimestamp(log.created_at)}
-                  </Text>
-                </View>
-                <Text variant="bodyMedium" style={styles.logName}>
-                  {log.job_name || 'Unknown Job'}
-                </Text>
-                {log.message && (
-                  <Text
-                    variant="bodySmall"
-                    style={{ color: theme.colors.onSurfaceVariant }}
-                    numberOfLines={2}
-                  >
-                    {log.message}
-                  </Text>
-                )}
-                {log.duration_ms && (
-                  <Text
-                    variant="bodySmall"
-                    style={{ color: theme.colors.onSurfaceVariant, marginTop: 4 }}
-                  >
-                    Duration: {log.duration_ms}ms
-                  </Text>
-                )}
-              </View>
-            ))
-          ) : (
-            <Text style={{ color: theme.colors.onSurfaceVariant }}>
-              No recent job logs
-            </Text>
+            </>
           )}
-        </Card.Content>
-      </Card>
 
-      {/* Database Stats */}
-      {systemHealth?.database?.stats && (
-        <>
-          <Text variant="titleMedium" style={styles.sectionTitle}>Database Stats</Text>
-          <Card style={[styles.dbCard, { backgroundColor: theme.colors.surface }]}>
-            <Card.Content>
-              <View style={styles.dbGrid}>
-                <View style={styles.dbStat}>
-                  <Text style={styles.dbValue}>
-                    {systemHealth.database.stats.total_articles?.toLocaleString() || 0}
-                  </Text>
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    Articles
-                  </Text>
-                </View>
-                <View style={styles.dbStat}>
-                  <Text style={styles.dbValue}>
-                    {systemHealth.database.stats.total_users?.toLocaleString() || 0}
-                  </Text>
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    Users
-                  </Text>
-                </View>
-                <View style={styles.dbStat}>
-                  <Text style={styles.dbValue}>
-                    {systemHealth.database.stats.total_sources?.toLocaleString() || 0}
-                  </Text>
-                  <Text variant="bodySmall" style={{ color: theme.colors.onSurfaceVariant }}>
-                    Sources
-                  </Text>
+          {/* Cron Logs */}
+          <RNText className="font-sans-bold text-title-medium mb-md mt-sm text-on-surface">
+            Recent Jobs
+          </RNText>
+          <View className="rounded-card bg-surface border border-outline overflow-hidden mb-lg">
+            <View className="p-lg">
+              {cronLogs.length > 0 ? (
+                cronLogs.slice(0, 10).map((log, index) => (
+                  <View
+                    key={index}
+                    className="py-md border-b border-outline-variant"
+                  >
+                    <View className="flex-row justify-between items-center mb-xs">
+                      <Badge
+                        variant={getStatusBadgeVariant(log.status)}
+                        size="sm"
+                      >
+                        {log.status || 'Unknown'}
+                      </Badge>
+                      <RNText className="font-sans text-body-small text-on-surface-variant">
+                        {formatTimestamp(log.created_at)}
+                      </RNText>
+                    </View>
+                    <RNText className="font-sans-medium text-body-medium text-on-surface my-xs">
+                      {log.job_name || 'Unknown Job'}
+                    </RNText>
+                    {log.message && (
+                      <RNText
+                        className="font-sans text-body-small text-on-surface-variant"
+                        numberOfLines={2}
+                      >
+                        {log.message}
+                      </RNText>
+                    )}
+                    {log.duration_ms && (
+                      <RNText className="font-sans text-body-small text-on-surface-variant mt-xs">
+                        Duration: {log.duration_ms}ms
+                      </RNText>
+                    )}
+                  </View>
+                ))
+              ) : (
+                <RNText className="font-sans text-body-medium text-on-surface-variant">
+                  No recent job logs
+                </RNText>
+              )}
+            </View>
+          </View>
+
+          {/* Database Stats */}
+          {systemHealth?.database?.stats && (
+            <>
+              <RNText className="font-sans-bold text-title-medium mb-md mt-sm text-on-surface">
+                Database Stats
+              </RNText>
+              <View className="rounded-card bg-surface border border-outline overflow-hidden mb-lg">
+                <View className="p-lg">
+                  <View className="flex-row justify-around">
+                    <View className="items-center">
+                      <RNText className="font-serif-bold text-stats text-on-surface">
+                        {systemHealth.database.stats.total_articles?.toLocaleString() || 0}
+                      </RNText>
+                      <RNText className="font-sans text-body-small text-on-surface-variant">
+                        Articles
+                      </RNText>
+                    </View>
+                    <View className="items-center">
+                      <RNText className="font-serif-bold text-stats text-on-surface">
+                        {systemHealth.database.stats.total_users?.toLocaleString() || 0}
+                      </RNText>
+                      <RNText className="font-sans text-body-small text-on-surface-variant">
+                        Users
+                      </RNText>
+                    </View>
+                    <View className="items-center">
+                      <RNText className="font-serif-bold text-stats text-on-surface">
+                        {systemHealth.database.stats.total_sources?.toLocaleString() || 0}
+                      </RNText>
+                      <RNText className="font-sans text-body-small text-on-surface-variant">
+                        Sources
+                      </RNText>
+                    </View>
+                  </View>
                 </View>
               </View>
-            </Card.Content>
-          </Card>
-        </>
-      )}
+            </>
+          )}
         </ScrollView>
       </View>
     </AdminScreenWrapper>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollView: {
-    flex: 1,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 100,
-  },
-  header: {
-    marginBottom: 16,
-  },
-  title: {
-    fontWeight: '700',
-  },
-  sectionTitle: {
-    fontWeight: '600',
-    marginBottom: 12,
-    marginTop: 8,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginBottom: 16,
-  },
-  actionButton: {
-    flex: 1,
-  },
-  healthCard: {
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  healthGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 16,
-  },
-  healthItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    minWidth: '45%',
-  },
-  statusDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-  },
-  aiCard: {
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  aiStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  aiStat: {
-    alignItems: 'center',
-  },
-  aiValue: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  logsCard: {
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  logItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  logHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  logName: {
-    fontWeight: '500',
-    marginVertical: 4,
-  },
-  dbCard: {
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  dbGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  dbStat: {
-    alignItems: 'center',
-  },
-  dbValue: {
-    fontSize: 24,
-    fontWeight: '700',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  retryButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-  },
-});

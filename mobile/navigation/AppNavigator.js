@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
+import { Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { useTheme as usePaperTheme } from 'react-native-paper';
+import { Zap, ZapOff, Globe, Search, Compass, User, ShieldCheck } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import mukokoTheme from '../theme';
@@ -19,24 +18,41 @@ import SplashScreen from '../components/SplashScreen';
 import localPreferences from '../services/LocalPreferencesService';
 
 // Screens
-import NewsBytesScreen from '../screens/NewsBytesScreen';
+import NewsBytesScreenBase from '../screens/NewsBytesScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
-import ProfileSettingsScreen from '../screens/ProfileSettingsScreen';
+import ProfileSettingsScreenBase from '../screens/ProfileSettingsScreen';
 import UserProfileScreen from '../screens/UserProfileScreen';
-import ArticleDetailScreen from '../screens/ArticleDetailScreen';
-import SearchScreen from '../screens/SearchScreen';
+import ArticleDetailScreenBase from '../screens/ArticleDetailScreen';
+import SearchScreenBase from '../screens/SearchScreen';
 import DiscoverScreen from '../screens/DiscoverScreen';
-import HomeScreen from '../screens/HomeScreen';
+import HomeScreenBase from '../screens/HomeScreen';
 // Auth screens removed - authentication handled by OIDC (id.mukoko.com)
 
 // Admin Screens
 import {
-  AdminDashboardScreen,
-  AdminUsersScreen,
-  AdminSourcesScreen,
-  AdminAnalyticsScreen,
-  AdminSystemScreen,
+  AdminDashboardScreen as AdminDashboardScreenBase,
+  AdminUsersScreen as AdminUsersScreenBase,
+  AdminSourcesScreen as AdminSourcesScreenBase,
+  AdminAnalyticsScreen as AdminAnalyticsScreenBase,
+  AdminSystemScreen as AdminSystemScreenBase,
 } from '../screens/admin';
+
+// Error boundary HOC
+import withScreenErrorBoundary from '../components/withScreenErrorBoundary';
+
+// Wrap critical screens with error boundaries
+const NewsBytesScreen = withScreenErrorBoundary(NewsBytesScreenBase, 'News Bytes');
+const ArticleDetailScreen = withScreenErrorBoundary(ArticleDetailScreenBase, 'Article Detail');
+const SearchScreen = withScreenErrorBoundary(SearchScreenBase, 'Search');
+const HomeScreen = withScreenErrorBoundary(HomeScreenBase, 'Pulse Feed');
+const ProfileSettingsScreen = withScreenErrorBoundary(ProfileSettingsScreenBase, 'Profile Settings');
+
+// Wrap admin screens with error boundaries
+const AdminDashboardScreen = withScreenErrorBoundary(AdminDashboardScreenBase, 'Admin Dashboard');
+const AdminUsersScreen = withScreenErrorBoundary(AdminUsersScreenBase, 'Admin Users');
+const AdminSourcesScreen = withScreenErrorBoundary(AdminSourcesScreenBase, 'Admin Sources');
+const AdminAnalyticsScreen = withScreenErrorBoundary(AdminAnalyticsScreenBase, 'Admin Analytics');
+const AdminSystemScreen = withScreenErrorBoundary(AdminSystemScreenBase, 'Admin System');
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -113,8 +129,7 @@ function AdminStack() {
 // Insights is integrated into Search (shows when search is empty)
 function MainTabs({ currentRoute }) {
   const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
-  const { isDark } = useTheme();
-  const paperTheme = usePaperTheme();
+  const { isDark, theme } = useTheme();
   const { isAdmin } = useAuth();
 
   useEffect(() => {
@@ -133,9 +148,9 @@ function MainTabs({ currentRoute }) {
     }
     return {
       position: 'relative',
-      backgroundColor: paperTheme.colors.surface,
+      backgroundColor: theme.colors.surface,
       borderTopWidth: 1,
-      borderTopColor: paperTheme.colors.outline,
+      borderTopColor: theme.colors.outline,
       height: 60,
       paddingBottom: 8,
       paddingTop: 8,
@@ -156,7 +171,7 @@ function MainTabs({ currentRoute }) {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: iconColor,
-        tabBarInactiveTintColor: paperTheme.colors.onSurfaceVariant,
+        tabBarInactiveTintColor: theme.colors['on-surface-variant'],
         tabBarStyle: getTabBarStyle(),
         tabBarItemStyle: {
           flex: 1,
@@ -182,13 +197,10 @@ function MainTabs({ currentRoute }) {
         component={BytesStack}
         options={{
           tabBarLabel: 'Bytes',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'lightning-bolt' : 'lightning-bolt-outline'}
-              size={24}
-              color={color}
-            />
-          ),
+          tabBarIcon: ({ color, focused }) => {
+            const Icon = focused ? Zap : ZapOff;
+            return <Icon size={24} color={color} />;
+          },
         }}
       />
 
@@ -198,12 +210,8 @@ function MainTabs({ currentRoute }) {
         component={PulseStack}
         options={{
           tabBarLabel: 'Pulse',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'earth' : 'earth'}
-              size={24}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <Globe size={24} color={color} />
           ),
         }}
       />
@@ -214,12 +222,8 @@ function MainTabs({ currentRoute }) {
         component={SearchStack}
         options={{
           tabBarLabel: 'Search',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'magnify' : 'magnify'}
-              size={24}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <Search size={24} color={color} />
           ),
         }}
       />
@@ -230,12 +234,8 @@ function MainTabs({ currentRoute }) {
         component={DiscoverStack}
         options={{
           tabBarLabel: 'Discover',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'compass' : 'compass-outline'}
-              size={24}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <Compass size={24} color={color} />
           ),
         }}
       />
@@ -246,12 +246,8 @@ function MainTabs({ currentRoute }) {
         component={ProfileStack}
         options={{
           tabBarLabel: 'Profile',
-          tabBarIcon: ({ color, focused }) => (
-            <MaterialCommunityIcons
-              name={focused ? 'account' : 'account-outline'}
-              size={24}
-              color={color}
-            />
+          tabBarIcon: ({ color }) => (
+            <User size={24} color={color} />
           ),
         }}
       />
@@ -263,12 +259,8 @@ function MainTabs({ currentRoute }) {
           component={AdminStack}
           options={{
             tabBarLabel: 'Admin',
-            tabBarIcon: ({ color, focused }) => (
-              <MaterialCommunityIcons
-                name={focused ? 'shield-crown' : 'shield-crown-outline'}
-                size={24}
-                color={color}
-              />
+            tabBarIcon: ({ color }) => (
+              <ShieldCheck size={24} color={color} />
             ),
           }}
         />
@@ -286,7 +278,7 @@ function getRouteFromState(state) {
 
 // Root Navigator
 export default function AppNavigator() {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
   const { isAuthenticated } = useAuth();
   const [isNavigationReady, setIsNavigationReady] = useState(false);
   const [currentRoute, setCurrentRoute] = useState('Bytes');
@@ -403,7 +395,8 @@ export default function AppNavigator() {
       }}
     >
       <SafeAreaView
-        style={[styles.container, { backgroundColor: paperTheme.colors.background }]}
+        className="flex-1"
+        style={{ backgroundColor: theme.colors.background }}
         edges={['bottom']}
       >
         <ZimbabweFlagStrip />
@@ -419,9 +412,3 @@ export default function AppNavigator() {
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});

@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, Platform } from 'react-native';
-import { Text, IconButton, useTheme } from 'react-native-paper';
+import { View, StyleSheet, TouchableOpacity, Platform, Text as RNText } from 'react-native';
+import { Heart, Bookmark, MessageCircle, Share2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useTheme } from '../contexts/ThemeContext';
 import mukokoTheme from '../theme';
 
 /**
@@ -22,7 +23,7 @@ export default function ArticleEngagementBar({
   layout = 'horizontal', // 'horizontal' or 'vertical'
   variant = 'light', // 'light' or 'dark'
 }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
 
   // Glass effect colors with Cobalt (secondary brand color)
   const glassBackground = variant === 'dark'
@@ -33,9 +34,9 @@ export default function ArticleEngagementBar({
     ? 'rgba(0, 176, 255, 0.2)' // Cobalt dark border
     : 'rgba(0, 71, 171, 0.12)'; // Cobalt light border
 
-  const iconColor = variant === 'dark' ? '#fff' : theme.colors.onSurface;
-  const textColor = variant === 'dark' ? '#fff' : theme.colors.onSurfaceVariant;
-  const accentColor = theme.colors.secondary; // Cobalt (secondary brand color)
+  const iconColor = variant === 'dark' ? '#fff' : theme.colors['on-surface'];
+  const textColor = variant === 'dark' ? '#fff' : theme.colors['on-surface-variant'];
+  const accentColor = theme.colors.cobalt || theme.colors.secondary; // Cobalt (secondary brand color)
 
   const handlePress = async (callback) => {
     if (Platform.OS !== 'web') {
@@ -44,7 +45,7 @@ export default function ArticleEngagementBar({
     callback?.();
   };
 
-  const ActionButton = ({ icon, active, count, onPress, accessibilityLabel }) => (
+  const ActionButton = ({ Icon, active, count, onPress, accessibilityLabel, fill = false }) => (
     <TouchableOpacity
       style={styles.actionButton}
       onPress={() => handlePress(onPress)}
@@ -62,15 +63,15 @@ export default function ArticleEngagementBar({
           },
         ]}
       >
-        <IconButton
-          icon={icon}
-          iconColor={active ? accentColor : iconColor}
+        <Icon
           size={24}
+          color={active ? accentColor : iconColor}
+          fill={fill && active ? accentColor : 'transparent'}
           style={styles.actionIcon}
         />
       </View>
       {count !== undefined && count !== null && (
-        <Text
+        <RNText
           style={[
             styles.actionText,
             {
@@ -80,7 +81,7 @@ export default function ArticleEngagementBar({
           ]}
         >
           {typeof count === 'number' ? (count >= 1000 ? `${(count / 1000).toFixed(1)}k` : count) : count}
-        </Text>
+        </RNText>
       )}
     </TouchableOpacity>
   );
@@ -94,8 +95,9 @@ export default function ArticleEngagementBar({
       {/* Like */}
       {onLike && (
         <ActionButton
-          icon={isLiked ? 'heart' : 'heart-outline'}
+          Icon={Heart}
           active={isLiked}
+          fill={true}
           count={likesCount}
           onPress={onLike}
           accessibilityLabel={isLiked ? 'Unlike article' : 'Like article'}
@@ -105,7 +107,7 @@ export default function ArticleEngagementBar({
       {/* Comment */}
       {onComment && (
         <ActionButton
-          icon="comment-outline"
+          Icon={MessageCircle}
           active={false}
           count={commentsCount}
           onPress={onComment}
@@ -116,7 +118,7 @@ export default function ArticleEngagementBar({
       {/* Share */}
       {onShare && (
         <ActionButton
-          icon="share-variant-outline"
+          Icon={Share2}
           active={false}
           count="Share"
           onPress={onShare}
@@ -127,8 +129,9 @@ export default function ArticleEngagementBar({
       {/* Bookmark/Save */}
       {onSave && (
         <ActionButton
-          icon={isSaved ? 'bookmark' : 'bookmark-outline'}
+          Icon={Bookmark}
           active={isSaved}
+          fill={true}
           onPress={onSave}
           accessibilityLabel={isSaved ? 'Remove bookmark' : 'Bookmark article'}
         />

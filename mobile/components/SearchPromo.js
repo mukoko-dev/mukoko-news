@@ -11,7 +11,8 @@ import {
   TouchableOpacity,
   ScrollView,
 } from 'react-native';
-import { Text, useTheme as usePaperTheme } from 'react-native-paper';
+import { Text } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import mukokoTheme from '../theme';
@@ -41,14 +42,14 @@ export default function SearchPromo({
   style,
 }) {
   const navigation = useNavigation();
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
 
   // Primary-tinted glass colors for search identity (purple)
   const primaryGlass = {
-    background: paperTheme.colors.glassCard || paperTheme.colors.surface,
-    border: paperTheme.colors.glassBorder || paperTheme.colors.outline,
-    chip: paperTheme.colors.glass || 'rgba(94, 87, 114, 0.08)',
-    chipBorder: paperTheme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
+    background: theme.colors.glassCard || theme.colors.surface,
+    border: theme.colors.glassBorder || theme.colors.outline,
+    chip: theme.colors.glass || 'rgba(94, 87, 114, 0.08)',
+    chipBorder: theme.colors.glassBorder || 'rgba(94, 87, 114, 0.12)',
   };
 
   const handleSearchPress = (query = '') => {
@@ -78,9 +79,9 @@ export default function SearchPromo({
         <MaterialCommunityIcons
           name="magnify"
           size={20}
-          color={paperTheme.colors.primary}
+          color={theme.colors.primary}
         />
-        <Text style={[styles.minimalText, { color: paperTheme.colors.onSurfaceVariant }]}>
+        <Text style={[styles.minimalText, { color: theme.colors.onSurfaceVariant }]}>
           Search for news...
         </Text>
       </TouchableOpacity>
@@ -106,9 +107,9 @@ export default function SearchPromo({
           <MaterialCommunityIcons
             name="magnify"
             size={20}
-            color={paperTheme.colors.primary}
+            color={theme.colors.primary}
           />
-          <Text style={[styles.compactSearchText, { color: paperTheme.colors.onSurfaceVariant }]}>
+          <Text style={[styles.compactSearchText, { color: theme.colors.onSurfaceVariant }]}>
             Search news
           </Text>
         </TouchableOpacity>
@@ -131,7 +132,7 @@ export default function SearchPromo({
               onPress={() => handleSearchPress(item.query)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.compactChipText, { color: paperTheme.colors.onSurface }]}>
+              <Text style={[styles.compactChipText, { color: theme.colors.onSurface }]}>
                 {item.query}
               </Text>
             </TouchableOpacity>
@@ -158,17 +159,17 @@ export default function SearchPromo({
           <MaterialCommunityIcons
             name="star-four-points"
             size={14}
-            color={paperTheme.colors.primary}
+            color={theme.colors.primary}
           />
-          <Text style={[styles.badgeText, { color: paperTheme.colors.primary }]}>SEARCH</Text>
+          <Text style={[styles.badgeText, { color: theme.colors.primary }]}>SEARCH</Text>
         </View>
       </View>
 
       {/* Title */}
-      <Text style={[styles.title, { color: paperTheme.colors.onSurface }]}>
+      <Text style={[styles.title, { color: theme.colors.onSurface }]}>
         Find what matters to you
       </Text>
-      <Text style={[styles.subtitle, { color: paperTheme.colors.onSurfaceVariant }]}>
+      <Text style={[styles.subtitle, { color: theme.colors.onSurfaceVariant }]}>
         Search for topics, sources, or keywords
       </Text>
 
@@ -191,9 +192,9 @@ export default function SearchPromo({
             <MaterialCommunityIcons
               name={item.icon}
               size={18}
-              color={paperTheme.colors.primary}
+              color={theme.colors.primary}
             />
-            <Text style={[styles.suggestionText, { color: paperTheme.colors.onSurface }]}>
+            <Text style={[styles.suggestionText, { color: theme.colors.onSurface }]}>
               {item.query}
             </Text>
           </TouchableOpacity>
@@ -202,15 +203,15 @@ export default function SearchPromo({
 
       {/* CTA - Uses primary color */}
       <TouchableOpacity
-        style={[styles.ctaButton, { backgroundColor: paperTheme.colors.primary }]}
+        style={[styles.ctaButton, { backgroundColor: theme.colors.primary }]}
         onPress={() => handleSearchPress()}
         activeOpacity={0.7}
       >
-        <Text style={[styles.ctaText, { color: paperTheme.colors.onPrimary }]}>Open Search</Text>
+        <Text style={[styles.ctaText, { color: theme.colors.onPrimary }]}>Open Search</Text>
         <MaterialCommunityIcons
           name="arrow-right"
           size={18}
-          color={paperTheme.colors.onPrimary}
+          color={theme.colors.onPrimary}
         />
       </TouchableOpacity>
     </View>

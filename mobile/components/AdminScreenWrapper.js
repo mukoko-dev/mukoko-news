@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Dimensions } from 'react-native';
-import { Text, useTheme } from 'react-native-paper';
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { View, Dimensions, Text as RNText } from 'react-native';
+import { Monitor, Laptop, Tablet, ArrowLeftRight } from 'lucide-react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 const MIN_WIDTH = 768; // Minimum width for admin access
 
 /**
  * AdminScreenWrapper Component
  * Wraps admin screens and shows a "use larger device" message on mobile
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminScreenWrapper({ children }) {
   const theme = useTheme();
@@ -24,74 +26,42 @@ export default function AdminScreenWrapper({ children }) {
 
   if (isMobile) {
     return (
-      <View
-        style={[
-          styles.container,
-          { backgroundColor: theme.colors.background },
-        ]}
-      >
-        <View style={styles.content}>
-          <View
-            style={[
-              styles.iconContainer,
-              { backgroundColor: theme.colors.primaryContainer },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="monitor"
-              size={48}
-              color={theme.colors.primary}
-            />
+      <View className="flex-1 justify-center items-center p-xl bg-background">
+        <View className="items-center" style={{ maxWidth: 400 }}>
+          <View className="w-[96px] h-[96px] rounded-full justify-center items-center mb-xl bg-tanzanite/10">
+            <Monitor size={48} color={theme.colors.tanzanite} />
           </View>
 
-          <Text variant="headlineSmall" style={styles.title}>
+          <RNText className="font-serif-bold text-headline-small text-on-surface text-center mb-md">
             Desktop View Required
-          </Text>
+          </RNText>
 
-          <Text
-            variant="bodyLarge"
-            style={[styles.message, { color: theme.colors.onSurfaceVariant }]}
-          >
+          <RNText className="font-sans text-body-large text-on-surface-variant text-center mb-sm">
             The admin dashboard is optimized for larger screens.
-          </Text>
+          </RNText>
 
-          <Text
-            variant="bodyMedium"
-            style={[styles.subMessage, { color: theme.colors.onSurfaceVariant }]}
-          >
+          <RNText className="font-sans text-body-medium text-on-surface-variant text-center mb-xxl">
             Please access this section from a tablet (landscape) or desktop device for the best experience.
-          </Text>
+          </RNText>
 
-          <View style={styles.requirements}>
-            <View style={styles.requirementItem}>
-              <MaterialCommunityIcons
-                name="laptop"
-                size={24}
-                color={theme.colors.primary}
-              />
-              <Text variant="bodyMedium" style={{ marginLeft: 12 }}>
+          <View className="self-stretch gap-lg">
+            <View className="flex-row items-center py-md px-lg rounded-button bg-surface-variant">
+              <Laptop size={24} color={theme.colors.tanzanite} />
+              <RNText className="font-sans text-body-medium text-on-surface ml-md">
                 Laptop or Desktop
-              </Text>
+              </RNText>
             </View>
-            <View style={styles.requirementItem}>
-              <MaterialCommunityIcons
-                name="tablet"
-                size={24}
-                color={theme.colors.primary}
-              />
-              <Text variant="bodyMedium" style={{ marginLeft: 12 }}>
+            <View className="flex-row items-center py-md px-lg rounded-button bg-surface-variant">
+              <Tablet size={24} color={theme.colors.tanzanite} />
+              <RNText className="font-sans text-body-medium text-on-surface ml-md">
                 Tablet (Landscape Mode)
-              </Text>
+              </RNText>
             </View>
-            <View style={styles.requirementItem}>
-              <MaterialCommunityIcons
-                name="arrow-expand-horizontal"
-                size={24}
-                color={theme.colors.primary}
-              />
-              <Text variant="bodyMedium" style={{ marginLeft: 12 }}>
+            <View className="flex-row items-center py-md px-lg rounded-button bg-surface-variant">
+              <ArrowLeftRight size={24} color={theme.colors.tanzanite} />
+              <RNText className="font-sans text-body-medium text-on-surface ml-md">
                 Minimum 768px width
-              </Text>
+              </RNText>
             </View>
           </View>
         </View>
@@ -101,49 +71,3 @@ export default function AdminScreenWrapper({ children }) {
 
   return children;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  content: {
-    alignItems: 'center',
-    maxWidth: 400,
-  },
-  iconContainer: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  message: {
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  subMessage: {
-    textAlign: 'center',
-    marginBottom: 32,
-  },
-  requirements: {
-    alignSelf: 'stretch',
-    gap: 16,
-  },
-  requirementItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    backgroundColor: 'rgba(0,0,0,0.03)',
-    borderRadius: 12,
-  },
-});

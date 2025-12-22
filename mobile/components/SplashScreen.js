@@ -25,7 +25,8 @@ import {
   StatusBar,
   PanResponder,
 } from 'react-native';
-import { Text, ActivityIndicator, useTheme as usePaperTheme, Button } from 'react-native-paper';
+import { Text, ActivityIndicator } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { spacing, typography } from '../styles/globalStyles';
 import mukokoTheme from '../theme';
@@ -219,7 +220,7 @@ export default function SplashScreen({
   onClose,
   onPreferencesSet,
 }) {
-  const paperTheme = usePaperTheme();
+  const { theme } = useTheme();
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -457,7 +458,7 @@ export default function SplashScreen({
   if (isLoading || (showCustomization && !dataLoaded)) {
     return (
       <View
-        style={[styles.loadingContainer, { backgroundColor: paperTheme.colors.background }]}
+        style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}
         accessibilityRole="alert"
         accessibilityLabel="Loading Mukoko News"
         accessibilityLiveRegion="polite"
@@ -468,18 +469,18 @@ export default function SplashScreen({
           resizeMode="contain"
           accessibilityLabel="Mukoko News logo"
         />
-        <Text style={[styles.loadingBrand, { color: paperTheme.colors.onSurface }]}>
+        <Text style={[styles.loadingBrand, { color: theme.colors.onSurface }]}>
           Mukoko News
         </Text>
-        <Text style={[styles.loadingTagline, { color: paperTheme.colors.onSurfaceVariant }]}>
+        <Text style={[styles.loadingTagline, { color: theme.colors.onSurfaceVariant }]}>
           Africa's News, Your Way
         </Text>
         <ActivityIndicator
           size="large"
-          color={paperTheme.colors.primary}
+          color={theme.colors.primary}
           style={styles.loadingSpinner}
         />
-        <Text style={[styles.loadingText, { color: paperTheme.colors.onSurfaceVariant }]}>
+        <Text style={[styles.loadingText, { color: theme.colors.onSurfaceVariant }]}>
           {loadingMessage}
         </Text>
       </View>
@@ -588,7 +589,7 @@ export default function SplashScreen({
                 countries={countries}
                 selectedCountries={selectedCountries}
                 onToggle={toggleCountry}
-                theme={paperTheme}
+                theme={theme}
               />
 
               <Text style={styles.selectionHint}>
@@ -612,7 +613,7 @@ export default function SplashScreen({
                 categories={categories}
                 selectedCategories={selectedCategories}
                 onToggle={toggleCategory}
-                theme={paperTheme}
+                theme={theme}
               />
 
               <Text style={styles.selectionHint}>

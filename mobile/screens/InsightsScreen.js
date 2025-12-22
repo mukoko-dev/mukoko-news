@@ -1,5 +1,6 @@
 /**
  * InsightsScreen - Mobile-first analytics
+ * shadcn-style with NativeWind + Lucide icons
  *
  * UX Principles:
  * - Stats visible at a glance (top)
@@ -10,23 +11,11 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  RefreshControl,
-  TouchableOpacity,
-  Dimensions,
-} from 'react-native';
-import {
-  Text,
-  ActivityIndicator,
-  Icon,
-  useTheme as usePaperTheme,
-} from 'react-native-paper';
+import { View, ScrollView, RefreshControl, Pressable, Text, Dimensions } from 'react-native';
+import { TrendingUp, ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import mukokoTheme from '../theme';
 import { insights as insightsAPI } from '../api/client';
+import { LoadingState, EmptyState, StatsRow, Card, Badge } from '../components/ui';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -58,7 +47,6 @@ const getEmoji = (name) => CATEGORY_EMOJIS[(name || '').toLowerCase()] || '📰'
 
 export default function InsightsScreen({ navigation }) {
   const { isDark } = useTheme();
-  const paperTheme = usePaperTheme();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -111,106 +99,88 @@ export default function InsightsScreen({ navigation }) {
     navigation.navigate('SearchFeed', { searchQuery: author.name });
   };
 
-  // Dynamic styles
-  const colors = {
-    bg: paperTheme.colors.background,
-    text: paperTheme.colors.onSurface,
-    textMuted: paperTheme.colors.onSurfaceVariant,
-    card: paperTheme.colors.glassCard || paperTheme.colors.surface,
-    border: paperTheme.colors.glassBorder || paperTheme.colors.outline,
-    primary: paperTheme.colors.primary,
-  };
-
   // Card width for 2-column grid
-  const cardWidth = (SCREEN_WIDTH - mukokoTheme.spacing.md * 2 - mukokoTheme.spacing.sm) / 2;
+  const cardWidth = (SCREEN_WIDTH - 12 * 2 - 8) / 2; // 12px padding, 8px gap
 
   if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: colors.bg }, styles.centered]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
+    return <LoadingState />;
   }
 
   const hasData = stats || trending.length > 0 || authors.length > 0;
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <View className="flex-1 bg-background">
       <ScrollView
-        contentContainerStyle={styles.content}
+        className="flex-1"
+        contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
+            colors={['#4B0082']}
+            tintColor="#4B0082"
           />
         }
       >
         {/* Stats row - immediately visible */}
         {stats && (
-          <View style={styles.statsRow}>
-            <View style={styles.stat}>
-              <Text style={[styles.statValue, { color: colors.primary }]}>
-                {(stats.total_articles || 0).toLocaleString()}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Articles</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.stat}>
-              <Text style={[styles.statValue, { color: colors.primary }]}>
-                {stats.active_sources || 0}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Sources</Text>
-            </View>
-            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
-            <View style={styles.stat}>
-              <Text style={[styles.statValue, { color: colors.primary }]}>
-                {stats.categories || 0}
-              </Text>
-              <Text style={[styles.statLabel, { color: colors.textMuted }]}>Topics</Text>
-            </View>
-          </View>
+          <StatsRow
+            stats={[
+              {
+                value: (stats.total_articles || 0).toLocaleString(),
+                label: 'Articles',
+              },
+              {
+                value: stats.active_sources || 0,
+                label: 'Sources',
+              },
+              {
+                value: stats.categories || 0,
+                label: 'Topics',
+              },
+            ]}
+            className="mb-md"
+          />
         )}
 
         {/* Trending topics - 2 column grid */}
         {trending.length > 0 && (
           <>
-            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+            <Text className="font-sans-medium text-label-large text-on-surface-variant mb-sm mt-sm">
               🔥 Trending Now
             </Text>
-            <View style={styles.topicsGrid}>
+            <View className="flex-row flex-wrap gap-sm mb-md">
               {trending.map((topic, i) => (
-                <TouchableOpacity
+                <Pressable
                   key={topic.id || i}
-                  style={[styles.topicCard, { backgroundColor: colors.card, borderColor: colors.border, width: cardWidth }]}
+                  className="bg-surface rounded-card p-sm border border-outline"
+                  style={{ width: cardWidth }}
                   onPress={() => handleTopicPress(topic)}
-                  activeOpacity={0.7}
                 >
-                  <View style={styles.topicRow}>
-                    <Text style={styles.topicEmoji}>{getEmoji(topic.name || topic.category_name)}</Text>
+                  <View className="flex-row justify-between items-start mb-1">
+                    <Text className="text-headline-large">{getEmoji(topic.name || topic.category_name)}</Text>
                     {i < 3 && (
-                      <View style={[styles.hotBadge, { backgroundColor: mukokoTheme.colors.accent }]}>
-                        <Text style={styles.hotBadgeText}>{i + 1}</Text>
+                      <View className="w-[18px] h-[18px] rounded-full bg-gold items-center justify-center">
+                        <Text className="font-sans-bold text-caption text-white">{i + 1}</Text>
                       </View>
                     )}
                   </View>
-                  <Text style={[styles.topicName, { color: colors.text }]} numberOfLines={1}>
+                  <Text className="font-sans-medium text-label-large text-on-surface mb-0.5" numberOfLines={1}>
                     {topic.name || topic.category_name}
                   </Text>
-                  <Text style={[styles.topicCount, { color: colors.textMuted }]}>
+                  <Text className="font-sans text-label-small text-on-surface-variant">
                     {topic.article_count || 0} articles
                   </Text>
                   {topic.growth_rate > 0 && (
-                    <View style={styles.growthRow}>
-                      <Icon source="trending-up" size={12} color={mukokoTheme.colors.success} />
-                      <Text style={[styles.growthText, { color: mukokoTheme.colors.success }]}>
+                    <View className="flex-row items-center gap-0.5 mt-1">
+                      <TrendingUp size={12} color="#1B5E20" />
+                      <Text className="font-sans-medium text-caption text-success">
                         +{Math.round(topic.growth_rate)}%
                       </Text>
                     </View>
                   )}
-                </TouchableOpacity>
+                </Pressable>
               ))}
             </View>
           </>
@@ -219,33 +189,47 @@ export default function InsightsScreen({ navigation }) {
         {/* Top journalists - compact list */}
         {authors.length > 0 && (
           <>
-            <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+            <Text className="font-sans-medium text-label-large text-on-surface-variant mb-sm mt-sm">
               ✍️ Top Journalists
             </Text>
-            <View style={styles.authorsList}>
+            <View className="mb-md">
               {authors.map((author, i) => (
-                <TouchableOpacity
+                <Pressable
                   key={author.id || i}
-                  style={[styles.authorRow, { borderBottomColor: colors.border }]}
+                  className="flex-row items-center py-sm border-b border-outline"
                   onPress={() => handleAuthorPress(author)}
-                  activeOpacity={0.7}
+                  style={{ borderBottomWidth: i === authors.length - 1 ? 0 : 1 }}
                 >
-                  <View style={[
-                    styles.rank,
-                    { backgroundColor: i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : colors.card }
-                  ]}>
-                    <Text style={[styles.rankText, { color: i < 3 ? '#FFF' : colors.text }]}>{i + 1}</Text>
+                  <View
+                    className="w-6 h-6 rounded-full items-center justify-center mr-sm"
+                    style={{
+                      backgroundColor:
+                        i === 0
+                          ? '#FFD700' // Gold
+                          : i === 1
+                          ? '#C0C0C0' // Silver
+                          : i === 2
+                          ? '#CD7F32' // Bronze
+                          : '#FFFFFF', // Default
+                    }}
+                  >
+                    <Text
+                      className="font-sans-bold text-label-small"
+                      style={{ color: i < 3 ? '#FFF' : '#1C1B1F' }}
+                    >
+                      {i + 1}
+                    </Text>
                   </View>
-                  <View style={styles.authorInfo}>
-                    <Text style={[styles.authorName, { color: colors.text }]} numberOfLines={1}>
+                  <View className="flex-1">
+                    <Text className="font-sans-medium text-body-medium text-on-surface" numberOfLines={1}>
                       {author.name}
                     </Text>
-                    <Text style={[styles.authorMeta, { color: colors.textMuted }]}>
+                    <Text className="font-sans text-label-small text-on-surface-variant mt-0.5">
                       {author.article_count || 0} articles
                     </Text>
                   </View>
-                  <Icon source="chevron-right" size={18} color={colors.textMuted} />
-                </TouchableOpacity>
+                  <ChevronRight size={18} color="#4a4a4a" />
+                </Pressable>
               ))}
             </View>
           </>
@@ -253,172 +237,13 @@ export default function InsightsScreen({ navigation }) {
 
         {/* No data state */}
         {!hasData && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>📊</Text>
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No data yet</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textMuted }]}>
-              Pull to refresh
-            </Text>
-          </View>
+          <EmptyState
+            emoji="📊"
+            title="No data yet"
+            subtitle="Pull to refresh"
+          />
         )}
-
-        <View style={styles.bottomPadding} />
       </ScrollView>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centered: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    padding: mukokoTheme.spacing.md,
-  },
-
-  // Stats row - top
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  stat: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: 28,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-  },
-  statLabel: {
-    fontSize: 11,
-    marginTop: 2,
-  },
-  statDivider: {
-    width: 1,
-    height: 32,
-  },
-
-  // Section labels
-  sectionLabel: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    marginBottom: mukokoTheme.spacing.sm,
-    marginTop: mukokoTheme.spacing.sm,
-  },
-
-  // Topics grid
-  topicsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  topicCard: {
-    padding: mukokoTheme.spacing.sm,
-    borderRadius: mukokoTheme.roundness,
-    borderWidth: 1,
-  },
-  topicRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 4,
-  },
-  topicEmoji: {
-    fontSize: 24,
-  },
-  hotBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  hotBadgeText: {
-    color: '#FFF',
-    fontSize: 10,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  topicName: {
-    fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    marginBottom: 2,
-  },
-  topicCount: {
-    fontSize: 11,
-  },
-  growthRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    marginTop: 4,
-  },
-  growthText: {
-    fontSize: 10,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-
-  // Authors list
-  authorsList: {
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  authorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  rank: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: mukokoTheme.spacing.sm,
-  },
-  rankText: {
-    fontSize: 11,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
-  authorInfo: {
-    flex: 1,
-  },
-  authorName: {
-    fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-  },
-  authorMeta: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-
-  // Empty state
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.xxl,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: mukokoTheme.spacing.md,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    marginBottom: mukokoTheme.spacing.xs,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-  },
-
-  // Bottom padding
-  bottomPadding: {
-    height: 100,
-  },
-});

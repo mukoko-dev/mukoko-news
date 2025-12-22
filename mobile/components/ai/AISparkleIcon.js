@@ -1,12 +1,15 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
-import { Icon, useTheme } from 'react-native-paper';
+import { View, Animated } from 'react-native';
+import { Sparkles } from 'lucide-react-native';
+import { useTheme } from '../../contexts/ThemeContext';
 
 /**
  * AISparkleIcon - Subtle animated sparkle indicator for AI-enhanced content
  *
  * Design: Elegant, unobtrusive indicator that AI is working
  * Animation: Gentle opacity pulse every 3 seconds
+ *
+ * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AISparkleIcon({
   size = 14,
@@ -14,10 +17,10 @@ export default function AISparkleIcon({
   style,
   animated = true,
 }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  const iconColor = color || theme.colors.primary;
+  const iconColor = color || theme.colors.tanzanite;
 
   useEffect(() => {
     if (!animated) return;
@@ -47,19 +50,12 @@ export default function AISparkleIcon({
   }, [animated, pulseAnim]);
 
   return (
-    <Animated.View style={[styles.container, { opacity: pulseAnim }, style]}>
-      <Icon
-        source="auto-fix"
+    <Animated.View className="justify-center items-center" style={[{ opacity: pulseAnim }, style]}>
+      <Sparkles
         size={size}
         color={iconColor}
+        fill={iconColor}
       />
     </Animated.View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});
