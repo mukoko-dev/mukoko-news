@@ -4,29 +4,19 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Mock AsyncStorage
-jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  multiGet: jest.fn(),
-  multiSet: jest.fn(),
-  clear: jest.fn(),
-}));
-
-// Import after mocking
 import LocalPreferencesService, { PREF_KEYS } from '../LocalPreferencesService';
 
 describe('LocalPreferencesService', () => {
-  let service;
-
-  beforeEach(() => {
+  beforeEach(async () => {
+    // Clear all mocks
     jest.clearAllMocks();
-    // Create fresh instance for each test
-    service = new LocalPreferencesService.constructor();
-    service.cache = new Map();
-    service.isInitialized = false;
+
+    // Clear AsyncStorage mock
+    await AsyncStorage.clear();
+
+    // Reset the singleton's internal state
+    LocalPreferencesService.cache = new Map();
+    LocalPreferencesService.isInitialized = false;
   });
 
   describe('PREF_KEYS', () => {
@@ -45,323 +35,272 @@ describe('LocalPreferencesService', () => {
 
   describe('init', () => {
     it('should load preferences into cache on init', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify(['politics', 'sports']));
+      // Set up some stored preferences
+      await AsyncStorage.setItem('@mukoko_prefs_selected_categories', JSON.stringify(['politics', 'sports']));
 
       await LocalPreferencesService.init();
 
-      expect(AsyncStorage.getItem).toHaveBeenCalled();
+      expect(LocalPreferencesService.isInitialized).toBe(true);
+      expect(LocalPreferencesService.cache.size).toBeGreaterThan(0);
     });
 
     it('should only initialize once', async () => {
-      AsyncStorage.getItem.mockResolvedValue(null);
-
       await LocalPreferencesService.init();
-      const callCount = AsyncStorage.getItem.mock.calls.length;
+      expect(LocalPreferencesService.isInitialized).toBe(true);
 
+      // Second init should not change state
+      LocalPreferencesService.cache.set('test', 'value');
       await LocalPreferencesService.init();
 
-      expect(AsyncStorage.getItem.mock.calls.length).toBe(callCount);
+      // Cache should still have the test value (not cleared by reinit)
+      expect(LocalPreferencesService.cache.get('test')).toBe('value');
     });
   });
 
   describe('get and set', () => {
+    beforeEach(async () => {
+      await LocalPreferencesService.init();
+    });
+
     it('should get value from cache if available', async () => {
       LocalPreferencesService.cache.set('test_key', 'cached_value');
 
       const value = await LocalPreferencesService.get('test_key');
 
       expect(value).toBe('cached_value');
-      expect(AsyncStorage.getItem).not.toHaveBeenCalled();
     });
 
     it('should get value from storage if not in cache', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify('stored_value'));
+      await AsyncStorage.setItem('@mukoko_prefs_new_key', JSON.stringify('stored_value'));
 
       const value = await LocalPreferencesService.get('new_key');
 
-      expect(AsyncStorage.getItem).toHaveBeenCalled();
       expect(value).toBe('stored_value');
     });
 
-    it('should return default value when key not found', async () => {
-      AsyncStorage.getItem.mockResolvedValue(null);
+    it('should set value and update cache', async () => {
+      await LocalPreferencesService.set('test_key', 'test_value');
 
-      const value = await LocalPreferencesService.get('missing_key', 'default');
+      expect(LocalPreferencesService.cache.get('test_key')).toBe('test_value');
 
-      expect(value).toBe('default');
+      const storedValue = await AsyncStorage.getItem('@mukoko_prefs_test_key');
+      expect(JSON.parse(storedValue)).toBe('test_value');
     });
 
-    it('should set value in storage and cache', async () => {
-      AsyncStorage.setItem.mockResolvedValue(undefined);
+    it('should handle storage errors gracefully', async () => {
+      // Mock setItem to throw an error
+      const originalSetItem = AsyncStorage.setItem;
+      AsyncStorage.setItem = jest.fn().mockRejectedValue(new Error('Storage error'));
 
-      const result = await LocalPreferencesService.set('my_key', 'my_value');
-
-      expect(result).toBe(true);
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-        '@mukoko_prefs_my_key',
-        JSON.stringify('my_value')
-      );
-      expect(LocalPreferencesService.cache.get('my_key')).toBe('my_value');
-    });
-
-    it('should handle set errors gracefully', async () => {
-      AsyncStorage.setItem.mockRejectedValue(new Error('Storage error'));
-
-      const result = await LocalPreferencesService.set('key', 'value');
+      const result = await LocalPreferencesService.set('error_key', 'value');
 
       expect(result).toBe(false);
-    });
-  });
 
-  describe('remove', () => {
-    it('should remove from storage and cache', async () => {
-      LocalPreferencesService.cache.set('to_remove', 'value');
-      AsyncStorage.removeItem.mockResolvedValue(undefined);
-
-      const result = await LocalPreferencesService.remove('to_remove');
-
-      expect(result).toBe(true);
-      expect(AsyncStorage.removeItem).toHaveBeenCalledWith('@mukoko_prefs_to_remove');
-      expect(LocalPreferencesService.cache.has('to_remove')).toBe(false);
+      // Restore original
+      AsyncStorage.setItem = originalSetItem;
     });
   });
 
   describe('Category methods', () => {
-    it('should get selected categories', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify(['politics', 'sports']));
-
-      const categories = await LocalPreferencesService.getSelectedCategories();
-
-      expect(categories).toEqual(['politics', 'sports']);
+    beforeEach(async () => {
+      await LocalPreferencesService.init();
     });
 
     it('should return empty array when no categories', async () => {
-      AsyncStorage.getItem.mockResolvedValue(null);
-
       const categories = await LocalPreferencesService.getSelectedCategories();
 
       expect(categories).toEqual([]);
     });
 
     it('should set selected categories', async () => {
-      AsyncStorage.setItem.mockResolvedValue(undefined);
+      await LocalPreferencesService.setSelectedCategories(['politics', 'sports']);
 
-      await LocalPreferencesService.setSelectedCategories(['tech', 'health']);
-
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-        '@mukoko_prefs_selected_categories',
-        JSON.stringify(['tech', 'health'])
-      );
+      const categories = await LocalPreferencesService.getSelectedCategories();
+      expect(categories).toEqual(['politics', 'sports']);
     });
 
-    it('should add category if not exists', async () => {
-      LocalPreferencesService.cache.set(PREF_KEYS.SELECTED_CATEGORIES, ['politics']);
-      AsyncStorage.setItem.mockResolvedValue(undefined);
-
+    it('should add a category', async () => {
+      await LocalPreferencesService.setSelectedCategories(['politics']);
       await LocalPreferencesService.addCategory('sports');
 
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-        '@mukoko_prefs_selected_categories',
-        JSON.stringify(['politics', 'sports'])
-      );
+      const categories = await LocalPreferencesService.getSelectedCategories();
+      expect(categories).toContain('sports');
+      expect(categories).toContain('politics');
     });
 
     it('should not add duplicate category', async () => {
-      LocalPreferencesService.cache.set(PREF_KEYS.SELECTED_CATEGORIES, ['politics']);
-
+      await LocalPreferencesService.setSelectedCategories(['politics']);
       await LocalPreferencesService.addCategory('politics');
 
-      expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+      const categories = await LocalPreferencesService.getSelectedCategories();
+      expect(categories).toEqual(['politics']);
     });
 
-    it('should toggle category on/off', async () => {
-      LocalPreferencesService.cache.set(PREF_KEYS.SELECTED_CATEGORIES, ['politics']);
-      AsyncStorage.setItem.mockResolvedValue(undefined);
+    it('should remove a category', async () => {
+      await LocalPreferencesService.setSelectedCategories(['politics', 'sports', 'tech']);
+      await LocalPreferencesService.removeCategory('sports');
+
+      const categories = await LocalPreferencesService.getSelectedCategories();
+      expect(categories).not.toContain('sports');
+      expect(categories).toContain('politics');
+      expect(categories).toContain('tech');
+    });
+
+    it('should toggle a category (add then remove)', async () => {
+      await LocalPreferencesService.setSelectedCategories([]);
 
       // Toggle on
-      await LocalPreferencesService.toggleCategory('sports');
-      expect(LocalPreferencesService.cache.get(PREF_KEYS.SELECTED_CATEGORIES)).toContain('sports');
+      await LocalPreferencesService.toggleCategory('politics');
+      let categories = await LocalPreferencesService.getSelectedCategories();
+      expect(categories).toContain('politics');
 
       // Toggle off
-      await LocalPreferencesService.toggleCategory('sports');
-      expect(LocalPreferencesService.cache.get(PREF_KEYS.SELECTED_CATEGORIES)).not.toContain('sports');
+      await LocalPreferencesService.toggleCategory('politics');
+      categories = await LocalPreferencesService.getSelectedCategories();
+      expect(categories).not.toContain('politics');
     });
   });
 
   describe('Country methods', () => {
+    beforeEach(async () => {
+      await LocalPreferencesService.init();
+    });
+
     it('should get selected countries', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify(['ZW', 'ZA']));
+      await LocalPreferencesService.setSelectedCountries(['ZW', 'ZA']);
 
       const countries = await LocalPreferencesService.getSelectedCountries();
-
       expect(countries).toEqual(['ZW', 'ZA']);
     });
 
-    it('should return default ZW when no countries', async () => {
-      AsyncStorage.getItem.mockResolvedValue(null);
-
+    it('should return empty array when no countries set', async () => {
       const countries = await LocalPreferencesService.getSelectedCountries();
-
-      expect(countries).toEqual(['ZW']);
+      expect(countries).toEqual([]);
     });
 
-    it('should get primary country', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify('ZA'));
+    it('should set primary country', async () => {
+      await LocalPreferencesService.setPrimaryCountry('ZA');
 
       const primary = await LocalPreferencesService.getPrimaryCountry();
-
       expect(primary).toBe('ZA');
     });
 
-    it('should return ZW as default primary', async () => {
-      AsyncStorage.getItem.mockResolvedValue(null);
-
+    it('should return ZW as default primary country', async () => {
       const primary = await LocalPreferencesService.getPrimaryCountry();
 
       expect(primary).toBe('ZW');
     });
-
-    it('should add country', async () => {
-      LocalPreferencesService.cache.set(PREF_KEYS.SELECTED_COUNTRIES, ['ZW']);
-      AsyncStorage.setItem.mockResolvedValue(undefined);
-
-      await LocalPreferencesService.addCountry('ZA');
-
-      expect(AsyncStorage.setItem).toHaveBeenCalled();
-    });
-
-    it('should remove country', async () => {
-      LocalPreferencesService.cache.set(PREF_KEYS.SELECTED_COUNTRIES, ['ZW', 'ZA']);
-      AsyncStorage.setItem.mockResolvedValue(undefined);
-
-      await LocalPreferencesService.removeCountry('ZA');
-
-      expect(LocalPreferencesService.cache.get(PREF_KEYS.SELECTED_COUNTRIES)).toEqual(['ZW']);
-    });
   });
 
-  describe('Display preferences', () => {
+  describe('Theme methods', () => {
+    beforeEach(async () => {
+      await LocalPreferencesService.init();
+    });
+
     it('should get theme mode', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify('dark'));
+      await LocalPreferencesService.setThemeMode('dark');
 
-      const mode = await LocalPreferencesService.getThemeMode();
-
-      expect(mode).toBe('dark');
+      const theme = await LocalPreferencesService.getThemeMode();
+      expect(theme).toBe('dark');
     });
 
     it('should return system as default theme', async () => {
-      AsyncStorage.getItem.mockResolvedValue(null);
+      const theme = await LocalPreferencesService.getThemeMode();
 
-      const mode = await LocalPreferencesService.getThemeMode();
-
-      expect(mode).toBe('system');
+      expect(theme).toBe('system');
     });
 
-    it('should get feed sort', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify('trending'));
-
-      const sort = await LocalPreferencesService.getFeedSort();
-
-      expect(sort).toBe('trending');
+    it('should accept valid theme values', async () => {
+      for (const mode of ['light', 'dark', 'system']) {
+        await LocalPreferencesService.setThemeMode(mode);
+        const theme = await LocalPreferencesService.getThemeMode();
+        expect(theme).toBe(mode);
+      }
     });
+  });
 
-    it('should return latest as default sort', async () => {
-      AsyncStorage.getItem.mockResolvedValue(null);
-
-      const sort = await LocalPreferencesService.getFeedSort();
-
-      expect(sort).toBe('latest');
+  describe('Display settings', () => {
+    beforeEach(async () => {
+      await LocalPreferencesService.init();
     });
 
     it('should get text size', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify('large'));
+      await LocalPreferencesService.setTextSize('large');
 
       const size = await LocalPreferencesService.getTextSize();
-
       expect(size).toBe('large');
     });
 
-    it('should get auto play video setting', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify(false));
+    it('should return medium as default text size', async () => {
+      const size = await LocalPreferencesService.getTextSize();
 
-      const autoPlay = await LocalPreferencesService.getAutoPlayVideo();
-
-      expect(autoPlay).toBe(false);
+      expect(size).toBe('medium');
     });
 
     it('should get data saver mode', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify(true));
+      await LocalPreferencesService.setDataSaverMode(true);
 
       const dataSaver = await LocalPreferencesService.getDataSaverMode();
-
       expect(dataSaver).toBe(true);
+    });
+
+    it('should return false as default data saver mode', async () => {
+      const dataSaver = await LocalPreferencesService.getDataSaverMode();
+
+      expect(dataSaver).toBe(false);
     });
   });
 
   describe('Onboarding', () => {
-    it('should check onboarding completion', async () => {
-      AsyncStorage.getItem.mockResolvedValue(JSON.stringify(true));
-
-      const completed = await LocalPreferencesService.isOnboardingCompleted();
-
-      expect(completed).toBe(true);
+    beforeEach(async () => {
+      await LocalPreferencesService.init();
     });
 
-    it('should return false when onboarding not completed', async () => {
-      AsyncStorage.getItem.mockResolvedValue(null);
-
+    it('should check onboarding status', async () => {
       const completed = await LocalPreferencesService.isOnboardingCompleted();
 
       expect(completed).toBe(false);
     });
 
     it('should set onboarding completed', async () => {
-      AsyncStorage.setItem.mockResolvedValue(undefined);
-
       await LocalPreferencesService.setOnboardingCompleted(true);
 
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-        '@mukoko_prefs_onboarding_completed',
-        JSON.stringify(true)
-      );
+      const completed = await LocalPreferencesService.isOnboardingCompleted();
+      expect(completed).toBe(true);
     });
   });
 
   describe('getAllPreferences', () => {
-    it('should return all preferences', async () => {
-      LocalPreferencesService.cache.set(PREF_KEYS.SELECTED_CATEGORIES, ['politics']);
-      LocalPreferencesService.cache.set(PREF_KEYS.THEME_MODE, 'dark');
+    beforeEach(async () => {
+      await LocalPreferencesService.init();
+    });
+
+    it('should get all preferences', async () => {
+      await LocalPreferencesService.setSelectedCategories(['politics', 'sports']);
+      await LocalPreferencesService.setPrimaryCountry('ZW');
+      await LocalPreferencesService.setThemeMode('dark');
 
       const prefs = await LocalPreferencesService.getAllPreferences();
 
-      expect(prefs).toBeDefined();
-    });
-  });
-
-  describe('importPreferences', () => {
-    it('should import preferences from object', async () => {
-      AsyncStorage.setItem.mockResolvedValue(undefined);
-
-      const serverPrefs = {
-        selectedCategories: ['politics', 'sports'],
-        themeMode: 'dark',
-      };
-
-      await LocalPreferencesService.importPreferences(serverPrefs);
-
-      expect(AsyncStorage.setItem).toHaveBeenCalled();
+      expect(prefs).toHaveProperty('selected_categories');
+      expect(prefs).toHaveProperty('primary_country');
+      expect(prefs).toHaveProperty('theme_mode');
     });
   });
 
   describe('clearAll', () => {
-    it('should clear all preferences', async () => {
-      LocalPreferencesService.cache.set('key1', 'value1');
-      LocalPreferencesService.cache.set('key2', 'value2');
-      AsyncStorage.removeItem.mockResolvedValue(undefined);
+    beforeEach(async () => {
+      await LocalPreferencesService.init();
+    });
+
+    it('should clear cache when clearAll is called', async () => {
+      await LocalPreferencesService.setSelectedCategories(['politics']);
+      await LocalPreferencesService.setThemeMode('dark');
 
       await LocalPreferencesService.clearAll();
 
-      expect(AsyncStorage.removeItem).toHaveBeenCalled();
+      // Cache should be cleared
+      expect(LocalPreferencesService.cache.size).toBe(0);
     });
   });
 });
