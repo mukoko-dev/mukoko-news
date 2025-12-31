@@ -39,7 +39,7 @@ import {
 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { mukokoTheme } from '../theme';
+// Removed mukokoTheme import - using design-tokens and theme context instead
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useLayout } from '../components/layout';
@@ -309,8 +309,8 @@ export default function ProfileSettingsScreen({ navigation }) {
           className="flex-row items-center gap-sm py-sm px-lg mx-lg rounded-button"
           style={{
             backgroundColor: message.type === 'success'
-              ? mukokoTheme.colors.success
-              : mukokoTheme.colors.error,
+              ? theme.colors.success
+              : theme.colors.error,
           }}
         >
           {message.type === 'success' ? (
@@ -396,12 +396,12 @@ export default function ProfileSettingsScreen({ navigation }) {
           {/* Username Edit Form */}
           {editingUsername && (
             <View style={styles.editForm}>
-              <View className="flex-row items-center gap-sm p-md rounded-lg mb-md" style={{ backgroundColor: `${mukokoTheme.colors.warning}15` }}>
+              <View className="flex-row items-center gap-sm p-md rounded-lg mb-md" style={{ backgroundColor: `${theme.colors.warning}15` }}>
                 <AlertCircle
                   size={18}
-                  color={mukokoTheme.colors.warning}
+                  color={theme.colors.warning}
                 />
-                <RNText className="flex-1 font-sans text-body-small" style={{ color: mukokoTheme.colors.warning }}>
+                <RNText className="flex-1 font-sans text-body-small" style={{ color: theme.colors.warning }}>
                   Changing username will update your profile URL
                 </RNText>
               </View>
@@ -506,10 +506,10 @@ export default function ProfileSettingsScreen({ navigation }) {
             onPress={handleSignOut}
           >
             <View className="w-9 h-9 rounded-lg items-center justify-center mr-md" style={{ backgroundColor: 'rgba(244, 67, 54, 0.15)' }}>
-              <LogOut size={20} color={mukokoTheme.colors.error} />
+              <LogOut size={20} color={theme.colors.error} />
             </View>
             <View className="flex-1">
-              <RNText className="font-sans-medium text-body-medium" style={{ color: mukokoTheme.colors.error }}>Log out</RNText>
+              <RNText className="font-sans-medium text-body-medium" style={{ color: theme.colors.error }}>Log out</RNText>
             </View>
           </Pressable>
         </View>
@@ -558,7 +558,7 @@ const styles = StyleSheet.create({
   retryButtonText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
 
   // Header
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 17,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
     letterSpacing: 0.3,
   },
 
@@ -599,7 +599,7 @@ const styles = StyleSheet.create({
   toastText: {
     color: '#fff',
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
 
   scrollView: {
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   },
   emailText: {
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
 
   // Section Card
@@ -653,11 +653,11 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     fontSize: 16,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
   settingValue: {
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
     marginRight: 4,
   },
   chevron: {
@@ -711,7 +711,7 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: '#fff',
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
 
   // Footer
@@ -721,6 +721,6 @@ const styles = StyleSheet.create({
   },
   versionText: {
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
 });

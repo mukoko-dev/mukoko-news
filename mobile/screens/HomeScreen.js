@@ -18,6 +18,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLayout } from '../components/layout';
 import localPreferences, { PREF_KEYS } from '../services/LocalPreferencesService';
 import cacheService from '../services/CacheService';
+import { spacing } from '../constants/design-tokens';
 
 // Article limit for non-authenticated users
 const GUEST_ARTICLE_LIMIT = 50;
@@ -47,7 +48,7 @@ export default function HomeScreen({ navigation }) {
   const [guestCountries, setGuestCountries] = useState([]);
   const [guestCategories, setGuestCategories] = useState([]);
 
-  const { theme } = useTheme();
+  const { colors } = useTheme();
   const { isAuthenticated } = useAuth();
   const layout = useLayout();
   const preferencesLoadedRef = useRef(false);
@@ -334,13 +335,13 @@ export default function HomeScreen({ navigation }) {
           <View
             className="flex-row items-center justify-between px-md py-sm rounded-button border"
             style={{
-              backgroundColor: theme.colors.surface,
-              borderColor: theme.colors.outline,
+              backgroundColor: colors.surface,
+              borderColor: colors.outline,
             }}
           >
             <Text
               className="flex-1 font-sans text-body-medium mr-sm"
-              style={{ color: theme.colors['on-surface'] }}
+              style={{ color: colors.text }}
             >
               {snackbarMessage}
             </Text>
@@ -348,7 +349,7 @@ export default function HomeScreen({ navigation }) {
               onPress={() => setSnackbarVisible(false)}
               className="p-xs"
             >
-              <X size={20} color={theme.colors['on-surface-variant']} />
+              <X size={20} color={colors.textSecondary} />
             </Pressable>
           </View>
         </View>
@@ -361,14 +362,14 @@ export default function HomeScreen({ navigation }) {
         renderItem={renderArticleItem}
         keyExtractor={(item) => item.id.toString()}
         numColumns={layoutConfig.numColumns > 1 ? layoutConfig.numColumns : 1}
-        contentContainerStyle={{ padding: theme.spacing.md, paddingBottom: bottomPadding }}
-        columnWrapperStyle={layoutConfig.numColumns > 1 ? { gap: theme.spacing.md, marginBottom: theme.spacing.md } : undefined}
+        contentContainerStyle={{ padding: spacing.md, paddingBottom: bottomPadding }}
+        columnWrapperStyle={layoutConfig.numColumns > 1 ? { gap: spacing.md, marginBottom: spacing.md } : undefined}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[theme.colors.primary]}
-            tintColor={theme.colors.primary}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
         }
         ListFooterComponent={

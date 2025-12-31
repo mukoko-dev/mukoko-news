@@ -18,9 +18,10 @@ import {
   Platform,
 } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native';
+import { Search, XCircle } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
 import * as Haptics from 'expo-haptics';
-import mukokoTheme from '../../theme';
+import { spacing, radius } from '../../constants/design-tokens';
 import { AISparkleIcon } from '../ai';
 
 export default function EnhancedSearchBar({
@@ -35,7 +36,7 @@ export default function EnhancedSearchBar({
   showAIIndicator = true,
   style,
 }) {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef(null);
   const focusAnim = useRef(new Animated.Value(0)).current;
@@ -79,8 +80,8 @@ export default function EnhancedSearchBar({
   const borderColor = focusAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [
-      theme.colors.glassBorder || 'rgba(0,0,0,0.1)',
-      theme.colors.primary,
+      colors.outline,
+      colors.primary,
     ],
   });
 
@@ -94,10 +95,10 @@ export default function EnhancedSearchBar({
       style={[
         styles.container,
         {
-          backgroundColor: theme.colors.glassCard || theme.colors.surface,
+          backgroundColor: colors.surface,
           borderColor: borderColor,
           shadowOpacity: shadowOpacity,
-          shadowColor: theme.colors.primary,
+          shadowColor: colors.primary,
         },
         style,
       ]}
@@ -107,10 +108,9 @@ export default function EnhancedSearchBar({
         {showAIIndicator && value.length > 0 ? (
           <AISparkleIcon size={18} animated={loading} />
         ) : (
-          <Icon
-            source="magnify"
+          <Search
             size={20}
-            color={isFocused ? theme.colors.primary : theme.colors.onSurfaceVariant}
+            color={isFocused ? colors.primary : colors.textSecondary}
           />
         )}
       </View>
@@ -121,7 +121,7 @@ export default function EnhancedSearchBar({
         style={[
           styles.input,
           {
-            color: theme.colors.onSurface,
+            color: colors.text,
           },
         ]}
         value={value}
@@ -130,7 +130,7 @@ export default function EnhancedSearchBar({
         onBlur={handleBlur}
         onSubmitEditing={handleSubmit}
         placeholder={placeholder}
-        placeholderTextColor={theme.colors.onSurfaceVariant}
+        placeholderTextColor={colors.textSecondary}
         returnKeyType="search"
         autoCapitalize="none"
         autoCorrect={false}
@@ -140,17 +140,16 @@ export default function EnhancedSearchBar({
       {/* Loading / Clear Button */}
       <View style={styles.rightContainer}>
         {loading ? (
-          <ActivityIndicator size={18} color={theme.colors.primary} />
+          <ActivityIndicator size={18} color={colors.primary} />
         ) : value.length > 0 ? (
           <TouchableOpacity
             onPress={handleClear}
             style={styles.clearButton}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Icon
-              source="close-circle"
+            <XCircle
               size={18}
-              color={theme.colors.onSurfaceVariant}
+              color={colors.textSecondary}
             />
           </TouchableOpacity>
         ) : null}
@@ -163,27 +162,27 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: mukokoTheme.roundness,
+    borderRadius: radius.button,
     borderWidth: 1,
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm + 2,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
     shadowOffset: { width: 0, height: 4 },
     shadowRadius: 12,
     elevation: 2,
   },
   iconContainer: {
-    marginRight: mukokoTheme.spacing.sm,
+    marginRight: spacing.sm,
     width: 22,
     alignItems: 'center',
   },
   input: {
     flex: 1,
     fontSize: 16,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
     paddingVertical: 0,
   },
   rightContainer: {
-    marginLeft: mukokoTheme.spacing.sm,
+    marginLeft: spacing.sm,
     width: 22,
     alignItems: 'center',
   },

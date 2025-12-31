@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
-import mukokoTheme from '../theme';
+import { spacing } from '../constants/design-tokens';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -48,7 +48,7 @@ export default function MasonryGrid({
   data = [],
   renderItem,
   keyExtractor,
-  gap = mukokoTheme.spacing.sm,
+  gap = spacing.sm,
   contentContainerStyle,
   ListHeaderComponent,
   ListFooterComponent,
@@ -64,7 +64,7 @@ export default function MasonryGrid({
   }, []);
 
   const columnCount = getColumnCount(screenWidth);
-  const horizontalPadding = mukokoTheme.spacing.md * 2;
+  const horizontalPadding = spacing.md * 2;
   const totalGapWidth = gap * (columnCount - 1);
   const columnWidth = (screenWidth - horizontalPadding - totalGapWidth) / columnCount;
 

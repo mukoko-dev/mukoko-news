@@ -15,7 +15,7 @@ import { Text } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import mukokoTheme from '../theme';
+import { spacing } from '../constants/design-tokens';
 
 // Suggested search queries for African news
 const SUGGESTED_QUERIES = [
@@ -222,115 +222,115 @@ const styles = StyleSheet.create({
   // ============ FULL VARIANT ============
   container: {
     borderRadius: 16,
-    padding: mukokoTheme.spacing.lg,
-    marginHorizontal: mukokoTheme.spacing.md,
-    marginVertical: mukokoTheme.spacing.sm,
+    padding: spacing.lg,
+    marginHorizontal: spacing.md,
+    marginVertical: spacing.sm,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.sm,
+    marginBottom: spacing.sm,
   },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: mukokoTheme.spacing.sm,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: 12,
     gap: 4,
   },
   badgeText: {
     fontSize: 11,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
     letterSpacing: 0.5,
   },
   title: {
     fontSize: 22,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    marginBottom: mukokoTheme.spacing.xs,
+    fontFamily: 'NotoSerif-Bold',
+    marginBottom: spacing.xs,
   },
   subtitle: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
-    marginBottom: mukokoTheme.spacing.md,
+    fontFamily: 'PlusJakartaSans-Regular',
+    marginBottom: spacing.md,
   },
   suggestionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   suggestionChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: 20,
-    gap: mukokoTheme.spacing.xs,
+    gap: spacing.xs,
   },
   suggestionText: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
     borderRadius: 24,
-    gap: mukokoTheme.spacing.xs,
+    gap: spacing.xs,
     alignSelf: 'flex-start',
   },
   ctaText: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
 
   // ============ COMPACT VARIANT ============
   compactContainer: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
-    gap: mukokoTheme.spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
   },
   compactSearchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: 24,
-    gap: mukokoTheme.spacing.sm,
+    gap: spacing.sm,
   },
   compactSearchText: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
   compactSuggestions: {
     flexDirection: 'row',
-    gap: mukokoTheme.spacing.xs,
+    gap: spacing.xs,
   },
   compactChip: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
     borderRadius: 16,
   },
   compactChipText: {
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
 
   // ============ MINIMAL VARIANT ============
   minimalContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderRadius: 24,
-    marginHorizontal: mukokoTheme.spacing.md,
-    gap: mukokoTheme.spacing.sm,
+    marginHorizontal: spacing.md,
+    gap: spacing.sm,
   },
   minimalText: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
 });

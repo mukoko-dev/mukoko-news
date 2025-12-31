@@ -10,8 +10,9 @@
 import React, { memo } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native';
+import { ChevronRight } from 'lucide-react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import mukokoTheme from '../../theme';
+import { spacing, radius } from '../../constants/design-tokens';
 import { CuratedLabel } from '../ai';
 
 // Rank badge colors
@@ -77,8 +78,7 @@ function TrendingSearchItem({ item, rank, onPress, theme }) {
       )}
 
       {/* Arrow */}
-      <Icon
-        source="chevron-right"
+      <ChevronRight
         size={18}
         color={theme.colors.onSurfaceVariant}
       />
@@ -140,30 +140,30 @@ export default memo(TrendingSearches);
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: mukokoTheme.spacing.lg,
+    marginBottom: spacing.lg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: mukokoTheme.spacing.sm,
+    marginBottom: spacing.sm,
   },
   sectionTitle: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   list: {
-    borderRadius: mukokoTheme.roundness,
+    borderRadius: radius.button,
     borderWidth: 1,
     overflow: 'hidden',
   },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.sm + 2,
-    paddingHorizontal: mukokoTheme.spacing.md,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   rankBadge: {
@@ -172,18 +172,18 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: mukokoTheme.spacing.sm,
+    marginRight: spacing.sm,
   },
   rankText: {
     fontSize: 11,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   content: {
     flex: 1,
   },
   searchTerm: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
   searchCount: {
     fontSize: 11,
@@ -191,6 +191,6 @@ const styles = StyleSheet.create({
   },
   fireEmoji: {
     fontSize: 14,
-    marginRight: mukokoTheme.spacing.xs,
+    marginRight: spacing.xs,
   },
 });

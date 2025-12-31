@@ -10,15 +10,14 @@ import CategoryChips from '../CategoryChips';
 // Mock dependencies
 jest.mock('../../contexts/ThemeContext', () => ({
   useTheme: () => ({
-    theme: {
-      colors: {
-        surface: '#FFFFFF',
-        surfaceBorder: '#e0dfdc',
-        primary: '#4B0082',
-        'on-surface': '#1C1B1F',
-        'on-surface-variant': '#4a4a4a',
-        'on-primary': '#FFFFFF',
-      },
+    colors: {
+      surface: '#FFFFFF',
+      surfaceVariant: '#F5F5F0',
+      outline: '#CAC4D0',
+      primary: '#4B0082',
+      onSurface: '#1C1B1F',
+      onSurfaceVariant: '#4a4a4a',
+      onPrimary: '#FFFFFF',
     },
   }),
 }));

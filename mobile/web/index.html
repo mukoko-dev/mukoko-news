@@ -50,6 +50,22 @@
         height: 100%;
         flex: 1;
       }
+
+      /* Fix for React Native Web elements being hidden */
+      #root > div {
+        flex: 1;
+        width: 100%;
+        height: 100%;
+      }
+
+      /* Ensure all divs are visible and have auto dimensions */
+      div[style*="visibility: hidden"],
+      div[style*="width: 0px"],
+      div[style*="height: 0px"] {
+        visibility: visible !important;
+        width: auto !important;
+        height: auto !important;
+      }
     </style>
     <link rel="icon" href="/favicon.ico" />
   </head>

@@ -33,8 +33,8 @@ import {
 } from 'react-native';
 import { Loader2, AlertCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import mukokoTheme from '../theme';
 import { useTheme } from '../contexts/ThemeContext';
+import { spacing, layout as layoutConstants, radius } from '../constants/design-tokens';
 import { useLayout } from '../components/layout';
 import CategoryChips from '../components/CategoryChips';
 import { CuratedLabel, AISparkleIcon, AIShimmerEffect } from '../components/ai';
@@ -120,7 +120,7 @@ export default function SearchScreen({ navigation, route }) {
   const layout = useLayout();
 
   // On tablet/desktop, no bottom tab bar, so reduce padding
-  const bottomPadding = layout.isMobile ? mukokoTheme.layout.bottomPaddingMobile : mukokoTheme.layout.bottomPaddingDesktop;
+  const bottomPadding = layout.isMobile ? layoutConstants.bottomPaddingMobile : layoutConstants.bottomPaddingDesktop;
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -585,26 +585,26 @@ const styles = StyleSheet.create({
 
   // Search Bar Container
   searchContainer: {
-    padding: mukokoTheme.spacing.md,
+    padding: spacing.md,
   },
 
   // Results Info
   resultsInfo: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   resultsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: mukokoTheme.spacing.xs,
+    gap: spacing.xs,
   },
   resultsInfoText: {
-    fontSize: mukokoTheme.typography.labelLarge,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontSize: 13,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
   resultsSubtext: {
-    fontSize: mukokoTheme.typography.labelSmall,
+    fontSize: 11,
     marginTop: 2,
   },
 
@@ -612,10 +612,10 @@ const styles = StyleSheet.create({
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: mukokoTheme.spacing.sm,
-    margin: mukokoTheme.spacing.md,
-    padding: mukokoTheme.spacing.sm,
-    borderRadius: mukokoTheme.roundness,
+    gap: spacing.sm,
+    margin: spacing.md,
+    padding: spacing.sm,
+    borderRadius: radius.button,
   },
 
   // Loading
@@ -623,12 +623,12 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.xxl,
+    gap: spacing.md,
+    paddingVertical: spacing.xxl,
   },
   loadingText: {
-    fontSize: mukokoTheme.typography.bodyMedium,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontSize: 14,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
 
   // Results
@@ -636,24 +636,24 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   resultsContent: {
-    padding: mukokoTheme.spacing.md,
+    padding: spacing.md,
   },
   resultCard: {
-    marginBottom: mukokoTheme.spacing.sm,
+    marginBottom: spacing.sm,
   },
   card: {
-    borderRadius: mukokoTheme.roundness,
+    borderRadius: radius.button,
     borderWidth: 1,
     overflow: 'hidden',
   },
   cardRow: {
     flexDirection: 'row',
-    padding: mukokoTheme.spacing.sm,
+    padding: spacing.sm,
   },
   cardImageContainer: {
-    width: mukokoTheme.layout.cardImageWidth,
-    height: mukokoTheme.layout.cardImageHeight,
-    borderRadius: mukokoTheme.layout.cardImageRadius,
+    width: layoutConstants.cardImageWidth,
+    height: layoutConstants.cardImageHeight,
+    borderRadius: layoutConstants.cardImageRadius,
     overflow: 'hidden',
   },
   cardImage: {
@@ -662,116 +662,116 @@ const styles = StyleSheet.create({
   },
   cardContent: {
     flex: 1,
-    marginLeft: mukokoTheme.spacing.sm,
+    marginLeft: spacing.sm,
     justifyContent: 'center',
   },
   cardContentNoImage: {
     marginLeft: 0,
   },
   cardSource: {
-    fontSize: mukokoTheme.typography.caption,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontSize: 10,
+    fontFamily: 'PlusJakartaSans-Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
     marginBottom: 2,
   },
   cardTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    fontSize: mukokoTheme.typography.titleSmall,
+    fontFamily: 'NotoSerif-Bold',
+    fontSize: 14,
     lineHeight: 18,
     marginBottom: 2,
   },
   cardDate: {
-    fontSize: mukokoTheme.typography.labelSmall,
+    fontSize: 11,
   },
 
   // Empty State
   emptyState: {
     alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.xxl,
-    paddingHorizontal: mukokoTheme.spacing.xl,
+    paddingVertical: spacing.xxl,
+    paddingHorizontal: spacing.xl,
   },
   emptyEmoji: {
-    fontSize: mukokoTheme.layout.emojiLarge,
-    marginBottom: mukokoTheme.spacing.md,
+    fontSize: layoutConstants.emojiLarge,
+    marginBottom: spacing.md,
   },
   emptyTitle: {
-    fontSize: mukokoTheme.typography.titleLarge,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
-    marginBottom: mukokoTheme.spacing.xs,
+    fontSize: 18,
+    fontFamily: 'NotoSerif-Bold',
+    marginBottom: spacing.xs,
   },
   emptySubtitle: {
-    fontSize: mukokoTheme.typography.bodyMedium,
+    fontSize: 14,
     textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.md,
+    marginBottom: spacing.md,
     lineHeight: 20,
   },
   clearButton: {
-    paddingVertical: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radius.button,
     borderWidth: 1,
   },
 
   // Insights Content
   insightsContent: {
-    padding: mukokoTheme.spacing.md,
+    padding: spacing.md,
   },
 
   // Section Header
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: mukokoTheme.spacing.xs,
-    marginBottom: mukokoTheme.spacing.xs,
+    gap: spacing.xs,
+    marginBottom: spacing.xs,
   },
   sectionLabel: {
-    fontSize: mukokoTheme.typography.bodySmall,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontSize: 12,
+    fontFamily: 'PlusJakartaSans-Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
 
   // AI Suggestions
   suggestionsSection: {
-    marginBottom: mukokoTheme.spacing.lg,
+    marginBottom: spacing.lg,
   },
   suggestionsSubtext: {
-    fontSize: mukokoTheme.typography.bodySmall,
-    marginBottom: mukokoTheme.spacing.sm,
+    fontSize: 12,
+    marginBottom: spacing.sm,
   },
   suggestionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.xs,
+    gap: spacing.xs,
   },
   suggestionChip: {
-    borderRadius: mukokoTheme.modal.borderRadius,
+    borderRadius: radius.modal,
   },
   suggestionText: {
-    fontSize: mukokoTheme.typography.bodySmall,
+    fontSize: 12,
   },
 
   // Authors Section
   authorsSection: {
-    marginBottom: mukokoTheme.spacing.lg,
+    marginBottom: spacing.lg,
   },
   authorsList: {
-    borderRadius: mukokoTheme.roundness,
+    borderRadius: radius.button,
     borderWidth: 1,
     overflow: 'hidden',
-    marginTop: mukokoTheme.spacing.sm,
+    marginTop: spacing.sm,
   },
 
   // Stats Section
   statsSection: {
-    marginBottom: mukokoTheme.spacing.lg,
+    marginBottom: spacing.lg,
   },
   statsCard: {
-    borderRadius: mukokoTheme.roundness,
+    borderRadius: radius.button,
     borderWidth: 1,
-    padding: mukokoTheme.spacing.md,
-    marginTop: mukokoTheme.spacing.sm,
+    padding: spacing.md,
+    marginTop: spacing.sm,
   },
   statsRow: {
     flexDirection: 'row',
@@ -783,19 +783,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   statEmoji: {
-    fontSize: mukokoTheme.layout.emojiSmall,
-    marginBottom: mukokoTheme.spacing.xs,
+    fontSize: layoutConstants.emojiSmall,
+    marginBottom: spacing.xs,
   },
   statValue: {
-    fontSize: mukokoTheme.typography.headlineMedium,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontSize: 22,
+    fontFamily: 'NotoSerif-Bold',
   },
   statLabel: {
-    fontSize: mukokoTheme.typography.labelSmall,
+    fontSize: 11,
     marginTop: 2,
   },
   statDivider: {
-    width: mukokoTheme.layout.dividerWidth,
-    height: mukokoTheme.touchTargets.compact,
+    width: layoutConstants.dividerWidth,
+    height: layoutConstants.touchTargetCompact,
   },
 });

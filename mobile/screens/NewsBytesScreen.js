@@ -31,7 +31,7 @@ import { newsBytes, articles as articlesAPI } from '../api/client';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLayout, CONTENT_WIDTHS } from '../components/layout';
-import mukokoTheme from '../theme';
+import { spacing, layout as layoutConstants } from '../constants/design-tokens';
 import SourceIcon from '../components/SourceIcon';
 
 export default function NewsBytesScreen({ navigation }) {
@@ -62,8 +62,8 @@ export default function NewsBytesScreen({ navigation }) {
   const CONTENT_BOTTOM_OFFSET = isResponsiveLayout
     ? Math.max(insets.bottom + 40, 60)
     : Math.max(insets.bottom + 100, 140);
-  const ACTIONS_RIGHT_OFFSET = mukokoTheme.spacing.md;
-  const PROGRESS_TOP_OFFSET = insets.top + mukokoTheme.spacing.lg;
+  const ACTIONS_RIGHT_OFFSET = spacing.md;
+  const PROGRESS_TOP_OFFSET = insets.top + spacing.lg;
 
   // Theme-aware colors for immersive dark UI
   const colors = {
@@ -506,8 +506,8 @@ export default function NewsBytesScreen({ navigation }) {
             accessibilityRole="button"
             accessibilityLabel="Retry loading NewsBytes"
           >
-            <RefreshCw size={16} color={mukokoTheme.colors.onPrimary} />
-            <Text className="font-sans-medium text-body-medium" style={{ color: mukokoTheme.colors.onPrimary }}>
+            <RefreshCw size={16} color={theme.colors.onPrimary} />
+            <Text className="font-sans-medium text-body-medium" style={{ color: theme.colors.onPrimary }}>
               Try Again
             </Text>
           </Pressable>
@@ -517,27 +517,41 @@ export default function NewsBytesScreen({ navigation }) {
   }
 
   return (
-    <View className="flex-1" style={{ backgroundColor: colors.background }}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       {/* Progress Indicator - Responsive top position */}
       <View
-        className="absolute left-0 right-0 flex-row justify-center items-center gap-xs z-[100]"
-        style={{ top: PROGRESS_TOP_OFFSET }}
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          flexDirection: 'row',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: spacing.xs,
+          zIndex: 100,
+          top: PROGRESS_TOP_OFFSET,
+        }}
       >
         {bytes.slice(0, 10).map((_, index) => (
           <View
             key={index}
-            className="rounded-full"
             style={{
-              width: index === currentIndex ? mukokoTheme.layout.progressDotActive : mukokoTheme.layout.progressDotSize,
-              height: mukokoTheme.layout.progressDotSize,
+              borderRadius: 999,
+              width: index === currentIndex ? layoutConstants.progressDotActive : layoutConstants.progressDotSize,
+              height: layoutConstants.progressDotSize,
               backgroundColor: index === currentIndex ? colors.accent : colors.whiteFaded,
             }}
           />
         ))}
         {bytes.length > 10 && (
           <Text
-            className="font-sans text-label-small ml-xs"
-            style={{ color: colors.white, opacity: 0.8 }}
+            style={{
+              fontFamily: 'PlusJakartaSans-Regular',
+              fontSize: 11,
+              marginLeft: spacing.xs,
+              color: colors.white,
+              opacity: 0.8,
+            }}
           >
             +{bytes.length - 10}
           </Text>

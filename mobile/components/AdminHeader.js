@@ -27,7 +27,7 @@ const { width } = Dimensions.get('window');
  * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminHeader({ navigation, currentScreen }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const isWideScreen = width >= 768;
 
   const navItems = [

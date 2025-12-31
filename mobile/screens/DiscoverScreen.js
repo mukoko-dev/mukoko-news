@@ -250,10 +250,10 @@ export default function DiscoverScreen({ navigation }) {
   }
 
   return (
-    <View className="flex-1 bg-background">
+    <View style={{ flex: 1, backgroundColor: isDark ? '#1C1B1F' : '#FAF9F5' }}>
       <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ paddingBottom: 12 }}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingBottom: bottomPadding }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

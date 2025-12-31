@@ -1,17 +1,21 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import mukokoTheme from '../theme';
+import { spacing } from '../constants/design-tokens';
+
+// Zimbabwe national flag colors - these are fixed national symbols
+const ZW_FLAG_COLORS = {
+  green: '#009739',   // Growth, prosperity, agriculture
+  yellow: '#FCD116',  // Mineral wealth, sunshine
+  red: '#CE1126',     // Heritage, struggle, passion
+  black: '#000000',   // African heritage, strength
+  white: '#FFFFFF',   // Peace, unity, progress
+};
 
 /**
  * Zimbabwe Flag Strip Component
  *
  * Displays a simplified Zimbabwe flag as a vertical strip on the left side
- * with 5 unique horizontal stripes (no repeating colors):
- * - Green (top) - Growth, prosperity, agriculture
- * - Yellow - Mineral wealth, sunshine
- * - Red - Heritage, struggle, passion
- * - Black - African heritage, strength
- * - White (bottom) - Peace, unity, progress
+ * with 5 unique horizontal stripes (no repeating colors)
  */
 export default function ZimbabweFlagStrip({ style }) {
   return (
@@ -41,18 +45,18 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   green: {
-    backgroundColor: mukokoTheme.colors.zwGreen,
+    backgroundColor: ZW_FLAG_COLORS.green,
   },
   yellow: {
-    backgroundColor: mukokoTheme.colors.zwYellow,
+    backgroundColor: ZW_FLAG_COLORS.yellow,
   },
   red: {
-    backgroundColor: mukokoTheme.colors.zwRed,
+    backgroundColor: ZW_FLAG_COLORS.red,
   },
   black: {
-    backgroundColor: mukokoTheme.colors.zwBlack,
+    backgroundColor: ZW_FLAG_COLORS.black,
   },
   white: {
-    backgroundColor: mukokoTheme.colors.zwWhite,
+    backgroundColor: ZW_FLAG_COLORS.white,
   },
 });

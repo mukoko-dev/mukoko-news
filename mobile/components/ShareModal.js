@@ -3,9 +3,19 @@ import { View, Pressable, Modal, Platform, Share as RNShare, Clipboard, Animated
 import { Twitter, Share2, Link, Check, X, MessageCircle, Facebook, Linkedin } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
-import mukokoTheme from '../theme';
+import { spacing, radius, touchTargets, animation, staticColors } from '../constants/design-tokens';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// Modal constants - centralized design values
+const MODAL_CONFIG = {
+  dragThreshold: 100,
+  maxHeight: 0.9, // 90% of screen height
+  initialHeight: 0.4, // 40% of screen height
+  overlayColor: 'rgba(0, 0, 0, 0.6)',
+  handleWidth: 40,
+  handleHeight: 4,
+};
 
 /**
  * ShareModal - Beautiful share modal for articles
@@ -32,11 +42,11 @@ export default function ShareModal({ visible, onDismiss, article }) {
         }
       },
       onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > mukokoTheme.modal.dragThreshold) {
+        if (gestureState.dy > MODAL_CONFIG.dragThreshold) {
           onDismiss();
           Animated.timing(panY, {
             toValue: 0,
-            duration: mukokoTheme.animation.fast,
+            duration: animation.fast,
             useNativeDriver: true,
           }).start();
         } else {
@@ -143,8 +153,8 @@ export default function ShareModal({ visible, onDismiss, article }) {
               styles.mobileContent,
               {
                 backgroundColor: theme.colors.surface,
-                maxHeight: SCREEN_HEIGHT * mukokoTheme.modal.maxHeight,
-                minHeight: SCREEN_HEIGHT * mukokoTheme.modal.initialHeight,
+                maxHeight: SCREEN_HEIGHT * MODAL_CONFIG.maxHeight,
+                minHeight: SCREEN_HEIGHT * MODAL_CONFIG.initialHeight,
                 borderColor: theme.colors.outline,
               },
               { transform: [{ translateY: panY }] }
@@ -217,8 +227,8 @@ export default function ShareModal({ visible, onDismiss, article }) {
             {
               backgroundColor: theme.colors.surface,
               borderColor: theme.colors.outline,
-              maxHeight: SCREEN_HEIGHT * mukokoTheme.modal.maxHeight,
-              minHeight: SCREEN_HEIGHT * mukokoTheme.modal.initialHeight,
+              maxHeight: SCREEN_HEIGHT * MODAL_CONFIG.maxHeight,
+              minHeight: SCREEN_HEIGHT * MODAL_CONFIG.initialHeight,
             },
             { transform: [{ translateY: panY }] }
           ]}
@@ -256,7 +266,7 @@ export default function ShareModal({ visible, onDismiss, article }) {
               onPress={handleShareTwitter}
             >
               <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-twitter'] }]}>
-                <Twitter size={28} color="#fff" />
+                <Twitter size={28} color={staticColors.white} />
               </View>
               <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
                 Twitter
@@ -268,7 +278,7 @@ export default function ShareModal({ visible, onDismiss, article }) {
               onPress={handleShareWhatsApp}
             >
               <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-whatsapp'] }]}>
-                <MessageCircle size={28} color="#fff" />
+                <MessageCircle size={28} color={staticColors.white} />
               </View>
               <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
                 WhatsApp
@@ -280,7 +290,7 @@ export default function ShareModal({ visible, onDismiss, article }) {
               onPress={handleShareFacebook}
             >
               <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-facebook'] }]}>
-                <Facebook size={28} color="#fff" />
+                <Facebook size={28} color={staticColors.white} />
               </View>
               <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
                 Facebook
@@ -292,7 +302,7 @@ export default function ShareModal({ visible, onDismiss, article }) {
               onPress={handleShareLinkedIn}
             >
               <View style={[styles.shareIconCircle, { backgroundColor: theme.colors['brand-linkedin'] }]}>
-                <Linkedin size={28} color="#fff" />
+                <Linkedin size={28} color={staticColors.white} />
               </View>
               <RNText style={[styles.shareButtonLabel, { color: theme.colors.onSurface }]}>
                 LinkedIn
@@ -339,109 +349,109 @@ export default function ShareModal({ visible, onDismiss, article }) {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: mukokoTheme.modal.overlayColor,
+    backgroundColor: MODAL_CONFIG.overlayColor,
     justifyContent: 'flex-end',
   },
   mobileOverlay: {
     flex: 1,
-    backgroundColor: mukokoTheme.modal.overlayColor,
+    backgroundColor: MODAL_CONFIG.overlayColor,
     justifyContent: 'flex-end',
   },
   modalContent: {
     width: '100%',
-    borderTopLeftRadius: mukokoTheme.modal.borderRadius,
-    borderTopRightRadius: mukokoTheme.modal.borderRadius,
+    borderTopLeftRadius: radius.modal,
+    borderTopRightRadius: radius.modal,
     borderTopWidth: 1,
   },
   mobileContent: {
-    borderTopLeftRadius: mukokoTheme.modal.borderRadius,
-    borderTopRightRadius: mukokoTheme.modal.borderRadius,
+    borderTopLeftRadius: radius.modal,
+    borderTopRightRadius: radius.modal,
     borderTopWidth: 1,
   },
   scrollContent: {
     flex: 1,
   },
   scrollContentContainer: {
-    paddingHorizontal: mukokoTheme.spacing.xl,
-    paddingBottom: mukokoTheme.spacing.xl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.xl,
   },
   handle: {
-    width: mukokoTheme.modal.handleWidth,
-    height: mukokoTheme.modal.handleHeight,
-    borderRadius: mukokoTheme.modal.handleHeight / 2,
+    width: MODAL_CONFIG.handleWidth,
+    height: MODAL_CONFIG.handleHeight,
+    borderRadius: MODAL_CONFIG.handleHeight / 2,
     alignSelf: 'center',
-    marginTop: mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.lg,
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
     opacity: 0.3,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.xl,
+    marginBottom: spacing.xl,
   },
   modalTitle: {
     fontSize: 20,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   closeButton: {
-    width: mukokoTheme.touchTargets.minimum,
-    height: mukokoTheme.touchTargets.minimum,
-    borderRadius: mukokoTheme.touchTargets.minimum / 2,
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
+    borderRadius: touchTargets.minimum / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   shareGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.lg,
-    marginBottom: mukokoTheme.spacing.xl,
+    gap: spacing.lg,
+    marginBottom: spacing.xl,
   },
   shareButton: {
     alignItems: 'center',
     width: 80,
   },
   shareIconCircle: {
-    width: mukokoTheme.touchTargets.large,
-    height: mukokoTheme.touchTargets.large,
-    borderRadius: mukokoTheme.touchTargets.large / 2,
+    width: touchTargets.large,
+    height: touchTargets.large,
+    borderRadius: touchTargets.large / 2,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.sm,
+    marginBottom: spacing.sm,
   },
   shareButtonLabel: {
     fontSize: 12,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
     textAlign: 'center',
   },
   shareOption: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: mukokoTheme.spacing.lg,
-    borderRadius: mukokoTheme.roundness,
+    padding: spacing.lg,
+    borderRadius: radius.button,
     borderWidth: 1,
-    marginBottom: mukokoTheme.spacing.md,
-    gap: mukokoTheme.spacing.lg,
-    minHeight: mukokoTheme.touchTargets.large,
+    marginBottom: spacing.md,
+    gap: spacing.lg,
+    minHeight: touchTargets.large,
   },
   shareOptionText: {
     fontSize: 16,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
   articlePreview: {
-    paddingTop: mukokoTheme.spacing.lg,
+    paddingTop: spacing.lg,
     borderTopWidth: 1,
-    marginTop: mukokoTheme.spacing.md,
+    marginTop: spacing.md,
   },
   previewSource: {
     fontSize: 12,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    marginBottom: mukokoTheme.spacing.xs,
+    fontFamily: 'PlusJakartaSans-Medium',
+    marginBottom: spacing.xs,
     textTransform: 'uppercase',
   },
   previewTitle: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
     lineHeight: 20,
   },
 });

@@ -16,7 +16,7 @@ import { Text } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import mukokoTheme from '../theme';
+import { spacing, radius } from '../constants/design-tokens';
 
 // OIDC Configuration
 const OIDC_CONFIG = {
@@ -360,13 +360,13 @@ const styles = StyleSheet.create({
   heroBadgeText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
     letterSpacing: 1,
   },
   heroHeadline: {
     color: '#FFFFFF',
     fontSize: 32,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
     textAlign: 'center',
     lineHeight: 40,
     marginBottom: 12,
@@ -374,7 +374,7 @@ const styles = StyleSheet.create({
   heroSubheadline: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 16,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
@@ -395,7 +395,7 @@ const styles = StyleSheet.create({
   heroBenefitText: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 12,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
     textAlign: 'center',
   },
   heroPrimaryButton: {
@@ -414,7 +414,7 @@ const styles = StyleSheet.create({
   },
   heroPrimaryButtonText: {
     fontSize: 18,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   heroSecondaryButton: {
     paddingVertical: 12,
@@ -423,7 +423,7 @@ const styles = StyleSheet.create({
   heroSecondaryButtonText: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
     textDecorationLine: 'underline',
   },
 
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
   cardHeaderText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
     letterSpacing: 1,
   },
   cardContent: {
@@ -464,13 +464,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 26,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
     textAlign: 'center',
     marginBottom: 8,
   },
   cardDescription: {
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 20,
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
   },
   cardBenefitText: {
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
     flex: 1,
   },
   cardPrimaryButton: {
@@ -505,14 +505,14 @@ const styles = StyleSheet.create({
   cardPrimaryButtonText: {
     color: '#FFFFFF',
     fontSize: 17,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   cardSecondaryButton: {
     paddingVertical: 12,
   },
   cardSecondaryButtonText: {
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
 
   // ============ BANNER VARIANT ============
@@ -552,12 +552,12 @@ const styles = StyleSheet.create({
   bannerTitle: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   bannerSubtitle: {
     color: 'rgba(255,255,255,0.85)',
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
   bannerButton: {
     flexDirection: 'row',
@@ -570,7 +570,7 @@ const styles = StyleSheet.create({
   },
   bannerButtonText: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
 
   // ============ MINIMAL VARIANT ============
@@ -590,11 +590,11 @@ const styles = StyleSheet.create({
   },
   minimalTitle: {
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   minimalSubtitle: {
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
   minimalArrow: {
     width: 32,

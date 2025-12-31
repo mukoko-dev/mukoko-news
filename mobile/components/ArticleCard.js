@@ -51,7 +51,7 @@ const formatRelativeTime = (dateString) => {
  */
 const ArticleImage = memo(({ uri, imageClassName, onError }) => {
   const [loaded, setLoaded] = useState(false);
-  const theme = useTheme();
+  const { theme } = useTheme();
 
   const handleLoad = useCallback(() => {
     setLoaded(true);
@@ -104,7 +104,7 @@ function ArticleCard({
   style,
 }) {
   const [imageError, setImageError] = useState(false);
-  const theme = useTheme();
+  const { theme } = useTheme();
 
   const imageUrl = article.imageUrl || article.image_url;
   const hasImage = imageUrl && !imageError;

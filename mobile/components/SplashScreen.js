@@ -28,8 +28,7 @@ import {
 import { Text, ActivityIndicator } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { spacing, typography } from '../styles/globalStyles';
-import mukokoTheme from '../theme';
+import { spacing } from '../constants/design-tokens';
 import { countries as countriesAPI, categories as categoriesAPI } from '../api/client';
 import localPreferences from '../services/LocalPreferencesService';
 
@@ -52,6 +51,8 @@ const MODAL_MAX_WIDTH = 480;  // Max width for responsive design on large screen
  * CountrySelectionGrid - Grid of countries for selection
  */
 function CountrySelectionGrid({ countries, selectedCountries, onToggle, theme }) {
+  const { colors } = theme;
+
   // Use modal max width for responsive calculations on large screens
   const containerWidth = Math.min(SCREEN_WIDTH, MODAL_MAX_WIDTH);
   const cardWidth = (containerWidth - spacing.xl * 2 - spacing.sm * 2) / 3;
@@ -73,10 +74,10 @@ function CountrySelectionGrid({ countries, selectedCountries, onToggle, theme })
               { width: cardWidth },
               {
                 backgroundColor: isSelected
-                  ? theme.colors.primary
+                  ? colors.primary
                   : 'rgba(255, 255, 255, 0.1)',
                 borderColor: isSelected
-                  ? theme.colors.primary
+                  ? colors.primary
                   : 'rgba(255, 255, 255, 0.2)',
               },
             ]}
@@ -90,7 +91,7 @@ function CountrySelectionGrid({ countries, selectedCountries, onToggle, theme })
             <Text
               style={[
                 styles.gridName,
-                { color: isSelected ? theme.colors.onPrimary : '#FFFFFF' },
+                { color: isSelected ? colors.onPrimary : '#FFFFFF' },
               ]}
               numberOfLines={1}
             >
@@ -98,7 +99,7 @@ function CountrySelectionGrid({ countries, selectedCountries, onToggle, theme })
             </Text>
             {isSelected && (
               <View style={styles.gridCheck}>
-                <MaterialCommunityIcons name="check" size={14} color={theme.colors.onPrimary} />
+                <MaterialCommunityIcons name="check" size={14} color={colors.onPrimary} />
               </View>
             )}
           </TouchableOpacity>
@@ -112,6 +113,8 @@ function CountrySelectionGrid({ countries, selectedCountries, onToggle, theme })
  * CategorySelectionGrid - Grid of categories for selection
  */
 function CategorySelectionGrid({ categories, selectedCategories, onToggle, theme }) {
+  const { colors } = theme;
+
   // Use modal max width for responsive calculations on large screens
   const containerWidth = Math.min(SCREEN_WIDTH, MODAL_MAX_WIDTH);
   const cardWidth = (containerWidth - spacing.xl * 2 - spacing.sm) / 2;
@@ -133,10 +136,10 @@ function CategorySelectionGrid({ categories, selectedCategories, onToggle, theme
               { width: cardWidth },
               {
                 backgroundColor: isSelected
-                  ? theme.colors.primary
+                  ? colors.primary
                   : 'rgba(255, 255, 255, 0.1)',
                 borderColor: isSelected
-                  ? theme.colors.primary
+                  ? colors.primary
                   : 'rgba(255, 255, 255, 0.2)',
               },
             ]}
@@ -150,7 +153,7 @@ function CategorySelectionGrid({ categories, selectedCategories, onToggle, theme
             <Text
               style={[
                 styles.categoryName,
-                { color: isSelected ? theme.colors.onPrimary : '#FFFFFF' },
+                { color: isSelected ? colors.onPrimary : '#FFFFFF' },
               ]}
               numberOfLines={1}
             >
@@ -158,7 +161,7 @@ function CategorySelectionGrid({ categories, selectedCategories, onToggle, theme
             </Text>
             {isSelected && (
               <View style={styles.categoryCheck}>
-                <MaterialCommunityIcons name="check" size={16} color={theme.colors.onPrimary} />
+                <MaterialCommunityIcons name="check" size={16} color={colors.onPrimary} />
               </View>
             )}
           </TouchableOpacity>
@@ -220,7 +223,7 @@ export default function SplashScreen({
   onClose,
   onPreferencesSet,
 }) {
-  const { theme } = useTheme();
+  const { theme, colors } = useTheme();
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -458,7 +461,7 @@ export default function SplashScreen({
   if (isLoading || (showCustomization && !dataLoaded)) {
     return (
       <View
-        style={[styles.loadingContainer, { backgroundColor: theme.colors.background }]}
+        style={[styles.loadingContainer, { backgroundColor: colors.background }]}
         accessibilityRole="alert"
         accessibilityLabel="Loading Mukoko News"
         accessibilityLiveRegion="polite"
@@ -469,18 +472,18 @@ export default function SplashScreen({
           resizeMode="contain"
           accessibilityLabel="Mukoko News logo"
         />
-        <Text style={[styles.loadingBrand, { color: theme.colors.onSurface }]}>
+        <Text style={[styles.loadingBrand, { color: colors.onSurface }]}>
           Mukoko News
         </Text>
-        <Text style={[styles.loadingTagline, { color: theme.colors.onSurfaceVariant }]}>
+        <Text style={[styles.loadingTagline, { color: colors.onSurfaceVariant }]}>
           Africa's News, Your Way
         </Text>
         <ActivityIndicator
           size="large"
-          color={theme.colors.primary}
+          color={colors.primary}
           style={styles.loadingSpinner}
         />
-        <Text style={[styles.loadingText, { color: theme.colors.onSurfaceVariant }]}>
+        <Text style={[styles.loadingText, { color: colors.onSurfaceVariant }]}>
           {loadingMessage}
         </Text>
       </View>
@@ -692,7 +695,7 @@ const styles = StyleSheet.create({
   },
   loadingBrand: {
     fontSize: 28,
-    fontFamily: mukokoTheme.fonts.serifBold?.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
     marginBottom: spacing.xs,
   },
   loadingTagline: {
@@ -706,10 +709,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 
-  // Modal backdrop
+  // Modal backdrop - 75% transparent (25% opacity)
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
   },
   backdropTouchable: {
     flex: 1,
@@ -793,7 +796,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     lineHeight: 40,
     marginBottom: spacing.xl,
-    fontFamily: mukokoTheme.fonts.serifBold?.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
   },
 
   // Feature list
@@ -830,7 +833,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     textAlign: 'center',
     marginBottom: spacing.xs,
-    fontFamily: mukokoTheme.fonts.serifBold?.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
   },
   selectionSubtitle: {
     fontSize: 14,

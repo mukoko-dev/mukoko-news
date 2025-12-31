@@ -1,11 +1,7 @@
 /**
- * Mukoko News Global Styles
- * Nyuchi Brand System v6 - Five African Minerals Design System
- *
- * WCAG AAA Accessibility:
- * - 7:1+ contrast ratios for all text
- * - 44px minimum touch targets
- * - Clear visual hierarchy
+ * Mukoko News Mobile - Global Styles
+ * Uses Nyuchi Brand System v6 - Five African Minerals Design System
+ * Adapted for React Native + NativeWind
  */
 
 @tailwind base;
@@ -13,149 +9,218 @@
 @tailwind utilities;
 
 @layer base {
+  /**
+   * THE FIVE AFRICAN MINERALS - Core Brand Colors
+   * RGB format for NativeWind: "rgb(var(--color-name) / <alpha-value>)"
+   * Each achieves WCAG AAA (7:1+) in both light and dark modes
+   */
+
   :root {
-    /* ===== NYUCHI BRAND COLORS - FIVE AFRICAN MINERALS ===== */
+    /* Cobalt - Digital Future, Knowledge */
+    --color-cobalt: 0 71 171;           /* #0047AB */
+    --color-cobalt-light: 0 176 255;    /* #00B0FF */
+    --color-cobalt-container: 227 242 253;  /* #E3F2FD */
+    --color-cobalt-on-container: 0 41 102;  /* #002966 */
 
-    /* Tanzanite - Premium, creativity, social connection */
-    --color-tanzanite: 75 0 130;
-    --color-tanzanite-light: 179 136 255;
-    --color-tanzanite-hover: 92 16 154;
-    --color-tanzanite-active: 58 0 102;
-    --color-tanzanite-container: 232 213 249;
-    --color-tanzanite-on-container: 26 0 51;
+    /* Tanzanite - Premium, Creativity (Mukoko Primary) */
+    --color-tanzanite: 75 0 130;        /* #4B0082 */
+    --color-tanzanite-light: 179 136 255;  /* #B388FF */
+    --color-tanzanite-container: 243 229 245;  /* #F3E5F5 */
+    --color-tanzanite-on-container: 46 0 77;  /* #2E004D */
 
-    /* Cobalt - Digital future, knowledge, education */
-    --color-cobalt: 0 71 171;
-    --color-cobalt-light: 0 176 255;
-    --color-cobalt-container: 214 228 249;
-    --color-cobalt-on-container: 0 26 64;
+    /* Malachite - Growth, Success, Nature */
+    --color-malachite: 0 77 64;         /* #004D40 */
+    --color-malachite-light: 100 255 218;  /* #64FFDA */
+    --color-malachite-container: 224 242 241;  /* #E0F2F1 */
+    --color-malachite-on-container: 0 51 43;  /* #00332B */
 
-    /* Malachite - Success, growth, nature, wellness */
-    --color-malachite: 0 77 64;
-    --color-malachite-light: 100 255 218;
-    --color-malachite-container: 200 230 201;
-    --color-malachite-on-container: 13 51 17;
+    /* Gold - Honey, Rewards, Warmth */
+    --color-gold: 93 64 55;             /* #5D4037 */
+    --color-gold-light: 255 215 64;     /* #FFD740 */
+    --color-gold-container: 255 248 225;  /* #FFF8E1 */
+    --color-gold-on-container: 62 39 35;  /* #3E2723 */
 
-    /* Gold - Honey, rewards, achievement, warmth */
-    --color-gold: 93 64 55;
-    --color-gold-light: 255 215 64;
-    --color-gold-container: 245 230 211;
-    --color-gold-on-container: 45 31 26;
+    /* Terracotta - Earth, Community */
+    --color-terracotta: 139 69 19;      /* #8B4513 */
+    --color-terracotta-light: 212 165 116;  /* #D4A574 */
+    --color-terracotta-container: 251 233 231;  /* #FBE9E7 */
+    --color-terracotta-on-container: 93 41 6;  /* #5D2906 */
 
-    /* Terracotta - Community, Ubuntu, earth connection */
-    --color-terracotta: 139 69 19;
-    --color-terracotta-light: 212 165 116;
-    --color-terracotta-container: 244 232 220;
-    --color-terracotta-on-container: 58 29 10;
-
-    /* ===== SURFACE COLORS ===== */
-    --color-surface: 255 255 255;
-    --color-surface-variant: 243 242 238;
+    /* BACKGROUND SYSTEM - Light Mode */
+    --color-background: 250 249 245;    /* Warm cream #FAF9F5 */
+    --color-surface: 255 255 255;       /* White */
+    --color-surface-variant: 243 242 238;  /* #F3F2EE */
     --color-surface-subtle: 250 249 245;
     --color-surface-dim: 243 242 238;
 
-    /* ===== SEMANTIC COLORS ===== */
-    --color-error: 179 38 30;
+    /* TEXT COLORS - Light Mode */
+    --color-on-surface: 20 20 19;       /* Near black #141413 */
+    --color-on-surface-variant: 82 82 78;  /* Gray #52524E */
+    --color-on-background: 20 20 19;
+    --color-on-primary: 255 255 255;    /* White */
+    --color-on-secondary: 255 255 255;
+    --color-on-accent: 255 255 255;
+
+    /* BORDERS - Light Mode */
+    --color-outline: 224 223 220;       /* #E0DFDC */
+    --color-outline-variant: 240 239 236;
+
+    /* SEMANTIC COLORS */
+    --color-error: 179 38 30;           /* #B3261E */
     --color-error-container: 249 222 220;
     --color-error-on-container: 65 14 11;
 
-    --color-success: 27 94 32;
+    --color-success: 0 77 64;           /* Malachite */
     --color-success-container: 232 245 233;
     --color-success-on-container: 13 51 17;
 
-    --color-warning: 230 81 0;
-    --color-warning-container: 255 243 224;
+    --color-warning: 122 92 0;          /* #7A5C00 */
+    --color-warning-container: 255 240 194;
     --color-warning-on-container: 51 18 0;
 
-    /* ===== SOCIAL BRAND COLORS (official brand colors) ===== */
+    /* SOCIAL BRAND COLORS */
     --color-brand-twitter: 29 161 242;
     --color-brand-whatsapp: 37 211 102;
     --color-brand-facebook: 24 119 242;
     --color-brand-linkedin: 10 102 194;
 
-    /* ===== TEXT COLORS ===== */
-    --color-on-surface: 28 27 31;
-    --color-on-surface-variant: 74 74 74;
-    --color-on-primary: 255 255 255;
-    --color-on-secondary: 255 255 255;
-    --color-on-accent: 255 255 255;
+    /* ZIMBABWE FLAG */
+    --color-flag-green: 0 166 81;       /* #00A651 */
+    --color-flag-yellow: 253 209 22;    /* #FDD116 */
+    --color-flag-red: 212 99 74;        /* #D4634A */
+    --color-flag-black: 23 23 23;       /* #171717 */
 
-    /* ===== BORDERS ===== */
-    --color-outline: 224 223 220;
-    --color-outline-variant: 240 239 236;
-
-    /* ===== BACKGROUND ===== */
-    --color-background: 250 249 245;
-    --color-on-background: 28 27 31;
-
-    /* ===== SPACING SYSTEM (4px base, mobile-first) ===== */
+    /* SPACING SYSTEM (4px base) */
     --spacing-xs: 4px;
     --spacing-sm: 8px;
     --spacing-md: 12px;
     --spacing-lg: 16px;
-    --spacing-xl: 24px;
-    --spacing-xxl: 32px;
+    --spacing-xl: 20px;
+    --spacing-xxl: 24px;
 
-    /* ===== BORDER RADIUS ===== */
+    /* BORDER RADIUS */
     --radius-button: 12px;
     --radius-card: 16px;
     --radius-modal: 20px;
+    --radius-input: 8px;
+    --radius-badge: 9999px;
 
-    /* ===== TYPOGRAPHY SIZES ===== */
-    /* Display sizes */
+    /* SHADOWS */
+    --shadow-sm: 0 1px 2px rgba(20, 20, 19, 0.04);
+    --shadow-md: 0 4px 8px rgba(20, 20, 19, 0.08);
+    --shadow-lg: 0 8px 16px rgba(20, 20, 19, 0.1);
+
+    /* ANIMATION TIMINGS */
+    --duration-fast: 150ms;
+    --duration-normal: 200ms;
+    --duration-slow: 300ms;
+
+    /* TOUCH TARGETS (WCAG AAA) */
+    --touch-target: 44px;
+    --touch-target-compact: 40px;
+    --touch-target-large: 56px;
+
+    /* TYPOGRAPHY SIZES */
     --font-size-display-large: 48px;
     --font-size-display-medium: 36px;
     --font-size-display-small: 32px;
-
-    /* Headlines */
     --font-size-headline-large: 26px;
     --font-size-headline-medium: 22px;
     --font-size-headline-small: 20px;
-
-    /* Titles */
     --font-size-title-large: 18px;
     --font-size-title-medium: 16px;
     --font-size-title-small: 14px;
-
-    /* Body */
     --font-size-body-large: 16px;
     --font-size-body-medium: 14px;
     --font-size-body-small: 12px;
-
-    /* Labels */
     --font-size-label-large: 13px;
     --font-size-label-medium: 12px;
     --font-size-label-small: 11px;
-
-    /* Special */
     --font-size-stats: 28px;
     --font-size-caption: 10px;
 
-    /* ===== FONT FAMILIES ===== */
+    /* FONT FAMILIES */
     --font-sans: 'PlusJakartaSans-Regular', system-ui, sans-serif;
     --font-sans-medium: 'PlusJakartaSans-Medium', system-ui, sans-serif;
     --font-sans-bold: 'PlusJakartaSans-Bold', system-ui, sans-serif;
     --font-serif: 'NotoSerif-Regular', Georgia, serif;
     --font-serif-bold: 'NotoSerif-Bold', Georgia, serif;
-
-    /* ===== SHADOWS (subtle, brand-appropriate) ===== */
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.08);
-
-    /* ===== ANIMATION TIMINGS ===== */
-    --duration-fast: 150ms;
-    --duration-normal: 250ms;
-    --duration-slow: 350ms;
-
-    /* ===== TOUCH TARGETS (WCAG AAA) ===== */
-    --touch-target: 44px;
-    --touch-target-compact: 40px;
-    --touch-target-large: 56px;
+    --font-mono: 'JetBrainsMono-Regular', 'SF Mono', monospace;
   }
 
-  /* Set default font family on html */
+  /**
+   * DARK MODE OVERRIDES
+   * Applied when .dark class is on document.documentElement
+   */
+  .dark {
+    /* Background - Dark Mode */
+    --color-background: 10 10 10;       /* Near black #0A0A0A */
+    --color-surface: 20 20 20;          /* #141414 */
+    --color-surface-variant: 30 30 30;  /* #1E1E1E */
+    --color-surface-subtle: 18 18 18;
+    --color-surface-dim: 26 26 26;
+
+    /* Text - Dark Mode (inverted) */
+    --color-on-surface: 245 245 244;    /* Off-white #F5F5F4 */
+    --color-on-surface-variant: 168 168 163;  /* #A8A8A3 */
+    --color-on-background: 245 245 244;
+
+    /* Borders - Dark Mode (lighter) */
+    --color-outline: 58 58 58;          /* #3A3A3A */
+    --color-outline-variant: 42 42 42;
+
+    /* Primary Colors - Lighter for dark theme */
+    --color-cobalt: 0 176 255;          /* Lighter blue */
+    --color-tanzanite: 179 136 255;     /* Lighter purple */
+    --color-malachite: 100 255 218;     /* Lighter teal */
+    --color-gold: 255 215 64;           /* Lighter gold */
+    --color-terracotta: 212 165 116;    /* Lighter terra */
+
+    /* Semantic - Dark Mode */
+    --color-error: 242 184 181;
+    --color-success: 165 214 167;
+    --color-warning: 255 217 128;
+
+    /* Shadows - More prominent for dark */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
+  }
+
+  /**
+   * BASE HTML STYLES
+   */
   html {
     font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    background-color: rgb(var(--color-background));
+    color: rgb(var(--color-on-surface));
+  }
+
+  /* Focus states for accessibility */
+  :focus-visible {
+    outline: 2px solid rgb(var(--color-cobalt));
+    outline-offset: 2px;
+  }
+
+  /* Selection styling */
+  ::selection {
+    background-color: rgb(var(--color-cobalt-container));
+    color: rgb(var(--color-cobalt-on-container));
+  }
+
+  /* Reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

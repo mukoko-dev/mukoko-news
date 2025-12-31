@@ -12,7 +12,7 @@ import React, { memo } from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Text } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import mukokoTheme from '../../theme';
+import { spacing, radius, shadows } from '../../constants/design-tokens';
 
 // Generate initials from name
 const getInitials = (name) => {
@@ -215,8 +215,8 @@ export default memo(AuthorResultCard, (prevProps, nextProps) => {
 const styles = StyleSheet.create({
   // Card variant
   card: {
-    padding: mukokoTheme.spacing.md,
-    borderRadius: mukokoTheme.roundness,
+    padding: spacing.md,
+    borderRadius: radius.button,
     borderWidth: 1,
     alignItems: 'center',
     position: 'relative',
@@ -231,12 +231,12 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     justifyContent: 'center',
     alignItems: 'center',
-    ...mukokoTheme.shadows.small,
+    ...shadows.small,
   },
   cardRankText: {
     color: '#FFFFFF',
     fontSize: 10,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   cardAvatar: {
     width: 48,
@@ -244,16 +244,16 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.sm,
+    marginBottom: spacing.sm,
   },
   cardAvatarText: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   cardName: {
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
     textAlign: 'center',
     marginBottom: 2,
   },
@@ -269,8 +269,8 @@ const styles = StyleSheet.create({
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: mukokoTheme.spacing.sm + 2,
-    paddingHorizontal: mukokoTheme.spacing.md,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   listRankBadge: {
@@ -279,11 +279,11 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: mukokoTheme.spacing.sm,
+    marginRight: spacing.sm,
   },
   listRankText: {
     fontSize: 11,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   listAvatar: {
     width: 36,
@@ -291,19 +291,19 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: mukokoTheme.spacing.sm,
+    marginRight: spacing.sm,
   },
   listAvatarText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   listInfo: {
     flex: 1,
   },
   listName: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
   listMeta: {
     flexDirection: 'row',

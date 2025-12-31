@@ -12,7 +12,7 @@ const MIN_WIDTH = 768; // Minimum width for admin access
  * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminScreenWrapper({ children }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
 
   useEffect(() => {

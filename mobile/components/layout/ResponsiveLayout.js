@@ -65,7 +65,7 @@ export default function ResponsiveLayout({
   showLeftSidebar = true,
   showRightSidebar = true,
 }) {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
   const [screenWidth, setScreenWidth] = useState(Dimensions.get('window').width);
 
   // Listen for dimension changes (orientation, resize)
@@ -126,7 +126,7 @@ export default function ResponsiveLayout({
   if (isMobile) {
     return (
       <LayoutContext.Provider value={layoutContextValue}>
-        <View className="flex-1" style={{ backgroundColor: theme.colors.background }}>
+        <View className="flex-1" style={{ backgroundColor: colors.background }}>
           {children}
         </View>
       </LayoutContext.Provider>
@@ -136,15 +136,15 @@ export default function ResponsiveLayout({
   // Tablet/Desktop layout - Instagram-style three-column
   return (
     <LayoutContext.Provider value={layoutContextValue}>
-      <View className="flex-1 flex-row" style={{ backgroundColor: theme.colors.background }}>
+      <View className="flex-1 flex-row" style={{ backgroundColor: colors.background }}>
         {/* Left Sidebar - Navigation */}
         {isLeftSidebarVisible && (
           <View
             className="border-r relative"
             style={{
               width: SIDEBAR_WIDTHS.left,
-              backgroundColor: theme.colors.background,
-              borderColor: theme.colors.outline,
+              backgroundColor: colors.background,
+              borderColor: colors.outline,
             }}
           >
             {leftSidebar}
@@ -152,7 +152,7 @@ export default function ResponsiveLayout({
         )}
 
         {/* Main Content Area */}
-        <View className="flex-1 items-center" style={{ backgroundColor: theme.colors.background }}>
+        <View className="flex-1 items-center" style={{ backgroundColor: colors.background }}>
           <View
             className="flex-1 w-full"
             style={isDesktop ? { maxWidth: CONTENT_WIDTHS.maxWidth } : undefined}
@@ -167,8 +167,8 @@ export default function ResponsiveLayout({
             className="border-l"
             style={{
               width: rightSidebarWidth,
-              backgroundColor: theme.colors.background,
-              borderColor: theme.colors.outline,
+              backgroundColor: colors.background,
+              borderColor: colors.outline,
             }}
           >
             {rightSidebar}

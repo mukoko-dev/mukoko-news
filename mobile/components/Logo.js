@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image } from 'react-native';
-import mukokoTheme from '../theme';
+import { spacing } from '../constants/design-tokens';
 
 // Import logo assets
 const logoIconDark = require('../assets/mukoko-icon-dark.png');
@@ -32,20 +32,24 @@ export default function Logo({
   // Icon size implies no text
   const shouldShowText = size === 'icon' ? false : showText;
 
-  const { logoSize, fontSize, spacing } = sizes[size] || sizes.md;
+  const { logoSize, fontSize, spacing: logoSpacing } = sizes[size] || sizes.md;
 
   // Use theme prop if provided for backwards compatibility, otherwise use textStyle
   const effectiveStyle = theme || textStyle;
 
-  // textStyle: 'dark' = dark/black text (for light backgrounds) - use light icon (was swapped)
-  //            'light' = light/white text (for dark backgrounds) - use dark icon (was swapped)
-  const textColor = effectiveStyle === 'dark'
-    ? mukokoTheme.colors.onSurface
-    : mukokoTheme.colors.onPrimary;
+  // Logo text colors - pure black/white for maximum contrast
+  // textStyle: 'dark' = dark text (for light backgrounds)
+  //            'light' = light text (for dark backgrounds)
+  const LOGO_COLORS = {
+    dark: '#1a1a1a',  // Dark text on light backgrounds
+    light: '#FFFFFF',  // Light text on dark backgrounds
+  };
+
+  const textColor = LOGO_COLORS[effectiveStyle] || LOGO_COLORS.dark;
   const logoIcon = effectiveStyle === 'dark' ? logoIconLight : logoIconDark;
 
   return (
-    <View style={[styles.container, { gap: spacing }, style]}>
+    <View style={[styles.container, { gap: logoSpacing }, style]}>
       <Image
         source={logoIcon}
         style={{
@@ -71,6 +75,6 @@ const styles = StyleSheet.create({
   },
   logoText: {
     fontWeight: '700',
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
   },
 });

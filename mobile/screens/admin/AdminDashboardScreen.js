@@ -23,7 +23,7 @@ import AdminScreenWrapper from '../../components/AdminScreenWrapper';
  * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminDashboardScreen({ navigation }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const { user, isAdmin } = useAuth();
   const [stats, setStats] = useState(null);
   const [userStats, setUserStats] = useState(null);

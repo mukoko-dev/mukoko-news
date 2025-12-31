@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import mukokoTheme, { paperThemeDark } from '../theme';
+import { spacing } from '../constants/design-tokens';
 
 export default function AppFooter() {
   const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   },
   newsletterTitle: {
     fontSize: 18,
-    fontFamily: mukokoTheme.fonts.serif.fontFamily,
+    fontFamily: 'NotoSerif-Regular',
     marginBottom: 16,
     letterSpacing: 0.5,
   },
@@ -238,7 +238,7 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 8,
     paddingHorizontal: 16,
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
   signUpButton: {
     height: 48,
@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
   },
   signUpButtonText: {
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
     letterSpacing: 1,
   },
 
@@ -280,13 +280,13 @@ const styles = StyleSheet.create({
   },
   brandName: {
     fontSize: 20,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
     letterSpacing: 2,
     marginBottom: 4,
   },
   tagline: {
     fontSize: 12,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
     letterSpacing: 0.5,
   },
 
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   },
   navLinkText: {
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
     letterSpacing: 1.5,
   },
 
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
   },
   copyright: {
     fontSize: 12,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
     letterSpacing: 0.3,
   },
 });
