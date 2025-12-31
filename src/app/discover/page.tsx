@@ -7,7 +7,7 @@ import { Search, ArrowRight, Loader2, Newspaper } from "lucide-react";
 import { ArticleCard } from "@/components/article-card";
 import { api, type Article, type Category } from "@/lib/api";
 
-// Pan-African countries with flags and colors
+// Pan-African countries with flags and colors (matches database rss_sources)
 const COUNTRIES = [
   { code: "ZW", name: "Zimbabwe", flag: "🇿🇼", color: "bg-green-600" },
   { code: "ZA", name: "South Africa", flag: "🇿🇦", color: "bg-yellow-500" },
@@ -21,6 +21,10 @@ const COUNTRIES = [
   { code: "BW", name: "Botswana", flag: "🇧🇼", color: "bg-sky-400" },
   { code: "ZM", name: "Zambia", flag: "🇿🇲", color: "bg-orange-500" },
   { code: "MW", name: "Malawi", flag: "🇲🇼", color: "bg-red-500" },
+  { code: "EG", name: "Egypt", flag: "🇪🇬", color: "bg-red-700" },
+  { code: "MA", name: "Morocco", flag: "🇲🇦", color: "bg-red-600" },
+  { code: "NA", name: "Namibia", flag: "🇳🇦", color: "bg-blue-600" },
+  { code: "MZ", name: "Mozambique", flag: "🇲🇿", color: "bg-yellow-500" },
 ];
 
 // Category emoji and color mapping
@@ -71,32 +75,48 @@ export default function DiscoverPage() {
   const activeCountry = searchParams.get("country");
   const activeSource = searchParams.get("source");
 
+  // Fetch articles with server-side filtering when filters change
   useEffect(() => {
-    async function fetchData() {
+    async function fetchArticles() {
+      setLoading(true);
       try {
-        const [articlesRes, categoriesRes, sourcesRes, keywordsRes] = await Promise.all([
-          api.getArticles({ limit: 50 }),
-          api.getCategories(),
-          api.getSources(),
-          api.getKeywords(32),
-        ]);
+        // Use server-side filtering for category and country
+        const articlesRes = await api.getArticles({
+          limit: 50,
+          category: activeCategory || undefined,
+          country: activeCountry || undefined,
+        });
         setArticles(articlesRes.articles || []);
-        setCategories(categoriesRes.categories?.filter(c => c.id !== "all") || []);
-        setSources(sourcesRes.sources || []);
-        setKeywords(keywordsRes.keywords || []);
       } catch (error) {
-        console.error("Failed to fetch data:", error);
+        console.error("Failed to fetch articles:", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchData();
+    fetchArticles();
+  }, [activeCategory, activeCountry]);
+
+  // Fetch categories, sources, keywords on initial load
+  useEffect(() => {
+    async function fetchMetadata() {
+      try {
+        const [categoriesRes, sourcesRes, keywordsRes] = await Promise.all([
+          api.getCategories(),
+          api.getSources(),
+          api.getKeywords(32),
+        ]);
+        setCategories(categoriesRes.categories?.filter(c => c.id !== "all") || []);
+        setSources(sourcesRes.sources || []);
+        setKeywords(keywordsRes.keywords || []);
+      } catch (error) {
+        console.error("Failed to fetch metadata:", error);
+      }
+    }
+    fetchMetadata();
   }, []);
 
-  // Filter articles based on URL params
+  // Client-side filter for source and search (server doesn't support these yet)
   const filteredArticles = articles.filter((a) => {
-    if (activeCategory && (a.category_id || a.category) !== activeCategory) return false;
-    if (activeCountry && (a.country_id || a.country) !== activeCountry) return false;
     if (activeSource && a.source !== activeSource) return false;
     if (searchQuery) {
       const query = searchQuery.toLowerCase();

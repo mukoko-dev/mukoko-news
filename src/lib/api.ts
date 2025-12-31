@@ -82,11 +82,13 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
 export const api = {
   // Articles (uses /api/feeds endpoint)
-  getArticles: (params?: { limit?: number; page?: number; category?: string }) => {
+  getArticles: (params?: { limit?: number; page?: number; category?: string; country?: string; countries?: string[] }) => {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.page) searchParams.set('page', String(params.page));
     if (params?.category) searchParams.set('category', params.category);
+    if (params?.country) searchParams.set('countries', params.country);
+    if (params?.countries) searchParams.set('countries', params.countries.join(','));
 
     const query = searchParams.toString();
     return fetchAPI<ArticlesResponse>(`/api/feeds${query ? `?${query}` : ''}`);
