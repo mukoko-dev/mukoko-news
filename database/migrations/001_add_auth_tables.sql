@@ -1,10 +1,10 @@
 -- Migration: Add Authentication and User Management Tables
--- Replaces Supabase with Cloudflare OpenAuth implementation
--- Database: hararemetro_db
+-- Uses Cloudflare D1 with custom auth implementation
+-- Database: mukoko_news_db
 
 -- ===== AUTHENTICATION TABLES =====
 
--- Users table (replaces Supabase auth.users)
+-- Users table (custom auth with D1)
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY NOT NULL DEFAULT (lower(hex(randomblob(16)))),
     email TEXT UNIQUE NOT NULL,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS user_sessions (
 
 -- ===== USER INTERACTION TABLES =====
 
--- User bookmarks (replaces Supabase bookmarks)
+-- User bookmarks
 CREATE TABLE IF NOT EXISTS user_bookmarks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS user_bookmarks (
     UNIQUE(user_id, article_id)
 );
 
--- User likes (replaces Supabase likes)
+-- User likes
 CREATE TABLE IF NOT EXISTS user_likes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS user_likes (
     UNIQUE(user_id, article_id)
 );
 
--- Reading history (replaces Supabase reading_history)
+-- Reading history
 CREATE TABLE IF NOT EXISTS user_reading_history (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

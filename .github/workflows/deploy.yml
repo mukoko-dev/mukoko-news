@@ -1,4 +1,4 @@
-name: Deploy Mukoko News Backend
+name: Deploy Mukoko News
 
 on:
   push:
@@ -12,6 +12,32 @@ permissions:
   pull-requests: read
 
 jobs:
+  test-frontend:
+    runs-on: ubuntu-latest
+    name: Test Frontend (Next.js)
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Type check
+      run: npm run typecheck
+
+    - name: Lint
+      run: npm run lint
+
+    - name: Build Next.js
+      run: npm run build
+
   test-backend:
     runs-on: ubuntu-latest
     name: Test Backend
@@ -47,40 +73,10 @@ jobs:
         cd backend
         npm run test:build
 
-  test-mobile:
-    runs-on: ubuntu-latest
-    name: Test Mobile App
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Setup Node.js for mobile
-      uses: actions/setup-node@v4
-      with:
-        node-version: '20'
-        cache: 'npm'
-        cache-dependency-path: 'mobile/package-lock.json'
-
-    - name: Install mobile dependencies
-      run: |
-        cd mobile
-        npm install --legacy-peer-deps
-
-    - name: Run mobile unit tests
-      run: |
-        cd mobile
-        npm run test -- --passWithNoTests
-
-    - name: Test mobile build
-      run: |
-        cd mobile
-        npm run build
-
   deploy-backend:
     runs-on: ubuntu-latest
     name: Deploy Backend
-    needs: [test-backend, test-mobile]
+    needs: [test-frontend, test-backend]
     if: github.ref == 'refs/heads/main'
 
     steps:
@@ -127,7 +123,6 @@ jobs:
     - name: Test backend health
       run: |
         echo "Testing backend health..."
-        # Retry logic to handle Cloudflare bot protection and propagation delays
         max_retries=3
         retry_count=0
         while [ $retry_count -lt $max_retries ]; do
@@ -137,18 +132,17 @@ jobs:
             https://mukoko-news-backend.nyuchi.workers.dev/api/health)
 
           if [ $response -eq 200 ]; then
-            echo "✅ Backend is healthy!"
+            echo "Backend is healthy!"
             exit 0
           fi
 
           retry_count=$((retry_count + 1))
           if [ $retry_count -lt $max_retries ]; then
-            echo "⏳ Attempt $retry_count failed (HTTP $response), retrying in 10s..."
+            echo "Attempt $retry_count failed (HTTP $response), retrying in 10s..."
             sleep 10
           fi
         done
 
-        echo "❌ Backend health check failed after $max_retries attempts (HTTP $response)"
-        echo "⚠️ This may be due to Cloudflare bot protection. Check Cloudflare dashboard."
-        # Don't fail the build - health check is informational
+        echo "Backend health check failed after $max_retries attempts (HTTP $response)"
+        echo "This may be due to Cloudflare bot protection. Check Cloudflare dashboard."
         exit 0

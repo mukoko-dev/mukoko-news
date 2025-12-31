@@ -1,20 +1,19 @@
 -- ============================================================================
--- HARARE METRO - CONSOLIDATED DATABASE SCHEMA
+-- MUKOKO NEWS - CONSOLIDATED DATABASE SCHEMA
 -- ============================================================================
--- Single D1 Database: hararemetro_articles
+-- Single D1 Database: mukoko_news_db
 -- Complete schema for news platform with authentication, content, and analytics
 -- Consolidates all migrations into one comprehensive schema
 --
--- Purpose: Replace Supabase with full Cloudflare D1 stack
--- Platform: Harare Metro (www.hararemetro.co.zw + admin.hararemetro.co.zw)
--- Mobile App: Mukoko News (news.mukoko.com)
+-- Platform: Mukoko News (news.mukoko.com)
+-- Backend: Cloudflare Workers + D1 + Durable Objects
 -- ============================================================================
 
 -- ============================================================================
 -- USERS & AUTHENTICATION
 -- ============================================================================
 
--- Users table (replaces Supabase auth.users)
+-- Users table (custom auth with D1)
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY NOT NULL DEFAULT (lower(hex(randomblob(16)))),
     email TEXT UNIQUE NOT NULL,

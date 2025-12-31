@@ -9,32 +9,43 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-const SITE_URL = 'https://www.hararemetro.co.zw'
-const BACKEND_API_URL = process.env.BACKEND_API_URL || 'https://admin.hararemetro.co.zw'
+const SITE_URL = 'https://news.mukoko.com'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://mukoko-news-backend.nyuchi.workers.dev'
+
+// Static pages
+const STATIC_PAGES = [
+  { path: '/', priority: 1.0, changefreq: 'hourly' },
+  { path: '/discover', priority: 0.9, changefreq: 'hourly' },
+  { path: '/newsbytes', priority: 0.9, changefreq: 'hourly' },
+  { path: '/categories', priority: 0.8, changefreq: 'daily' },
+  { path: '/insights', priority: 0.8, changefreq: 'daily' },
+  { path: '/search', priority: 0.7, changefreq: 'daily' },
+  { path: '/help', priority: 0.5, changefreq: 'weekly' },
+  { path: '/terms', priority: 0.3, changefreq: 'monthly' },
+  { path: '/privacy', priority: 0.3, changefreq: 'monthly' },
+]
 
 // Fetch categories from API
 async function fetchCategories() {
   try {
-    console.log('Fetching categories from D1 database via API...')
-    const response = await fetch(`${BACKEND_API_URL}/api/categories`)
-    
+    console.log('Fetching categories from API...')
+    const response = await fetch(`${API_URL}/api/categories`)
+
     if (!response.ok) {
       throw new Error(`API returned ${response.status}: ${response.statusText}`)
     }
-    
+
     const data = await response.json()
-    console.log(`✅ Fetched ${data.categories.length} categories from D1 database`)
-    
-    return data.categories.filter(cat => cat.enabled).map(cat => cat.id)
+    console.log(`✅ Fetched ${data.categories.length} categories`)
+
+    return data.categories.map(cat => cat.slug || cat.id)
   } catch (error) {
     console.warn('⚠️  Failed to fetch categories from API:', error.message)
     console.log('Using fallback categories...')
-    
-    // Fallback categories if API is unavailable
+
     return [
-      'all', 'politics', 'economy', 'technology', 'sports', 'health',
-      'education', 'entertainment', 'international', 'general', 'harare',
-      'agriculture', 'crime', 'environment'
+      'politics', 'business', 'sports', 'entertainment', 'technology',
+      'health', 'education', 'world', 'local', 'opinion'
     ]
   }
 }
@@ -42,58 +53,42 @@ async function fetchCategories() {
 async function generateSitemap() {
   const categories = await fetchCategories()
   const today = new Date().toISOString().split('T')[0]
-  
+
   let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
-  <!-- Main page -->
-  <url>
-    <loc>${SITE_URL}/</loc>
+  <!-- Static pages -->
+${STATIC_PAGES.map(page => `  <url>
+    <loc>${SITE_URL}${page.path}</loc>
     <lastmod>${today}</lastmod>
-    <changefreq>hourly</changefreq>
-    <priority>1.0</priority>
-  </url>
-  
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+  </url>`).join('\n')}
+
   <!-- Category pages -->
 ${categories.map(category => `  <url>
-    <loc>${SITE_URL}/?category=${category}</loc>
+    <loc>${SITE_URL}/discover?category=${category}</loc>
     <lastmod>${today}</lastmod>
     <changefreq>hourly</changefreq>
-    <priority>0.9</priority>
+    <priority>0.8</priority>
   </url>`).join('\n')}
-  
-  <!-- API Documentation -->
-  <url>
-    <loc>${SITE_URL}/api/schema</loc>
-    <lastmod>${today}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.5</priority>
-  </url>
 </urlset>`
 
-  // Write sitemap to both public and build directories
+  // Write sitemap to public directory
   const publicDir = path.join(__dirname, '..', 'public')
-  const buildDir = path.join(__dirname, '..', 'build', 'client')
   const sitemapPath = path.join(publicDir, 'sitemap.xml')
-  const buildSitemapPath = path.join(buildDir, 'sitemap.xml')
-  
+
   fs.writeFileSync(sitemapPath, sitemap, 'utf-8')
   console.log(`✅ Sitemap generated at: ${sitemapPath}`)
-  
-  // Also write to build directory if it exists
-  if (fs.existsSync(buildDir)) {
-    fs.writeFileSync(buildSitemapPath, sitemap, 'utf-8')
-    console.log(`✅ Sitemap also generated at: ${buildSitemapPath}`)
-  }
-  
-  // Also generate robots.txt
-  const robotsTxt = `# Harare Metro Robots.txt
-# https://www.hararemetro.co.zw
+
+  // Generate robots.txt
+  const robotsTxt = `# Mukoko News Robots.txt
+# https://news.mukoko.com
 
 User-agent: *
 Allow: /
+Disallow: /admin/
 Disallow: /api/
-Allow: /api/schema
 
 # Sitemaps
 Sitemap: ${SITE_URL}/sitemap.xml
@@ -101,22 +96,12 @@ Sitemap: ${SITE_URL}/sitemap.xml
 # Crawl-delay
 Crawl-delay: 1
 
-# Zimbabwe news aggregator - optimized for search engines
-# Categories: politics, economy, business, sports, harare, agriculture, 
-# technology, health, education, entertainment, environment, crime, 
-# international, lifestyle, finance`
+# Pan-African news aggregator
+# Covering: Zimbabwe, South Africa, Kenya, Nigeria, Ghana, and more`
 
   const robotsPath = path.join(publicDir, 'robots.txt')
-  const buildRobotsPath = path.join(buildDir, 'robots.txt')
-  
   fs.writeFileSync(robotsPath, robotsTxt, 'utf-8')
   console.log(`✅ robots.txt generated at: ${robotsPath}`)
-  
-  // Also write robots.txt to build directory if it exists
-  if (fs.existsSync(buildDir)) {
-    fs.writeFileSync(buildRobotsPath, robotsTxt, 'utf-8')
-    console.log(`✅ robots.txt also generated at: ${buildRobotsPath}`)
-  }
 }
 
 // Run the generator

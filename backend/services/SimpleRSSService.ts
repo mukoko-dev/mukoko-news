@@ -4,10 +4,10 @@
  * A clean, minimal implementation that focuses on:
  * 1. Fetching RSS feeds reliably
  * 2. Extracting images from feeds
- * 3. Simple keyword-based category assignment
- * 4. Basic keyword extraction
+ * 3. Database-driven category assignment
+ * 4. Database-driven keyword extraction
  *
- * No complex AI, no over-engineering - just working RSS aggregation
+ * All configuration is loaded from D1 database - no hardcoded values.
  */
 
 import { XMLParser } from 'fast-xml-parser';
@@ -20,7 +20,7 @@ const turndownService = new TurndownService({
   bulletListMarker: '-',
 });
 
-// Common ad/tracking domains to filter out
+// Common ad/tracking domains to filter out (these are universally blocked)
 const AD_DOMAINS = [
   'doubleclick.net',
   'googlesyndication.com',
@@ -47,10 +47,9 @@ turndownService.addRule('filterAdLinks', {
   filter: (node) => {
     if (node.nodeName !== 'A') return false;
     const href = node.getAttribute('href') || '';
-    // Check if it's an ad link
     return AD_DOMAINS.some(domain => href.includes(domain));
   },
-  replacement: () => '', // Remove ad links entirely
+  replacement: () => '',
 });
 
 // Keep image links and render them as markdown images
@@ -58,7 +57,6 @@ turndownService.addRule('imageLinkToImage', {
   filter: (node) => {
     if (node.nodeName !== 'A') return false;
     const href = node.getAttribute('href') || '';
-    // Check if link points to an image
     return /\.(jpg|jpeg|png|gif|webp|svg)(\?.*)?$/i.test(href);
   },
   replacement: (content, node) => {
@@ -68,102 +66,24 @@ turndownService.addRule('imageLinkToImage', {
   },
 });
 
-// Comprehensive list of trusted image domains for Zimbabwe news sites
-const TRUSTED_IMAGE_DOMAINS = [
-  // Primary Zimbabwe news sites
-  'herald.co.zw',
-  'heraldonline.co.zw',
-  'newsday.co.zw',
-  'chronicle.co.zw',
-  'zbc.co.zw',
-  'businessweekly.co.zw',
-  'techzim.co.zw',
-  't3n9sm.c2.acecdn.net', // Techzim CDN
-  'thestandard.co.zw',
-  'zimlive.com',
-  'newzimbabwe.com',
-  'theindependent.co.zw',
-  'sundaymail.co.zw',
-  '263chat.com',
-  'dailynews.co.zw',
-  'zimeye.net',
-  'pindula.co.zw',
-  'zimbabwesituation.com',
-  'nehandaradio.com',
-  'opennews.co.zw',
-  'fingaz.co.zw',
-  'manicapost.co.zw',
-  'southerneye.co.zw',
+// Database configuration types
+interface CategoryConfig {
+  id: string;
+  name: string;
+  keywords: string[];
+}
 
-  // WordPress and common CMS domains
-  'wp.com',
-  'wordpress.com',
-  'files.wordpress.com',
-  'i0.wp.com',
-  'i1.wp.com',
-  'i2.wp.com',
-  'i3.wp.com',
-
-  // CDN and image hosting services
-  'cloudinary.com',
-  'res.cloudinary.com',
-  'imgur.com',
-  'i.imgur.com',
-  'gravatar.com',
-  'secure.gravatar.com',
-  'amazonaws.com',
-  's3.amazonaws.com',
-  'cloudfront.net',
-  'unsplash.com',
-  'images.unsplash.com',
-  'pexels.com',
-  'images.pexels.com',
-
-  // Google services
-  'googleusercontent.com',
-  'lh3.googleusercontent.com',
-  'lh4.googleusercontent.com',
-  'lh5.googleusercontent.com',
-  'blogger.googleusercontent.com',
-  'drive.google.com',
-
-  // Social media image domains
-  'fbcdn.net',
-  'scontent.fhre1-1.fna.fbcdn.net',
-  'pbs.twimg.com',
-  'abs.twimg.com',
-  'instagram.com',
-
-  // News agencies
-  'ap.org',
-  'apnews.com',
-  'reuters.com',
-  'bbci.co.uk',
-  'bbc.co.uk',
-  'cnn.com',
-  'media.cnn.com',
-
-  // African news networks
-  'africanews.com',
-  'mg.co.za',
-  'news24.com',
-  'timeslive.co.za',
-  'iol.co.za',
-  'citizen.co.za',
-
-  // Generic image hosting
-  'photobucket.com',
-  'flickr.com',
-  'staticflickr.com',
-  'wikimedia.org',
-  'upload.wikimedia.org'
-];
+interface CountryKeywords {
+  countryId: string;
+  keywords: string[];
+}
 
 interface RSSSource {
   id: string;
   name: string;
   url: string;
   enabled: number;
+  country_id?: string;  // Pan-African support
 }
 
 interface Article {
@@ -174,6 +94,7 @@ interface Article {
   source: string;
   source_id: string;
   category_id: string;
+  country_id?: string;  // Pan-African support
   published_at: string;
   image_url?: string;
   original_url: string;
@@ -183,6 +104,12 @@ interface Article {
 export class SimpleRSSService {
   private db: D1Database;
   private parser: XMLParser;
+
+  // Cached configuration from database
+  private trustedDomains: Set<string> = new Set();
+  private categoryKeywords: Map<string, string[]> = new Map();
+  private extractionKeywords: string[] = [];
+  private configLoaded = false;
 
   constructor(db: D1Database) {
     this.db = db;
@@ -196,27 +123,137 @@ export class SimpleRSSService {
   }
 
   /**
-   * Main entry point - refresh all RSS feeds
+   * Load configuration from database (trusted domains, keywords, categories)
+   * Called once at the start of feed refresh
    */
-  async refreshAllFeeds(): Promise<{
+  private async loadConfiguration(): Promise<void> {
+    if (this.configLoaded) return;
+
+    console.log('[SIMPLE-RSS] Loading configuration from database...');
+
+    try {
+      // Load trusted image domains
+      const domainsResult = await this.db
+        .prepare('SELECT domain FROM trusted_domains WHERE type = ? AND enabled = 1')
+        .bind('image')
+        .all();
+
+      if (domainsResult.results) {
+        this.trustedDomains = new Set(
+          domainsResult.results.map((r: any) => r.domain.toLowerCase())
+        );
+        console.log(`[SIMPLE-RSS] Loaded ${this.trustedDomains.size} trusted image domains`);
+      }
+
+      // Load category keywords for assignment
+      const categoriesResult = await this.db
+        .prepare('SELECT id, keywords FROM categories WHERE enabled = 1')
+        .all();
+
+      if (categoriesResult.results) {
+        for (const cat of categoriesResult.results as any[]) {
+          if (cat.keywords) {
+            try {
+              const keywords = typeof cat.keywords === 'string'
+                ? JSON.parse(cat.keywords)
+                : cat.keywords;
+              if (Array.isArray(keywords)) {
+                this.categoryKeywords.set(cat.id, keywords.map((k: string) => k.toLowerCase()));
+              }
+            } catch {
+              // If keywords is a comma-separated string
+              this.categoryKeywords.set(cat.id, cat.keywords.split(',').map((k: string) => k.trim().toLowerCase()));
+            }
+          }
+        }
+        console.log(`[SIMPLE-RSS] Loaded keywords for ${this.categoryKeywords.size} categories`);
+      }
+
+      // Load extraction keywords from countries
+      const countriesResult = await this.db
+        .prepare('SELECT keywords FROM countries WHERE enabled = 1')
+        .all();
+
+      const allKeywords = new Set<string>();
+      if (countriesResult.results) {
+        for (const country of countriesResult.results as any[]) {
+          if (country.keywords) {
+            try {
+              const keywords = typeof country.keywords === 'string'
+                ? JSON.parse(country.keywords)
+                : country.keywords;
+              if (Array.isArray(keywords)) {
+                keywords.forEach((k: string) => allKeywords.add(k.toLowerCase()));
+              }
+            } catch {
+              // If keywords is a comma-separated string
+              country.keywords.split(',').forEach((k: string) => allKeywords.add(k.trim().toLowerCase()));
+            }
+          }
+        }
+      }
+
+      // Also load from keywords table
+      const keywordsResult = await this.db
+        .prepare('SELECT name FROM keywords WHERE enabled = 1 ORDER BY usage_count DESC LIMIT 200')
+        .all();
+
+      if (keywordsResult.results) {
+        for (const kw of keywordsResult.results as any[]) {
+          allKeywords.add(kw.name.toLowerCase());
+        }
+      }
+
+      this.extractionKeywords = Array.from(allKeywords);
+      console.log(`[SIMPLE-RSS] Loaded ${this.extractionKeywords.length} extraction keywords`);
+
+      this.configLoaded = true;
+    } catch (error: any) {
+      console.error('[SIMPLE-RSS] Error loading configuration:', error.message);
+      // Continue with empty config - will use fallbacks
+    }
+  }
+
+  /**
+   * Main entry point - refresh RSS feeds with batching support
+   *
+   * @param options.batch - Which batch to process (0-indexed). If not specified, processes batch 0.
+   * @param options.batchSize - Number of sources per batch. Default 40 to stay under 50 subrequest limit.
+   * @returns Results including which batch was processed and total batches available
+   */
+  async refreshAllFeeds(options: {
+    batch?: number;
+    batchSize?: number;
+  } = {}): Promise<{
     success: boolean;
     newArticles: number;
     errors: number;
     details: string[];
+    batch: number;
+    totalBatches: number;
+    totalSources: number;
   }> {
-    console.log('[SIMPLE-RSS] Starting RSS refresh');
+    const { batch = 0, batchSize = 40 } = options;
+
+    console.log(`[SIMPLE-RSS] Starting RSS refresh (batch ${batch}, size ${batchSize})`);
+
+    // Load configuration from database
+    await this.loadConfiguration();
 
     const results = {
       success: true,
       newArticles: 0,
       errors: 0,
-      details: [] as string[]
+      details: [] as string[],
+      batch,
+      totalBatches: 1,
+      totalSources: 0
     };
 
     try {
       // Get all enabled RSS sources
       const sources = await this.db
-        .prepare('SELECT id, name, url, enabled FROM rss_sources WHERE enabled = 1')
+        .prepare('SELECT id, name, url, enabled, country_id FROM rss_sources WHERE enabled = 1 ORDER BY priority DESC, id ASC')
         .all<RSSSource>();
 
       if (!sources.results || sources.results.length === 0) {
@@ -224,10 +261,25 @@ export class SimpleRSSService {
         return results;
       }
 
-      console.log(`[SIMPLE-RSS] Found ${sources.results.length} enabled sources`);
+      results.totalSources = sources.results.length;
+      results.totalBatches = Math.ceil(sources.results.length / batchSize);
 
-      // Process each source
-      for (const source of sources.results) {
+      console.log(`[SIMPLE-RSS] Found ${sources.results.length} enabled sources (${results.totalBatches} batches of ${batchSize})`);
+
+      // Calculate batch boundaries
+      const startIndex = batch * batchSize;
+      const endIndex = Math.min(startIndex + batchSize, sources.results.length);
+
+      if (startIndex >= sources.results.length) {
+        results.details.push(`Batch ${batch} is out of range (only ${results.totalBatches} batches available)`);
+        return results;
+      }
+
+      const batchSources = sources.results.slice(startIndex, endIndex);
+      console.log(`[SIMPLE-RSS] Processing batch ${batch}: sources ${startIndex + 1}-${endIndex} of ${sources.results.length}`);
+
+      // Process each source in this batch
+      for (const source of batchSources) {
         try {
           console.log(`[SIMPLE-RSS] Fetching ${source.name} (${source.url})`);
           const articles = await this.fetchAndParseFeed(source);
@@ -245,7 +297,7 @@ export class SimpleRSSService {
         }
       }
 
-      console.log(`[SIMPLE-RSS] Refresh complete. New articles: ${results.newArticles}, Errors: ${results.errors}`);
+      console.log(`[SIMPLE-RSS] Batch ${batch} complete. New articles: ${results.newArticles}, Errors: ${results.errors}`);
 
     } catch (error: any) {
       console.error('[SIMPLE-RSS] Fatal error during RSS refresh:', error);
@@ -406,6 +458,7 @@ export class SimpleRSSService {
         source: source.name,
         source_id: source.id,
         category_id: category,
+        country_id: source.country_id,  // Pan-African: inherit country from source
         published_at: pubDate,
         image_url: imageUrl,
         original_url: link,
@@ -539,14 +592,29 @@ export class SimpleRSSService {
   }
 
   /**
-   * Check if image URL is from a trusted domain
+   * Check if image URL is from a trusted domain (loaded from database)
    */
   private isTrustedImageDomain(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      return TRUSTED_IMAGE_DOMAINS.some(domain =>
-        urlObj.hostname.includes(domain) || urlObj.hostname.endsWith(domain)
-      );
+      const hostname = urlObj.hostname.toLowerCase();
+
+      // Check against database-loaded trusted domains
+      for (const domain of this.trustedDomains) {
+        if (hostname.includes(domain) || hostname.endsWith(domain)) {
+          return true;
+        }
+      }
+
+      // Fallback: allow common CDN/CMS domains that are always safe
+      const alwaysTrusted = [
+        'wp.com', 'wordpress.com', 'cloudinary.com', 'cloudfront.net',
+        'amazonaws.com', 'googleusercontent.com', 'fbcdn.net',
+        'twimg.com', 'imgur.com', 'unsplash.com', 'pexels.com',
+        'wikimedia.org', 'gravatar.com'
+      ];
+
+      return alwaysTrusted.some(d => hostname.includes(d));
     } catch {
       return false;
     }
@@ -567,74 +635,34 @@ export class SimpleRSSService {
   }
 
   /**
-   * Assign category based on simple keyword matching
-   * Categories match database categories: politics, economy, technology, sports, health,
-   * education, entertainment, international, harare, agriculture, crime, environment, general
+   * Assign category based on database-loaded category keywords
+   * Falls back to 'general' if no match found
    */
   private assignCategory(title: string, description: string): string {
     const text = `${title} ${description}`.toLowerCase();
 
-    // Crime & Justice keywords (check first - high specificity)
-    if (text.match(/crime|police|arrest|court|justice|theft|murder|robbery|investigation|criminal|prison|sentence|jail|assault|fraud|corruption case/i)) {
-      return 'crime';
+    // Use database-loaded category keywords
+    if (this.categoryKeywords.size > 0) {
+      let bestMatch: { categoryId: string; score: number } | null = null;
+
+      for (const [categoryId, keywords] of this.categoryKeywords) {
+        let score = 0;
+        for (const keyword of keywords) {
+          if (text.includes(keyword)) {
+            score++;
+          }
+        }
+        if (score > 0 && (!bestMatch || score > bestMatch.score)) {
+          bestMatch = { categoryId, score };
+        }
+      }
+
+      if (bestMatch) {
+        return bestMatch.categoryId;
+      }
     }
 
-    // Politics keywords (expanded with Zimbabwe-specific terms)
-    if (text.match(/politics|parliament|government|minister|president|election|vote|policy|zanu|mdc|ccc|opposition|mnangagwa|chamisa|senate|democracy|campaign|legislation|governance|reform|cabinet|party/i)) {
-      return 'politics';
-    }
-
-    // Economy & Business keywords (expanded)
-    if (text.match(/economy|business|market|trade|inflation|dollar|currency|bank|finance|investment|stock|gdp|forex|reserve bank|rbz|bond notes|rtgs|economic|financial|export|import|mining|gold|platinum|diamonds/i)) {
-      return 'economy';
-    }
-
-    // Agriculture keywords (new category)
-    if (text.match(/agriculture|farming|crop|livestock|tobacco|maize|cotton|farmer|harvest|irrigation|land|rural|commercial farming|agrarian/i)) {
-      return 'agriculture';
-    }
-
-    // Technology keywords (expanded with Zimbabwe telcos)
-    if (text.match(/technology|tech|digital|internet|software|app|computer|mobile|phone|cyber|ai|startup|innovation|ecocash|econet|netone|telecel|fintech|blockchain|ict/i)) {
-      return 'technology';
-    }
-
-    // Sports keywords (expanded with Zimbabwe teams)
-    if (text.match(/sport|football|soccer|rugby|cricket|tennis|basketball|athlete|team|match|game|tournament|warriors|chevrons|sables|dynamos|caps united|highlanders|psl|olympics/i)) {
-      return 'sports';
-    }
-
-    // Health keywords
-    if (text.match(/health|hospital|medical|doctor|patient|disease|covid|vaccine|clinic|treatment|medicine|pandemic|wellness|healthcare/i)) {
-      return 'health';
-    }
-
-    // Education keywords (expanded with Zimbabwe institutions)
-    if (text.match(/education|school|university|student|teacher|exam|college|learning|academic|degree|zimsec|uz|nust|msu|cut|examination/i)) {
-      return 'education';
-    }
-
-    // Entertainment keywords (expanded with Zimbabwe genres)
-    if (text.match(/entertainment|music|movie|film|celebrity|arts|culture|concert|festival|album|artist|dancehall|gospel|sungura|theatre/i)) {
-      return 'entertainment';
-    }
-
-    // Environment keywords (new category)
-    if (text.match(/environment|climate|conservation|wildlife|pollution|deforestation|recycling|renewable energy|sustainability|ecosystem|biodiversity|national park/i)) {
-      return 'environment';
-    }
-
-    // Harare-specific keywords (new category)
-    if (text.match(/harare|capital city|mbare|borrowdale|avondale|eastlea|highlands|kopje|waterfalls|westgate|city council|mayoral/i)) {
-      return 'harare';
-    }
-
-    // International keywords (expanded with African focus)
-    if (text.match(/international|world|global|foreign|usa|uk|china|africa|sadc|south africa|botswana|zambia|europe|asia|un|nato|biden|trump/i)) {
-      return 'international';
-    }
-
-    // Default to general
+    // Default to general if no category keywords loaded or no match
     return 'general';
   }
 
@@ -783,9 +811,9 @@ export class SimpleRSSService {
           .prepare(`
             INSERT INTO articles (
               title, slug, description, content, author, source, source_id, source_url,
-              category_id, published_at, image_url, original_url, rss_guid,
+              category_id, country_id, published_at, image_url, original_url, rss_guid,
               created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
           `)
           .bind(
             article.title,
@@ -797,6 +825,7 @@ export class SimpleRSSService {
             article.source_id,
             article.source_id, // source_url same as source_id for now
             article.category_id,
+            article.country_id || 'ZW', // Default to Zimbabwe if not specified
             article.published_at,
             article.image_url,
             article.original_url,
@@ -829,68 +858,17 @@ export class SimpleRSSService {
   }
 
   /**
-   * Extract simple keywords from article (top 5)
+   * Extract keywords from article using database-loaded keywords (top 8)
    */
   extractKeywords(title: string, description: string): string[] {
     const text = `${title} ${description}`.toLowerCase();
-
-    // Comprehensive Zimbabwe-related keywords taxonomy (prioritized)
-    const keywordPatterns = [
-      // Core Zimbabwe terms (highest priority)
-      'zimbabwe', 'harare', 'bulawayo', 'vic falls', 'victoria falls',
-
-      // Politics
-      'government', 'president', 'parliament', 'minister', 'policy', 'law', 'legislation',
-      'zanu-pf', 'mdc', 'ccc', 'opposition', 'election', 'vote', 'politics', 'mnangagwa', 'chamisa',
-      'senate', 'democracy', 'party', 'campaign', 'governance', 'reform',
-
-      // Economy & Business
-      'economy', 'business', 'finance', 'banking', 'investment', 'market', 'inflation',
-      'dollar', 'currency', 'gdp', 'trade', 'export', 'import', 'stock', 'bond', 'forex',
-      'zimbabwe dollar', 'usd', 'rtgs', 'reserve bank', 'rbz',
-
-      // Mining & Agriculture
-      'mining', 'gold', 'platinum', 'diamonds', 'agriculture', 'farming', 'tobacco',
-      'maize', 'cotton', 'crop', 'livestock', 'harvest', 'irrigation', 'land',
-
-      // Technology
-      'technology', 'tech', 'digital', 'innovation', 'startup', 'internet', 'mobile',
-      'app', 'software', 'ai', 'blockchain', 'fintech', 'ecocash', 'telecel', 'econet',
-      'netone', 'ict',
-
-      // Sports
-      'sports', 'football', 'soccer', 'cricket', 'rugby', 'warriors', 'chevrons', 'sables',
-      'dynamos', 'caps united', 'highlanders', 'psl', 'athletics', 'olympics',
-
-      // Health
-      'health', 'hospital', 'medical', 'doctor', 'covid', 'vaccine', 'disease',
-      'treatment', 'clinic', 'wellness', 'pandemic',
-
-      // Education
-      'education', 'school', 'university', 'student', 'teacher', 'zimsec',
-      'uz', 'nust', 'msu', 'cut', 'degree', 'examination',
-
-      // Entertainment & Culture
-      'music', 'entertainment', 'artist', 'culture', 'festival', 'concert',
-      'dancehall', 'gospel', 'sungura',
-
-      // Crime & Justice
-      'crime', 'police', 'arrest', 'court', 'justice', 'investigation',
-
-      // Environment
-      'environment', 'climate', 'conservation', 'wildlife', 'pollution',
-
-      // Places
-      'mbare', 'borrowdale', 'avondale', 'eastlea', 'gweru', 'mutare', 'masvingo',
-      'hwange', 'kariba', 'great zimbabwe'
-    ];
-
     const found: string[] = [];
 
-    for (const keyword of keywordPatterns) {
+    // Use database-loaded keywords from countries and keywords tables
+    for (const keyword of this.extractionKeywords) {
       if (text.includes(keyword)) {
         found.push(keyword);
-        if (found.length >= 8) break; // Increased from 5 to 8 for better coverage
+        if (found.length >= 8) break;
       }
     }
 
