@@ -57,6 +57,7 @@ type Bindings = {
   AI: Ai;
   VECTORIZE_INDEX: VectorizeIndex;
   IMAGES?: ImagesBinding;
+  STORAGE?: R2Bucket; // R2 object storage for feeds, backups, uploads
   NODE_ENV: string;
   LOG_LEVEL: string;
   ROLES_ENABLED: string;
@@ -85,6 +86,7 @@ app.use("*", cors({
     'https://mukoko-news.vercel.app',
     'http://localhost:5173',
     'http://localhost:3000',
+    'http://localhost:3001',
     'http://localhost:8081',
     'http://localhost:19006',
   ],
@@ -1263,39 +1265,48 @@ app.post("/api/admin/backfill-keywords", async (c) => {
 
 // ===== BULK PULL ENDPOINTS FOR INITIAL SETUP AND TESTING =====
 
-// Initial bulk pull with enhanced field testing
+// Initial bulk pull with batching support
+// Batching prevents "Too many subrequests" errors by processing sources in groups
+// Usage: POST /api/admin/bulk-pull { "batch": 0, "batchSize": 40 }
 // TODO: Add authentication back when OpenAuthService is fixed
 app.post("/api/admin/bulk-pull", async (c) => {
   try {
     const body = await c.req.json().catch(() => ({}));
+    const batch = typeof body.batch === 'number' ? body.batch : 0;
+    const batchSize = typeof body.batchSize === 'number' ? body.batchSize : 40;
 
-    console.log(`Starting BULK PULL using SimpleRSSService...`);
+    console.log(`Starting BULK PULL using SimpleRSSService (batch ${batch}, size ${batchSize})...`);
 
-    // Use SimpleRSSService for bulk pull (same as regular refresh)
+    // Use SimpleRSSService for bulk pull with batching
     const rssService = new SimpleRSSService(c.env.DB);
-    const results = await rssService.refreshAllFeeds();
+    const results = await rssService.refreshAllFeeds({ batch, batchSize });
 
     // Track the bulk pull event for analytics
     const services = initializeServices(c.env);
     await services.analyticsService.trackEvent('initial_bulk_pull', {
+      batch: results.batch,
+      total_batches: results.totalBatches,
       new_articles: results.newArticles,
-      errors: results.errors,
-      details: results.details
+      errors: results.errors
     });
 
     return c.json({
       success: results.success,
-      message: `Bulk pull completed: ${results.newArticles} new articles`,
+      message: `Batch ${results.batch + 1}/${results.totalBatches} completed: ${results.newArticles} new articles`,
+      batch: results.batch,
+      totalBatches: results.totalBatches,
+      totalSources: results.totalSources,
       newArticles: results.newArticles,
       errors: results.errors,
       details: results.details,
+      nextBatch: results.batch + 1 < results.totalBatches ? results.batch + 1 : null,
       timestamp: new Date().toISOString()
     });
-    
-  } catch (error) {
+
+  } catch (error: any) {
     console.error("Error in bulk pull:", error);
-    return c.json({ 
-      success: false, 
+    return c.json({
+      success: false,
       error: error.message,
       timestamp: new Date().toISOString()
     }, 500);
@@ -1329,6 +1340,46 @@ app.post("/api/admin/add-zimbabwe-sources", async (c) => {
 
   } catch (error) {
     console.error("Error adding Zimbabwe sources:", error);
+    return c.json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    }, 500);
+  }
+});
+
+// Migrate existing articles to set country_id from their source
+app.post("/api/admin/migrate-article-countries", async (c) => {
+  try {
+    // Update articles to inherit country_id from their rss_source
+    const result = await c.env.DB.prepare(`
+      UPDATE articles
+      SET country_id = (
+        SELECT rs.country_id
+        FROM rss_sources rs
+        WHERE rs.id = articles.source_id OR rs.name = articles.source
+      )
+      WHERE country_id IS NULL OR country_id = ''
+    `).run();
+
+    // Count how many were updated
+    const countResult = await c.env.DB.prepare(`
+      SELECT
+        COUNT(*) as total,
+        COUNT(CASE WHEN country_id IS NOT NULL AND country_id != '' THEN 1 END) as with_country,
+        COUNT(CASE WHEN country_id IS NULL OR country_id = '' THEN 1 END) as without_country
+      FROM articles
+    `).first() as { total: number; with_country: number; without_country: number };
+
+    return c.json({
+      success: true,
+      message: `Migration complete`,
+      changes: result.meta.changes,
+      stats: countResult,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error("Error migrating article countries:", error);
     return c.json({
       success: false,
       error: error.message,
@@ -1511,6 +1562,225 @@ app.get("/api/admin/sources", async (c) => {
   } catch (error) {
     console.error("Error fetching sources:", error);
     return c.json({ error: "Failed to fetch sources" }, 500);
+  }
+});
+
+// Get single source with its domains
+app.get("/api/admin/sources/:id", async (c) => {
+  try {
+    const sourceId = c.req.param("id");
+    const services = initializeServices(c.env);
+
+    // Get the source
+    const source = await services.newsSourceService.getSourceById(sourceId);
+    if (!source) {
+      return c.json({ error: "Source not found" }, 404);
+    }
+
+    // Get domains associated with this source
+    const domainsResult = await c.env.DB.prepare(`
+      SELECT id, domain, type, description, enabled, created_at
+      FROM trusted_domains
+      WHERE source_id = ?
+      ORDER BY domain ASC
+    `).bind(sourceId).all();
+
+    // Get article count
+    const articleCount = await services.d1Service.getArticleCount({ source_id: sourceId });
+
+    return c.json({
+      source: {
+        ...source,
+        articles: articleCount,
+        domains: domainsResult.results || []
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching source:", error);
+    return c.json({ error: "Failed to fetch source" }, 500);
+  }
+});
+
+// Get all domains for a specific source
+app.get("/api/admin/sources/:id/domains", async (c) => {
+  try {
+    const sourceId = c.req.param("id");
+
+    const result = await c.env.DB.prepare(`
+      SELECT id, domain, type, description, enabled, created_at
+      FROM trusted_domains
+      WHERE source_id = ?
+      ORDER BY domain ASC
+    `).bind(sourceId).all();
+
+    return c.json({ domains: result.results || [] });
+  } catch (error) {
+    console.error("Error fetching source domains:", error);
+    return c.json({ error: "Failed to fetch source domains" }, 500);
+  }
+});
+
+// Add a domain to a source
+app.post("/api/admin/sources/:id/domains", async (c) => {
+  try {
+    const sourceId = c.req.param("id");
+    const { domain, type = 'image', description } = await c.req.json();
+
+    if (!domain) {
+      return c.json({ error: "Domain is required" }, 400);
+    }
+
+    // Normalize domain (remove protocol, trailing slashes)
+    const normalizedDomain = domain.toLowerCase()
+      .replace(/^https?:\/\//, '')
+      .replace(/\/$/, '');
+
+    // Insert or update the domain
+    await c.env.DB.prepare(`
+      INSERT INTO trusted_domains (domain, type, source_id, description, enabled)
+      VALUES (?, ?, ?, ?, 1)
+      ON CONFLICT(domain) DO UPDATE SET
+        source_id = excluded.source_id,
+        type = excluded.type,
+        description = COALESCE(excluded.description, description)
+    `).bind(normalizedDomain, type, sourceId, description || null).run();
+
+    // Get the inserted/updated domain
+    const result = await c.env.DB.prepare(`
+      SELECT id, domain, type, source_id, description, enabled, created_at
+      FROM trusted_domains
+      WHERE domain = ?
+    `).bind(normalizedDomain).first();
+
+    return c.json({ domain: result, message: "Domain added successfully" });
+  } catch (error) {
+    console.error("Error adding domain:", error);
+    return c.json({ error: "Failed to add domain" }, 500);
+  }
+});
+
+// Get all trusted domains (with optional filtering)
+app.get("/api/admin/domains", async (c) => {
+  try {
+    const sourceId = c.req.query("source_id");
+    const type = c.req.query("type");
+    const search = c.req.query("search");
+
+    let query = `
+      SELECT td.id, td.domain, td.type, td.source_id, td.description, td.enabled, td.created_at,
+             ns.name as source_name
+      FROM trusted_domains td
+      LEFT JOIN news_sources ns ON td.source_id = ns.id
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+
+    if (sourceId) {
+      query += ` AND td.source_id = ?`;
+      params.push(sourceId);
+    }
+
+    if (type) {
+      query += ` AND td.type = ?`;
+      params.push(type);
+    }
+
+    if (search) {
+      query += ` AND (td.domain LIKE ? OR td.description LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    query += ` ORDER BY td.domain ASC LIMIT 500`;
+
+    const result = await c.env.DB.prepare(query).bind(...params).all();
+
+    // Get summary counts
+    const countsResult = await c.env.DB.prepare(`
+      SELECT
+        COUNT(*) as total,
+        SUM(CASE WHEN source_id IS NOT NULL THEN 1 ELSE 0 END) as linked,
+        SUM(CASE WHEN source_id IS NULL THEN 1 ELSE 0 END) as shared
+      FROM trusted_domains
+    `).first();
+
+    return c.json({
+      domains: result.results || [],
+      summary: {
+        total: countsResult?.total || 0,
+        linked: countsResult?.linked || 0,
+        shared: countsResult?.shared || 0
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching domains:", error);
+    return c.json({ error: "Failed to fetch domains" }, 500);
+  }
+});
+
+// Update a domain
+app.patch("/api/admin/domains/:id", async (c) => {
+  try {
+    const domainId = c.req.param("id");
+    const updates = await c.req.json();
+
+    const allowedFields = ['source_id', 'type', 'description', 'enabled'];
+    const setClauses: string[] = [];
+    const params: any[] = [];
+
+    for (const [key, value] of Object.entries(updates)) {
+      if (allowedFields.includes(key)) {
+        setClauses.push(`${key} = ?`);
+        params.push(value);
+      }
+    }
+
+    if (setClauses.length === 0) {
+      return c.json({ error: "No valid fields to update" }, 400);
+    }
+
+    params.push(domainId);
+
+    await c.env.DB.prepare(`
+      UPDATE trusted_domains
+      SET ${setClauses.join(', ')}
+      WHERE id = ?
+    `).bind(...params).run();
+
+    const result = await c.env.DB.prepare(`
+      SELECT id, domain, type, source_id, description, enabled, created_at
+      FROM trusted_domains
+      WHERE id = ?
+    `).bind(domainId).first();
+
+    return c.json({ domain: result, message: "Domain updated successfully" });
+  } catch (error) {
+    console.error("Error updating domain:", error);
+    return c.json({ error: "Failed to update domain" }, 500);
+  }
+});
+
+// Delete a domain
+app.delete("/api/admin/domains/:id", async (c) => {
+  try {
+    const domainId = c.req.param("id");
+
+    // Get domain info before deleting
+    const domain = await c.env.DB.prepare(`
+      SELECT domain FROM trusted_domains WHERE id = ?
+    `).bind(domainId).first();
+
+    if (!domain) {
+      return c.json({ error: "Domain not found" }, 404);
+    }
+
+    await c.env.DB.prepare(`
+      DELETE FROM trusted_domains WHERE id = ?
+    `).bind(domainId).run();
+
+    return c.json({ message: "Domain deleted successfully", domain: domain.domain });
+  } catch (error) {
+    console.error("Error deleting domain:", error);
+    return c.json({ error: "Failed to delete domain" }, 500);
   }
 });
 
@@ -2091,6 +2361,30 @@ app.get("/api/sources", async (c) => {
   } catch (error) {
     console.error("Error fetching sources:", error);
     return c.json({ error: "Failed to fetch sources" }, 500);
+  }
+});
+
+// Public Keywords endpoint (for tag cloud)
+app.get("/api/keywords", async (c) => {
+  try {
+    const limit = parseInt(c.req.query("limit") || "32");
+
+    // Get top keywords ordered by article_count
+    const keywords = await c.env.DB.prepare(`
+      SELECT id, name, slug, type, article_count
+      FROM keywords
+      WHERE enabled = 1 AND article_count > 0
+      ORDER BY article_count DESC
+      LIMIT ?
+    `).bind(limit).all();
+
+    return c.json({
+      keywords: keywords.results || [],
+      total: keywords.results?.length || 0
+    });
+  } catch (error) {
+    console.error("Error fetching keywords:", error);
+    return c.json({ error: "Failed to fetch keywords" }, 500);
   }
 });
 
@@ -5745,7 +6039,8 @@ Crawl-delay: 1
   });
 });
 
-// Scheduled handler for cron jobs
+// Scheduled handler for cron jobs with rotating batch processing
+// Cron runs every 6 hours (0, 6, 12, 18 UTC), rotating through batches
 const scheduledHandler = async (
   controller: ScheduledController,
   env: Bindings,
@@ -5755,21 +6050,28 @@ const scheduledHandler = async (
   console.log(`[CRON] Cron expression: ${controller.cron}`);
 
   try {
-    // 1. Refresh RSS feeds to collect new articles
-    console.log('[CRON] Starting RSS feed refresh...');
+    // Determine which batch to process based on hour (rotates through batches)
+    // 0h = batch 0, 6h = batch 1, 12h = batch 2, 18h = batch 3
+    const hour = new Date(controller.scheduledTime).getUTCHours();
+    const batchIndex = Math.floor(hour / 6); // 0, 1, 2, or 3
+
+    // 1. Refresh RSS feeds to collect new articles (with batching)
+    console.log(`[CRON] Starting RSS feed refresh (batch ${batchIndex})...`);
     const rssService = new SimpleRSSService(env.DB);
     const rssStartTime = Date.now();
-    const rssResult = await rssService.refreshAllFeeds();
+
+    // Process 40 sources per batch to stay under 50 subrequest limit
+    const rssResult = await rssService.refreshAllFeeds({ batch: batchIndex, batchSize: 40 });
     const rssDuration = Date.now() - rssStartTime;
 
-    console.log(`[CRON] RSS refresh complete: ${rssResult.newArticles} new articles, ${rssResult.errors} errors in ${rssDuration}ms`);
+    console.log(`[CRON] RSS batch ${rssResult.batch + 1}/${rssResult.totalBatches} complete: ${rssResult.newArticles} new articles, ${rssResult.errors} errors in ${rssDuration}ms`);
 
     // Log RSS refresh to database
     await env.DB.prepare(`
       INSERT INTO cron_logs (cron_type, status, articles_processed, errors, execution_time_ms, created_at)
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).bind(
-      'rss_refresh',
+      `rss_refresh_batch_${rssResult.batch}`,
       rssResult.errors === 0 ? 'success' : 'partial',
       rssResult.newArticles,
       rssResult.errors,

@@ -1,44 +1,52 @@
 #!/bin/bash
-echo "🚀 Deploying Harare Metro..."
 
-echo "📦 Building frontend and worker..."
-npm run build
+# Mukoko News Deployment Script
+# Deploys backend to Cloudflare Workers
 
-# Verify build assets exist
-if [ ! -d "dist" ]; then
-    echo "❌ Error: dist/ directory not found after build"
+echo "🚀 Deploying Mukoko News Backend..."
+
+cd backend
+
+# Install dependencies if needed
+if [ ! -d "node_modules" ]; then
+    echo "📦 Installing backend dependencies..."
+    npm install
+fi
+
+# Type check
+echo "🔍 Running type check..."
+npm run typecheck
+if [ $? -ne 0 ]; then
+    echo "❌ Type check failed"
     exit 1
 fi
 
-if [ ! -f "dist/index.html" ]; then
-    echo "❌ Error: index.html not found in dist/ directory"
+# Run tests
+echo "🧪 Running tests..."
+npm run test
+if [ $? -ne 0 ]; then
+    echo "❌ Tests failed"
     exit 1
 fi
 
-echo "📁 Found $(ls -1 dist/ | wc -l | tr -d ' ') files in dist/ directory"
-
-echo "☁️ Deploying with static assets..."
-npx wrangler deploy --assets dist
+# Deploy to Cloudflare Workers
+echo "☁️ Deploying to Cloudflare Workers..."
+npm run deploy
 
 if [ $? -eq 0 ]; then
     echo ""
-    echo "✅ Deployment successful!"
-    echo "📊 Static assets uploaded to __STATIC_CONTENT KV namespace"
-    echo "🌐 Site should be live at: https://www.hararemetro.co.zw"
+    echo "✅ Backend deployment successful!"
+    echo "🌐 API: https://mukoko-news-backend.nyuchi.workers.dev"
     echo ""
     echo "🔍 Verifying deployment..."
     sleep 3
-    
-    # Test if site is responding
-    if curl -s -I https://www.hararemetro.co.zw | head -1 | grep -q "200 OK"; then
-        echo "✅ Site is responding correctly"
+
+    # Test health endpoint
+    if curl -s https://mukoko-news-backend.nyuchi.workers.dev/api/health | grep -q "ok"; then
+        echo "✅ Health check passed"
     else
-        echo "⚠️  Site may still be propagating (this is normal)"
+        echo "⚠️  Health check pending (may still be propagating)"
     fi
-    
-    echo ""
-    echo "🔧 Next: Initialize KV configuration"
-    echo "Run: ./scripts/configure.sh"
 else
     echo "❌ Deployment failed"
     exit 1

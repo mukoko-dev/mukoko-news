@@ -799,9 +799,13 @@ CREATE TABLE IF NOT EXISTS trusted_domains (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     domain TEXT NOT NULL UNIQUE,
     type TEXT DEFAULT 'image' CHECK (type IN ('image', 'content', 'analytics')),
+    source_id TEXT,  -- Links to news_sources.id (no FK for flexibility)
+    description TEXT,
     enabled INTEGER DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_trusted_domains_source_id ON trusted_domains(source_id);
 
 -- ================================================
 -- LOGGING AND AUDIT

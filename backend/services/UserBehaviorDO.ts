@@ -1,7 +1,7 @@
 /**
  * User Behavior Durable Object
  * Tracks individual user activity, preferences, and personalized data
- * Replaces Supabase user profile and behavior tracking
+ * Uses Cloudflare Durable Objects for real-time state management
  */
 
 export interface UserActivity {

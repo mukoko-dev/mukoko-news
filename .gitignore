@@ -3,10 +3,13 @@ node_modules/
 /.pnp
 .pnp.js
 
+# Next.js
+.next/
+out/
+
 # Production builds
 /build/
 /dist/
-/.react-router/
 
 # Environment variables
 .env
@@ -37,13 +40,13 @@ lerna-debug.log*
 .yarn
 .cache/
 .parcel-cache/
+.turbo
 
 # Coverage directory used by tools like istanbul
 coverage/
 *.lcov
 
 # IDE and editor files
-.vscode/
 .idea/
 *.swp
 *.swo
@@ -68,5 +71,11 @@ pids
 *.seed
 *.pid.lock
 
+# Vercel
 .vercel
-.env*.local
+
+# Testing
+.nyc_output
+
+# Misc
+*.pem

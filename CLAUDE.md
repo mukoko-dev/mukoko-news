@@ -6,22 +6,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Mukoko News is a Pan-African digital news aggregation platform. "Mukoko" means "Beehive" in Shona - where community gathers and stores knowledge. Primary market is Zimbabwe with expansion across Africa.
 
-**Architecture**: Monorepo with independent apps (not npm workspaces)
+**Architecture**: Next.js frontend with Cloudflare Workers backend
+
+- `src/` - Next.js 15 frontend (App Router)
 - `backend/` - Cloudflare Workers API (Hono framework)
-- `mobile/` - React Native Expo app (iOS, Android, Web)
 - `database/` - D1 schema and migrations
 
 ## Common Commands
 
-### Root Level
+### Frontend (Root Level)
+
 ```bash
-npm run dev              # Start backend dev server
-npm run build            # Build backend (dry-run)
+npm run dev              # Start Next.js dev server
+npm run build            # Build for production
+npm run start            # Start production server
 npm run lint             # ESLint check
 npm run lint:fix         # ESLint auto-fix
-npm run test             # Run backend tests
-npm run mobile           # Start Expo dev server
-npm run mobile:web       # Start Expo web
+npm run typecheck        # TypeScript check
 npm run clean            # Clean build artifacts
 ```
 
@@ -36,19 +37,17 @@ npm run db:migrate       # Apply schema to remote D1
 npm run db:local         # Apply schema to local D1
 ```
 
-### Mobile (`cd mobile`)
-```bash
-npm start                # Expo dev server
-npm run ios              # iOS simulator
-npm run android          # Android emulator
-npm run web              # Web browser
-npm run build            # Export for web (Vercel)
-npm run test             # Jest tests
-```
-
-**Note**: Use `--legacy-peer-deps` when installing mobile dependencies.
-
 ## Architecture
+
+### Frontend Stack
+
+- **Framework**: Next.js 15 with App Router
+- **UI**: Tailwind CSS 4 with custom design tokens
+- **Components**: Radix UI primitives
+- **Icons**: Lucide React
+- **Theme**: next-themes for dark mode support
+- **TypeScript**: Full type safety
+- **State**: React Context (ThemeContext)
 
 ### Backend Stack
 - **Runtime**: Cloudflare Workers (edge computing)
@@ -74,20 +73,38 @@ Services are in `backend/services/`. Key services:
 - **All other routes** - Public (no auth required)
 - Non-admin roles (moderator, support, author, user) are currently disabled
 
-### Mobile Stack
-- **Framework**: React Native 0.81.5 via Expo 54
-- **UI**: React Native Paper (Material Design)
-- **Navigation**: React Navigation (Stack + Bottom Tabs)
-- **State**: Context API (AuthContext, ThemeContext)
-- **Storage**: AsyncStorage
-
 ### Design System (Nyuchi Brand v6)
 - Primary: Tanzanite (#4B0082)
 - Secondary: Cobalt (#0047AB)
 - Accent: Gold (#5D4037)
-- Surface: Warm Cream (#FAF9F5)
+- Surface: Warm Cream (#FAF9F5) for light mode
 - Typography: Noto Serif (headings), Plus Jakarta Sans (body)
 - Border radius: 12px buttons, 16px cards
+
+## Frontend Structure
+
+```text
+src/
+├── app/                 # Next.js App Router
+│   ├── layout.tsx       # Root layout with providers
+│   ├── page.tsx         # Home feed page
+│   ├── discover/        # Discover page
+│   ├── newsbytes/       # TikTok-style vertical feed
+│   ├── article/[id]/    # Article detail page
+│   ├── search/          # Search page
+│   ├── profile/         # Profile/settings page
+│   ├── admin/           # Admin dashboard
+│   └── globals.css      # Tailwind styles and CSS variables
+├── components/
+│   ├── layout/          # Header, Footer
+│   ├── ui/              # Reusable UI components
+│   ├── article-card.tsx # Article card component
+│   ├── share-modal.tsx  # Share modal
+│   └── theme-provider.tsx
+└── lib/
+    ├── api.ts           # API client
+    └── utils.ts         # Utility functions
+```
 
 ## Database
 
@@ -101,7 +118,7 @@ Schema in `database/schema.sql`. 17 migrations in `database/migrations/`.
 
 **Base URL**: `https://mukoko-news-backend.nyuchi.workers.dev`
 
-### Endpoint Protection (Updated)
+### Endpoint Protection
 
 - `/api/*` - **Protected** (requires bearer token: API_SECRET or OIDC JWT)
 - `/api/health` - Public (no auth required)
@@ -111,57 +128,56 @@ Schema in `database/schema.sql`. 17 migrations in `database/migrations/`.
 
 1. **API_SECRET** - Bearer token for frontend (Vercel) to backend auth
    - Set via: `npx wrangler secret put API_SECRET`
-   - Environment variable: `EXPO_PUBLIC_API_SECRET`
+   - Environment variable: `NEXT_PUBLIC_API_SECRET`
    - Configured in: `.env.local` (development), Vercel (production)
 
 2. **OIDC JWT** - User authentication tokens from id.mukoko.com
    - Validated by oidcAuth middleware
    - Takes priority over API_SECRET
 
-### New Endpoints
+### Key Endpoints
 
-- `POST /api/feed/collect` - TikTok-style RSS collection (rate-limited 5 min)
-- `POST /api/feed/initialize-sources` - Initialize 56 Pan-African RSS sources
+- `GET /api/feeds` - Get articles feed
+- `GET /api/article/:id` - Get single article
+- `GET /api/categories` - Get categories
+- `GET /api/newsbytes` - Get NewsBytes articles
+- `POST /api/feed/collect` - Trigger RSS collection
+- `GET /api/admin/*` - Admin endpoints
 
 **API Auth Middleware**: `backend/middleware/apiAuth.ts`
-**Setup Guide**: `API_SECRET_SETUP.md`
 **OpenAPI Schema**: `api-schema.yml`
 
 ## Deployment
+
+**Frontend**: Auto-deploys to Vercel on push to main
 
 **Backend**: Manual deployment only (not CI/CD)
 ```bash
 cd backend && npm run deploy
 ```
 
-**Mobile Web**: Vercel
-```bash
-npm run mobile:deploy
-```
-
 GitHub Actions runs tests on PRs but does not auto-deploy backend.
 
 ## Key Files
 
+- `src/app/layout.tsx` - Root layout with theme provider
+- `src/app/globals.css` - Tailwind config and CSS variables
+- `src/lib/api.ts` - API client
+- `src/components/theme-provider.tsx` - Theme context
 - `backend/index.ts` - API entry point and route definitions
-- `backend/wrangler.jsonc` - Cloudflare Workers config (bindings, DOs, crons)
-- `mobile/App.js` - React Native entry point
-- `mobile/theme.js` - Design system tokens
-- `vercel.json` - Vercel config for mobile web
+- `backend/wrangler.jsonc` - Cloudflare Workers config
+- `next.config.ts` - Next.js configuration
+- `tailwind.config.ts` - Tailwind CSS configuration
 - `eslint.config.js` - Flat ESLint 9 config
 
 ## Testing
 
 **Backend**: Vitest with 10s timeout per test
 ```bash
+cd backend
 npm run test              # Single run
 npm run test:watch        # Watch mode
 npm run test:coverage     # With coverage report
-```
-
-**Mobile**: Jest
-```bash
-cd mobile && npm test
 ```
 
 ## Cloudflare Bindings
@@ -173,3 +189,25 @@ Defined in `wrangler.jsonc`:
 - `AI` - Workers AI
 - `VECTORIZE_INDEX` - Semantic search
 - `IMAGES` - Cloudflare Images
+
+## Theme System
+
+The app uses CSS variables for theming, defined in `src/app/globals.css`:
+
+```css
+:root {
+  --primary: #4B0082;      /* Tanzanite */
+  --secondary: #0047AB;    /* Cobalt */
+  --background: #FAF9F5;   /* Warm Cream */
+  --foreground: #1a1a1a;
+  /* ... more variables */
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  /* ... dark mode overrides */
+}
+```
+
+Use Tailwind classes like `bg-primary`, `text-foreground`, `bg-surface` etc.

@@ -1,7 +1,7 @@
 /**
  * Article Interactions Durable Object
  * Handles real-time likes, shares, saves, and comments for individual articles
- * Replaces Supabase real-time subscriptions with native Cloudflare solution
+ * Uses Cloudflare Durable Objects for real-time state management
  */
 
 export interface ArticleInteraction {

@@ -147,6 +147,17 @@
   },
 
   /**
+   * R2 Object Storage - Large file storage (feeds, backups, uploads)
+   * Create bucket: npx wrangler r2 bucket create mukoko-news-storage
+   */
+  "r2_buckets": [
+    {
+      "binding": "STORAGE",
+      "bucket_name": "mukoko-news-storage"
+    }
+  ],
+
+  /**
    * Observability - Real-time logs and monitoring
    */
   "observability": {
