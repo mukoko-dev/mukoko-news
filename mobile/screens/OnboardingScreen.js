@@ -24,9 +24,11 @@ import {
   Pressable,
   Text,
   TextInput,
+  StyleSheet,
 } from 'react-native';
 import { Check, Loader2 } from 'lucide-react-native';
-import { mukokoTheme } from '../theme';
+import { useTheme } from '../contexts/ThemeContext';
+import { spacing } from '../constants/design-tokens';
 import { categories as categoriesAPI, countries as countriesAPI, user as userAPI } from '../api/client';
 
 // Logo asset
@@ -68,8 +70,22 @@ function ProgressIndicator({ currentStep, totalSteps }) {
 }
 
 export default function OnboardingScreen({ navigation }) {
+  const { colors } = useTheme();
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  // Immersive dark modal theme colors
+  const modalColors = {
+    background: '#1a1a2e',  // Dark immersive background
+    text: '#FFFFFF',         // White text on dark
+    textSecondary: 'rgba(255, 255, 255, 0.7)',
+    textMuted: 'rgba(255, 255, 255, 0.5)',
+    border: 'rgba(255, 255, 255, 0.3)',
+    primary: colors.primary,      // Use theme primary (Tanzanite)
+    success: colors.success,      // Use theme success (Malachite)
+    error: colors.error,          // Use theme error
+    accent: colors.tertiary,      // Use theme accent (Terracotta)
+  };
 
   const [step, setStep] = useState(1);
   const [username, setUsername] = useState('');
@@ -303,8 +319,8 @@ export default function OnboardingScreen({ navigation }) {
   };
 
   // Calculate card widths
-  const countryCardWidth = (width - mukokoTheme.spacing.xl * 2 - mukokoTheme.spacing.sm * 2) / 3;
-  const categoryCardWidth = (width - mukokoTheme.spacing.xl * 2 - mukokoTheme.spacing.sm) / 2;
+  const countryCardWidth = (width - spacing.xl * 2 - spacing.sm * 2) / 3;
+  const categoryCardWidth = (width - spacing.xl * 2 - spacing.sm) / 2;
 
   return (
     <Modal
@@ -422,7 +438,7 @@ export default function OnboardingScreen({ navigation }) {
                         )}
                         {isSelected && !isPrimary && (
                           <View style={styles.checkmark}>
-                            <Icon source="check" size={14} color="#FFFFFF" />
+                            <Check size={14} color="#FFFFFF" />
                           </View>
                         )}
                       </TouchableOpacity>
@@ -455,7 +471,7 @@ export default function OnboardingScreen({ navigation }) {
                         {
                           color: '#FFFFFF',
                           borderColor: usernameError
-                            ? mukokoTheme.colors.error
+                            ? '#B3261E'
                             : 'rgba(255, 255, 255, 0.3)',
                         }
                       ]}
@@ -466,7 +482,7 @@ export default function OnboardingScreen({ navigation }) {
                         <Loader2 size={20} color="rgba(255, 255, 255, 0.7)" className="animate-spin" />
                       ) : (
                         username.length >= 3 && !usernameError && (
-                          <Check size={20} color={mukokoTheme.colors.success} />
+                          <Check size={20} color={colors.primary} />
                         )
                       )}
                     </View>
@@ -507,7 +523,7 @@ export default function OnboardingScreen({ navigation }) {
                         </Text>
                         {isSelected && (
                           <View style={styles.checkmark}>
-                            <Icon source="check" size={16} color="#FFFFFF" />
+                            <Check size={16} color="#FFFFFF" />
                           </View>
                         )}
                       </TouchableOpacity>
@@ -584,6 +600,10 @@ export default function OnboardingScreen({ navigation }) {
   );
 }
 
+/**
+ * NOTE: Static layout styles only - colors are passed via modalColors object.
+ * This ensures theme consistency and allows for easy color changes.
+ */
 const styles = StyleSheet.create({
   // Modal backdrop
   backdrop: {
@@ -601,7 +621,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: MODAL_HEIGHT,
-    backgroundColor: '#1a1a2e',
+    // backgroundColor applied via modalColors in JSX
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     overflow: 'hidden',
@@ -642,17 +662,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalScrollContent: {
-    paddingHorizontal: mukokoTheme.spacing.xl,
-    paddingTop: mukokoTheme.spacing.md,
-    paddingBottom: mukokoTheme.spacing.md,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.md,
   },
 
   // Progress indicator
   progressContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    gap: mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.lg,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
   },
   progressBar: {
     width: 32,
@@ -671,20 +691,20 @@ const styles = StyleSheet.create({
   // Header
   header: {
     alignItems: 'center',
-    marginBottom: mukokoTheme.spacing.lg,
+    marginBottom: spacing.lg,
   },
   logo: {
     width: 60,
     height: 60,
-    marginBottom: mukokoTheme.spacing.md,
+    marginBottom: spacing.md,
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.xs,
-    fontFamily: mukokoTheme.fonts.serifBold?.fontFamily,
+    marginBottom: spacing.xs,
+    fontFamily: 'NotoSerif-Bold',
   },
   subtitle: {
     fontSize: 14,
@@ -694,8 +714,8 @@ const styles = StyleSheet.create({
 
   // Error banner
   errorBanner: {
-    padding: mukokoTheme.spacing.md,
-    marginBottom: mukokoTheme.spacing.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
     borderRadius: 12,
     backgroundColor: 'rgba(212, 99, 74, 0.2)',
     borderWidth: 1,
@@ -716,12 +736,12 @@ const styles = StyleSheet.create({
   countryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
+    gap: spacing.sm,
     justifyContent: 'center',
-    marginBottom: mukokoTheme.spacing.md,
+    marginBottom: spacing.md,
   },
   countryChip: {
-    padding: mukokoTheme.spacing.sm,
+    padding: spacing.sm,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
@@ -732,12 +752,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   countryChipSelected: {
-    borderColor: mukokoTheme.colors.primary,
-    backgroundColor: mukokoTheme.colors.primary,
+    borderColor: '#4B0082',
+    backgroundColor: '#4B0082',
   },
   countryChipPrimary: {
-    borderColor: mukokoTheme.colors.success || '#779b63',
-    backgroundColor: mukokoTheme.colors.success || '#779b63',
+    borderColor: '#004D40',
+    backgroundColor: '#004D40',
   },
   countryEmoji: {
     fontSize: 24,
@@ -771,29 +791,29 @@ const styles = StyleSheet.create({
 
   // Username input
   usernameContainer: {
-    marginTop: mukokoTheme.spacing.lg,
+    marginTop: spacing.lg,
   },
   inputLabel: {
     fontSize: 14,
     fontWeight: '600',
     color: 'rgba(255, 255, 255, 0.9)',
-    marginBottom: mukokoTheme.spacing.xs,
+    marginBottom: spacing.xs,
   },
   inputWrapper: {
     position: 'relative',
-    marginBottom: mukokoTheme.spacing.xs,
+    marginBottom: spacing.xs,
   },
   input: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderRadius: 12,
-    padding: mukokoTheme.spacing.md,
+    padding: spacing.md,
     fontSize: 16,
     paddingRight: 40,
   },
   inputIcon: {
     position: 'absolute',
-    right: mukokoTheme.spacing.md,
+    right: spacing.md,
     top: 0,
     bottom: 0,
     justifyContent: 'center',
@@ -801,23 +821,23 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: 12,
     color: 'rgba(255, 255, 255, 0.6)',
-    marginBottom: mukokoTheme.spacing.lg,
+    marginBottom: spacing.lg,
   },
   helperTextError: {
     fontSize: 12,
     color: '#d4634a',
-    marginBottom: mukokoTheme.spacing.lg,
+    marginBottom: spacing.lg,
   },
 
   // Category grid
   categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.md,
   },
   categoryChip: {
-    padding: mukokoTheme.spacing.md,
+    padding: spacing.md,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
@@ -827,12 +847,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   categoryChipSelected: {
-    borderColor: mukokoTheme.colors.primary,
-    backgroundColor: `${mukokoTheme.colors.primary}40`,
+    borderColor: '#4B0082',
+    backgroundColor: `${'#4B0082'}40`,
   },
   categoryEmoji: {
     fontSize: 28,
-    marginBottom: mukokoTheme.spacing.xs,
+    marginBottom: spacing.xs,
   },
   categoryName: {
     fontSize: 13,
@@ -845,12 +865,12 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     position: 'absolute',
-    top: mukokoTheme.spacing.xs,
-    right: mukokoTheme.spacing.xs,
+    top: spacing.xs,
+    right: spacing.xs,
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: mukokoTheme.colors.primary,
+    backgroundColor: '#4B0082',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -860,20 +880,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
-    marginTop: mukokoTheme.spacing.sm,
+    marginTop: spacing.sm,
   },
 
   // Bottom actions
   bottomActions: {
-    paddingHorizontal: mukokoTheme.spacing.xl,
-    paddingTop: mukokoTheme.spacing.md,
-    paddingBottom: Platform.OS === 'ios' ? 34 : mukokoTheme.spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
+    paddingBottom: Platform.OS === 'ios' ? 34 : spacing.lg,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255, 255, 255, 0.1)',
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: mukokoTheme.spacing.sm,
+    gap: spacing.sm,
   },
   primaryButton: {
     flex: 1,
@@ -906,7 +926,7 @@ const styles = StyleSheet.create({
   },
   skipButton: {
     alignSelf: 'center',
-    paddingVertical: mukokoTheme.spacing.md,
+    paddingVertical: spacing.md,
     minHeight: MIN_TOUCH_TARGET,
     justifyContent: 'center',
   },

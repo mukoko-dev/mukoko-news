@@ -6,6 +6,8 @@
 
 import React from 'react';
 import { View, Text, Pressable } from 'react-native';
+import { useTheme } from '../../contexts/ThemeContext';
+import { staticColors } from '../../constants/design-tokens';
 
 const badgeVariants = {
   default: 'bg-tanzanite',
@@ -93,6 +95,8 @@ export function FilterChip({
   children,
   ...props
 }) {
+  const { colors } = useTheme();
+
   const chipClasses = `
     flex-row items-center gap-xs px-md py-sm rounded-full border min-h-touch-compact
     ${selected
@@ -115,7 +119,7 @@ export function FilterChip({
       accessibilityState={{ selected }}
       {...props}
     >
-      {Icon && <Icon size={14} color={selected ? '#FFFFFF' : '#4a4a4a'} />}
+      {Icon && <Icon size={14} color={selected ? staticColors.white : colors.onSurface} />}
       <Text className={textClasses}>{children}</Text>
     </Pressable>
   );

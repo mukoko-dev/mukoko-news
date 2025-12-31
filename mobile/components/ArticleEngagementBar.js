@@ -3,7 +3,7 @@ import { View, StyleSheet, TouchableOpacity, Platform, Text as RNText } from 're
 import { Heart, Bookmark, MessageCircle, Share2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '../contexts/ThemeContext';
-import mukokoTheme from '../theme';
+import { spacing, touchTargets } from '../constants/design-tokens';
 
 /**
  * ArticleEngagementBar - Consistent engagement UI across the app
@@ -76,7 +76,7 @@ export default function ArticleEngagementBar({
             styles.actionText,
             {
               color: active ? accentColor : textColor,
-              fontFamily: active ? mukokoTheme.fonts.bold.fontFamily : mukokoTheme.fonts.medium.fontFamily,
+              fontFamily: active ? 'PlusJakartaSans-Bold' : 'PlusJakartaSans-Medium',
             },
           ]}
         >
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 12,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
     marginTop: 2,
   },
 });

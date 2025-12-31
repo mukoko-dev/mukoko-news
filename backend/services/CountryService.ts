@@ -59,10 +59,10 @@ export class CountryService {
           COALESCE(a.article_count, 0) as article_count
         FROM countries c
         LEFT JOIN (
-          SELECT country_id, COUNT(*) as source_count
+          SELECT country, COUNT(*) as source_count
           FROM news_sources WHERE enabled = 1
-          GROUP BY country_id
-        ) s ON c.id = s.country_id
+          GROUP BY country
+        ) s ON c.name = s.country
         LEFT JOIN (
           SELECT country_id, COUNT(*) as article_count
           FROM articles WHERE status = 'published'
@@ -115,10 +115,10 @@ export class CountryService {
       SELECT ns.id, ns.name, COUNT(a.id) as article_count
       FROM news_sources ns
       LEFT JOIN articles a ON ns.id = a.source_id
-      WHERE ns.country_id = ? AND ns.enabled = 1
+      WHERE ns.country = ? AND ns.enabled = 1
       GROUP BY ns.id, ns.name
       ORDER BY article_count DESC
-    `).bind(countryId).all();
+    `).bind(country.name).all();
 
     // Get category distribution for this country
     const categoriesResult = await this.db.prepare(`

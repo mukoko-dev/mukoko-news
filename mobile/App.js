@@ -6,6 +6,7 @@ import AppNavigator from './navigation/AppNavigator';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import DarkModeManager from './components/DarkModeManager';
 import './global.css';
 
 // Startup diagnostics
@@ -45,13 +46,13 @@ async function registerServiceWorker() {
       });
     });
   } catch (error) {
-    logStartup('Service worker registration failed', { error: error.message });
+    logStartup('Service worker registration failed', { error: error?.message || String(error) || 'Unknown error' });
   }
 }
 
 // Inner component that uses theme context
 function AppContent() {
-  const { theme, isDark } = useTheme();
+  const { isDark } = useTheme();
 
   useEffect(() => {
     logStartup('AppContent mounted', { isDark });
@@ -65,6 +66,7 @@ function AppContent() {
 
   return (
     <AuthProvider>
+      <DarkModeManager />
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <AppNavigator />
     </AuthProvider>

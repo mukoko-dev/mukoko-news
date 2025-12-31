@@ -26,25 +26,18 @@ jest.mock('../../contexts/AuthContext', () => ({
 }));
 jest.mock('../../contexts/ThemeContext', () => ({
   useTheme: () => ({
-    theme: {
-      colors: {
-        background: '#FAF9F5',
-        surface: '#FFFFFF',
-        primary: '#4B0082',
-        'on-surface': '#1C1B1F',
-        'on-surface-variant': '#4a4a4a',
-        outline: '#e0dfdc',
-        success: '#1B5E20',
-        error: '#B3261E',
-        tanzanite: '#4B0082',
-      },
-      spacing: {
-        xs: 4,
-        sm: 8,
-        md: 16,
-        lg: 24,
-        xl: 32,
-      },
+    colors: {
+      background: '#FAF9F5',
+      surface: '#FFFFFF',
+      surfaceVariant: '#F5F5F0',
+      primary: '#4B0082',
+      onSurface: '#1C1B1F',
+      onSurfaceVariant: '#4a4a4a',
+      textSecondary: '#666666',
+      outline: '#e0dfdc',
+      success: '#1B5E20',
+      error: '#B3261E',
+      tanzanite: '#4B0082',
     },
     isDark: false,
   }),

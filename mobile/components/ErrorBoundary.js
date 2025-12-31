@@ -8,6 +8,19 @@ import React from 'react';
 import { View, ScrollView, Platform, Pressable } from 'react-native';
 import { Text as RNText } from 'react-native';
 import { AlertTriangle, RefreshCw } from 'lucide-react-native';
+import { staticColors } from '../constants/design-tokens';
+
+// Zimbabwe national flag colors - these are fixed national symbols
+const ZW_FLAG_COLORS = {
+  green: '#00A651',   // Growth, prosperity, agriculture
+  yellow: '#FDD116',  // Mineral wealth, sunshine
+  red: '#EF3340',     // Heritage, struggle, passion
+};
+
+// Error state colors - Material Design error palette
+const ERROR_COLORS = {
+  icon: '#B3261E',  // Material Design error red
+};
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -64,15 +77,15 @@ class ErrorBoundary extends React.Component {
         <View className="flex-1 bg-background">
           {/* Zimbabwean flag colors strip */}
           <View className="flex-row h-[4px]">
-            <View className="flex-1 h-[4px]" style={{ backgroundColor: '#00A651' }} />
-            <View className="flex-1 h-[4px]" style={{ backgroundColor: '#FDD116' }} />
-            <View className="flex-1 h-[4px]" style={{ backgroundColor: '#EF3340' }} />
+            <View className="flex-1 h-[4px]" style={{ backgroundColor: ZW_FLAG_COLORS.green }} />
+            <View className="flex-1 h-[4px]" style={{ backgroundColor: ZW_FLAG_COLORS.yellow }} />
+            <View className="flex-1 h-[4px]" style={{ backgroundColor: ZW_FLAG_COLORS.red }} />
           </View>
 
           <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, paddingVertical: 64 }}>
             {/* Error Icon */}
             <View className="items-center mb-lg">
-              <AlertTriangle size={64} color="#B3261E" />
+              <AlertTriangle size={64} color={ERROR_COLORS.icon} />
             </View>
 
             {/* Title */}
@@ -114,7 +127,7 @@ class ErrorBoundary extends React.Component {
               accessibilityLabel="Reload application"
             >
               <View className="flex-row items-center gap-sm justify-center">
-                <RefreshCw size={20} color="#FFFFFF" />
+                <RefreshCw size={20} color={staticColors.white} />
                 <RNText className="font-sans-medium text-body-medium text-on-primary">
                   Reload App
                 </RNText>

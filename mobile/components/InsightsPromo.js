@@ -15,7 +15,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import mukokoTheme from '../theme';
+import { spacing, radius, staticColors } from '../constants/design-tokens';
 
 /**
  * InsightsPromo - Large promotional component displaying platform metrics
@@ -35,8 +35,8 @@ export default function InsightsPromo({
   const { theme } = useTheme();
 
   // Bold accent colors for prominence (matching LoginPromo)
-  const accentColor = theme.colors.tertiary || '#D4634A';
-  const accentDark = '#B84D38';
+  const accentColor = theme.colors.tertiary;
+  const accentDark = theme.colors.tertiaryDark || '#B84D38';
 
   // Default metrics if not provided
   const defaultMetrics = {
@@ -90,7 +90,7 @@ export default function InsightsPromo({
           <View style={styles.heroContent}>
             {/* Badge */}
             <View style={styles.heroBadge}>
-              <MaterialCommunityIcons name="chart-timeline-variant" size={16} color="#FFFFFF" />
+              <MaterialCommunityIcons name="chart-timeline-variant" size={16} color={staticColors.white} />
               <Text style={styles.heroBadgeText}>LIVE INSIGHTS</Text>
             </View>
 
@@ -123,7 +123,7 @@ export default function InsightsPromo({
             {defaultMetrics.trending.length > 0 && (
               <View style={styles.heroTrending}>
                 <View style={styles.heroTrendingHeader}>
-                  <MaterialCommunityIcons name="fire" size={18} color="#FFFFFF" />
+                  <MaterialCommunityIcons name="fire" size={18} color={staticColors.white} />
                   <Text style={styles.heroTrendingTitle}>Trending Now</Text>
                 </View>
                 <View style={styles.heroTrendingChips}>
@@ -161,7 +161,7 @@ export default function InsightsPromo({
       >
         {/* Accent header strip */}
         <View style={[styles.cardHeader, { backgroundColor: accentColor }]}>
-          <MaterialCommunityIcons name="chart-box" size={28} color="#FFFFFF" />
+          <MaterialCommunityIcons name="chart-box" size={28} color={staticColors.white} />
           <Text style={styles.cardHeaderText}>PLATFORM INSIGHTS</Text>
         </View>
 
@@ -224,7 +224,7 @@ export default function InsightsPromo({
 
           {/* CTA */}
           <View style={[styles.cardPrimaryButton, { backgroundColor: accentColor }]}>
-            <MaterialCommunityIcons name="compass" size={22} color="#FFFFFF" />
+            <MaterialCommunityIcons name="compass" size={22} color={staticColors.white} />
             <Text style={styles.cardPrimaryButtonText}>Explore More</Text>
           </View>
         </View>
@@ -251,7 +251,7 @@ export default function InsightsPromo({
           <View style={styles.bannerContent}>
             <View style={styles.bannerLeft}>
               <View style={styles.bannerIconBg}>
-                <MaterialCommunityIcons name="chart-line" size={22} color="#FFFFFF" />
+                <MaterialCommunityIcons name="chart-line" size={22} color={staticColors.white} />
               </View>
               <View style={styles.bannerTextContainer}>
                 <Text style={styles.bannerTitle}>
@@ -299,7 +299,7 @@ export default function InsightsPromo({
           </Text>
         </View>
         <View style={[styles.minimalArrow, { backgroundColor: accentColor }]}>
-          <MaterialCommunityIcons name="arrow-right" size={18} color="#FFFFFF" />
+          <MaterialCommunityIcons name="arrow-right" size={18} color={staticColors.white} />
         </View>
       </TouchableOpacity>
     );
@@ -356,15 +356,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   heroBadgeText: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 12,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
     letterSpacing: 1,
   },
   heroHeadline: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 32,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
     textAlign: 'center',
     lineHeight: 40,
     marginBottom: 12,
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
   heroSubheadline: {
     color: 'rgba(255,255,255,0.9)',
     fontSize: 16,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: 24,
@@ -395,14 +395,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   heroStatValue: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 22,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   heroStatLabel: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 11,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
     textAlign: 'center',
   },
   heroTrending: {
@@ -417,9 +417,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   heroTrendingTitle: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   heroTrendingChips: {
     flexDirection: 'row',
@@ -434,9 +434,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   heroTrendingChipText: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
   heroPrimaryButton: {
     flexDirection: 'row',
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
   },
   heroPrimaryButtonText: {
     fontSize: 17,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
 
   // ============ CARD VARIANT ============
@@ -471,9 +471,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   cardHeaderText: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
     letterSpacing: 1,
   },
   cardContent: {
@@ -482,13 +482,13 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     fontSize: 24,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
     textAlign: 'center',
     marginBottom: 8,
   },
   cardDescription: {
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 20,
@@ -513,11 +513,11 @@ const styles = StyleSheet.create({
   },
   cardStatValue: {
     fontSize: 22,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   cardStatLabel: {
     fontSize: 12,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
   cardTrending: {
     width: '100%',
@@ -531,7 +531,7 @@ const styles = StyleSheet.create({
   },
   cardTrendingTitle: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   cardTrendingChips: {
     flexDirection: 'row',
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   },
   cardTrendingChipText: {
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
   cardPrimaryButton: {
     flexDirection: 'row',
@@ -559,9 +559,9 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   cardPrimaryButtonText: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 17,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
 
   // ============ BANNER VARIANT ============
@@ -599,14 +599,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bannerTitle: {
-    color: '#FFFFFF',
+    color: staticColors.white,
     fontSize: 16,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   bannerSubtitle: {
     color: 'rgba(255,255,255,0.85)',
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
   bannerButton: {
     flexDirection: 'row',
@@ -619,7 +619,7 @@ const styles = StyleSheet.create({
   },
   bannerButtonText: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
 
   // ============ MINIMAL VARIANT ============
@@ -639,11 +639,11 @@ const styles = StyleSheet.create({
   },
   minimalTitle: {
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
   minimalSubtitle: {
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
   minimalArrow: {
     width: 32,

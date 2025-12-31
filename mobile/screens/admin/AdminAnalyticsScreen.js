@@ -24,7 +24,7 @@ const isTablet = width >= 768;
  * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminAnalyticsScreen({ navigation }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const { isAdmin } = useAuth();
   const [analytics, setAnalytics] = useState(null);
   const [contentQuality, setContentQuality] = useState(null);

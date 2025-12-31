@@ -21,7 +21,7 @@ import AdminScreenWrapper from '../../components/AdminScreenWrapper';
  * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminSystemScreen({ navigation }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const { isAdmin } = useAuth();
   const [systemHealth, setSystemHealth] = useState(null);
   const [cronLogs, setCronLogs] = useState([]);

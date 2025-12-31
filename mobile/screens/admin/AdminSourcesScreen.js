@@ -22,7 +22,7 @@ import { Button, LoadingState, Badge } from '../../components/ui';
  * Migration: NativeWind + Lucide only (NO React Native Paper, NO StyleSheet)
  */
 export default function AdminSourcesScreen({ navigation }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const { isAdmin } = useAuth();
   const [sources, setSources] = useState([]);
   const [loading, setLoading] = useState(true);

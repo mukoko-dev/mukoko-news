@@ -129,7 +129,7 @@ function AdminStack() {
 // Insights is integrated into Search (shows when search is empty)
 function MainTabs({ currentRoute }) {
   const [isTabletOrDesktop, setIsTabletOrDesktop] = useState(false);
-  const { isDark, theme } = useTheme();
+  const { isDark, colors } = useTheme();
   const { isAdmin } = useAuth();
 
   useEffect(() => {
@@ -147,10 +147,13 @@ function MainTabs({ currentRoute }) {
       return { display: 'none' };
     }
     return {
-      position: 'relative',
-      backgroundColor: theme.colors.surface,
+      position: 'absolute',
+      bottom: 0,
+      left: 0,
+      right: 0,
+      backgroundColor: colors.surface,
       borderTopWidth: 1,
-      borderTopColor: theme.colors.outline,
+      borderTopColor: colors.outline,
       height: 60,
       paddingBottom: 8,
       paddingTop: 8,
@@ -171,7 +174,7 @@ function MainTabs({ currentRoute }) {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: iconColor,
-        tabBarInactiveTintColor: theme.colors['on-surface-variant'],
+        tabBarInactiveTintColor: colors.textSecondary,
         tabBarStyle: getTabBarStyle(),
         tabBarItemStyle: {
           flex: 1,
@@ -181,7 +184,7 @@ function MainTabs({ currentRoute }) {
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontFamily: mukokoTheme.fonts.medium.fontFamily,
+          fontFamily: 'PlusJakartaSans-Medium',
           marginTop: 4,
           marginBottom: 0,
         },
@@ -278,7 +281,7 @@ function getRouteFromState(state) {
 
 // Root Navigator
 export default function AppNavigator() {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
   const { isAuthenticated } = useAuth();
   const [isNavigationReady, setIsNavigationReady] = useState(false);
   const [currentRoute, setCurrentRoute] = useState('Bytes');
@@ -396,18 +399,27 @@ export default function AppNavigator() {
     >
       <SafeAreaView
         className="flex-1"
-        style={{ backgroundColor: theme.colors.background }}
+        style={{
+          backgroundColor: (currentRoute === 'Bytes' || currentRoute === 'BytesFeed')
+            ? '#000000' // Force black for immersive news feed
+            : colors.background
+        }}
         edges={['bottom']}
       >
         <ZimbabweFlagStrip />
         {/* Only show AppHeader on mobile - tablet/desktop uses sidebar */}
         {isNavigationReady && !isTabletOrDesktop && <AppHeader />}
-        <ResponsiveLayout
-          leftSidebar={<LeftSidebar currentRoute={currentRoute} />}
-          rightSidebar={<RightSidebar />}
-        >
+        {/* Bytes tab gets full screen - other tabs use ResponsiveLayout with sidebars */}
+        {currentRoute === 'Bytes' || currentRoute === 'BytesFeed' ? (
           <MainTabs currentRoute={currentRoute} />
-        </ResponsiveLayout>
+        ) : (
+          <ResponsiveLayout
+            leftSidebar={<LeftSidebar currentRoute={currentRoute} />}
+            rightSidebar={<RightSidebar />}
+          >
+            <MainTabs currentRoute={currentRoute} />
+          </ResponsiveLayout>
+        )}
       </SafeAreaView>
     </NavigationContainer>
   );

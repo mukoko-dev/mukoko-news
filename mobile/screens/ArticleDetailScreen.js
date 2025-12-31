@@ -27,7 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import Markdown from 'react-native-markdown-display';
-import mukokoTheme from '../theme';
+import { spacing, animation, scroll, touchTargets, shadows } from '../constants/design-tokens';
 import { useAuth } from '../contexts/AuthContext';
 import { articles as articlesAPI } from '../api/client';
 import { useTheme } from '../contexts/ThemeContext';
@@ -62,7 +62,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
   // Scroll tracking for collapsible header
   const scrollY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
-  const headerTranslateY = useRef(new Animated.Value(-mukokoTheme.scroll.headerHeight)).current; // Start hidden
+  const headerTranslateY = useRef(new Animated.Value(-scroll.headerHeight)).current; // Start hidden
 
   // Dynamic styles based on theme
   const dynamicStyles = {
@@ -108,12 +108,12 @@ export default function ArticleDetailScreen({ route, navigation }) {
       color: theme.colors['on-surface'],
       fontSize: 16,
       lineHeight: 26,
-      fontFamily: mukokoTheme.fonts.regular.fontFamily,
+      fontFamily: 'PlusJakartaSans-Regular',
     },
     heading1: {
       color: theme.colors['on-surface'],
       fontSize: 24,
-      fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+      fontFamily: 'NotoSerif-Bold',
       marginTop: 24,
       marginBottom: 12,
       lineHeight: 32,
@@ -121,7 +121,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
     heading2: {
       color: theme.colors['on-surface'],
       fontSize: 20,
-      fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+      fontFamily: 'NotoSerif-Bold',
       marginTop: 20,
       marginBottom: 10,
       lineHeight: 28,
@@ -129,7 +129,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
     heading3: {
       color: theme.colors['on-surface'],
       fontSize: 18,
-      fontFamily: mukokoTheme.fonts.bold.fontFamily,
+      fontFamily: 'PlusJakartaSans-Bold',
       marginTop: 16,
       marginBottom: 8,
       lineHeight: 26,
@@ -139,7 +139,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
       marginBottom: 16,
     },
     strong: {
-      fontFamily: mukokoTheme.fonts.bold.fontFamily,
+      fontFamily: 'PlusJakartaSans-Bold',
     },
     em: {
       fontStyle: 'italic',
@@ -222,7 +222,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
     },
     th: {
       color: theme.colors['on-surface'],
-      fontFamily: mukokoTheme.fonts.bold.fontFamily,
+      fontFamily: 'PlusJakartaSans-Bold',
       padding: 8,
     },
     td: {
@@ -411,18 +411,18 @@ export default function ArticleDetailScreen({ route, navigation }) {
 
         // Only show header when scrolling up and past threshold
         // Hide when scrolling down or at top of page
-        if (scrollDirection === 'up' && currentScrollY > mukokoTheme.scroll.headerThreshold) {
+        if (scrollDirection === 'up' && currentScrollY > scroll.headerThreshold) {
           // Show header
           Animated.timing(headerTranslateY, {
             toValue: 0,
-            duration: mukokoTheme.animation.medium,
+            duration: animation.medium,
             useNativeDriver: true,
           }).start();
-        } else if (scrollDirection === 'down' || currentScrollY <= mukokoTheme.scroll.headerThreshold) {
+        } else if (scrollDirection === 'down' || currentScrollY <= scroll.headerThreshold) {
           // Hide header
           Animated.timing(headerTranslateY, {
-            toValue: -mukokoTheme.scroll.headerHeight,
-            duration: mukokoTheme.animation.medium,
+            toValue: -scroll.headerHeight,
+            duration: animation.medium,
             useNativeDriver: true,
           }).start();
         }
@@ -690,7 +690,7 @@ export default function ArticleDetailScreen({ route, navigation }) {
             {
               backgroundColor: theme.colors.primary,
               transform: [{ translateY: headerTranslateY }],
-              paddingTop: insets.top + mukokoTheme.spacing.sm,
+              paddingTop: insets.top + spacing.sm,
             },
           ]}
         >
@@ -759,30 +759,30 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: mukokoTheme.spacing.xl,
+    padding: spacing.xl,
     minHeight: 400,
   },
   loadingText: {
-    marginTop: mukokoTheme.spacing.md,
+    marginTop: spacing.md,
     fontSize: 14,
   },
   errorCard: {
     borderRadius: 16,
-    padding: mukokoTheme.spacing.xl,
+    padding: spacing.xl,
     alignItems: 'center',
     maxWidth: 400,
     borderWidth: 1,
-    gap: mukokoTheme.spacing.sm,
+    gap: spacing.sm,
   },
   errorTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
     fontSize: 20,
-    marginTop: mukokoTheme.spacing.md,
+    marginTop: spacing.md,
   },
   errorMessage: {
     fontSize: 14,
     textAlign: 'center',
-    marginBottom: mukokoTheme.spacing.md,
+    marginBottom: spacing.md,
   },
   errorButton: {
     borderRadius: 24,
@@ -790,51 +790,51 @@ const styles = StyleSheet.create({
 
   // Hero Section
   heroSection: {
-    paddingHorizontal: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
-    paddingBottom: mukokoTheme.spacing.xxl,
+    paddingHorizontal: spacing.lg + spacing.xs,
+    paddingBottom: spacing.xxl,
     position: 'relative',
   },
   heroBackButton: {
     position: 'absolute',
-    left: mukokoTheme.spacing.lg,
-    width: mukokoTheme.touchTargets.minimum,
-    height: mukokoTheme.touchTargets.minimum,
-    borderRadius: mukokoTheme.touchTargets.minimum / 2,
+    left: spacing.lg,
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
+    borderRadius: touchTargets.minimum / 2,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
   heroShareButton: {
     position: 'absolute',
-    right: mukokoTheme.spacing.lg,
-    width: mukokoTheme.touchTargets.minimum,
-    height: mukokoTheme.touchTargets.minimum,
-    borderRadius: mukokoTheme.touchTargets.minimum / 2,
+    right: spacing.lg,
+    width: touchTargets.minimum,
+    height: touchTargets.minimum,
+    borderRadius: touchTargets.minimum / 2,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
   },
   categoryContainer: {
-    marginTop: mukokoTheme.spacing.xxl + mukokoTheme.spacing.xl + mukokoTheme.spacing.sm,
-    marginBottom: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
+    marginTop: spacing.xxl + spacing.xl + spacing.sm,
+    marginBottom: spacing.lg + spacing.xs,
     flexDirection: 'row',
   },
   categoryBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: mukokoTheme.spacing.xs + 2,
+    gap: spacing.xs + 2,
     borderWidth: 1,
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.xs + 2,
-    borderRadius: mukokoTheme.spacing.lg + mukokoTheme.spacing.xs,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
+    borderRadius: spacing.lg + spacing.xs,
   },
   categoryText: {
     fontSize: 12,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
     letterSpacing: 1.5,
   },
   heroTitle: {
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
     fontSize: 28,
     lineHeight: 38,
     marginBottom: 24,
@@ -845,12 +845,12 @@ const styles = StyleSheet.create({
   },
   heroSource: {
     fontSize: 15,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
     marginBottom: 4,
   },
   heroDate: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
   authorContainer: {
     flexDirection: 'row',
@@ -867,7 +867,7 @@ const styles = StyleSheet.create({
   },
   authorName: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
   keywordsContainer: {
     flexDirection: 'row',
@@ -883,7 +883,7 @@ const styles = StyleSheet.create({
   },
   keywordText: {
     fontSize: 13,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
 
   // Image
@@ -911,19 +911,19 @@ const styles = StyleSheet.create({
     fontSize: 18,
     lineHeight: 28,
     marginBottom: 24,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
   contentContainer: {
-    marginBottom: mukokoTheme.spacing.lg,
+    marginBottom: spacing.lg,
   },
   contentParagraph: {
     fontSize: 16,
     lineHeight: 26,
-    marginBottom: mukokoTheme.spacing.md,
-    fontFamily: mukokoTheme.fonts.regular.fontFamily,
+    marginBottom: spacing.md,
+    fontFamily: 'PlusJakartaSans-Regular',
   },
   actionsDivider: {
-    marginVertical: mukokoTheme.spacing.lg,
+    marginVertical: spacing.lg,
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -941,7 +941,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
   readOriginalButton: {
     flexDirection: 'row',
@@ -955,7 +955,7 @@ const styles = StyleSheet.create({
   },
   readOriginalText: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
   },
 
   // Floating Header (appears on scroll up)
@@ -964,27 +964,27 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingBottom: mukokoTheme.spacing.md,
+    paddingBottom: spacing.md,
     zIndex: 100,
-    ...mukokoTheme.shadows.medium,
+    ...shadows.medium,
   },
   floatingHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: mukokoTheme.spacing.lg,
-    gap: mukokoTheme.spacing.md,
+    paddingHorizontal: spacing.lg,
+    gap: spacing.md,
   },
   floatingButton: {
-    width: mukokoTheme.touchTargets.compact,
-    height: mukokoTheme.touchTargets.compact,
-    borderRadius: mukokoTheme.touchTargets.compact / 2,
+    width: touchTargets.compact,
+    height: touchTargets.compact,
+    borderRadius: touchTargets.compact / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   floatingTitle: {
     flex: 1,
     fontSize: 16,
-    fontFamily: mukokoTheme.fonts.serifBold.fontFamily,
+    fontFamily: 'NotoSerif-Bold',
     letterSpacing: -0.2,
   },
 });

@@ -13,7 +13,7 @@ import {
   Text,
 } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
-import mukokoTheme from '../theme';
+import { spacing, staticColors } from '../constants/design-tokens';
 
 // Category emoji mapping - adds visual interest and quick recognition
 const CATEGORY_EMOJIS = {
@@ -58,7 +58,7 @@ export default function CategoryChips({
   showEmojis = true,
   style,
 }) {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
 
   const allCategories = showAll
     ? [{ id: 'all', name: 'All', slug: null }, ...categories]
@@ -76,14 +76,14 @@ export default function CategoryChips({
 
   // Dynamic glass styles based on theme
   const chipGlassStyle = {
-    backgroundColor: theme.colors.surface || 'rgba(94, 87, 114, 0.08)',
+    backgroundColor: colors.surfaceVariant,
     borderWidth: 1,
-    borderColor: theme.colors.surfaceBorder || 'rgba(94, 87, 114, 0.12)',
+    borderColor: colors.outline,
   };
 
   const chipSelectedStyle = {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   };
 
   return (
@@ -121,8 +121,8 @@ export default function CategoryChips({
               <Text
                 style={[
                   styles.chipText,
-                  { color: theme.colors['on-surface'] },
-                  selected && { color: theme.colors['on-primary'] },
+                  { color: colors.text },
+                  selected && { color: staticColors.white },
                 ]}
                 numberOfLines={1}
               >
@@ -134,16 +134,16 @@ export default function CategoryChips({
                   {
                     backgroundColor: selected
                       ? 'rgba(255,255,255,0.25)'
-                      : theme.colors.surface || 'rgba(94, 87, 114, 0.12)',
+                      : colors.surfaceVariant,
                     borderWidth: 1,
                     borderColor: selected
                       ? 'rgba(255,255,255,0.15)'
-                      : theme.colors.surfaceBorder || 'rgba(94, 87, 114, 0.15)',
+                      : colors.outline,
                   }
                 ]}>
                   <Text style={[
                     styles.countText,
-                    { color: selected ? theme.colors['on-primary'] : theme.colors['on-surface-variant'] }
+                    { color: selected ? staticColors.white : colors.textSecondary }
                   ]}>
                     {(category.article_count || category.count) > 99 ? '99+' : (category.article_count || category.count)}
                   </Text>
@@ -168,7 +168,7 @@ export function CategoryPills({
   showEmojis = true,
   style,
 }) {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
 
   const isSelected = (categorySlug) => selectedCategories.includes(categorySlug);
 
@@ -179,14 +179,14 @@ export function CategoryPills({
 
   // Dynamic glass styles based on theme
   const pillGlassStyle = {
-    backgroundColor: theme.colors.surface || 'rgba(94, 87, 114, 0.08)',
+    backgroundColor: colors.surfaceVariant,
     borderWidth: 1,
-    borderColor: theme.colors.surfaceBorder || 'rgba(94, 87, 114, 0.12)',
+    borderColor: colors.outline,
   };
 
   const pillSelectedStyle = {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   };
 
   return (
@@ -216,14 +216,14 @@ export function CategoryPills({
             <Text
               style={[
                 styles.pillText,
-                { color: theme.colors['on-surface'] },
-                selected && { color: theme.colors['on-primary'] },
+                { color: colors.text },
+                selected && { color: staticColors.white },
               ]}
             >
               {category.name}
             </Text>
             {selected && (
-              <Text style={[styles.pillCheck, { color: theme.colors['on-primary'] }]}>✓</Text>
+              <Text style={[styles.pillCheck, { color: staticColors.white }]}>✓</Text>
             )}
           </TouchableOpacity>
         );
@@ -239,10 +239,10 @@ const styles = StyleSheet.create({
     // No border - seamless with header and content
   },
   scrollContent: {
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.xs,
-    paddingBottom: mukokoTheme.spacing.sm,
-    gap: mukokoTheme.spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    paddingBottom: spacing.sm,
+    gap: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -251,36 +251,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     // Glass effect - semi-transparent with subtle background
     backgroundColor: 'rgba(0, 0, 0, 0.06)',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm + 2, // Increased for 44px min height
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2, // Increased for 44px min height
     minHeight: 44, // WCAG touch target minimum
     borderRadius: 22,
-    marginRight: mukokoTheme.spacing.xs,
+    marginRight: spacing.xs,
     // No border for cleaner look
-    gap: mukokoTheme.spacing.xs,
+    gap: spacing.xs,
   },
   chipFirst: {
     marginLeft: 0,
-  },
-  chipSelected: {
-    backgroundColor: mukokoTheme.colors.primary,
   },
   chipEmoji: {
     fontSize: 14,
   },
   chipText: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurface,
+    fontFamily: 'PlusJakartaSans-Medium',
     letterSpacing: 0.1,
   },
-  chipTextSelected: {
-    color: mukokoTheme.colors.onPrimary,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
-  },
   countBadge: {
-    marginLeft: mukokoTheme.spacing.xs,
-    paddingHorizontal: mukokoTheme.spacing.sm,
+    marginLeft: spacing.xs,
+    paddingHorizontal: spacing.sm,
     paddingVertical: 3,
     borderRadius: 12,
     minWidth: 24,
@@ -289,47 +281,38 @@ const styles = StyleSheet.create({
   },
   countText: {
     fontSize: 12, // Increased from 11 for WCAG readability
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
     textAlign: 'center',
   },
 
-  // ============ PILLS (Wrap Layout) ============
+  // ============ PILLS (Vertical List) ============
   pillsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: mukokoTheme.spacing.sm,
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm,
+    flexDirection: 'column',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     // Glass effect
     backgroundColor: 'rgba(0, 0, 0, 0.06)',
-    paddingHorizontal: mukokoTheme.spacing.md,
-    paddingVertical: mukokoTheme.spacing.sm + 2, // Increased for 44px min height
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2, // Increased for 44px min height
     minHeight: 44, // WCAG touch target minimum
     borderRadius: 22,
-    gap: mukokoTheme.spacing.xs,
-  },
-  pillSelected: {
-    backgroundColor: mukokoTheme.colors.primary,
+    gap: spacing.xs,
   },
   pillEmoji: {
     fontSize: 14,
   },
   pillText: {
     fontSize: 14,
-    fontFamily: mukokoTheme.fonts.medium.fontFamily,
-    color: mukokoTheme.colors.onSurface,
-  },
-  pillTextSelected: {
-    color: mukokoTheme.colors.onPrimary,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Medium',
+    flex: 1,
   },
   pillCheck: {
     fontSize: 12,
-    color: mukokoTheme.colors.onPrimary,
-    fontFamily: mukokoTheme.fonts.bold.fontFamily,
+    fontFamily: 'PlusJakartaSans-Bold',
   },
 });

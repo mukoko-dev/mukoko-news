@@ -40,7 +40,7 @@ const STATUSES = ['active', 'suspended', 'deleted'];
  * Manage users, roles, and status
  */
 export default function AdminUsersScreen({ navigation }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const { isAdmin } = useAuth();
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);

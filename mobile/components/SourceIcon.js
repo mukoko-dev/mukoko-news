@@ -24,7 +24,6 @@ import {
  */
 function SourceIcon({ source, size = 20, style, showBorder = true }) {
   const [imageError, setImageError] = useState(false);
-  const [imageLoaded, setImageLoaded] = useState(false);
 
   const faviconUrl = getFaviconUrl(source, size * 2); // Request 2x for retina
   const colors = getSourceColors(source);
@@ -51,35 +50,21 @@ function SourceIcon({ source, size = 20, style, showBorder = true }) {
 
   return (
     <View style={[styles.container, containerStyle, style]}>
-      {!showInitials && (
-        <>
-          {/* Loading placeholder */}
-          {!imageLoaded && (
-            <View style={[styles.placeholder, { backgroundColor: colors.primary }]}>
-              <Text style={initialsStyle}>{initials.charAt(0)}</Text>
-            </View>
-          )}
-          <Image
-            source={{ uri: faviconUrl }}
-            style={[
-              styles.favicon,
-              {
-                width: size,
-                height: size,
-                borderRadius: size / 2,
-                opacity: imageLoaded ? 1 : 0,
-              },
-            ]}
-            resizeMode="cover"
-            onLoad={() => setImageLoaded(true)}
-            onError={() => setImageError(true)}
-          />
-        </>
-      )}
-      {showInitials && (
+      {showInitials ? (
         <Text style={initialsStyle} numberOfLines={1}>
           {initials.substring(0, 2)}
         </Text>
+      ) : (
+        <Image
+          source={{ uri: faviconUrl }}
+          style={{
+            width: size,
+            height: size,
+            borderRadius: size / 2,
+          }}
+          resizeMode="cover"
+          onError={() => setImageError(true)}
+        />
       )}
     </View>
   );
@@ -158,15 +143,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
-  },
-  placeholder: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 999,
-  },
-  favicon: {
-    position: 'absolute',
   },
 
   // Badge styles

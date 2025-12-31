@@ -12,7 +12,7 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
  * Used in navigation tabs/sidebar to show and change the active country
  */
 export default function CountryPickerButton({ compact = false, showLabel = true }) {
-  const theme = useTheme();
+  const { theme } = useTheme();
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [countries, setCountries] = useState([]);
   const [loading, setLoading] = useState(true);
