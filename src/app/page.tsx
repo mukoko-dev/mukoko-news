@@ -5,8 +5,15 @@ import Link from "next/link";
 import { Loader2, ChevronLeft, ChevronRight, Compass, RefreshCw, WifiOff } from "lucide-react";
 import { CategoryChip } from "@/components/ui/category-chip";
 import { ArticleCard } from "@/components/article-card";
+import { HeroCard } from "@/components/hero-card";
+import { CompactCard } from "@/components/compact-card";
 import { usePreferences } from "@/contexts/preferences-context";
 import { api, type Article, type Category } from "@/lib/api";
+
+// Helper to check if article has a valid image
+function hasValidImage(article: Article): boolean {
+  return Boolean(article.image_url && article.image_url.startsWith("http"));
+}
 
 export default function FeedPage() {
   const { selectedCategories } = usePreferences();
@@ -134,6 +141,19 @@ export default function FeedPage() {
     return result;
   }, [articles, activeCategory]);
 
+  // Split articles into sections based on images
+  const { heroArticle, topStories, latestWithImages, latestWithoutImages } = useMemo(() => {
+    const withImages = filteredArticles.filter(hasValidImage);
+    const withoutImages = filteredArticles.filter((a) => !hasValidImage(a));
+
+    return {
+      heroArticle: withImages[0] || null,
+      topStories: withImages.slice(1, 4),
+      latestWithImages: withImages.slice(4),
+      latestWithoutImages: withoutImages,
+    };
+  }, [filteredArticles]);
+
   // Get personalized category chips - show user's selected categories first
   const displayCategories = useMemo(() => {
     if (selectedCategories.length === 0) return categories;
@@ -148,7 +168,7 @@ export default function FeedPage() {
   }, [categories, selectedCategories]);
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6">
+    <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
       {/* Pull-to-refresh indicator (mobile) */}
       {pullDistance > 0 && (
         <div
@@ -175,7 +195,7 @@ export default function FeedPage() {
       )}
 
       {/* Feed Header */}
-      <div className="py-6 flex items-center justify-between">
+      <div className="py-5 flex items-center justify-between">
         <div>
           <h1 className="font-bold text-xl">For You</h1>
           <p className="text-xs text-text-tertiary">Pan-African News</p>
@@ -212,7 +232,7 @@ export default function FeedPage() {
               : ""
           }`}
         >
-          <div className={isSticky ? "max-w-[1200px] mx-auto px-6" : ""}>
+          <div className={isSticky ? "max-w-[1200px] mx-auto px-4 sm:px-6" : ""}>
             <div className="relative flex items-center">
               {isSticky && (
                 <button
@@ -259,54 +279,97 @@ export default function FeedPage() {
         {isSticky && <div className="h-[52px]" />}
       </div>
 
-      {/* Articles Feed */}
-      <section className="py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">
-            {activeCategory
-              ? categories.find((c) => c.id === activeCategory)?.name || activeCategory
-              : "Latest"}
-          </h2>
-          <span className="text-sm text-text-tertiary">
-            {filteredArticles.length} articles
-          </span>
+      {/* Main Content */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="w-8 h-8 text-primary animate-spin" />
         </div>
+      ) : error ? (
+        <div className="flex flex-col items-center justify-center py-16 text-center">
+          <WifiOff className="w-12 h-12 text-text-tertiary mb-4" />
+          <p className="text-lg text-text-secondary mb-2">Unable to load articles</p>
+          <p className="text-sm text-text-tertiary mb-6 max-w-md">{error}</p>
+          <button
+            onClick={() => fetchData()}
+            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-full font-medium hover:opacity-90 transition-opacity"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Try Again
+          </button>
+        </div>
+      ) : filteredArticles.length > 0 ? (
+        <div className="py-6 space-y-8">
+          {/* Hero Section */}
+          {heroArticle && (
+            <section>
+              <HeroCard article={heroArticle} />
+            </section>
+          )}
 
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <WifiOff className="w-12 h-12 text-text-tertiary mb-4" />
-            <p className="text-lg text-text-secondary mb-2">Unable to load articles</p>
-            <p className="text-sm text-text-tertiary mb-6 max-w-md">{error}</p>
-            <button
-              onClick={() => fetchData()}
-              className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-full font-medium hover:opacity-90 transition-opacity"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Try Again
-            </button>
-          </div>
-        ) : filteredArticles.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredArticles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16 text-text-secondary">
-            <p className="text-lg">No articles found.</p>
-            <button
-              onClick={() => setActiveCategory(null)}
-              className="mt-4 text-primary font-medium hover:underline"
-            >
-              Clear filter
-            </button>
-          </div>
-        )}
-      </section>
+          {/* Top Stories Row */}
+          {topStories.length > 0 && (
+            <section>
+              <h2 className="text-lg font-bold mb-4">Top Stories</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {topStories.map((article) => (
+                  <ArticleCard key={article.id} article={article} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Quick Reads - Articles without images */}
+          {latestWithoutImages.length > 0 && (
+            <section>
+              <h2 className="text-lg font-bold mb-4">Quick Reads</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {latestWithoutImages.slice(0, 6).map((article) => (
+                  <CompactCard key={article.id} article={article} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Latest - Remaining articles with images */}
+          {latestWithImages.length > 0 && (
+            <section>
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-bold">Latest</h2>
+                <span className="text-sm text-text-tertiary">
+                  {latestWithImages.length} more
+                </span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {latestWithImages.map((article) => (
+                  <ArticleCard key={article.id} article={article} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* More Quick Reads if there are any remaining */}
+          {latestWithoutImages.length > 6 && (
+            <section>
+              <h2 className="text-lg font-bold mb-4">More Stories</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {latestWithoutImages.slice(6).map((article) => (
+                  <CompactCard key={article.id} article={article} />
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+      ) : (
+        <div className="text-center py-16 text-text-secondary">
+          <p className="text-lg">No articles found.</p>
+          <button
+            onClick={() => setActiveCategory(null)}
+            className="mt-4 text-primary font-medium hover:underline"
+          >
+            Clear filter
+          </button>
+        </div>
+      )}
     </div>
   );
 }
