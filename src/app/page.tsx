@@ -70,6 +70,9 @@ export default function FeedPage() {
 
   // Pull-to-refresh for mobile
   useEffect(() => {
+    // Use refs to avoid stale closure and excessive re-renders
+    let currentPullDistance = 0;
+
     const handleTouchStart = (e: TouchEvent) => {
       if (window.scrollY === 0) {
         touchStartY.current = e.touches[0].clientY;
@@ -79,20 +82,23 @@ export default function FeedPage() {
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!isPulling.current || window.scrollY > 0) {
+        currentPullDistance = 0;
         setPullDistance(0);
         return;
       }
       const touchY = e.touches[0].clientY;
       const distance = Math.max(0, (touchY - touchStartY.current) * 0.5);
       if (distance > 0 && distance < 150) {
+        currentPullDistance = distance;
         setPullDistance(distance);
       }
     };
 
     const handleTouchEnd = () => {
-      if (pullDistance > 80) {
+      if (currentPullDistance > 80) {
         handleRefresh();
       }
+      currentPullDistance = 0;
       setPullDistance(0);
       isPulling.current = false;
     };
@@ -106,7 +112,7 @@ export default function FeedPage() {
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
     };
-  }, [pullDistance, handleRefresh]);
+  }, [handleRefresh]);
 
   // Sticky header on scroll
   useEffect(() => {
