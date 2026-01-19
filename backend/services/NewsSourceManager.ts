@@ -15,7 +15,7 @@ import {
   validateNewsSourceRow,
   validateNewsSourceRows,
   validateSourceMetrics,
-  validateCountResult,
+  parseCountResult,
   type NewsSourceRow,
 } from '../utils/validation.js';
 
@@ -710,7 +710,7 @@ export class NewsSourceManager {
     recent_additions: NewsSource[];
   }> {
     try {
-      // Use validateCountResult for all count queries
+      // Use parseCountResult for all count queries
       const totalSourcesResult = await this.db
         .prepare('SELECT COUNT(*) as count FROM rss_sources')
         .first();
@@ -755,9 +755,9 @@ export class NewsSourceManager {
       const validatedRecentAdditions = validateNewsSourceRows(recentAdditions.results);
 
       return {
-        total_sources: validateCountResult(totalSourcesResult),
-        active_sources: validateCountResult(activeSourcesResult),
-        high_quality_sources: validateCountResult(highQualitySourcesResult),
+        total_sources: parseCountResult(totalSourcesResult),
+        active_sources: parseCountResult(activeSourcesResult),
+        high_quality_sources: parseCountResult(highQualitySourcesResult),
         sources_needing_attention: validatedNeedingAttention.map(row => this.rowToNewsSource(row)),
         top_performers: validatedTopPerformers.map(row => this.rowToNewsSource(row)),
         recent_additions: validatedRecentAdditions.map(row => this.rowToNewsSource(row)),

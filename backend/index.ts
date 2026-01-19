@@ -596,9 +596,32 @@ app.get("/api/health", async (c) => {
 /**
  * Error tracking endpoint for frontend error boundary reports
  * Receives error reports from React error boundaries and logs them
+ * Rate limited to prevent abuse (10 reports per minute per IP)
  */
 app.post("/api/errors", async (c) => {
   try {
+    // Simple rate limiting using KV (10 errors per minute per IP)
+    const clientIP = c.req.header("cf-connecting-ip") || c.req.header("x-forwarded-for") || "unknown";
+    const rateLimitKey = `error_ratelimit:${clientIP}`;
+    const MAX_ERRORS_PER_MINUTE = 10;
+
+    if (c.env.CACHE_STORAGE) {
+      const currentCount = await c.env.CACHE_STORAGE.get(rateLimitKey);
+      const count = currentCount ? parseInt(currentCount, 10) : 0;
+
+      if (count >= MAX_ERRORS_PER_MINUTE) {
+        return c.json(
+          { error: "Too many error reports. Please try again later." },
+          429
+        );
+      }
+
+      // Increment counter with 60 second TTL
+      await c.env.CACHE_STORAGE.put(rateLimitKey, String(count + 1), {
+        expirationTtl: 60,
+      });
+    }
+
     const body = await c.req.json();
 
     // Validate required fields
