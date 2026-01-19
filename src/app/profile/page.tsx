@@ -4,21 +4,19 @@ import { useState } from "react";
 import Link from "next/link";
 import {
   User,
-  Mail,
   Bell,
   Moon,
   Sun,
   Monitor,
   ChevronRight,
-  LogOut,
-  Settings,
   HelpCircle,
   FileText,
   Shield,
 } from "lucide-react";
 import { useTheme } from "@/components/theme-provider";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
-export default function ProfilePage() {
+function ProfileContent() {
   const { theme, setTheme, cycleTheme } = useTheme();
   const [isLoggedIn] = useState(false);
 
@@ -149,4 +147,24 @@ export default function ProfilePage() {
 
   // Logged in state would show user profile here
   return null;
+}
+
+export default function ProfilePage() {
+  return (
+    <ErrorBoundary
+      fallback={
+        <div className="max-w-[600px] mx-auto px-6 py-12 text-center">
+          <div className="w-20 h-20 bg-surface rounded-full flex items-center justify-center mx-auto mb-6">
+            <User className="w-10 h-10 text-text-tertiary" />
+          </div>
+          <h2 className="font-serif text-xl font-bold mb-2">Something went wrong</h2>
+          <p className="text-text-secondary mb-4">
+            We couldn&apos;t load your profile. Please try refreshing the page.
+          </p>
+        </div>
+      }
+    >
+      <ProfileContent />
+    </ErrorBoundary>
+  );
 }

@@ -7,11 +7,12 @@ import {
   Heart,
   Share2,
   Bookmark,
-  Loader2,
   AlertCircle,
   RefreshCw,
 } from "lucide-react";
 import { api, type Article } from "@/lib/api";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { NewsBytesSkeleton } from "@/components/ui/discover-skeleton";
 
 export default function NewsBytesPage() {
   const router = useRouter();
@@ -152,16 +153,7 @@ export default function NewsBytesPage() {
   }, []);
 
   if (loading) {
-    return (
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-black">
-        <div className="relative h-full w-full md:w-auto md:h-[calc(100vh-80px)] md:aspect-[9/16] md:max-h-[900px] md:rounded-2xl md:overflow-hidden md:shadow-2xl md:shadow-black/50 bg-black flex items-end justify-center pb-32">
-          <div className="text-center">
-            <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-            <p className="text-white/80">Loading NewsBytes...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <NewsBytesSkeleton />;
   }
 
   if (error) {
@@ -204,8 +196,9 @@ export default function NewsBytesPage() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-black flex items-center justify-center">
-      {/* Desktop/Tablet: Centered vertical frame container */}
+    <ErrorBoundary fallback={<div className="fixed inset-0 z-40 flex items-center justify-center bg-black text-white/60">Failed to load NewsBytes</div>}>
+      <div className="fixed inset-0 z-40 bg-black flex items-center justify-center">
+        {/* Desktop/Tablet: Centered vertical frame container */}
       <div className="relative h-full w-full md:w-auto md:h-[calc(100vh-80px)] md:aspect-[9/16] md:max-h-[900px] md:rounded-2xl md:overflow-hidden md:shadow-2xl md:shadow-black/50">
         {/* Progress Indicator - positioned below header */}
         <div className="absolute top-16 sm:top-20 md:top-4 left-1/2 transform -translate-x-1/2 z-20 flex items-center gap-1">
@@ -329,7 +322,8 @@ export default function NewsBytesPage() {
           );
         })}
         </div>
+        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }

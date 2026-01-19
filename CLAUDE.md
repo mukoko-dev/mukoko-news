@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Mukoko News is a Pan-African digital news aggregation platform. "Mukoko" means "Beehive" in Shona - where community gathers and stores knowledge. Primary market is Zimbabwe with expansion across Africa.
+Mukoko News is a Pan-African digital news aggregation platform. "Mukoko" means "Beehive" in Shona - where community gathers and stores knowledge. Primary market is Zimbabwe with expansion across 12 African countries.
 
-**Architecture**: Next.js frontend with Cloudflare Workers backend
+**Architecture**: Next.js 15 frontend with Cloudflare Workers backend
 
 - `src/` - Next.js 15 frontend (App Router)
 - `backend/` - Cloudflare Workers API (Hono framework)
@@ -17,22 +17,34 @@ Mukoko News is a Pan-African digital news aggregation platform. "Mukoko" means "
 ### Frontend (Root Level)
 
 ```bash
-npm run dev              # Start Next.js dev server
+npm run dev              # Start Next.js dev server (port 3000)
 npm run build            # Build for production
 npm run start            # Start production server
 npm run lint             # ESLint check
 npm run lint:fix         # ESLint auto-fix
 npm run typecheck        # TypeScript check
 npm run clean            # Clean build artifacts
+
+# Backend orchestration from root
+npm run dev:backend      # Start backend dev server
+npm run build:backend    # Build backend
+npm run deploy:backend   # Deploy to Cloudflare Workers
+npm run test:backend     # Run backend tests
 ```
 
 ### Backend (`cd backend`)
+
 ```bash
-npm run dev              # wrangler dev (local worker)
-npm run deploy           # Deploy to Cloudflare Workers
-npm run test             # vitest run
+npm run dev              # wrangler dev (local worker on port 8787)
+npm run deploy           # Clean, build, and deploy to Cloudflare
+npm run build            # wrangler deploy --dry-run
+npm run test             # vitest run (single run)
 npm run test:watch       # vitest (watch mode)
+npm run test:coverage    # vitest with v8 coverage report
 npm run typecheck        # tsc --noEmit
+npm run validate         # typecheck && build
+
+# Database operations
 npm run db:migrate       # Apply schema to remote D1
 npm run db:local         # Apply schema to local D1
 ```
@@ -42,77 +54,176 @@ npm run db:local         # Apply schema to local D1
 ### Frontend Stack
 
 - **Framework**: Next.js 15 with App Router
-- **UI**: Tailwind CSS 4 with custom design tokens
-- **Components**: Radix UI primitives
+- **UI**: Tailwind CSS 4.x with custom design tokens
+- **Components**: Radix UI primitives (Avatar, Dialog, Dropdown, Tabs, etc.)
 - **Icons**: Lucide React
 - **Theme**: next-themes for dark mode support
-- **TypeScript**: Full type safety
-- **State**: React Context (ThemeContext)
+- **TypeScript**: Full type safety with strict mode
+- **State**: React Context (ThemeContext, PreferencesContext)
 
 ### Backend Stack
+
 - **Runtime**: Cloudflare Workers (edge computing)
 - **Framework**: Hono (lightweight, fast)
 - **Database**: D1 (SQLite at edge)
-- **Cache**: KV Namespaces
-- **Real-time**: Durable Objects (4 classes: ArticleInteractions, UserBehavior, RealtimeCounters, RealtimeAnalytics)
+- **Cache**: KV Namespaces (AUTH_STORAGE, CACHE_STORAGE)
+- **Real-time**: Durable Objects (4 classes)
 - **AI**: Workers AI for content processing
 - **Search**: Vectorize for semantic search
-- **Auth**: OIDC via id.mukoko.com
+- **Auth**: OIDC via id.mukoko.com, Mobile SMS, Web3 wallets
 
 ### Backend Services Pattern
-Services are in `backend/services/`. Key services:
+
+Services are in `backend/services/`. Key services include:
+
+**Core Services**:
 - `ArticleService` - Article CRUD and queries
-- `NewsSourceService` / `SimpleRSSService` - RSS feed aggregation
+- `ArticleAIService` - AI-powered content processing
+- `SimpleRSSService` - RSS feed aggregation
 - `ContentProcessingPipeline` - RSS → parse → process → store
+- `NewsSourceService` / `NewsSourceManager` - Source management
+- `CategoryManager` - Category operations
+- `CountryService` - Pan-African country management
+
+**Auth Services**:
 - `AuthProviderService` - Unified auth service with RBAC
-- `D1Service` / `D1CacheService` - Database operations
+- `OIDCAuthService` - OIDC token validation
+- `MobileAuthService` - SMS-based mobile authentication
+- `Web3AuthService` - Ethereum/EVM wallet authentication
+
+**Data Services**:
+- `D1Service` / `D1CacheService` - Database operations and caching
+- `D1ConfigService` - Configuration management
+- `D1UserService` - User database operations
+- `PersonalizedFeedService` - User-specific feeds
+
+**Infrastructure Services**:
 - `AnalyticsEngineService` - Metrics and analytics
+- `CloudflareImagesService` - Image optimization
+- `AISearchService` - Semantic search (Vectorize)
+- `RateLimitService` - Rate limiting
+- `CSRFService` - CSRF protection
+- `ObservabilityService` - Logging and monitoring
+- `EmailService` - Email notifications
+- `SEOService` - SEO metadata generation
+
+**Durable Objects**:
+- `ArticleInteractionsDO` - Article engagement tracking
+- `UserBehaviorDO` - User behavior tracking
+- `RealtimeCountersDO` - Live counter updates
+- `RealtimeAnalyticsDO` - Real-time analytics aggregation
 
 ### Access Control
+
 - **Admin routes** (`/api/admin/*`) - Protected, requires admin role
-- **All other routes** - Public (no auth required)
+- **API routes** (`/api/*`) - Protected with bearer token (API_SECRET or OIDC JWT)
+- **Public routes** - `/api/health` only
 - Non-admin roles (moderator, support, author, user) are currently disabled
 
 ### Design System (Nyuchi Brand v6)
+
+**Colors** (African Minerals palette):
 - Primary: Tanzanite (#4B0082)
 - Secondary: Cobalt (#0047AB)
 - Accent: Gold (#5D4037)
+- Success: Malachite (#2E8B57)
+- Warning: Terracotta (#E07A4D)
 - Surface: Warm Cream (#FAF9F5) for light mode
-- Typography: Noto Serif (headings), Plus Jakarta Sans (body)
+
+**Typography**:
+- Headings: Noto Serif
+- Body: Plus Jakarta Sans
+
+**Spacing**:
 - Border radius: 12px buttons, 16px cards
+- WCAG AAA compliant (7:1 contrast ratio)
 
 ## Frontend Structure
 
 ```text
 src/
-├── app/                 # Next.js App Router
-│   ├── layout.tsx       # Root layout with providers
-│   ├── page.tsx         # Home feed page
-│   ├── discover/        # Discover page
-│   ├── newsbytes/       # TikTok-style vertical feed
-│   ├── article/[id]/    # Article detail page
-│   ├── search/          # Search page
-│   ├── profile/         # Profile/settings page
-│   ├── admin/           # Admin dashboard
-│   └── globals.css      # Tailwind styles and CSS variables
+├── app/                     # Next.js App Router
+│   ├── layout.tsx           # Root layout with providers
+│   ├── page.tsx             # Home feed page
+│   ├── globals.css          # Tailwind styles and CSS variables
+│   ├── admin/               # Admin dashboard
+│   │   ├── analytics/       # Admin analytics
+│   │   ├── sources/         # RSS source management
+│   │   ├── system/          # System settings
+│   │   └── users/           # User management
+│   ├── article/[id]/        # Article detail page
+│   ├── categories/          # Categories page
+│   ├── discover/            # Discover page (country/category filtering)
+│   ├── newsbytes/           # TikTok-style vertical feed
+│   ├── search/              # Search page
+│   ├── profile/             # User profile/settings
+│   ├── saved/               # Saved articles
+│   ├── insights/            # Analytics insights
+│   ├── help/                # Help pages
+│   ├── privacy/             # Privacy policy
+│   └── terms/               # Terms of service
 ├── components/
-│   ├── layout/          # Header, Footer
-│   ├── ui/              # Reusable UI components
-│   ├── article-card.tsx # Article card component
-│   ├── share-modal.tsx  # Share modal
-│   └── theme-provider.tsx
+│   ├── layout/
+│   │   ├── header.tsx       # Navigation header
+│   │   └── footer.tsx       # Footer component
+│   ├── ui/                  # Reusable UI components (Radix UI based)
+│   │   ├── button.tsx
+│   │   ├── card.tsx
+│   │   ├── avatar.tsx
+│   │   ├── category-chip.tsx
+│   │   ├── theme-toggle.tsx
+│   │   ├── engagement-bar.tsx
+│   │   ├── source-icon.tsx
+│   │   ├── error-boundary.tsx  # React error boundary component
+│   │   ├── skeleton.tsx        # Skeleton loading components
+│   │   └── discover-skeleton.tsx # Page-specific skeletons
+│   ├── article-card.tsx     # Main article display component
+│   ├── hero-card.tsx        # Featured article card with large image
+│   ├── compact-card.tsx     # Text-focused card for articles without images
+│   ├── share-modal.tsx      # Share/engagement modal
+│   ├── onboarding-modal.tsx # Country/category selection
+│   └── theme-provider.tsx   # Theme context provider
+├── contexts/
+│   └── preferences-context.tsx # User preferences (countries, categories)
 └── lib/
-    ├── api.ts           # API client
-    └── utils.ts         # Utility functions
+    ├── api.ts               # API client with fetch utilities
+    ├── utils.ts             # Utility functions (cn, formatTimeAgo, isValidImageUrl)
+    ├── source-profiles.ts   # News source configurations
+    └── __tests__/           # Unit tests
+        └── utils.test.ts    # Tests for utility functions
+```
+
+## Backend Structure
+
+```text
+backend/
+├── index.ts                 # API entry point and route definitions
+├── admin/
+│   ├── index.ts             # Admin UI HTML and login logic
+│   └── login.html           # Admin login form
+├── durable-objects/         # Real-time state management
+├── middleware/
+│   ├── apiAuth.ts           # Bearer token authentication
+│   ├── oidcAuth.ts          # OIDC authentication
+│   └── __tests__/           # Middleware tests
+├── services/                # Core business logic (27+ services)
+│   ├── __tests__/           # Service tests (Vitest)
+│   └── *.ts                 # Individual service files
+├── wrangler.jsonc           # Cloudflare Workers config
+├── vitest.config.ts         # Test configuration
+├── package.json             # Backend dependencies
+└── tsconfig.json            # TypeScript config
 ```
 
 ## Database
 
-Schema in `database/schema.sql`. 17 migrations in `database/migrations/`.
+Schema in `database/schema.sql`. 18 migrations in `database/migrations/`.
 
-**Key Tables**: users, articles, categories, keywords, news_sources, rss_sources, user_interactions
+**Key Tables**: users, articles, categories, keywords, news_sources, rss_sources, user_interactions, countries, author_profiles
 
 **Roles (RBAC)**: admin (active), moderator, support, author, user (disabled)
+
+**OIDC Support**: Standard claims (sub, email, email_verified, picture, etc.) with multi-provider auth linking
 
 ## API
 
@@ -134,12 +245,18 @@ Schema in `database/schema.sql`. 17 migrations in `database/migrations/`.
 2. **OIDC JWT** - User authentication tokens from id.mukoko.com
    - Validated by oidcAuth middleware
    - Takes priority over API_SECRET
+   - Sets context: `user`, `userId`, `isAuthenticated`
+
+3. **Mobile Auth** - SMS-based authentication for mobile apps
+
+4. **Web3 Auth** - Ethereum/EVM wallet authentication
 
 ### Key Endpoints
 
-- `GET /api/feeds` - Get articles feed
+- `GET /api/feeds` - Get articles feed with filtering
 - `GET /api/article/:id` - Get single article
 - `GET /api/categories` - Get categories
+- `GET /api/keywords` - Get trending topics/keywords
 - `GET /api/newsbytes` - Get NewsBytes articles
 - `POST /api/feed/collect` - Trigger RSS collection
 - `GET /api/admin/*` - Admin endpoints
@@ -147,48 +264,98 @@ Schema in `database/schema.sql`. 17 migrations in `database/migrations/`.
 **API Auth Middleware**: `backend/middleware/apiAuth.ts`
 **OpenAPI Schema**: `api-schema.yml`
 
+## Environment Variables
+
+### Frontend (.env.local)
+
+```bash
+NEXT_PUBLIC_API_URL=https://mukoko-news-backend.nyuchi.workers.dev
+NEXT_PUBLIC_API_SECRET=your-api-secret  # Optional: for direct browser auth
+API_SECRET=your-api-secret               # Server-side API authentication
+```
+
+### Backend (Cloudflare Secrets)
+
+```bash
+npx wrangler secret put API_SECRET
+npx wrangler secret put ADMIN_SESSION_SECRET
+npx wrangler secret put OIDC_CLIENT_SECRET
+```
+
 ## Deployment
 
 **Frontend**: Auto-deploys to Vercel on push to main
 
-**Backend**: Manual deployment only (not CI/CD)
+**Backend**: Deployed via CI/CD on main branch (after tests pass)
 ```bash
 cd backend && npm run deploy
 ```
 
-GitHub Actions runs tests on PRs but does not auto-deploy backend.
-
-## Key Files
-
-- `src/app/layout.tsx` - Root layout with theme provider
-- `src/app/globals.css` - Tailwind config and CSS variables
-- `src/lib/api.ts` - API client
-- `src/components/theme-provider.tsx` - Theme context
-- `backend/index.ts` - API entry point and route definitions
-- `backend/wrangler.jsonc` - Cloudflare Workers config
-- `next.config.ts` - Next.js configuration
-- `tailwind.config.ts` - Tailwind CSS configuration
-- `eslint.config.js` - Flat ESLint 9 config
+**CI/CD Pipeline** (`.github/workflows/deploy.yml`):
+1. Test frontend (typecheck, lint, build)
+2. Test backend (vitest, typecheck, build)
+3. Deploy backend (migrations + wrangler deploy)
+4. Health check verification
 
 ## Testing
 
-**Backend**: Vitest with 10s timeout per test
+### Frontend Testing (Vitest)
+
+```bash
+npm run test              # Single run
+npm run test:watch        # Watch mode
+npm run test:coverage     # With v8 coverage report
+```
+
+**Test Files** (`src/lib/__tests__/`):
+- `utils.test.ts` - Utility function tests (formatTimeAgo, isValidImageUrl, cn)
+
+**Test Pattern**: Vitest with jsdom environment, React Testing Library
+
+### Backend Testing (Vitest)
+
 ```bash
 cd backend
 npm run test              # Single run
 npm run test:watch        # Watch mode
-npm run test:coverage     # With coverage report
+npm run test:coverage     # With v8 coverage report
 ```
+
+**Test Files** (`backend/services/__tests__/`):
+- `ArticleService.test.ts` - Slug generation, content extraction
+- `CategoryManager.test.ts` - Category operations
+- `D1CacheService.test.ts` - Caching logic
+- `RateLimitService.test.ts` - Rate limiting
+- `CSRFService.test.ts` - CSRF protection
+
+**Mock Pattern**: Mock D1Database with `prepare().bind().first/all/run()` chain
+
+**Pre-commit Hook**: Runs typecheck + build validation via Husky
 
 ## Cloudflare Bindings
 
 Defined in `wrangler.jsonc`:
+
+**Storage**:
 - `DB` - D1 database
 - `AUTH_STORAGE`, `CACHE_STORAGE` - KV namespaces
-- `ARTICLE_INTERACTIONS`, `USER_BEHAVIOR`, `REALTIME_COUNTERS`, `REALTIME_ANALYTICS` - Durable Objects
+
+**Durable Objects**:
+- `ARTICLE_INTERACTIONS` - ArticleInteractionsDO
+- `USER_BEHAVIOR` - UserBehaviorDO
+- `REALTIME_COUNTERS` - RealtimeCountersDO
+- `REALTIME_ANALYTICS` - RealtimeAnalyticsDO
+
+**AI & Search**:
 - `AI` - Workers AI
 - `VECTORIZE_INDEX` - Semantic search
+
+**Media**:
 - `IMAGES` - Cloudflare Images
+
+**Analytics Datasets**:
+- NEWS_ANALYTICS, SEARCH_ANALYTICS, CATEGORY_ANALYTICS
+- USER_ANALYTICS, PERFORMANCE_ANALYTICS, AI_INSIGHTS_ANALYTICS
 
 ## Theme System
 
@@ -211,3 +378,122 @@ The app uses CSS variables for theming, defined in `src/app/globals.css`:
 ```
 
 Use Tailwind classes like `bg-primary`, `text-foreground`, `bg-surface` etc.
+
+## Code Conventions
+
+### TypeScript
+
+- Strict mode enabled
+- `const` preferred over `let`
+- Unused variables: prefix with `_` to ignore
+- Path alias: `@/*` maps to `src/*`
+
+### File Naming
+
+- Components/services: camelCase (`ArticleService.ts`, `articleCard.tsx`)
+- Pages: kebab-case (`article/[id]/page.tsx`)
+- SQL identifiers: snake_case
+- URL paths: kebab-case
+
+### Component Patterns
+
+- Functional components with React 19 + TypeScript
+- Radix UI primitives for accessibility
+- Tailwind classes for styling (no inline styles)
+- Props spread via `className` prop pattern
+- Error boundaries on all pages with data fetching
+- Skeleton loaders for graceful loading states
+
+### Error Boundaries
+
+Error boundaries wrap page content in:
+- Feed page (`page.tsx`) - All feed sections
+- Article page (`article/[id]/page.tsx`)
+- Discover page (`discover/page.tsx`)
+- Search page (`search/page.tsx`)
+- NewsBytes page (`newsbytes/page.tsx`)
+
+Component: `src/components/ui/error-boundary.tsx`
+
+### Skeleton Loaders
+
+Skeleton components provide graceful loading states:
+- `FeedPageSkeleton` - Home feed loading
+- `ArticlePageSkeleton` - Article detail loading
+- `ArticleCardSkeleton` - Individual card loading
+- `CompactCardSkeleton` - Compact card loading
+- `HeroCardSkeleton` - Hero section loading
+- `DiscoverPageSkeleton` - Discover page loading
+- `NewsBytesSkeleton` - NewsBytes loading
+- `SearchPageSkeleton` - Search page loading
+
+Components: `src/components/ui/skeleton.tsx`, `src/components/ui/discover-skeleton.tsx`
+
+### API Client Pattern
+
+- Centralized `fetchAPI<T>()` function with 10s timeout
+- Bearer token authentication
+- Error handling: AbortError → timeout message
+- Response validation required (non-OK throws)
+
+### Backend Error Handling
+
+- Hono responses: `c.json({ error, message }, statusCode)`
+- Standard HTTP status codes: 400, 401, 403, 404, 500
+- Timestamp inclusion in error responses
+- Console logging with `[SERVICE]` prefix
+
+## Pan-African Country Support
+
+Supported countries (12 total):
+- Zimbabwe (ZW) - Primary market
+- South Africa (ZA)
+- Kenya (KE)
+- Nigeria (NG)
+- Ghana (GH)
+- Tanzania (TZ)
+- Uganda (UG)
+- Rwanda (RW)
+- Ethiopia (ET)
+- Botswana (BW)
+- Zambia (ZM)
+- Malawi (MW)
+
+RSS articles inherit `country_id` from source configuration.
+
+## Key Features
+
+1. **Multi-Auth Support**: OIDC, Mobile SMS, Web3 wallets
+2. **Real-time Features**: Durable Objects for live counters and analytics
+3. **AI-Powered Services**: Content processing, semantic search, insights
+4. **NewsBytes**: TikTok-style vertical feed with mobile-first design
+5. **RSS Feed Aggregation**: Multiple sources with content processing pipeline
+6. **Admin Dashboard**: User management, analytics, source configuration
+7. **Personalized Feeds**: Country/category filtering with localStorage persistence
+8. **Onboarding Flow**: Modal-based country/category selection
+9. **Dark Mode**: System detection or manual toggle with next-themes
+10. **SEO Features**: Metadata generation, sitemap generation
+
+## Key Files
+
+### Frontend
+- `src/app/layout.tsx` - Root layout with providers
+- `src/app/page.tsx` - Home feed with visual hierarchy (Hero, Top Stories, Quick Reads)
+- `src/app/globals.css` - Tailwind config and CSS variables
+- `src/lib/api.ts` - API client
+- `src/lib/utils.ts` - Utilities (cn, formatTimeAgo, isValidImageUrl)
+- `src/contexts/preferences-context.tsx` - User preferences context
+- `src/components/ui/skeleton.tsx` - Skeleton loading components
+- `src/components/ui/error-boundary.tsx` - Error boundary component
+- `vitest.config.ts` - Frontend test configuration
+
+### Backend
+- `backend/index.ts` - API entry point and route definitions
+- `backend/wrangler.jsonc` - Cloudflare Workers config
+- `backend/services/NewsSourceManager.ts` - News source management
+
+### Config
+- `next.config.ts` - Next.js configuration
+- `tailwind.config.ts` - Tailwind CSS configuration
+- `eslint.config.js` - Flat ESLint 9 config
+- `api-schema.yml` - OpenAPI documentation

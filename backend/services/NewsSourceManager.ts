@@ -1,6 +1,6 @@
 /**
  * NewsSourceManager - Dynamic News Source Management System
- * 
+ *
  * Features:
  * - Dynamic source discovery and validation
  * - Source quality scoring and monitoring
@@ -11,6 +11,13 @@
  */
 
 import { CategoryManager } from './CategoryManager.js';
+import {
+  validateNewsSourceRow,
+  validateNewsSourceRows,
+  validateSourceMetrics,
+  parseCountResult,
+  type NewsSourceRow,
+} from '../utils/validation.js';
 
 export interface NewsSource {
   id: string;
@@ -57,6 +64,57 @@ export interface SourceValidationResult {
 
 export class NewsSourceManager {
   constructor(private db: D1Database) {}
+
+  /**
+   * Get a single source by ID
+   */
+  async getSourceById(sourceId: string): Promise<NewsSource | null> {
+    try {
+      const result = await this.db
+        .prepare('SELECT * FROM rss_sources WHERE id = ?')
+        .bind(sourceId)
+        .first();
+
+      // Use runtime validation instead of type assertion
+      const validated = validateNewsSourceRow(result);
+      if (!validated) return null;
+
+      // Convert validated row to NewsSource
+      return this.rowToNewsSource(validated);
+    } catch (error) {
+      console.error(`[NewsSourceManager] Error fetching source ${sourceId}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Convert a validated row to NewsSource with proper defaults
+   */
+  private rowToNewsSource(row: NewsSourceRow): NewsSource {
+    return {
+      id: row.id,
+      name: row.name,
+      url: row.url,
+      rss_url: row.rss_url,
+      base_domain: row.base_domain || new URL(row.url).hostname,
+      category: row.category,
+      country: row.country || 'ZW',
+      language: row.language || 'en',
+      enabled: row.enabled,
+      priority: row.priority,
+      quality_score: row.quality_score ?? 50,
+      reliability_score: row.reliability_score ?? 50,
+      freshness_score: row.freshness_score ?? 50,
+      last_validated_at: row.last_validated_at,
+      validation_status: (row.validation_status as NewsSource['validation_status']) || 'pending',
+      error_count: row.error_count ?? 0,
+      success_count: row.success_count ?? 0,
+      last_error: row.last_error,
+      last_successful_fetch: row.last_successful_fetch,
+      created_at: row.created_at || new Date().toISOString(),
+      updated_at: row.updated_at || new Date().toISOString(),
+    };
+  }
 
   // ===============================================================
   // SOURCE DISCOVERY AND VALIDATION
@@ -111,6 +169,8 @@ export class NewsSourceManager {
       }
 
       // Try to fetch main page and look for RSS links
+      // Security: Limit HTML content to prevent DoS
+      const MAX_HTML_SIZE = 500000; // 500KB max
       try {
         const mainPageResponse = await fetch(websiteUrl, {
           headers: {
@@ -119,24 +179,35 @@ export class NewsSourceManager {
         });
 
         if (mainPageResponse.ok) {
-          const html = await mainPageResponse.text();
-          
-          // Look for RSS feed links in HTML
-          const rssLinkRegex = /<link[^>]+type=["\']application\/rss\+xml["\'][^>]*href=["\']([^"\']+)["\'][^>]*>/gi;
-          const atomLinkRegex = /<link[^>]+type=["\']application\/atom\+xml["\'][^>]*href=["\']([^"\']+)["\'][^>]*>/gi;
-          
-          let match;
-          while ((match = rssLinkRegex.exec(html)) !== null) {
-            const feedUrl = match[1].startsWith('http') ? match[1] : `${baseUrl}${match[1]}`;
-            if (!discoveredFeeds.includes(feedUrl)) {
-              discoveredFeeds.push(feedUrl);
-            }
-          }
+          const contentLength = mainPageResponse.headers.get('content-length');
+          // Skip parsing if content is too large
+          if (contentLength && parseInt(contentLength) > MAX_HTML_SIZE) {
+            console.warn(`[NewsSourceManager] Skipping HTML parsing - content too large: ${contentLength} bytes`);
+          } else {
+            const html = await mainPageResponse.text();
 
-          while ((match = atomLinkRegex.exec(html)) !== null) {
-            const feedUrl = match[1].startsWith('http') ? match[1] : `${baseUrl}${match[1]}`;
-            if (!discoveredFeeds.includes(feedUrl)) {
-              discoveredFeeds.push(feedUrl);
+            // Limit HTML size after fetch as well
+            const safeHtml = html.slice(0, MAX_HTML_SIZE);
+
+            // Use simpler, non-backtracking regex approach
+            // Extract all link tags first, then filter
+            const linkTags = safeHtml.match(/<link[^>]*>/gi) || [];
+
+            for (const linkTag of linkTags) {
+              // Check if it's an RSS or Atom feed link
+              const isRss = /type\s*=\s*["']application\/rss\+xml["']/i.test(linkTag);
+              const isAtom = /type\s*=\s*["']application\/atom\+xml["']/i.test(linkTag);
+
+              if (isRss || isAtom) {
+                // Extract href using simple pattern
+                const hrefMatch = linkTag.match(/href\s*=\s*["']([^"']+)["']/i);
+                if (hrefMatch && hrefMatch[1]) {
+                  const feedUrl = hrefMatch[1].startsWith('http') ? hrefMatch[1] : `${baseUrl}${hrefMatch[1]}`;
+                  if (!discoveredFeeds.includes(feedUrl)) {
+                    discoveredFeeds.push(feedUrl);
+                  }
+                }
+              }
             }
           }
         }
@@ -485,36 +556,38 @@ export class NewsSourceManager {
    */
   private async calculateQualityScore(sourceId: string): Promise<void> {
     try {
-      const source = await this.db
+      const result = await this.db
         .prepare(`
           SELECT reliability_score, freshness_score, success_count, error_count,
                  last_successful_fetch
           FROM rss_sources WHERE id = ?
         `)
         .bind(sourceId)
-        .first() as any;
+        .first();
 
-      if (!source) return;
+      // Use runtime validation instead of type assertion
+      const metrics = validateSourceMetrics(result);
+      if (!metrics) return;
 
       // Calculate quality score based on multiple factors
       let qualityScore = 0;
 
       // Reliability factor (40% weight)
-      qualityScore += source.reliability_score * 0.4;
+      qualityScore += metrics.reliability_score * 0.4;
 
-      // Freshness factor (30% weight)  
-      qualityScore += source.freshness_score * 0.3;
+      // Freshness factor (30% weight)
+      qualityScore += metrics.freshness_score * 0.3;
 
       // Success ratio factor (20% weight)
-      const totalAttempts = source.success_count + source.error_count;
+      const totalAttempts = metrics.success_count + metrics.error_count;
       if (totalAttempts > 0) {
-        const successRatio = source.success_count / totalAttempts;
+        const successRatio = metrics.success_count / totalAttempts;
         qualityScore += successRatio * 100 * 0.2;
       }
 
       // Recency factor (10% weight)
-      if (source.last_successful_fetch) {
-        const lastFetch = new Date(source.last_successful_fetch);
+      if (metrics.last_successful_fetch) {
+        const lastFetch = new Date(metrics.last_successful_fetch);
         const daysSinceLastFetch = (Date.now() - lastFetch.getTime()) / (1000 * 60 * 60 * 24);
         const recencyScore = Math.max(0, 100 - daysSinceLastFetch * 10);
         qualityScore += recencyScore * 0.1;
@@ -637,21 +710,22 @@ export class NewsSourceManager {
     recent_additions: NewsSource[];
   }> {
     try {
-      const totalSources = await this.db
+      // Use parseCountResult for all count queries
+      const totalSourcesResult = await this.db
         .prepare('SELECT COUNT(*) as count FROM rss_sources')
-        .first() as any;
+        .first();
 
-      const activeSources = await this.db
+      const activeSourcesResult = await this.db
         .prepare('SELECT COUNT(*) as count FROM rss_sources WHERE enabled = 1')
-        .first() as any;
+        .first();
 
-      const highQualitySources = await this.db
+      const highQualitySourcesResult = await this.db
         .prepare('SELECT COUNT(*) as count FROM rss_sources WHERE quality_score >= 70')
-        .first() as any;
+        .first();
 
       const sourcesNeedingAttention = await this.db
         .prepare(`
-          SELECT * FROM rss_sources 
+          SELECT * FROM rss_sources
           WHERE quality_score < 50 OR error_count > success_count
           ORDER BY quality_score ASC
           LIMIT 10
@@ -660,7 +734,7 @@ export class NewsSourceManager {
 
       const topPerformers = await this.db
         .prepare(`
-          SELECT * FROM rss_sources 
+          SELECT * FROM rss_sources
           WHERE enabled = 1
           ORDER BY quality_score DESC, reliability_score DESC
           LIMIT 10
@@ -669,19 +743,24 @@ export class NewsSourceManager {
 
       const recentAdditions = await this.db
         .prepare(`
-          SELECT * FROM rss_sources 
+          SELECT * FROM rss_sources
           ORDER BY created_at DESC
           LIMIT 5
         `)
         .all();
 
+      // Use runtime validation for all results
+      const validatedNeedingAttention = validateNewsSourceRows(sourcesNeedingAttention.results);
+      const validatedTopPerformers = validateNewsSourceRows(topPerformers.results);
+      const validatedRecentAdditions = validateNewsSourceRows(recentAdditions.results);
+
       return {
-        total_sources: totalSources?.count || 0,
-        active_sources: activeSources?.count || 0,
-        high_quality_sources: highQualitySources?.count || 0,
-        sources_needing_attention: sourcesNeedingAttention.results as unknown as NewsSource[],
-        top_performers: topPerformers.results as unknown as NewsSource[],
-        recent_additions: recentAdditions.results as unknown as NewsSource[]
+        total_sources: parseCountResult(totalSourcesResult),
+        active_sources: parseCountResult(activeSourcesResult),
+        high_quality_sources: parseCountResult(highQualitySourcesResult),
+        sources_needing_attention: validatedNeedingAttention.map(row => this.rowToNewsSource(row)),
+        top_performers: validatedTopPerformers.map(row => this.rowToNewsSource(row)),
+        recent_additions: validatedRecentAdditions.map(row => this.rowToNewsSource(row)),
       };
     } catch (error) {
       console.error('[NewsSourceManager] Error generating performance report:', error);
@@ -691,7 +770,7 @@ export class NewsSourceManager {
         high_quality_sources: 0,
         sources_needing_attention: [],
         top_performers: [],
-        recent_additions: []
+        recent_additions: [],
       };
     }
   }
