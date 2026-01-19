@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Clock } from "lucide-react";
 import type { Article } from "@/lib/api";
-import { formatTimeAgo } from "@/lib/utils";
+import { formatTimeAgo, isValidImageUrl } from "@/lib/utils";
 import { SourceIcon } from "@/components/ui/source-icon";
 
 interface HeroCardProps {
@@ -14,12 +14,17 @@ interface HeroCardProps {
 
 export function HeroCard({ article }: HeroCardProps) {
   const [imageError, setImageError] = useState(false);
-  const hasImage = article.image_url && article.image_url.startsWith("http") && !imageError;
+  const hasImage = isValidImageUrl(article.image_url) && !imageError;
   const timeAgo = formatTimeAgo(article.published_at);
+  const category = article.category_id || article.category;
 
   return (
-    <Link href={`/article/${article.id}`} className="block group">
-      <div className="relative rounded-2xl overflow-hidden bg-surface">
+    <Link
+      href={`/article/${article.id}`}
+      className="block group"
+      aria-label={`Read article: ${article.title}`}
+    >
+      <article className="relative rounded-2xl overflow-hidden bg-surface">
         {/* Image area with gradient overlay */}
         <div className="relative h-[280px] sm:h-[340px] md:h-[400px] w-full">
           {/* Background - either image or gradient fallback */}
@@ -27,7 +32,7 @@ export function HeroCard({ article }: HeroCardProps) {
             <>
               <Image
                 src={article.image_url!}
-                alt={article.title}
+                alt=""
                 fill
                 className="object-cover"
                 onError={() => setImageError(true)}
@@ -35,17 +40,17 @@ export function HeroCard({ article }: HeroCardProps) {
                 priority
               />
               {/* Gradient overlay for text readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" aria-hidden="true" />
             </>
           ) : (
-            <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary" />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary" aria-hidden="true" />
           )}
 
           {/* Category badge */}
-          {(article.category_id || article.category) && (
-            <div className="absolute top-4 left-4 bg-primary text-white px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide z-10">
-              {article.category_id || article.category}
-            </div>
+          {category && (
+            <span className="absolute top-4 left-4 bg-primary text-white px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide z-10">
+              {category}
+            </span>
           )}
 
           {/* Content overlay at bottom */}
@@ -65,14 +70,14 @@ export function HeroCard({ article }: HeroCardProps) {
                 <SourceIcon source={article.source} size={20} showBorder={false} />
                 <span className="text-sm text-white/80">{article.source}</span>
               </div>
-              <div className="flex items-center gap-1.5 text-sm">
-                <Clock className="w-4 h-4" />
+              <time className="flex items-center gap-1.5 text-sm" dateTime={article.published_at}>
+                <Clock className="w-4 h-4" aria-hidden="true" />
                 <span>{timeAgo}</span>
-              </div>
+              </time>
             </div>
           </div>
         </div>
-      </div>
+      </article>
     </Link>
   );
 }
