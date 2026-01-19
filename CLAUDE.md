@@ -54,7 +54,7 @@ npm run db:local         # Apply schema to local D1
 ### Frontend Stack
 
 - **Framework**: Next.js 15 with App Router
-- **UI**: Tailwind CSS 4 with custom design tokens
+- **UI**: Tailwind CSS 4.x with custom design tokens
 - **Components**: Radix UI primitives (Avatar, Dialog, Dropdown, Tabs, etc.)
 - **Icons**: Lucide React
 - **Theme**: next-themes for dark mode support

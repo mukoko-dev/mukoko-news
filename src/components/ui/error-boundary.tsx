@@ -19,8 +19,11 @@ async function reportErrorToBackend(
   error: Error,
   componentStack: string | null | undefined
 ): Promise<void> {
-  // Only report in production to avoid noise during development
-  if (process.env.NODE_ENV !== "production") {
+  // Report in production, or in staging if explicitly enabled via env var
+  const isProduction = process.env.NODE_ENV === "production";
+  const enableInStaging = process.env.NEXT_PUBLIC_ENABLE_ERROR_REPORTING === "true";
+
+  if (!isProduction && !enableInStaging) {
     return;
   }
 

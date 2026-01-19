@@ -187,9 +187,10 @@ export function validateSourceMetrics(row: unknown): SourceMetrics | null {
 }
 
 /**
- * Validate count result from D1 (e.g., SELECT COUNT(*) as count)
+ * Parse count result from D1 (e.g., SELECT COUNT(*) as count)
+ * Returns 0 as default if parsing fails (does not throw)
  */
-export function validateCountResult(row: unknown): number {
+export function parseCountResult(row: unknown): number {
   if (!isObject(row)) return 0;
   return getNumber(row, 'count') ?? 0;
 }

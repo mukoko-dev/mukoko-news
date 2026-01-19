@@ -72,6 +72,7 @@ export default function FeedPage() {
   useEffect(() => {
     // Use refs to avoid stale closure and excessive re-renders
     let currentPullDistance = 0;
+    let rafId: number | null = null;
 
     const handleTouchStart = (e: TouchEvent) => {
       if (window.scrollY === 0) {
@@ -90,7 +91,13 @@ export default function FeedPage() {
       const distance = Math.max(0, (touchY - touchStartY.current) * 0.5);
       if (distance > 0 && distance < 150) {
         currentPullDistance = distance;
-        setPullDistance(distance);
+        // Use requestAnimationFrame for smoother animation
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        rafId = requestAnimationFrame(() => {
+          setPullDistance(distance);
+        });
       }
     };
 
@@ -99,7 +106,13 @@ export default function FeedPage() {
         handleRefresh();
       }
       currentPullDistance = 0;
-      setPullDistance(0);
+      // Use requestAnimationFrame for final state update
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(() => {
+        setPullDistance(0);
+      });
       isPulling.current = false;
     };
 
@@ -111,6 +124,9 @@ export default function FeedPage() {
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
     };
   }, [handleRefresh]);
 

@@ -58,6 +58,34 @@ describe('formatTimeAgo', () => {
     expect(formatTimeAgo('invalid-date')).toBe('Recently');
     expect(formatTimeAgo('')).toBe('Recently');
   });
+
+  it('should handle milliseconds precision correctly', () => {
+    // 30 seconds ago (under 1 minute threshold)
+    const thirtySecondsAgo = new Date('2024-01-15T11:59:30Z').toISOString();
+    expect(formatTimeAgo(thirtySecondsAgo)).toBe('Just now');
+
+    // 59 seconds ago (still under 1 minute)
+    const fiftyNineSecondsAgo = new Date('2024-01-15T11:59:01Z').toISOString();
+    expect(formatTimeAgo(fiftyNineSecondsAgo)).toBe('Just now');
+
+    // 61 seconds ago (just over 1 minute)
+    const sixtyOneSecondsAgo = new Date('2024-01-15T11:58:59Z').toISOString();
+    expect(formatTimeAgo(sixtyOneSecondsAgo)).toBe('1m ago');
+  });
+
+  it('should handle exact boundary values', () => {
+    // Exactly 1 hour ago
+    const oneHourAgo = new Date('2024-01-15T11:00:00Z').toISOString();
+    expect(formatTimeAgo(oneHourAgo)).toBe('1h ago');
+
+    // Exactly 24 hours ago
+    const oneDayAgo = new Date('2024-01-14T12:00:00Z').toISOString();
+    expect(formatTimeAgo(oneDayAgo)).toBe('1d ago');
+
+    // Exactly 7 days ago
+    const sevenDaysAgo = new Date('2024-01-08T12:00:00Z').toISOString();
+    expect(formatTimeAgo(sevenDaysAgo)).toBe('Jan 8');
+  });
 });
 
 describe('isValidImageUrl', () => {
@@ -96,6 +124,24 @@ describe('isValidImageUrl', () => {
   it('should return false for malformed URLs', () => {
     expect(isValidImageUrl('not-a-url')).toBe(false);
     expect(isValidImageUrl('ftp://example.com/file')).toBe(false);
+  });
+
+  it('should return false for blob: URLs', () => {
+    expect(isValidImageUrl('blob:https://example.com/abc123')).toBe(false);
+    expect(isValidImageUrl('blob:null/abc123')).toBe(false);
+  });
+
+  it('should return false for vbscript: protocol (XSS prevention)', () => {
+    expect(isValidImageUrl('vbscript:alert(1)')).toBe(false);
+  });
+
+  it('should handle URLs with query parameters', () => {
+    expect(isValidImageUrl('https://example.com/image.jpg?width=100')).toBe(true);
+    expect(isValidImageUrl('https://cdn.example.com/img?src=test&format=webp')).toBe(true);
+  });
+
+  it('should handle URLs with fragments', () => {
+    expect(isValidImageUrl('https://example.com/image.jpg#anchor')).toBe(true);
   });
 });
 
