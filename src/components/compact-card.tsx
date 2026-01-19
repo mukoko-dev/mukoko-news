@@ -3,30 +3,11 @@
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import type { Article } from "@/lib/api";
+import { formatTimeAgo } from "@/lib/utils";
 import { SourceIcon } from "@/components/ui/source-icon";
 
 interface CompactCardProps {
   article: Article;
-}
-
-function formatTimeAgo(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return "Recently";
-
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  } catch {
-    return "Recently";
-  }
 }
 
 export function CompactCard({ article }: CompactCardProps) {
