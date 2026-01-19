@@ -173,8 +173,13 @@ src/
 │   │   ├── category-chip.tsx
 │   │   ├── theme-toggle.tsx
 │   │   ├── engagement-bar.tsx
-│   │   └── source-icon.tsx
+│   │   ├── source-icon.tsx
+│   │   ├── error-boundary.tsx  # React error boundary component
+│   │   ├── skeleton.tsx        # Skeleton loading components
+│   │   └── discover-skeleton.tsx # Page-specific skeletons
 │   ├── article-card.tsx     # Main article display component
+│   ├── hero-card.tsx        # Featured article card with large image
+│   ├── compact-card.tsx     # Text-focused card for articles without images
 │   ├── share-modal.tsx      # Share/engagement modal
 │   ├── onboarding-modal.tsx # Country/category selection
 │   └── theme-provider.tsx   # Theme context provider
@@ -182,8 +187,10 @@ src/
 │   └── preferences-context.tsx # User preferences (countries, categories)
 └── lib/
     ├── api.ts               # API client with fetch utilities
-    ├── utils.ts             # Utility functions (cn, formatDate, etc.)
-    └── source-profiles.ts   # News source configurations
+    ├── utils.ts             # Utility functions (cn, formatTimeAgo, isValidImageUrl)
+    ├── source-profiles.ts   # News source configurations
+    └── __tests__/           # Unit tests
+        └── utils.test.ts    # Tests for utility functions
 ```
 
 ## Backend Structure
@@ -292,7 +299,20 @@ cd backend && npm run deploy
 
 ## Testing
 
-**Backend**: Vitest with 10s timeout per test
+### Frontend Testing (Vitest)
+
+```bash
+npm run test              # Single run
+npm run test:watch        # Watch mode
+npm run test:coverage     # With v8 coverage report
+```
+
+**Test Files** (`src/lib/__tests__/`):
+- `utils.test.ts` - Utility function tests (formatTimeAgo, isValidImageUrl, cn)
+
+**Test Pattern**: Vitest with jsdom environment, React Testing Library
+
+### Backend Testing (Vitest)
 
 ```bash
 cd backend
@@ -301,7 +321,7 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files**:
+**Test Files** (`backend/services/__tests__/`):
 - `ArticleService.test.ts` - Slug generation, content extraction
 - `CategoryManager.test.ts` - Category operations
 - `D1CacheService.test.ts` - Caching logic
@@ -381,7 +401,33 @@ Use Tailwind classes like `bg-primary`, `text-foreground`, `bg-surface` etc.
 - Radix UI primitives for accessibility
 - Tailwind classes for styling (no inline styles)
 - Props spread via `className` prop pattern
-- Error boundaries on critical screens
+- Error boundaries on all pages with data fetching
+- Skeleton loaders for graceful loading states
+
+### Error Boundaries
+
+Error boundaries wrap page content in:
+- Feed page (`page.tsx`) - All feed sections
+- Article page (`article/[id]/page.tsx`)
+- Discover page (`discover/page.tsx`)
+- Search page (`search/page.tsx`)
+- NewsBytes page (`newsbytes/page.tsx`)
+
+Component: `src/components/ui/error-boundary.tsx`
+
+### Skeleton Loaders
+
+Skeleton components provide graceful loading states:
+- `FeedPageSkeleton` - Home feed loading
+- `ArticlePageSkeleton` - Article detail loading
+- `ArticleCardSkeleton` - Individual card loading
+- `CompactCardSkeleton` - Compact card loading
+- `HeroCardSkeleton` - Hero section loading
+- `DiscoverPageSkeleton` - Discover page loading
+- `NewsBytesSkeleton` - NewsBytes loading
+- `SearchPageSkeleton` - Search page loading
+
+Components: `src/components/ui/skeleton.tsx`, `src/components/ui/discover-skeleton.tsx`
 
 ### API Client Pattern
 
@@ -430,13 +476,23 @@ RSS articles inherit `country_id` from source configuration.
 
 ## Key Files
 
+### Frontend
 - `src/app/layout.tsx` - Root layout with providers
+- `src/app/page.tsx` - Home feed with visual hierarchy (Hero, Top Stories, Quick Reads)
 - `src/app/globals.css` - Tailwind config and CSS variables
 - `src/lib/api.ts` - API client
+- `src/lib/utils.ts` - Utilities (cn, formatTimeAgo, isValidImageUrl)
 - `src/contexts/preferences-context.tsx` - User preferences context
-- `src/components/theme-provider.tsx` - Theme context
+- `src/components/ui/skeleton.tsx` - Skeleton loading components
+- `src/components/ui/error-boundary.tsx` - Error boundary component
+- `vitest.config.ts` - Frontend test configuration
+
+### Backend
 - `backend/index.ts` - API entry point and route definitions
 - `backend/wrangler.jsonc` - Cloudflare Workers config
+- `backend/services/NewsSourceManager.ts` - News source management
+
+### Config
 - `next.config.ts` - Next.js configuration
 - `tailwind.config.ts` - Tailwind CSS configuration
 - `eslint.config.js` - Flat ESLint 9 config

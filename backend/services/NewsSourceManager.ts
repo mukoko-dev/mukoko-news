@@ -72,7 +72,8 @@ export class NewsSourceManager {
       if (!result || typeof result !== 'object') return null;
       if (!('id' in result) || !('name' in result) || !('url' in result)) return null;
 
-      return result as NewsSource;
+      // TypeScript requires unknown intermediate cast for D1 results
+      return result as unknown as NewsSource;
     } catch (error) {
       console.error(`[NewsSourceManager] Error fetching source ${sourceId}:`, error);
       return null;

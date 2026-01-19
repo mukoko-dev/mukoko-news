@@ -186,24 +186,37 @@ npm run db:local     # Apply schema to local D1
 ### Core Features
 
 - **Responsive Design**: Mobile-first, works on all devices
+- **Visual Hierarchy**: Hero article, Top Stories, Quick Reads, Latest sections
 - **TikTok-Style NewsBytes**: Vertical scroll news feed with snap scrolling
 - **Real-Time Engagement**: Live likes, saves, and views
 - **AI-Powered Search**: Semantic search with Vectorize
 - **Pan-African Coverage**: 16 countries, 56+ news sources
 - **Dark Mode**: Full theme support with system detection
-- **Error Boundaries**: Graceful error handling
+- **Skeleton Loaders**: Graceful loading states across all pages
+- **Error Boundaries**: Graceful error handling with fallback UI
 
 ### Pages
 
-- **Feed** (`/`) - Personalized news feed
-- **Discover** (`/discover`) - Browse all articles with filters
-- **NewsBytes** (`/newsbytes`) - TikTok-style vertical feed
-- **Article** (`/article/[id]`) - Full article view
-- **Search** (`/search`) - Search articles
-- **Profile** (`/profile`) - User settings
-- **Admin** (`/admin`) - Admin dashboard
+- **Feed** (`/`) - Personalized news feed with Hero, Top Stories, Quick Reads, Latest sections
+- **Discover** (`/discover`) - Browse by country, category, source, or trending topics
+- **NewsBytes** (`/newsbytes`) - TikTok-style vertical swipeable feed
+- **Article** (`/article/[id]`) - Full article view with engagement actions
+- **Search** (`/search`) - Search articles with category filters
+- **Profile** (`/profile`) - User settings and preferences
+- **Admin** (`/admin`) - Dashboard for analytics, sources, users
 
 ## Testing
+
+### Frontend Tests
+
+```bash
+npm run test         # Run all tests
+npm run test:watch   # Watch mode
+npm run test:coverage # With coverage
+```
+
+**Test Files**: `src/lib/__tests__/utils.test.ts`
+**Test Framework**: Vitest with jsdom environment
 
 ### Backend Tests
 

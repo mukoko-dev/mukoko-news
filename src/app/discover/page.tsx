@@ -3,8 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Search, ArrowRight, Loader2, Newspaper } from "lucide-react";
+import { Search, ArrowRight, Newspaper } from "lucide-react";
 import { ArticleCard } from "@/components/article-card";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { DiscoverPageSkeleton } from "@/components/ui/discover-skeleton";
 import { api, type Article, type Category } from "@/lib/api";
 
 // Pan-African countries with flags and colors (matches database rss_sources)
@@ -140,15 +142,12 @@ export default function DiscoverPage() {
   const isFiltered = activeCategory || activeCountry || activeSource;
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-primary animate-spin" />
-      </div>
-    );
+    return <DiscoverPageSkeleton />;
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-8">
+    <ErrorBoundary fallback={<div className="p-8 text-center text-text-secondary">Failed to load discover page</div>}>
+      <div className="max-w-[1200px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="mb-10">
         <h1 className="text-3xl font-bold text-foreground mb-2">Discover</h1>
@@ -348,6 +347,7 @@ export default function DiscoverPage() {
           </section>
         </>
       )}
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
