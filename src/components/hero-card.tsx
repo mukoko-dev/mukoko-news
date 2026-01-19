@@ -21,7 +21,7 @@ export function HeroCard({ article }: HeroCardProps) {
   return (
     <Link
       href={`/article/${article.id}`}
-      className="block group"
+      className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-2xl"
       aria-label={`Read article: ${article.title}`}
     >
       <article className="relative rounded-2xl overflow-hidden bg-surface">
@@ -32,7 +32,7 @@ export function HeroCard({ article }: HeroCardProps) {
             <>
               <Image
                 src={article.image_url!}
-                alt=""
+                alt={article.description || article.title || "Article image"}
                 fill
                 className="object-cover"
                 onError={() => setImageError(true)}

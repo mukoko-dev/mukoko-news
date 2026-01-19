@@ -68,8 +68,11 @@ export class NewsSourceManager {
         .bind(sourceId)
         .first();
 
-      if (!result) return null;
-      return result as unknown as NewsSource;
+      // Validate result exists and has expected shape
+      if (!result || typeof result !== 'object') return null;
+      if (!('id' in result) || !('name' in result) || !('url' in result)) return null;
+
+      return result as NewsSource;
     } catch (error) {
       console.error(`[NewsSourceManager] Error fetching source ${sourceId}:`, error);
       return null;
