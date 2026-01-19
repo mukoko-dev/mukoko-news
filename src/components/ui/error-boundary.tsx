@@ -11,7 +11,53 @@ interface ErrorBoundaryState {
   hasError: boolean;
 }
 
-export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+/**
+ * Report error to backend error tracking endpoint
+ * Sends error details to the ObservabilityService for monitoring and debugging
+ */
+async function reportErrorToBackend(
+  error: Error,
+  componentStack: string | null | undefined
+): Promise<void> {
+  // Only report in production to avoid noise during development
+  if (process.env.NODE_ENV !== "production") {
+    return;
+  }
+
+  const apiUrl =
+    process.env.NEXT_PUBLIC_API_URL ||
+    "https://mukoko-news-backend.nyuchi.workers.dev";
+
+  try {
+    const response = await fetch(`${apiUrl}/api/errors`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        error: error.message,
+        stack: error.stack,
+        componentStack: componentStack,
+        url: typeof window !== "undefined" ? window.location.href : undefined,
+        userAgent:
+          typeof navigator !== "undefined" ? navigator.userAgent : undefined,
+        timestamp: new Date().toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      console.warn("[ErrorBoundary] Failed to report error:", response.status);
+    }
+  } catch (reportError) {
+    // Silently fail - don't break the app if error reporting fails
+    console.warn("[ErrorBoundary] Error reporting failed:", reportError);
+  }
+}
+
+export class ErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
+> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
@@ -26,17 +72,18 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     console.error("[ErrorBoundary] Caught error:", error.message);
     console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
 
-    // TODO: In production, integrate with error tracking service (e.g., Sentry, LogRocket)
-    // or send to backend ObservabilityService via API endpoint:
-    // fetch('/api/errors', { method: 'POST', body: JSON.stringify({ error: error.message, stack: error.stack, componentStack: errorInfo.componentStack }) })
+    // Report error to backend for production monitoring
+    reportErrorToBackend(error, errorInfo.componentStack);
   }
 
   render(): ReactNode {
     if (this.state.hasError) {
-      return this.props.fallback ?? (
-        <div className="p-4 rounded-lg bg-surface text-text-secondary text-center">
-          <p>Something went wrong loading this content.</p>
-        </div>
+      return (
+        this.props.fallback ?? (
+          <div className="p-4 rounded-lg bg-surface text-text-secondary text-center">
+            <p>Something went wrong loading this content.</p>
+          </div>
+        )
       );
     }
 
