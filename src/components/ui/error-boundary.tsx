@@ -22,7 +22,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    console.error("[ErrorBoundary] Caught error:", error, errorInfo);
+    // Log error with context for debugging
+    console.error("[ErrorBoundary] Caught error:", error.message);
+    console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
+
+    // TODO: In production, integrate with error tracking service (e.g., Sentry, LogRocket)
+    // or send to backend ObservabilityService via API endpoint:
+    // fetch('/api/errors', { method: 'POST', body: JSON.stringify({ error: error.message, stack: error.stack, componentStack: errorInfo.componentStack }) })
   }
 
   render(): ReactNode {
