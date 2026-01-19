@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import type { Article } from "@/lib/api";
-import { SourceBadge } from "@/components/ui/source-icon";
+import { SourceIcon } from "@/components/ui/source-icon";
 
 interface CompactCardProps {
   article: Article;
@@ -49,7 +49,7 @@ export function CompactCard({ article }: CompactCardProps) {
 
         {/* Meta */}
         <div className="flex items-center gap-3 text-text-tertiary">
-          <SourceBadge source={article.source} iconSize={14} showName={false} />
+          <SourceIcon source={article.source} size={14} showBorder={false} />
           <span className="text-xs">{article.source}</span>
           <div className="flex items-center gap-1 text-xs">
             <Clock className="w-3 h-3" />
