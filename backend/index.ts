@@ -593,6 +593,74 @@ app.get("/api/health", async (c) => {
   }
 });
 
+/**
+ * Error tracking endpoint for frontend error boundary reports
+ * Receives error reports from React error boundaries and logs them
+ */
+app.post("/api/errors", async (c) => {
+  try {
+    const body = await c.req.json();
+
+    // Validate required fields
+    const { error, stack, componentStack, url, userAgent, timestamp } = body;
+
+    if (!error) {
+      return c.json({ error: "Missing required field: error" }, 400);
+    }
+
+    const services = initializeServices(c.env);
+
+    // Log error to ObservabilityService
+    await services.observabilityService.log(
+      "error",
+      `[Frontend] ${error}`,
+      {
+        source: "ClientError",
+        stack: stack?.slice(0, 2000), // Limit stack size
+        componentStack: componentStack?.slice(0, 2000),
+        url,
+        userAgent,
+        timestamp: timestamp || new Date().toISOString(),
+      }
+    );
+
+    // Also write to analytics engine for aggregation/monitoring if available
+    if (c.env.PERFORMANCE_ANALYTICS) {
+      try {
+        c.env.PERFORMANCE_ANALYTICS.writeDataPoint({
+          blobs: [
+            error.slice(0, 100), // error message (truncated)
+            url || "unknown",
+            userAgent?.slice(0, 100) || "unknown",
+          ],
+          doubles: [Date.now()],
+          indexes: ["client_error"],
+        });
+      } catch (analyticsError) {
+        // Don't fail the request if analytics fails
+        console.warn("[Errors] Failed to write to analytics:", analyticsError);
+      }
+    }
+
+    console.log(`[Errors] Logged client error: ${error.slice(0, 100)}`);
+
+    return c.json({
+      success: true,
+      message: "Error logged successfully",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("[Errors] Failed to process error report:", error);
+    return c.json(
+      {
+        error: "Failed to process error report",
+        timestamp: new Date().toISOString(),
+      },
+      500
+    );
+  }
+});
+
 // Comprehensive admin stats endpoint
 // TODO: Add authentication back when OpenAuthService is fixed
 app.get("/api/admin/stats", async (c) => {

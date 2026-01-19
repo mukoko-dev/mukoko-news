@@ -79,7 +79,7 @@ export function CategoryChipSkeleton() {
 
 export function FeedPageSkeleton() {
   return (
-    <div className="py-6 space-y-8" aria-label="Loading content" role="status">
+    <div className="py-6 space-y-8" aria-label="Loading content" role="status" aria-live="polite">
       {/* Hero skeleton */}
       <HeroCardSkeleton />
 
@@ -108,7 +108,7 @@ export function FeedPageSkeleton() {
 
 export function ArticlePageSkeleton() {
   return (
-    <div className="max-w-3xl mx-auto px-4 py-8" aria-label="Loading article" role="status">
+    <div className="max-w-3xl mx-auto px-4 py-8" aria-label="Loading article" role="status" aria-live="polite">
       {/* Back button */}
       <Skeleton className="h-10 w-24 mb-6" />
 

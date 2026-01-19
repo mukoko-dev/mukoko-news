@@ -28,10 +28,10 @@ export function HeroCard({ article }: HeroCardProps) {
         {/* Image area with gradient overlay */}
         <div className="relative h-[280px] sm:h-[340px] md:h-[400px] w-full">
           {/* Background - either image or gradient fallback */}
-          {hasImage ? (
+          {hasImage && article.image_url ? (
             <>
               <Image
-                src={article.image_url!}
+                src={article.image_url}
                 alt={article.description || article.title || "Article image"}
                 fill
                 className="object-cover"
