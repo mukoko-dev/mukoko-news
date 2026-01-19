@@ -1572,7 +1572,7 @@ app.get("/api/admin/sources/:id", async (c) => {
     const services = initializeServices(c.env);
 
     // Get the source
-    const source = await services.newsSourceService.getSourceById(sourceId);
+    const source = await services.newsSourceManager.getSourceById(sourceId);
     if (!source) {
       return c.json({ error: "Source not found" }, 404);
     }

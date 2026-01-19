@@ -58,6 +58,23 @@ export interface SourceValidationResult {
 export class NewsSourceManager {
   constructor(private db: D1Database) {}
 
+  /**
+   * Get a single source by ID
+   */
+  async getSourceById(sourceId: string): Promise<NewsSource | null> {
+    try {
+      const result = await this.db
+        .prepare('SELECT * FROM rss_sources WHERE id = ?')
+        .bind(sourceId)
+        .first();
+
+      return result as NewsSource | null;
+    } catch (error) {
+      console.error(`[NewsSourceManager] Error fetching source ${sourceId}:`, error);
+      return null;
+    }
+  }
+
   // ===============================================================
   // SOURCE DISCOVERY AND VALIDATION
   // ===============================================================
