@@ -9,13 +9,14 @@ import {
   Share2,
   ChevronLeft,
   ExternalLink,
-  Loader2,
   AlertCircle,
   Clock,
   Tag,
   RefreshCw,
 } from "lucide-react";
 import { api, type Article } from "@/lib/api";
+import { ArticlePageSkeleton } from "@/components/ui/skeleton";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 export default function ArticleDetailPage() {
   const params = useParams();
@@ -100,14 +101,7 @@ export default function ArticleDetailPage() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-[calc(100vh-200px)] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
-          <p className="text-text-secondary">Loading article...</p>
-        </div>
-      </div>
-    );
+    return <ArticlePageSkeleton />;
   }
 
   // Force refresh handler
@@ -144,9 +138,10 @@ export default function ArticleDetailPage() {
   }
 
   return (
-    <div className="pb-16">
-      {/* Hero Section */}
-      <div className="bg-primary text-white px-6 py-12 relative">
+    <ErrorBoundary fallback={<div className="p-8 text-center text-text-secondary">Failed to render article content</div>}>
+      <div className="pb-16">
+        {/* Hero Section */}
+        <div className="bg-primary text-white px-6 py-12 relative">
         {/* Back Button */}
         <button
           onClick={() => router.back()}
@@ -272,6 +267,7 @@ export default function ArticleDetailPage() {
           </a>
         </div>
       </div>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }

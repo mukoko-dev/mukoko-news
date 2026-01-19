@@ -2,9 +2,10 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Search, Loader2, TrendingUp, Users, BarChart3, X } from "lucide-react";
+import { Search, Loader2, TrendingUp, BarChart3, X } from "lucide-react";
 import { ArticleCard } from "@/components/article-card";
 import { CategoryChip } from "@/components/ui/category-chip";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { api, type Article, type Category } from "@/lib/api";
 
 export default function SearchPage() {
@@ -108,8 +109,9 @@ export default function SearchPage() {
   const isSearchMode = activeQuery.length > 0;
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6 py-8">
-      {/* Search Bar */}
+    <ErrorBoundary fallback={<div className="p-8 text-center text-text-secondary">Failed to load search</div>}>
+      <div className="max-w-[1200px] mx-auto px-6 py-8">
+        {/* Search Bar */}
       <div className="mb-8">
         <form onSubmit={handleSearch} className="relative">
           <div className="flex items-center gap-3 bg-surface border border-elevated rounded-2xl px-4 py-3 focus-within:border-primary transition-colors">
@@ -266,6 +268,7 @@ export default function SearchPage() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }

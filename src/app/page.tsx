@@ -5,8 +5,17 @@ import Link from "next/link";
 import { Loader2, ChevronLeft, ChevronRight, Compass, RefreshCw, WifiOff } from "lucide-react";
 import { CategoryChip } from "@/components/ui/category-chip";
 import { ArticleCard } from "@/components/article-card";
+import { HeroCard } from "@/components/hero-card";
+import { CompactCard } from "@/components/compact-card";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { FeedPageSkeleton, CategoryChipSkeleton } from "@/components/ui/skeleton";
 import { usePreferences } from "@/contexts/preferences-context";
 import { api, type Article, type Category } from "@/lib/api";
+import { isValidImageUrl } from "@/lib/utils";
+
+// Layout configuration constants
+const TOP_STORIES_COUNT = 3;
+const QUICK_READS_INITIAL = 6;
 
 export default function FeedPage() {
   const { selectedCategories } = usePreferences();
@@ -61,6 +70,10 @@ export default function FeedPage() {
 
   // Pull-to-refresh for mobile
   useEffect(() => {
+    // Use refs to avoid stale closure and excessive re-renders
+    let currentPullDistance = 0;
+    let rafId: number | null = null;
+
     const handleTouchStart = (e: TouchEvent) => {
       if (window.scrollY === 0) {
         touchStartY.current = e.touches[0].clientY;
@@ -70,21 +83,36 @@ export default function FeedPage() {
 
     const handleTouchMove = (e: TouchEvent) => {
       if (!isPulling.current || window.scrollY > 0) {
+        currentPullDistance = 0;
         setPullDistance(0);
         return;
       }
       const touchY = e.touches[0].clientY;
       const distance = Math.max(0, (touchY - touchStartY.current) * 0.5);
       if (distance > 0 && distance < 150) {
-        setPullDistance(distance);
+        currentPullDistance = distance;
+        // Use requestAnimationFrame for smoother animation
+        if (rafId !== null) {
+          cancelAnimationFrame(rafId);
+        }
+        rafId = requestAnimationFrame(() => {
+          setPullDistance(distance);
+        });
       }
     };
 
     const handleTouchEnd = () => {
-      if (pullDistance > 80) {
+      if (currentPullDistance > 80) {
         handleRefresh();
       }
-      setPullDistance(0);
+      currentPullDistance = 0;
+      // Use requestAnimationFrame for final state update
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      rafId = requestAnimationFrame(() => {
+        setPullDistance(0);
+      });
       isPulling.current = false;
     };
 
@@ -96,8 +124,11 @@ export default function FeedPage() {
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
     };
-  }, [pullDistance, handleRefresh]);
+  }, [handleRefresh]);
 
   // Sticky header on scroll
   useEffect(() => {
@@ -122,17 +153,34 @@ export default function FeedPage() {
 
   // Filter articles by selected category and user's country/category preferences
   const filteredArticles = useMemo(() => {
-    let result = articles;
+    if (!activeCategory) return articles;
 
-    // Filter by category_id (API returns category_id, not category)
-    if (activeCategory) {
-      result = result.filter(
-        (a) => (a.category_id || a.category)?.toLowerCase() === activeCategory.toLowerCase()
-      );
+    return articles.filter(
+      (a) => (a.category_id || a.category)?.toLowerCase() === activeCategory.toLowerCase()
+    );
+  }, [articles, activeCategory]);
+
+  // Split articles into sections based on images - single pass for performance
+  const { heroArticle, topStories, latestWithImages, latestWithoutImages } = useMemo(() => {
+    const withImages: Article[] = [];
+    const withoutImages: Article[] = [];
+
+    // Single pass through articles
+    for (const article of filteredArticles) {
+      if (isValidImageUrl(article.image_url)) {
+        withImages.push(article);
+      } else {
+        withoutImages.push(article);
+      }
     }
 
-    return result;
-  }, [articles, activeCategory]);
+    return {
+      heroArticle: withImages[0] || null,
+      topStories: withImages.slice(1, 1 + TOP_STORIES_COUNT),
+      latestWithImages: withImages.slice(1 + TOP_STORIES_COUNT),
+      latestWithoutImages: withoutImages,
+    };
+  }, [filteredArticles]);
 
   // Get personalized category chips - show user's selected categories first
   const displayCategories = useMemo(() => {
@@ -148,12 +196,13 @@ export default function FeedPage() {
   }, [categories, selectedCategories]);
 
   return (
-    <div className="max-w-[1200px] mx-auto px-6">
+    <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
       {/* Pull-to-refresh indicator (mobile) */}
       {pullDistance > 0 && (
         <div
           className="fixed top-[72px] left-0 right-0 flex justify-center z-50 md:hidden"
           style={{ transform: `translateY(${Math.min(pullDistance, 80)}px)` }}
+          aria-hidden="true"
         >
           <div className={`bg-primary/10 rounded-full p-2 ${pullDistance > 80 ? "animate-pulse" : ""}`}>
             <RefreshCw
@@ -166,16 +215,16 @@ export default function FeedPage() {
 
       {/* Refreshing indicator */}
       {refreshing && (
-        <div className="fixed top-[80px] left-0 right-0 flex justify-center z-50">
+        <div className="fixed top-[80px] left-0 right-0 flex justify-center z-50" role="status" aria-live="polite">
           <div className="bg-primary text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 shadow-lg">
-            <Loader2 className="w-4 h-4 animate-spin" />
+            <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
             Refreshing...
           </div>
         </div>
       )}
 
       {/* Feed Header */}
-      <div className="py-6 flex items-center justify-between">
+      <header className="py-5 flex items-center justify-between">
         <div>
           <h1 className="font-bold text-xl">For You</h1>
           <p className="text-xs text-text-tertiary">Pan-African News</p>
@@ -187,9 +236,9 @@ export default function FeedPage() {
             onClick={handleRefresh}
             disabled={refreshing || loading}
             className="hidden md:flex items-center gap-2 px-4 py-2 bg-surface rounded-full text-sm font-medium hover:bg-elevated transition-colors disabled:opacity-50"
-            title="Refresh feed"
+            aria-label="Refresh news feed"
           >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} aria-hidden="true" />
             <span className="hidden lg:inline">Refresh</span>
           </button>
 
@@ -197,29 +246,31 @@ export default function FeedPage() {
             href="/discover"
             className="flex items-center gap-2 px-4 py-2 bg-surface rounded-full text-sm font-medium hover:bg-elevated transition-colors"
           >
-            <Compass className="w-4 h-4" />
+            <Compass className="w-4 h-4" aria-hidden="true" />
             Discover
           </Link>
         </div>
-      </div>
+      </header>
 
       {/* Category Filters - Sticky on scroll */}
       <div ref={filtersSectionRef}>
-        <section
+        <nav
+          aria-label="Category filters"
           className={`py-3 border-b border-elevated transition-all duration-300 ${
             isSticky
               ? "fixed top-[72px] left-0 right-0 z-40 bg-background/80 backdrop-blur-xl shadow-sm"
               : ""
           }`}
         >
-          <div className={isSticky ? "max-w-[1200px] mx-auto px-6" : ""}>
+          <div className={isSticky ? "max-w-[1200px] mx-auto px-4 sm:px-6" : ""}>
             <div className="relative flex items-center">
               {isSticky && (
                 <button
                   onClick={() => scrollCategories("left")}
                   className="absolute left-0 z-10 w-8 h-8 flex items-center justify-center bg-background/90 rounded-full shadow-md hover:bg-elevated transition-colors"
+                  aria-label="Scroll categories left"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
 
@@ -229,6 +280,8 @@ export default function FeedPage() {
                   isSticky ? "px-10 scroll-smooth" : "flex-wrap"
                 }`}
                 style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                role="tablist"
+                aria-label="News categories"
               >
                 <CategoryChip
                   label="All"
@@ -249,51 +302,106 @@ export default function FeedPage() {
                 <button
                   onClick={() => scrollCategories("right")}
                   className="absolute right-0 z-10 w-8 h-8 flex items-center justify-center bg-background/90 rounded-full shadow-md hover:bg-elevated transition-colors"
+                  aria-label="Scroll categories right"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <ChevronRight className="w-4 h-4" aria-hidden="true" />
                 </button>
               )}
             </div>
           </div>
-        </section>
+        </nav>
         {isSticky && <div className="h-[52px]" />}
       </div>
 
-      {/* Articles Feed */}
-      <section className="py-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">
-            {activeCategory
-              ? categories.find((c) => c.id === activeCategory)?.name || activeCategory
-              : "Latest"}
-          </h2>
-          <span className="text-sm text-text-tertiary">
-            {filteredArticles.length} articles
-          </span>
-        </div>
-
+      {/* Main Content */}
+      <main>
         {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          </div>
+          <FeedPageSkeleton />
         ) : error ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <WifiOff className="w-12 h-12 text-text-tertiary mb-4" />
+          <div className="flex flex-col items-center justify-center py-16 text-center" role="alert">
+            <WifiOff className="w-12 h-12 text-text-tertiary mb-4" aria-hidden="true" />
             <p className="text-lg text-text-secondary mb-2">Unable to load articles</p>
             <p className="text-sm text-text-tertiary mb-6 max-w-md">{error}</p>
             <button
               onClick={() => fetchData()}
               className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-full font-medium hover:opacity-90 transition-opacity"
             >
-              <RefreshCw className="w-4 h-4" />
+              <RefreshCw className="w-4 h-4" aria-hidden="true" />
               Try Again
             </button>
           </div>
         ) : filteredArticles.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredArticles.map((article) => (
-              <ArticleCard key={article.id} article={article} />
-            ))}
+          <div className="py-6 space-y-8">
+            {/* Hero Section */}
+            {heroArticle && (
+              <ErrorBoundary fallback={<div className="p-8 rounded-2xl bg-surface text-center text-text-secondary">Featured story unavailable</div>}>
+                <section aria-labelledby="featured-heading">
+                  <h2 id="featured-heading" className="sr-only">Featured Story</h2>
+                  <HeroCard article={heroArticle} />
+                </section>
+              </ErrorBoundary>
+            )}
+
+            {/* Top Stories Row */}
+            {topStories.length > 0 && (
+              <ErrorBoundary fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">Top stories unavailable</div>}>
+                <section aria-labelledby="top-stories-heading">
+                  <h2 id="top-stories-heading" className="text-lg font-bold mb-4">Top Stories</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {topStories.map((article) => (
+                      <ArticleCard key={article.id} article={article} />
+                    ))}
+                  </div>
+                </section>
+              </ErrorBoundary>
+            )}
+
+            {/* Quick Reads - Articles without images */}
+            {latestWithoutImages.length > 0 && (
+              <ErrorBoundary fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">Quick reads unavailable</div>}>
+                <section aria-labelledby="quick-reads-heading">
+                  <h2 id="quick-reads-heading" className="text-lg font-bold mb-4">Quick Reads</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {latestWithoutImages.slice(0, QUICK_READS_INITIAL).map((article) => (
+                      <CompactCard key={article.id} article={article} />
+                    ))}
+                  </div>
+                </section>
+              </ErrorBoundary>
+            )}
+
+            {/* Latest - Remaining articles with images */}
+            {latestWithImages.length > 0 && (
+              <ErrorBoundary fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">Latest articles unavailable</div>}>
+                <section aria-labelledby="latest-heading">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 id="latest-heading" className="text-lg font-bold">Latest</h2>
+                    <span className="text-sm text-text-tertiary" aria-hidden="true">
+                      {latestWithImages.length} more
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {latestWithImages.map((article) => (
+                      <ArticleCard key={article.id} article={article} />
+                    ))}
+                  </div>
+                </section>
+              </ErrorBoundary>
+            )}
+
+            {/* More Quick Reads if there are any remaining */}
+            {latestWithoutImages.length > QUICK_READS_INITIAL && (
+              <ErrorBoundary fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">More stories unavailable</div>}>
+                <section aria-labelledby="more-stories-heading">
+                  <h2 id="more-stories-heading" className="text-lg font-bold mb-4">More Stories</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {latestWithoutImages.slice(QUICK_READS_INITIAL).map((article) => (
+                      <CompactCard key={article.id} article={article} />
+                    ))}
+                  </div>
+                </section>
+              </ErrorBoundary>
+            )}
           </div>
         ) : (
           <div className="text-center py-16 text-text-secondary">
@@ -306,7 +414,7 @@ export default function FeedPage() {
             </button>
           </div>
         )}
-      </section>
+      </main>
     </div>
   );
 }

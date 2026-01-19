@@ -1,24 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Check, ChevronRight, Loader2 } from "lucide-react";
+import { X, Loader2, Sparkles } from "lucide-react";
 import { usePreferences, COUNTRIES } from "@/contexts/preferences-context";
 import { api, type Category } from "@/lib/api";
+
+// Number of quick-pick items to show
+const QUICK_COUNTRIES_COUNT = 4;
+const QUICK_CATEGORIES_COUNT = 6;
 
 export function OnboardingModal() {
   const {
     showOnboarding,
-    setShowOnboarding,
     selectedCountries,
-    primaryCountry,
     toggleCountry,
-    setPrimaryCountry,
     selectedCategories,
     toggleCategory,
     completeOnboarding,
   } = usePreferences();
 
-  const [step, setStep] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -40,187 +40,119 @@ export function OnboardingModal() {
 
   if (!showOnboarding) return null;
 
-  const handleContinue = () => {
-    if (step === 1) {
-      setStep(2);
-    } else {
-      completeOnboarding();
-    }
-  };
-
-  const handleSkip = () => {
+  const handleGetStarted = () => {
     completeOnboarding();
   };
 
-  const canContinue = step === 1
-    ? true // Countries are optional
-    : selectedCategories.length >= 3;
+  // Show top countries and categories for quick selection
+  const quickCountries = COUNTRIES.slice(0, QUICK_COUNTRIES_COUNT);
+  const quickCategories = categories.slice(0, QUICK_CATEGORIES_COUNT);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end justify-center">
-      {/* Backdrop */}
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="onboarding-title"
+    >
+      {/* Backdrop - click to skip */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-        onClick={handleSkip}
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={handleGetStarted}
+        aria-hidden="true"
       />
 
-      {/* Modal */}
-      <div className="relative w-full max-w-lg bg-[#1a1a2e] rounded-t-3xl max-h-[85vh] flex flex-col animate-in slide-in-from-bottom duration-300">
-        {/* Handle bar */}
-        <div className="w-12 h-1 rounded-full bg-white/30 mx-auto mt-4 mb-2" />
-
+      {/* Modal - compact and friendly */}
+      <div className="relative w-full max-w-sm bg-[#1a1a2e] rounded-2xl overflow-hidden animate-in zoom-in-95 fade-in duration-200">
         {/* Close button */}
         <button
-          onClick={handleSkip}
-          className="absolute top-4 right-4 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+          onClick={handleGetStarted}
+          className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-colors z-10"
+          aria-label="Close and skip onboarding"
         >
-          <X className="w-5 h-5 text-white" />
+          <X className="w-4 h-4 text-white" aria-hidden="true" />
         </button>
 
-        {/* Progress */}
-        <div className="flex justify-center gap-2 py-4">
-          {[1, 2].map((s) => (
-            <div
-              key={s}
-              className={`h-1 rounded-full transition-all ${
-                s === step ? "w-12 bg-primary" : s < step ? "w-8 bg-primary" : "w-8 bg-white/20"
-              }`}
-            />
-          ))}
-        </div>
-
         {/* Header */}
-        <div className="text-center px-6 mb-6">
-          <h2 className="text-2xl font-bold text-white mb-2">
-            {step === 1 ? "Choose Your Countries" : "Select Your Interests"}
+        <div className="pt-8 pb-4 px-6 text-center">
+          <div className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Sparkles className="w-6 h-6 text-primary" aria-hidden="true" />
+          </div>
+          <h2 id="onboarding-title" className="text-xl font-bold text-white mb-1">
+            Welcome to Mukoko
           </h2>
-          <p className="text-white/70 text-sm">
-            {step === 1
-              ? "Get news from countries you care about"
-              : "Choose at least 3 topics to follow"}
+          <p className="text-white/60 text-sm">
+            Personalize your news (optional)
           </p>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto px-6 pb-4">
-          {step === 1 ? (
-            /* Country Selection */
-            <div className="grid grid-cols-3 gap-3">
-              {COUNTRIES.map((country) => {
-                const isSelected = selectedCountries.includes(country.code);
-                const isPrimary = primaryCountry === country.code;
+        {/* Country selection */}
+        <div className="px-6 pb-3">
+          <p className="text-white/50 text-xs mb-2 font-medium" id="country-label">Your region</p>
+          <div className="flex flex-wrap gap-2 justify-center" role="group" aria-labelledby="country-label">
+            {quickCountries.map((country) => {
+              const isSelected = selectedCountries.includes(country.code);
+              return (
+                <button
+                  key={country.code}
+                  onClick={() => toggleCountry(country.code)}
+                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                    isSelected
+                      ? "bg-secondary text-white"
+                      : "bg-white/10 text-white/80 hover:bg-white/20"
+                  }`}
+                  aria-pressed={isSelected}
+                >
+                  {country.flag} {country.name}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Category selection */}
+        <div className="px-6 pb-4">
+          <p className="text-white/50 text-xs mb-2 font-medium" id="category-label">Topics you like</p>
+          {loading ? (
+            <div className="flex items-center justify-center py-4" role="status">
+              <Loader2 className="w-5 h-5 text-primary animate-spin" aria-label="Loading categories" />
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 justify-center" role="group" aria-labelledby="category-label">
+              {quickCategories.map((category) => {
+                const isSelected = selectedCategories.includes(category.id);
                 return (
                   <button
-                    key={country.code}
-                    onClick={() => toggleCountry(country.code)}
-                    onDoubleClick={() => setPrimaryCountry(country.code)}
-                    className={`relative p-3 rounded-xl border text-center transition-all ${
-                      isPrimary
-                        ? "bg-emerald-600 border-emerald-500"
-                        : isSelected
-                        ? "bg-primary border-primary"
-                        : "bg-white/10 border-white/20 hover:border-white/40"
+                    key={category.id}
+                    onClick={() => toggleCategory(category.id)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      isSelected
+                        ? "bg-primary text-white"
+                        : "bg-white/10 text-white/80 hover:bg-white/20"
                     }`}
+                    aria-pressed={isSelected}
                   >
-                    <span className="text-2xl">{country.flag}</span>
-                    <p className="text-xs font-medium text-white mt-1 truncate">
-                      {country.name}
-                    </p>
-                    {isPrimary && (
-                      <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white/30 flex items-center justify-center">
-                        <span className="text-[10px]">★</span>
-                      </div>
-                    )}
-                    {isSelected && !isPrimary && (
-                      <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white flex items-center justify-center">
-                        <Check className="w-3 h-3 text-primary" />
-                      </div>
-                    )}
+                    {getCategoryEmoji(category.slug || category.name)} {category.name}
                   </button>
                 );
               })}
             </div>
-          ) : (
-            /* Category Selection */
-            loading ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 text-primary animate-spin" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3">
-                {categories.map((category) => {
-                  const isSelected = selectedCategories.includes(category.id);
-                  return (
-                    <button
-                      key={category.id}
-                      onClick={() => toggleCategory(category.id)}
-                      className={`relative p-4 rounded-xl border text-center transition-all ${
-                        isSelected
-                          ? "bg-primary/40 border-primary"
-                          : "bg-white/10 border-white/20 hover:border-white/40"
-                      }`}
-                    >
-                      <span className="text-2xl block mb-1">
-                        {getCategoryEmoji(category.slug || category.name)}
-                      </span>
-                      <p className="text-sm font-medium text-white">
-                        {category.name}
-                      </p>
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center">
-                          <Check className="w-3 h-3 text-white" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )
           )}
-
-          {/* Hint text */}
-          <p className="text-center text-white/50 text-sm mt-4">
-            {step === 1 && selectedCountries.length === 0 && "No selection = news from all of Africa"}
-            {step === 1 && selectedCountries.length > 0 && `${selectedCountries.length} countries selected`}
-            {step === 2 && selectedCategories.length < 3 && `${selectedCategories.length}/3 minimum selected`}
-            {step === 2 && selectedCategories.length >= 3 && `${selectedCategories.length} topics selected`}
-          </p>
         </div>
 
-        {/* Actions */}
-        <div className="p-6 pt-4 border-t border-white/10">
-          <div className="flex gap-3">
-            {step > 1 && (
-              <button
-                onClick={() => setStep(1)}
-                className="flex-1 py-3 px-6 rounded-xl border border-white/30 text-white font-medium hover:bg-white/10 transition-colors"
-              >
-                Back
-              </button>
-            )}
-            <button
-              onClick={handleContinue}
-              disabled={!canContinue}
-              className={`flex-1 py-3 px-6 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all ${
-                canContinue
-                  ? "bg-primary text-white hover:opacity-90"
-                  : "bg-white/20 text-white/50 cursor-not-allowed"
-              }`}
-            >
-              {step === 1 ? (
-                selectedCountries.length === 0 ? "Skip" : "Next"
-              ) : (
-                "Get Started"
-              )}
-              {step === 1 && <ChevronRight className="w-4 h-4" />}
-            </button>
-          </div>
+        {/* Action */}
+        <div className="p-6 pt-2">
           <button
-            onClick={handleSkip}
-            className="w-full py-3 text-white/50 text-sm hover:text-white/70 transition-colors mt-2"
+            onClick={handleGetStarted}
+            className="w-full py-3 px-6 rounded-xl bg-primary text-white font-semibold hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a2e]"
           >
-            Skip for now
+            {selectedCategories.length > 0 || selectedCountries.length > 0
+              ? "Start Reading"
+              : "Show Me News"}
           </button>
+          <p className="text-center text-white/40 text-xs mt-3">
+            Customize more in Discover
+          </p>
         </div>
       </div>
     </div>
@@ -229,6 +161,7 @@ export function OnboardingModal() {
 
 // Category emoji mapping
 function getCategoryEmoji(slug: string): string {
+  if (!slug) return "📰";
   const emojiMap: Record<string, string> = {
     politics: "🏛️",
     business: "💼",
