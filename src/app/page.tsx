@@ -8,6 +8,7 @@ import { ArticleCard } from "@/components/article-card";
 import { HeroCard } from "@/components/hero-card";
 import { CompactCard } from "@/components/compact-card";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { FeedPageSkeleton, CategoryChipSkeleton } from "@/components/ui/skeleton";
 import { usePreferences } from "@/contexts/preferences-context";
 import { api, type Article, type Category } from "@/lib/api";
 import { isValidImageUrl } from "@/lib/utils";
@@ -293,9 +294,7 @@ export default function FeedPage() {
       {/* Main Content */}
       <main>
         {loading ? (
-          <div className="flex items-center justify-center py-16" role="status" aria-label="Loading articles">
-            <Loader2 className="w-8 h-8 text-primary animate-spin" />
-          </div>
+          <FeedPageSkeleton />
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-16 text-center" role="alert">
             <WifiOff className="w-12 h-12 text-text-tertiary mb-4" aria-hidden="true" />
