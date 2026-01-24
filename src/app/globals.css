@@ -259,3 +259,8 @@ a {
     #8B4513 100%
   );
 }
+
+/* Safe area for iOS devices with home indicator */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
