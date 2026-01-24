@@ -18,7 +18,7 @@ const TOP_STORIES_COUNT = 3;
 const QUICK_READS_INITIAL = 6;
 
 export default function FeedPage() {
-  const { selectedCategories } = usePreferences();
+  const { selectedCategories, selectedCountries } = usePreferences();
 
   const [articles, setArticles] = useState<Article[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -43,7 +43,10 @@ export default function FeedPage() {
     setError(null);
     try {
       const [articlesResponse, categoriesData] = await Promise.all([
-        api.getArticles({ limit: 50 }),
+        api.getArticles({
+          limit: 50,
+          countries: selectedCountries.length > 0 ? selectedCountries : undefined,
+        }),
         api.getCategories(),
       ]);
       setArticles(articlesResponse.articles || []);
@@ -66,7 +69,8 @@ export default function FeedPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCountries.join(',')]);
 
   // Pull-to-refresh for mobile
   useEffect(() => {

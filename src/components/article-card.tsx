@@ -46,7 +46,7 @@ export function ArticleCard({ article }: ArticleCardProps) {
 
   return (
     <Link href={`/article/${article.id}`} className="block">
-      <div className="rounded-[var(--radius-card)] overflow-hidden bg-surface cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/40">
+      <div className="rounded-[var(--radius-card)] overflow-hidden bg-surface cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-2xl hover:shadow-black/40 border border-border">
         {/* Cover */}
         <div className="h-[180px] relative" style={coverStyle}>
           {/* Date Badge - glassmorphism for image overlay */}
