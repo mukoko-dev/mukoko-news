@@ -27,6 +27,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **useEffect Dependencies**: Fixed React hook dependency array with memoized countryKey
 - **Performance**: Fixed O(n²) keyword cloud rendering with memoization
 - **Theme Consistency**: Replaced hardcoded colors in onboarding modal with theme tokens
+- **Breadcrumb Keys**: Use stable keys instead of array indices for React list rendering
+- **Clipboard Fallback**: Added error handling and success check for legacy `document.execCommand("copy")`
+- **Bottom Nav Routing**: Improved pathname matching with regex for `/article/{id}` pattern
 
 ### Changed
 
