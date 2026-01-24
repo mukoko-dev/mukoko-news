@@ -417,6 +417,67 @@ Use Tailwind classes like `bg-primary`, `text-foreground`, `bg-surface` etc.
 - Error boundaries on all pages with data fetching
 - Skeleton loaders for graceful loading states
 
+### React Best Practices
+
+**List Keys**: Use stable, unique keys instead of array indices:
+```tsx
+// Good - uses stable identifier
+{items.map((item) => (
+  <li key={item.id || item.href || item.label}>{item.name}</li>
+))}
+
+// Bad - array index can cause issues with reordering
+{items.map((item, index) => (
+  <li key={index}>{item.name}</li>
+))}
+```
+
+**Memoization**: Use `useMemo` to prevent expensive recalculations:
+```tsx
+// Stable sorted key - prevents refetch when array is reordered
+// Example: [ZW, KE] and [KE, ZW] produce same key "KE,ZW"
+const countryKey = useMemo(
+  () => selectedCountries.slice().sort().join(","),
+  [selectedCountries]
+);
+```
+
+**Cleanup Effects**: Always clean up timeouts and subscriptions:
+```tsx
+useEffect(() => {
+  const timer = setTimeout(() => setFlag(false), 2000);
+  return () => clearTimeout(timer);  // Cleanup prevents memory leaks
+}, [dependency]);
+```
+
+**Pathname Matching**: Use regex for robust route matching:
+```tsx
+// Good - explicitly matches /article/{id} pattern
+if (/^\/article\/[^/]+/.test(pathname)) return null;
+
+// Less robust - matches any path starting with /article/
+if (pathname.startsWith("/article/")) return null;
+```
+
+**Clipboard API**: Provide fallbacks for older browsers:
+```tsx
+const copyToClipboard = async (text: string) => {
+  if (!navigator.clipboard) {
+    // Fallback for older browsers
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.select();
+    const success = document.execCommand("copy");
+    document.body.removeChild(textArea);
+    return success;
+  }
+  await navigator.clipboard.writeText(text);
+  return true;
+};
+
 ### Error Boundaries
 
 Error boundaries wrap page content in:
