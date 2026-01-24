@@ -30,7 +30,8 @@ export default function FeedPage() {
   const touchStartY = useRef(0);
   const isPulling = useRef(false);
 
-  // Stable sorted country key - prevents refetch on array reorder
+  // Stable sorted country key - prevents unnecessary refetch when countries are reordered
+  // Example: [ZW, KE] and [KE, ZW] produce the same key "KE,ZW", avoiding duplicate API calls
   const countryKey = useMemo(
     () => selectedCountries.slice().sort().join(","),
     [selectedCountries]

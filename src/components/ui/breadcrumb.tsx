@@ -36,7 +36,7 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
           <span className="sr-only">Home</span>
         </Link>
         {items.map((item, index) => (
-          <span key={index} className="flex items-center gap-1 shrink-0">
+          <span key={item.href || item.label || `breadcrumb-${index}`} className="flex items-center gap-1 shrink-0">
             <ChevronRight className="w-3.5 h-3.5" />
             {item.href ? (
               <Link href={item.href} className="hover:text-foreground transition-colors truncate max-w-[150px]">

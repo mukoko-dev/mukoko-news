@@ -16,7 +16,8 @@ export function BottomNav() {
   const pathname = usePathname();
 
   // Hide on NewsBytes (fullscreen experience) and article pages
-  if (pathname === "/newsbytes" || pathname.startsWith("/article/")) {
+  // Use regex for article pages to ensure we match /article/{id} pattern specifically
+  if (pathname === "/newsbytes" || /^\/article\/[^/]+/.test(pathname)) {
     return null;
   }
 

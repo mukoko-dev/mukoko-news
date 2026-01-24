@@ -115,9 +115,9 @@ export default function ArticleDetailPage() {
         textArea.style.opacity = "0";
         document.body.appendChild(textArea);
         textArea.select();
-        document.execCommand("copy");
+        const success = document.execCommand("copy");
         document.body.removeChild(textArea);
-        setCopySuccess(true);
+        if (success) setCopySuccess(true);
         return;
       }
       await navigator.clipboard.writeText(articleUrl);
