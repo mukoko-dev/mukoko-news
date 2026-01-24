@@ -1,22 +1,10 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { COUNTRIES } from "@/lib/constants";
 
-// Pan-African countries
-export const COUNTRIES = [
-  { code: "ZW", name: "Zimbabwe", flag: "🇿🇼" },
-  { code: "ZA", name: "South Africa", flag: "🇿🇦" },
-  { code: "KE", name: "Kenya", flag: "🇰🇪" },
-  { code: "NG", name: "Nigeria", flag: "🇳🇬" },
-  { code: "GH", name: "Ghana", flag: "🇬🇭" },
-  { code: "TZ", name: "Tanzania", flag: "🇹🇿" },
-  { code: "UG", name: "Uganda", flag: "🇺🇬" },
-  { code: "RW", name: "Rwanda", flag: "🇷🇼" },
-  { code: "ET", name: "Ethiopia", flag: "🇪🇹" },
-  { code: "BW", name: "Botswana", flag: "🇧🇼" },
-  { code: "ZM", name: "Zambia", flag: "🇿🇲" },
-  { code: "MW", name: "Malawi", flag: "🇲🇼" },
-];
+// Re-export for backwards compatibility
+export { COUNTRIES } from "@/lib/constants";
 
 interface PreferencesContextType {
   // Countries

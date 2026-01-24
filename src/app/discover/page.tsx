@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Search, ArrowRight, Newspaper } from "lucide-react";
@@ -8,44 +8,7 @@ import { ArticleCard } from "@/components/article-card";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { DiscoverPageSkeleton } from "@/components/ui/discover-skeleton";
 import { api, type Article, type Category } from "@/lib/api";
-
-// Pan-African countries with flags and colors (matches database rss_sources)
-const COUNTRIES = [
-  { code: "ZW", name: "Zimbabwe", flag: "🇿🇼", color: "bg-green-600" },
-  { code: "ZA", name: "South Africa", flag: "🇿🇦", color: "bg-yellow-500" },
-  { code: "KE", name: "Kenya", flag: "🇰🇪", color: "bg-red-600" },
-  { code: "NG", name: "Nigeria", flag: "🇳🇬", color: "bg-green-500" },
-  { code: "GH", name: "Ghana", flag: "🇬🇭", color: "bg-yellow-400" },
-  { code: "TZ", name: "Tanzania", flag: "🇹🇿", color: "bg-blue-500" },
-  { code: "UG", name: "Uganda", flag: "🇺🇬", color: "bg-yellow-600" },
-  { code: "RW", name: "Rwanda", flag: "🇷🇼", color: "bg-cyan-500" },
-  { code: "ET", name: "Ethiopia", flag: "🇪🇹", color: "bg-green-400" },
-  { code: "BW", name: "Botswana", flag: "🇧🇼", color: "bg-sky-400" },
-  { code: "ZM", name: "Zambia", flag: "🇿🇲", color: "bg-orange-500" },
-  { code: "MW", name: "Malawi", flag: "🇲🇼", color: "bg-red-500" },
-  { code: "EG", name: "Egypt", flag: "🇪🇬", color: "bg-red-700" },
-  { code: "MA", name: "Morocco", flag: "🇲🇦", color: "bg-red-600" },
-  { code: "NA", name: "Namibia", flag: "🇳🇦", color: "bg-blue-600" },
-  { code: "MZ", name: "Mozambique", flag: "🇲🇿", color: "bg-yellow-500" },
-];
-
-// Category emoji and color mapping
-const CATEGORY_META: Record<string, { emoji: string; color: string }> = {
-  all: { emoji: "📰", color: "bg-gray-500" },
-  politics: { emoji: "🏛️", color: "bg-red-500" },
-  economy: { emoji: "💰", color: "bg-emerald-500" },
-  technology: { emoji: "💻", color: "bg-blue-500" },
-  sports: { emoji: "⚽", color: "bg-orange-500" },
-  health: { emoji: "🏥", color: "bg-green-500" },
-  education: { emoji: "📚", color: "bg-violet-500" },
-  entertainment: { emoji: "🎬", color: "bg-pink-500" },
-  international: { emoji: "🌍", color: "bg-cyan-500" },
-  general: { emoji: "📰", color: "bg-lime-500" },
-  harare: { emoji: "🏙️", color: "bg-teal-500" },
-  agriculture: { emoji: "🌾", color: "bg-amber-500" },
-  crime: { emoji: "🚔", color: "bg-red-600" },
-  environment: { emoji: "🌍", color: "bg-green-600" },
-};
+import { COUNTRIES, CATEGORY_META } from "@/lib/constants";
 
 interface Source {
   id: string;
@@ -174,9 +137,11 @@ export default function DiscoverPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-xl font-bold text-foreground">
-                {activeCategory && categories.find(c => c.id === activeCategory)?.name}
-                {activeCountry && COUNTRIES.find(c => c.code === activeCountry)?.name}
-                {activeSource && activeSource}
+                {[
+                  activeCategory && categories.find(c => c.id === activeCategory)?.name,
+                  activeCountry && COUNTRIES.find(c => c.code === activeCountry)?.name,
+                  activeSource,
+                ].filter(Boolean).join(" · ")}
               </h2>
               <p className="text-text-secondary text-sm mt-1">
                 {filteredArticles.length} articles found
@@ -225,31 +190,7 @@ export default function DiscoverPage() {
 
           {/* Trending Topics - Tag Cloud */}
           {keywords.length > 0 && (
-            <section className="mb-12">
-              <h2 className="text-xl font-bold text-foreground mb-6">Trending Topics</h2>
-              <div className="flex flex-wrap gap-2">
-                {keywords.map((keyword) => {
-                  // Calculate font size based on article_count (min 0.75rem, max 1.5rem)
-                  const maxCount = Math.max(...keywords.map(k => k.article_count));
-                  const minCount = Math.min(...keywords.map(k => k.article_count));
-                  const range = maxCount - minCount || 1;
-                  const normalized = (keyword.article_count - minCount) / range;
-                  const fontSize = 0.75 + (normalized * 0.75); // 0.75rem to 1.5rem
-                  const fontWeight = normalized > 0.5 ? 600 : 400;
-
-                  return (
-                    <Link
-                      key={keyword.id}
-                      href={`/search?q=${encodeURIComponent(keyword.name)}`}
-                      className="px-3 py-1.5 bg-surface rounded-full border border-elevated hover:border-primary/30 hover:bg-elevated transition-all text-foreground hover:text-primary"
-                      style={{ fontSize: `${fontSize}rem`, fontWeight }}
-                    >
-                      {keyword.name}
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
+            <KeywordCloud keywords={keywords} />
           )}
 
           {/* Browse by Category */}
@@ -349,5 +290,39 @@ export default function DiscoverPage() {
       )}
       </div>
     </ErrorBoundary>
+  );
+}
+
+// Extracted component with memoized min/max calculation (O(n) instead of O(n²))
+function KeywordCloud({ keywords }: { keywords: Keyword[] }) {
+  const { minCount, range } = useMemo(() => {
+    const counts = keywords.map((k) => k.article_count);
+    const min = Math.min(...counts);
+    const max = Math.max(...counts);
+    return { minCount: min, range: max - min || 1 };
+  }, [keywords]);
+
+  return (
+    <section className="mb-12">
+      <h2 className="text-xl font-bold text-foreground mb-6">Trending Topics</h2>
+      <div className="flex flex-wrap gap-2">
+        {keywords.map((keyword) => {
+          const normalized = (keyword.article_count - minCount) / range;
+          const fontSize = 0.75 + normalized * 0.75; // 0.75rem to 1.5rem
+          const fontWeight = normalized > 0.5 ? 600 : 400;
+
+          return (
+            <Link
+              key={keyword.id}
+              href={`/search?q=${encodeURIComponent(keyword.name)}`}
+              className="px-3 py-1.5 bg-surface rounded-full border border-elevated hover:border-primary/30 hover:bg-elevated transition-all text-foreground hover:text-primary"
+              style={{ fontSize: `${fontSize}rem`, fontWeight }}
+            >
+              {keyword.name}
+            </Link>
+          );
+        })}
+      </div>
+    </section>
   );
 }
