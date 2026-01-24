@@ -6,16 +6,13 @@ import { Loader2, ChevronLeft, ChevronRight, Compass, RefreshCw, WifiOff } from 
 import { CategoryChip } from "@/components/ui/category-chip";
 import { ArticleCard } from "@/components/article-card";
 import { HeroCard } from "@/components/hero-card";
-import { CompactCard } from "@/components/compact-card";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { FeedPageSkeleton, CategoryChipSkeleton } from "@/components/ui/skeleton";
 import { usePreferences } from "@/contexts/preferences-context";
 import { api, type Article, type Category } from "@/lib/api";
 import { isValidImageUrl } from "@/lib/utils";
 
-// Layout configuration constants
-const TOP_STORIES_COUNT = 3;
-const QUICK_READS_INITIAL = 6;
+// Simplified layout - Featured + Latest only
 
 export default function FeedPage() {
   const { selectedCategories, selectedCountries } = usePreferences();
@@ -164,26 +161,11 @@ export default function FeedPage() {
     );
   }, [articles, activeCategory]);
 
-  // Split articles into sections based on images - single pass for performance
-  const { heroArticle, topStories, latestWithImages, latestWithoutImages } = useMemo(() => {
-    const withImages: Article[] = [];
-    const withoutImages: Article[] = [];
-
-    // Single pass through articles
-    for (const article of filteredArticles) {
-      if (isValidImageUrl(article.image_url)) {
-        withImages.push(article);
-      } else {
-        withoutImages.push(article);
-      }
-    }
-
-    return {
-      heroArticle: withImages[0] || null,
-      topStories: withImages.slice(1, 1 + TOP_STORIES_COUNT),
-      latestWithImages: withImages.slice(1 + TOP_STORIES_COUNT),
-      latestWithoutImages: withoutImages,
-    };
+  // Simple split: Featured (first with image) + Latest (all others)
+  const { featuredArticle, latestArticles } = useMemo(() => {
+    const featured = filteredArticles.find((a) => isValidImageUrl(a.image_url)) || filteredArticles[0];
+    const latest = filteredArticles.filter((a) => a.id !== featured?.id);
+    return { featuredArticle: featured || null, latestArticles: latest };
   }, [filteredArticles]);
 
   // Get personalized category chips - show user's selected categories first
@@ -336,71 +318,29 @@ export default function FeedPage() {
           </div>
         ) : filteredArticles.length > 0 ? (
           <div className="py-6 space-y-8">
-            {/* Hero Section */}
-            {heroArticle && (
+            {/* Featured Article */}
+            {featuredArticle && (
               <ErrorBoundary fallback={<div className="p-8 rounded-2xl bg-surface text-center text-text-secondary">Featured story unavailable</div>}>
                 <section aria-labelledby="featured-heading">
                   <h2 id="featured-heading" className="sr-only">Featured Story</h2>
-                  <HeroCard article={heroArticle} />
+                  <HeroCard article={featuredArticle} />
                 </section>
               </ErrorBoundary>
             )}
 
-            {/* Top Stories Row */}
-            {topStories.length > 0 && (
-              <ErrorBoundary fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">Top stories unavailable</div>}>
-                <section aria-labelledby="top-stories-heading">
-                  <h2 id="top-stories-heading" className="text-lg font-bold mb-4">Top Stories</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {topStories.map((article) => (
-                      <ArticleCard key={article.id} article={article} />
-                    ))}
-                  </div>
-                </section>
-              </ErrorBoundary>
-            )}
-
-            {/* Quick Reads - Articles without images */}
-            {latestWithoutImages.length > 0 && (
-              <ErrorBoundary fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">Quick reads unavailable</div>}>
-                <section aria-labelledby="quick-reads-heading">
-                  <h2 id="quick-reads-heading" className="text-lg font-bold mb-4">Quick Reads</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {latestWithoutImages.slice(0, QUICK_READS_INITIAL).map((article) => (
-                      <CompactCard key={article.id} article={article} />
-                    ))}
-                  </div>
-                </section>
-              </ErrorBoundary>
-            )}
-
-            {/* Latest - Remaining articles with images */}
-            {latestWithImages.length > 0 && (
+            {/* Latest Articles */}
+            {latestArticles.length > 0 && (
               <ErrorBoundary fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">Latest articles unavailable</div>}>
                 <section aria-labelledby="latest-heading">
                   <div className="flex justify-between items-center mb-4">
                     <h2 id="latest-heading" className="text-lg font-bold">Latest</h2>
-                    <span className="text-sm text-text-tertiary" aria-hidden="true">
-                      {latestWithImages.length} more
+                    <span className="text-sm text-text-tertiary">
+                      {latestArticles.length} articles
                     </span>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {latestWithImages.map((article) => (
+                    {latestArticles.map((article) => (
                       <ArticleCard key={article.id} article={article} />
-                    ))}
-                  </div>
-                </section>
-              </ErrorBoundary>
-            )}
-
-            {/* More Quick Reads if there are any remaining */}
-            {latestWithoutImages.length > QUICK_READS_INITIAL && (
-              <ErrorBoundary fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">More stories unavailable</div>}>
-                <section aria-labelledby="more-stories-heading">
-                  <h2 id="more-stories-heading" className="text-lg font-bold mb-4">More Stories</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {latestWithoutImages.slice(QUICK_READS_INITIAL).map((article) => (
-                      <CompactCard key={article.id} article={article} />
                     ))}
                   </div>
                 </section>

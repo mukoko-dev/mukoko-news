@@ -5,7 +5,9 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { PreferencesProvider } from '@/contexts/preferences-context';
 import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
+import { BottomNav } from '@/components/layout/bottom-nav';
 import { OnboardingModal } from '@/components/onboarding-modal';
+import { OrganizationJsonLd } from '@/components/ui/json-ld';
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
@@ -37,6 +39,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        <OrganizationJsonLd />
+      </head>
       <body className={`${plusJakarta.variable} ${notoSerif.variable} font-sans antialiased min-h-screen flex flex-col`}>
         <ThemeProvider defaultTheme="system" storageKey="mukoko-news-theme">
           <PreferencesProvider>
@@ -44,8 +49,9 @@ export default function RootLayout({
             <div className="minerals-stripe" />
 
             <Header />
-            <main className="flex-1 relative z-10">{children}</main>
+            <main className="flex-1 relative z-10 pb-16 md:pb-0">{children}</main>
             <Footer />
+            <BottomNav />
 
             {/* Onboarding Modal */}
             <OnboardingModal />

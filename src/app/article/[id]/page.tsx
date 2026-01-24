@@ -17,6 +17,8 @@ import {
 import { api, type Article } from "@/lib/api";
 import { ArticlePageSkeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { ArticleJsonLd } from "@/components/ui/json-ld";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 export default function ArticleDetailPage() {
   const params = useParams();
@@ -137,9 +139,23 @@ export default function ArticleDetailPage() {
     );
   }
 
+  const articleUrl = typeof window !== "undefined" ? window.location.href : "";
+  const category = article.category_id || article.category;
+
   return (
     <ErrorBoundary fallback={<div className="p-8 text-center text-text-secondary">Failed to render article content</div>}>
+      <ArticleJsonLd article={article} url={articleUrl} />
       <div className="pb-16">
+        {/* Breadcrumb */}
+        <div className="max-w-[800px] mx-auto px-6 py-3">
+          <Breadcrumb
+            items={[
+              ...(category ? [{ label: category, href: `/discover?category=${category}` }] : []),
+              { label: article.title },
+            ]}
+          />
+        </div>
+
         {/* Hero Section */}
         <div className="bg-primary text-white px-6 py-12 relative">
         {/* Back Button */}
