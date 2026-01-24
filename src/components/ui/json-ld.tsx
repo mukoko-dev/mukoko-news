@@ -37,8 +37,18 @@ interface BreadcrumbSchema {
   }>;
 }
 
-// Note: dangerouslySetInnerHTML is safe here because JSON.stringify
-// properly escapes all content and we control the schema structure
+/**
+ * Safely stringify JSON for embedding in script tags.
+ * Escapes sequences that could break out of the script context.
+ * This prevents XSS via </script> or <!-- injection in user content.
+ */
+function safeJsonLdStringify(obj: unknown): string {
+  return JSON.stringify(obj)
+    .replace(/</g, "\\u003c")  // Escape < to prevent </script> injection
+    .replace(/>/g, "\\u003e")  // Escape > for safety
+    .replace(/&/g, "\\u0026"); // Escape & for HTML entity safety
+}
+
 export function ArticleJsonLd({ article, url }: { article: Article; url: string }) {
   const schema: NewsArticleSchema = {
     "@context": "https://schema.org",
@@ -66,10 +76,13 @@ export function ArticleJsonLd({ article, url }: { article: Article; url: string 
     },
   };
 
+  // safeJsonLdStringify escapes <, >, & to Unicode to prevent XSS
+  const safeJson = safeJsonLdStringify(schema);
+
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: safeJson }}
     />
   );
 }
@@ -86,10 +99,13 @@ export function BreadcrumbJsonLd({ items }: { items: Array<{ name: string; href?
     })),
   };
 
+  // safeJsonLdStringify escapes <, >, & to Unicode to prevent XSS
+  const safeJson = safeJsonLdStringify(schema);
+
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: safeJson }}
     />
   );
 }
@@ -105,10 +121,13 @@ export function OrganizationJsonLd() {
     sameAs: [],
   };
 
+  // safeJsonLdStringify escapes <, >, & to Unicode to prevent XSS
+  const safeJson = safeJsonLdStringify(schema);
+
   return (
     <script
       type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+      dangerouslySetInnerHTML={{ __html: safeJson }}
     />
   );
 }
