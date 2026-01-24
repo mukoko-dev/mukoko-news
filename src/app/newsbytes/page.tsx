@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, type Article } from "@/lib/api";
+import { isValidImageUrl } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { NewsBytesSkeleton } from "@/components/ui/discover-skeleton";
 
@@ -42,10 +43,8 @@ export default function NewsBytesPage() {
       const data = await api.getNewsBytes({ limit: 50 });
       const articles = data.articles || [];
 
-      // Filter to only articles with images
-      const withImages = articles.filter(
-        (a) => a.image_url && a.image_url.startsWith("http")
-      );
+      // Filter to only articles with valid image URLs
+      const withImages = articles.filter((a) => isValidImageUrl(a.image_url));
 
       const initialState: Record<string, { isLiked: boolean; isSaved: boolean; likesCount: number }> = {};
       withImages.forEach((byte) => {
@@ -282,6 +281,8 @@ export default function NewsBytesPage() {
                 <button
                   onClick={(e) => handleLike(byte.id, e)}
                   className="flex flex-col items-center"
+                  aria-label={byteState.isLiked ? "Unlike article" : "Like article"}
+                  aria-pressed={byteState.isLiked}
                 >
                   <div className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-black/30 backdrop-blur-sm rounded-full">
                     <Heart
@@ -298,6 +299,7 @@ export default function NewsBytesPage() {
                 <button
                   onClick={(e) => handleShare(byte, e)}
                   className="flex flex-col items-center"
+                  aria-label="Share article"
                 >
                   <div className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-black/30 backdrop-blur-sm rounded-full">
                     <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -308,6 +310,8 @@ export default function NewsBytesPage() {
                 <button
                   onClick={(e) => handleSave(byte.id, e)}
                   className="flex flex-col items-center"
+                  aria-label={byteState.isSaved ? "Remove from saved" : "Save article"}
+                  aria-pressed={byteState.isSaved}
                 >
                   <div className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-black/30 backdrop-blur-sm rounded-full">
                     <Bookmark

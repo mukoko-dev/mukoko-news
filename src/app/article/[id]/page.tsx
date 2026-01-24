@@ -8,11 +8,11 @@ import {
   Bookmark,
   Share2,
   ChevronLeft,
-  ExternalLink,
   AlertCircle,
   Clock,
   Tag,
   RefreshCw,
+  Check,
 } from "lucide-react";
 import { api, type Article } from "@/lib/api";
 import { ArticlePageSkeleton } from "@/components/ui/skeleton";
@@ -69,6 +69,8 @@ export default function ArticleDetailPage() {
     setIsSaved(!isSaved);
   };
 
+  const [copySuccess, setCopySuccess] = useState(false);
+
   const handleShare = async () => {
     if (!article) return;
 
@@ -80,11 +82,23 @@ export default function ArticleDetailPage() {
           url: window.location.href,
         });
       } catch (err) {
-        console.log("Share cancelled");
+        // User cancelled or share failed - fallback to clipboard
+        if ((err as Error).name !== "AbortError") {
+          await copyToClipboard();
+        }
       }
     } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
+      await copyToClipboard();
+    }
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
     }
   };
 
@@ -265,22 +279,15 @@ export default function ArticleDetailPage() {
 
           <button
             onClick={handleShare}
-            className="flex items-center gap-2 px-4 py-2.5 bg-surface text-foreground rounded-xl hover:bg-elevated transition-colors"
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all ml-auto ${
+              copySuccess
+                ? "bg-success text-white"
+                : "bg-primary text-white hover:opacity-90"
+            }`}
           >
-            <Share2 className="w-5 h-5" />
-            <span className="font-medium">Share</span>
+            {copySuccess ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
+            <span className="font-medium">{copySuccess ? "Copied!" : "Share"}</span>
           </button>
-
-          {/* Read Original Link */}
-          <a
-            href={`https://google.com/search?q=${encodeURIComponent(article.title)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:opacity-90 transition-opacity ml-auto"
-          >
-            <span className="font-medium">Read Original</span>
-            <ExternalLink className="w-4 h-4" />
-          </a>
         </div>
       </div>
       </div>
