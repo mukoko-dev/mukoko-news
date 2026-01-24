@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Plus_Jakarta_Sans, Noto_Serif } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { PreferencesProvider } from '@/contexts/preferences-context';
@@ -9,15 +8,8 @@ import { BottomNav } from '@/components/layout/bottom-nav';
 import { OnboardingModal } from '@/components/onboarding-modal';
 import { OrganizationJsonLd } from '@/components/ui/json-ld';
 
-const plusJakarta = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  variable: '--font-sans',
-});
-
-const notoSerif = Noto_Serif({
-  subsets: ['latin'],
-  variable: '--font-serif',
-});
+// Fonts are loaded via CSS @import in globals.css for better reliability
+// This avoids build failures when Google Fonts API is unreachable
 
 export const metadata: Metadata = {
   title: 'Mukoko News - Africa\'s News Hub',
@@ -42,7 +34,7 @@ export default function RootLayout({
       <head>
         <OrganizationJsonLd />
       </head>
-      <body className={`${plusJakarta.variable} ${notoSerif.variable} font-sans antialiased min-h-screen flex flex-col`}>
+      <body className="font-sans antialiased min-h-screen flex flex-col">
         <ThemeProvider defaultTheme="system" storageKey="mukoko-news-theme">
           <PreferencesProvider>
             {/* Five African Minerals vertical stripe */}
