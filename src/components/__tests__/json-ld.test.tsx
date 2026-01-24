@@ -16,7 +16,7 @@ describe('JSON-LD Components', () => {
       };
 
       const { container } = render(
-        <ArticleJsonLd article={article} url="https://mukoko.news/article/123" />
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
       );
 
       const script = container.querySelector('script[type="application/ld+json"]');
@@ -38,7 +38,7 @@ describe('JSON-LD Components', () => {
       };
 
       const { container } = render(
-        <ArticleJsonLd article={article} url="https://mukoko.news/article/123" />
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
       );
 
       const script = container.querySelector('script[type="application/ld+json"]');
@@ -64,7 +64,7 @@ describe('JSON-LD Components', () => {
       };
 
       const { container } = render(
-        <ArticleJsonLd article={article} url="https://mukoko.news/article/123" />
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
       );
 
       const script = container.querySelector('script[type="application/ld+json"]');

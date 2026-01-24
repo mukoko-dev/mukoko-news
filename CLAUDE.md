@@ -275,7 +275,7 @@ Schema in `database/schema.sql`. 18 migrations in `database/migrations/`.
 
 ```bash
 NEXT_PUBLIC_API_URL=https://mukoko-news-backend.nyuchi.workers.dev
-NEXT_PUBLIC_BASE_URL=https://mukoko.news  # Base URL for SEO/schema.org (optional, has default)
+NEXT_PUBLIC_BASE_URL=https://news.mukoko.com  # Base URL for SEO/schema.org (optional, has default)
 NEXT_PUBLIC_API_SECRET=your-api-secret  # Optional: for direct browser auth
 API_SECRET=your-api-secret               # Server-side API authentication
 ```
@@ -476,8 +476,8 @@ Use centralized URL utilities from `src/lib/constants.ts`:
 import { BASE_URL, getArticleUrl, getFullUrl } from "@/lib/constants";
 
 // Examples
-const url = getArticleUrl("123");  // https://mukoko.news/article/123
-const fullUrl = getFullUrl("/discover");  // https://mukoko.news/discover
+const url = getArticleUrl("123");  // https://news.mukoko.com/article/123
+const fullUrl = getFullUrl("/discover");  // https://news.mukoko.com/discover
 ```
 
 ### Font Loading

@@ -47,7 +47,7 @@ export function getCategoryEmoji(slug: string): string {
 
 // Base URL for the application
 // Uses environment variable in production, falls back to default for development
-export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://mukoko.news";
+export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://news.mukoko.com";
 
 // Helper to generate full article URLs
 export function getArticleUrl(articleId: string): string {
