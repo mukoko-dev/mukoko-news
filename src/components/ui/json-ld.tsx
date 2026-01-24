@@ -1,4 +1,5 @@
 import type { Article } from "@/lib/api";
+import { BASE_URL, getFullUrl } from "@/lib/constants";
 
 interface NewsArticleSchema {
   "@context": "https://schema.org";
@@ -67,7 +68,7 @@ export function ArticleJsonLd({ article, url }: { article: Article; url: string 
       name: "Mukoko News",
       logo: {
         "@type": "ImageObject",
-        url: "https://mukoko.news/icon.png",
+        url: `${BASE_URL}/icon.png`,
       },
     },
     mainEntityOfPage: {
@@ -95,7 +96,7 @@ export function BreadcrumbJsonLd({ items }: { items: Array<{ name: string; href?
       "@type": "ListItem",
       position: index + 1,
       name: item.name,
-      item: item.href ? `https://mukoko.news${item.href}` : undefined,
+      item: item.href ? getFullUrl(item.href) : undefined,
     })),
   };
 
@@ -116,8 +117,8 @@ export function OrganizationJsonLd() {
     "@type": "Organization",
     name: "Mukoko News",
     description: "Pan-African digital news aggregation platform",
-    url: "https://mukoko.news",
-    logo: "https://mukoko.news/icon.png",
+    url: BASE_URL,
+    logo: `${BASE_URL}/icon.png`,
     sameAs: [],
   };
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { ChevronRight, Home } from "lucide-react";
 import { BreadcrumbJsonLd } from "./json-ld";
@@ -14,10 +15,14 @@ interface BreadcrumbProps {
 }
 
 export function Breadcrumb({ items }: BreadcrumbProps) {
-  const jsonLdItems = [
-    { name: "Home", href: "/" },
-    ...items.map((item) => ({ name: item.label, href: item.href })),
-  ];
+  // Memoize JSON-LD items to prevent recreation on every render
+  const jsonLdItems = useMemo(
+    () => [
+      { name: "Home", href: "/" },
+      ...items.map((item) => ({ name: item.label, href: item.href })),
+    ],
+    [items]
+  );
 
   return (
     <>

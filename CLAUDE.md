@@ -275,6 +275,7 @@ Schema in `database/schema.sql`. 18 migrations in `database/migrations/`.
 
 ```bash
 NEXT_PUBLIC_API_URL=https://mukoko-news-backend.nyuchi.workers.dev
+NEXT_PUBLIC_BASE_URL=https://mukoko.news  # Base URL for SEO/schema.org (optional, has default)
 NEXT_PUBLIC_API_SECRET=your-api-secret  # Optional: for direct browser auth
 API_SECRET=your-api-secret               # Server-side API authentication
 ```
@@ -314,11 +315,13 @@ npm run test:coverage     # With v8 coverage report
 
 **Test Files**:
 - `src/lib/__tests__/utils.test.ts` - Utility function tests (formatTimeAgo, isValidImageUrl, cn)
-- `src/lib/__tests__/constants.test.ts` - Constants and helper tests (COUNTRIES, getCategoryEmoji)
+- `src/lib/__tests__/constants.test.ts` - Constants and helper tests (COUNTRIES, getCategoryEmoji, BASE_URL)
 - `src/components/__tests__/json-ld.test.tsx` - JSON-LD XSS prevention tests
 - `src/components/__tests__/hero-card.test.tsx` - HeroCard component tests
 - `src/components/__tests__/compact-card.test.tsx` - CompactCard component tests
 - `src/components/__tests__/error-boundary.test.tsx` - ErrorBoundary tests
+- `src/components/__tests__/breadcrumb.test.tsx` - Breadcrumb navigation tests
+- `src/components/__tests__/bottom-nav.test.tsx` - Mobile bottom navigation tests
 
 **Test Pattern**: Vitest with jsdom environment, React Testing Library
 
@@ -461,6 +464,28 @@ Tests: `src/components/__tests__/json-ld.test.tsx`
 Use `isValidImageUrl()` from `src/lib/utils.ts` before rendering user-provided image URLs:
 - Allows: `http://`, `https://`, `/` (relative paths)
 - Blocks: `javascript:`, `data:`, `blob:`, `vbscript:` protocols
+
+### Base URL Pattern
+
+Use centralized URL utilities from `src/lib/constants.ts`:
+- `BASE_URL` - Uses `NEXT_PUBLIC_BASE_URL` env var or defaults to production URL
+- `getArticleUrl(id)` - Generates full article URLs
+- `getFullUrl(path)` - Generates full URLs from relative paths
+
+```typescript
+import { BASE_URL, getArticleUrl, getFullUrl } from "@/lib/constants";
+
+// Examples
+const url = getArticleUrl("123");  // https://mukoko.news/article/123
+const fullUrl = getFullUrl("/discover");  // https://mukoko.news/discover
+```
+
+### Font Loading
+
+Fonts are loaded via CSS `@import` in `globals.css` with preconnect hints in `layout.tsx`:
+- Preconnect hints improve loading performance
+- CSS @import chosen for build reliability (network-independent)
+- Fonts: Noto Serif (headings), Plus Jakarta Sans (body)
 
 ### Backend Error Handling
 

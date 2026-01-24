@@ -44,3 +44,19 @@ export function getCategoryEmoji(slug: string): string {
   if (!slug) return "📰";
   return CATEGORY_META[slug.toLowerCase()]?.emoji || "📰";
 }
+
+// Base URL for the application
+// Uses environment variable in production, falls back to default for development
+export const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || "https://mukoko.news";
+
+// Helper to generate full article URLs
+export function getArticleUrl(articleId: string): string {
+  return `${BASE_URL}/article/${articleId}`;
+}
+
+// Helper to generate full URLs from paths
+export function getFullUrl(path: string): string {
+  // Ensure path starts with /
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${BASE_URL}${normalizedPath}`;
+}

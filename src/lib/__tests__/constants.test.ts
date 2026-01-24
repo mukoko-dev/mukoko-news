@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { COUNTRIES, CATEGORY_META, getCategoryEmoji } from '../constants';
+import { COUNTRIES, CATEGORY_META, getCategoryEmoji, BASE_URL, getArticleUrl, getFullUrl } from '../constants';
 
 describe('COUNTRIES', () => {
   it('should have all 16 Pan-African countries', () => {
@@ -76,5 +76,46 @@ describe('getCategoryEmoji', () => {
     expect(getCategoryEmoji('POLITICS')).toBe('🏛️');
     expect(getCategoryEmoji('Politics')).toBe('🏛️');
     expect(getCategoryEmoji('TECHNOLOGY')).toBe('💻');
+  });
+});
+
+describe('BASE_URL', () => {
+  it('should have a default base URL', () => {
+    expect(BASE_URL).toBeTruthy();
+    expect(BASE_URL).toMatch(/^https?:\/\//);
+  });
+});
+
+describe('getArticleUrl', () => {
+  it('should generate correct article URL', () => {
+    const url = getArticleUrl('123');
+    expect(url).toBe(`${BASE_URL}/article/123`);
+  });
+
+  it('should handle article IDs with special characters', () => {
+    const url = getArticleUrl('abc-123-def');
+    expect(url).toBe(`${BASE_URL}/article/abc-123-def`);
+  });
+});
+
+describe('getFullUrl', () => {
+  it('should generate full URL from path with leading slash', () => {
+    const url = getFullUrl('/discover');
+    expect(url).toBe(`${BASE_URL}/discover`);
+  });
+
+  it('should handle paths without leading slash', () => {
+    const url = getFullUrl('discover');
+    expect(url).toBe(`${BASE_URL}/discover`);
+  });
+
+  it('should handle paths with query parameters', () => {
+    const url = getFullUrl('/discover?category=politics');
+    expect(url).toBe(`${BASE_URL}/discover?category=politics`);
+  });
+
+  it('should handle root path', () => {
+    const url = getFullUrl('/');
+    expect(url).toBe(`${BASE_URL}/`);
   });
 });
