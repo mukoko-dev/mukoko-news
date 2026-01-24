@@ -71,6 +71,17 @@ export default function ArticleDetailPage() {
 
   const [copySuccess, setCopySuccess] = useState(false);
 
+  // Cleanup timeout on unmount to prevent memory leak
+  useEffect(() => {
+    if (copySuccess) {
+      const timer = setTimeout(() => setCopySuccess(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copySuccess]);
+
+  // SSR-safe article URL
+  const articleUrl = `https://mukoko.news/article/${articleId}`;
+
   const handleShare = async () => {
     if (!article) return;
 
@@ -79,7 +90,7 @@ export default function ArticleDetailPage() {
         await navigator.share({
           title: article.title,
           text: article.description || article.title,
-          url: window.location.href,
+          url: articleUrl,
         });
       } catch (err) {
         // User cancelled or share failed - fallback to clipboard
@@ -94,9 +105,8 @@ export default function ArticleDetailPage() {
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(articleUrl);
       setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
     } catch (err) {
       console.error("Failed to copy:", err);
     }
@@ -153,7 +163,6 @@ export default function ArticleDetailPage() {
     );
   }
 
-  const articleUrl = typeof window !== "undefined" ? window.location.href : "";
   const category = article.category_id || article.category;
 
   return (

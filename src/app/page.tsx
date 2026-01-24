@@ -30,8 +30,14 @@ export default function FeedPage() {
   const touchStartY = useRef(0);
   const isPulling = useRef(false);
 
+  // Stable sorted country key - prevents refetch on array reorder
+  const countryKey = useMemo(
+    () => selectedCountries.slice().sort().join(","),
+    [selectedCountries]
+  );
+
   // Fetch articles and categories
-  const fetchData = async (isRefresh = false) => {
+  const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
     } else {
@@ -55,19 +61,19 @@ export default function FeedPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [selectedCountries]);
 
   // Refresh handler
   const handleRefresh = useCallback(() => {
     if (!refreshing && !loading) {
       fetchData(true);
     }
-  }, [refreshing, loading]);
+  }, [refreshing, loading, fetchData]);
 
+  // Fetch data when countries change (sorted key prevents reorder refetch)
   useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedCountries.join(',')]);
+  }, [countryKey, fetchData]);
 
   // Pull-to-refresh for mobile
   useEffect(() => {
