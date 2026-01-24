@@ -14,8 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Breadcrumb Navigation**: Clear navigation hierarchy on article pages
 - **Country Selector Integration**: Onboarding modal country selection now filters news feed
 - **Centralized Constants**: Single source of truth for countries and categories (`src/lib/constants.ts`)
+- **BASE_URL Utilities**: `getArticleUrl()` and `getFullUrl()` for consistent URL generation
 - **JSON-LD XSS Prevention**: Unicode escaping for `<`, `>`, `&` in structured data
-- **New Tests**: 64 total tests including JSON-LD security tests and constants tests
+- **Font Preconnect**: Improved font loading with preconnect hints for Google Fonts
+- **New Tests**: 87 total tests including component tests for Breadcrumb and BottomNav
 
 ### Fixed
 

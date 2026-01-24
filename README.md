@@ -85,6 +85,7 @@ Create `.env.local` in the root directory:
 
 ```env
 NEXT_PUBLIC_API_URL=https://mukoko-news-backend.nyuchi.workers.dev
+NEXT_PUBLIC_BASE_URL=https://news.mukoko.com  # Optional: Base URL for SEO/JSON-LD
 NEXT_PUBLIC_API_SECRET=your_api_secret_here
 ```
 
@@ -224,10 +225,15 @@ npm run test:watch   # Watch mode
 npm run test:coverage # With coverage
 ```
 
-**Test Files**:
+**Test Files** (87 tests total):
 - `src/lib/__tests__/utils.test.ts` - Utility function tests
-- `src/lib/__tests__/constants.test.ts` - Constants and helper tests
+- `src/lib/__tests__/constants.test.ts` - Constants, URL helpers, and category tests
 - `src/components/__tests__/json-ld.test.tsx` - JSON-LD XSS prevention tests
+- `src/components/__tests__/breadcrumb.test.tsx` - Breadcrumb navigation tests
+- `src/components/__tests__/bottom-nav.test.tsx` - Mobile bottom navigation tests
+- `src/components/__tests__/hero-card.test.tsx` - HeroCard component tests
+- `src/components/__tests__/compact-card.test.tsx` - CompactCard component tests
+- `src/components/__tests__/error-boundary.test.tsx` - ErrorBoundary tests
 
 **Test Framework**: Vitest with jsdom environment
 
