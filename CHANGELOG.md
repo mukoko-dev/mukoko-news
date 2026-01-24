@@ -5,6 +5,41 @@ All notable changes to Mukoko News will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.2] - 2026-01-24
+
+### Added
+
+- **Schema.org JSON-LD**: Structured data for SEO (NewsArticle, Organization, BreadcrumbList)
+- **Mobile Bottom Navigation**: Quick access to Home, Discover, NewsBytes, Search, Profile
+- **Breadcrumb Navigation**: Clear navigation hierarchy on article pages
+- **Country Selector Integration**: Onboarding modal country selection now filters news feed
+- **Centralized Constants**: Single source of truth for countries and categories (`src/lib/constants.ts`)
+- **JSON-LD XSS Prevention**: Unicode escaping for `<`, `>`, `&` in structured data
+- **New Tests**: 64 total tests including JSON-LD security tests and constants tests
+
+### Fixed
+
+- **XSS Vulnerabilities**: Fixed potential XSS in Avatar, NewsBytes, and JSON-LD components
+- **Memory Leak**: Fixed timeout cleanup in article page share functionality
+- **SSR Safety**: Fixed server-side rendering issues with window.location usage
+- **useEffect Dependencies**: Fixed React hook dependency array with memoized countryKey
+- **Performance**: Fixed O(n²) keyword cloud rendering with memoization
+- **Theme Consistency**: Replaced hardcoded colors in onboarding modal with theme tokens
+
+### Changed
+
+- **Simplified Feed Layout**: Reduced from 5 sections to 2 (Featured + Latest)
+- **Font Loading**: Switched from next/font to CSS @import for build reliability
+- **Card Styling**: Updated to thin 1px border instead of one-sided border
+- **Article Cards**: Removed misleading "Read Original" Google search link
+
+### Security
+
+- **JSON-LD Escaping**: All JSON-LD content sanitized with Unicode escaping
+- **Image URL Validation**: Added `isValidImageUrl()` checks to prevent XSS via image URLs
+
+---
+
 ## [4.0.1] - 2025-12-31
 
 ### Added
@@ -120,6 +155,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **[4.0.2]** - 2026-01-24 - Schema.org SEO, mobile bottom nav, simplified feed, XSS fixes
 - **[4.0.1]** - 2025-12-31 - Keywords API, TikTok desktop layout, Pan-African country support
 - **[4.0.0]** - 2025-12-31 - Next.js migration (major rewrite)
 - **[0.1.0]** - 2025-12-20 - Initial release (React Native Expo)

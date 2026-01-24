@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Mukoko News is a Pan-African digital news aggregation platform. "Mukoko" means "Beehive" in Shona - where community gathers and stores knowledge. Primary market is Zimbabwe with expansion across 12 African countries.
+Mukoko News is a Pan-African digital news aggregation platform. "Mukoko" means "Beehive" in Shona - where community gathers and stores knowledge. Primary market is Zimbabwe with expansion across 16 African countries.
 
 **Architecture**: Next.js 15 frontend with Cloudflare Workers backend
 
@@ -165,7 +165,8 @@ src/
 ├── components/
 │   ├── layout/
 │   │   ├── header.tsx       # Navigation header
-│   │   └── footer.tsx       # Footer component
+│   │   ├── footer.tsx       # Footer component
+│   │   └── bottom-nav.tsx   # Mobile bottom navigation
 │   ├── ui/                  # Reusable UI components (Radix UI based)
 │   │   ├── button.tsx
 │   │   ├── card.tsx
@@ -176,7 +177,9 @@ src/
 │   │   ├── source-icon.tsx
 │   │   ├── error-boundary.tsx  # React error boundary component
 │   │   ├── skeleton.tsx        # Skeleton loading components
-│   │   └── discover-skeleton.tsx # Page-specific skeletons
+│   │   ├── discover-skeleton.tsx # Page-specific skeletons
+│   │   ├── json-ld.tsx         # Schema.org JSON-LD components
+│   │   └── breadcrumb.tsx      # Breadcrumb navigation
 │   ├── article-card.tsx     # Main article display component
 │   ├── hero-card.tsx        # Featured article card with large image
 │   ├── compact-card.tsx     # Text-focused card for articles without images
@@ -188,9 +191,11 @@ src/
 └── lib/
     ├── api.ts               # API client with fetch utilities
     ├── utils.ts             # Utility functions (cn, formatTimeAgo, isValidImageUrl)
+    ├── constants.ts         # Centralized countries and categories data
     ├── source-profiles.ts   # News source configurations
     └── __tests__/           # Unit tests
-        └── utils.test.ts    # Tests for utility functions
+        ├── utils.test.ts    # Tests for utility functions
+        └── constants.test.ts # Tests for constants and helpers
 ```
 
 ## Backend Structure
@@ -307,8 +312,13 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (`src/lib/__tests__/`):
-- `utils.test.ts` - Utility function tests (formatTimeAgo, isValidImageUrl, cn)
+**Test Files**:
+- `src/lib/__tests__/utils.test.ts` - Utility function tests (formatTimeAgo, isValidImageUrl, cn)
+- `src/lib/__tests__/constants.test.ts` - Constants and helper tests (COUNTRIES, getCategoryEmoji)
+- `src/components/__tests__/json-ld.test.tsx` - JSON-LD XSS prevention tests
+- `src/components/__tests__/hero-card.test.tsx` - HeroCard component tests
+- `src/components/__tests__/compact-card.test.tsx` - CompactCard component tests
+- `src/components/__tests__/error-boundary.test.tsx` - ErrorBoundary tests
 
 **Test Pattern**: Vitest with jsdom environment, React Testing Library
 
@@ -436,6 +446,22 @@ Components: `src/components/ui/skeleton.tsx`, `src/components/ui/discover-skelet
 - Error handling: AbortError → timeout message
 - Response validation required (non-OK throws)
 
+### JSON-LD Security Pattern
+
+All JSON-LD structured data uses `safeJsonLdStringify()` to prevent XSS:
+- Escapes `<` to `\u003c` (prevents `</script>` injection)
+- Escapes `>` to `\u003e` (prevents HTML tag injection)
+- Escapes `&` to `\u0026` (prevents HTML entity issues)
+
+Component: `src/components/ui/json-ld.tsx`
+Tests: `src/components/__tests__/json-ld.test.tsx`
+
+### Image URL Validation
+
+Use `isValidImageUrl()` from `src/lib/utils.ts` before rendering user-provided image URLs:
+- Allows: `http://`, `https://`, `/` (relative paths)
+- Blocks: `javascript:`, `data:`, `blob:`, `vbscript:` protocols
+
 ### Backend Error Handling
 
 - Hono responses: `c.json({ error, message }, statusCode)`
@@ -445,7 +471,7 @@ Components: `src/components/ui/skeleton.tsx`, `src/components/ui/discover-skelet
 
 ## Pan-African Country Support
 
-Supported countries (12 total):
+Supported countries (16 total) defined in `src/lib/constants.ts`:
 - Zimbabwe (ZW) - Primary market
 - South Africa (ZA)
 - Kenya (KE)
@@ -458,8 +484,13 @@ Supported countries (12 total):
 - Botswana (BW)
 - Zambia (ZM)
 - Malawi (MW)
+- Egypt (EG)
+- Morocco (MA)
+- Namibia (NA)
+- Mozambique (MZ)
 
 RSS articles inherit `country_id` from source configuration.
+Country data is centralized in `src/lib/constants.ts` (single source of truth).
 
 ## Key Features
 
@@ -472,17 +503,23 @@ RSS articles inherit `country_id` from source configuration.
 7. **Personalized Feeds**: Country/category filtering with localStorage persistence
 8. **Onboarding Flow**: Modal-based country/category selection
 9. **Dark Mode**: System detection or manual toggle with next-themes
-10. **SEO Features**: Metadata generation, sitemap generation
+10. **Schema.org SEO**: JSON-LD structured data (NewsArticle, Organization, BreadcrumbList)
+11. **Mobile Bottom Navigation**: Quick access to Home, Discover, NewsBytes, Search, Profile
+12. **Breadcrumb Navigation**: Clear navigation hierarchy on article pages
 
 ## Key Files
 
 ### Frontend
-- `src/app/layout.tsx` - Root layout with providers
-- `src/app/page.tsx` - Home feed with visual hierarchy (Hero, Top Stories, Quick Reads)
-- `src/app/globals.css` - Tailwind config and CSS variables
+- `src/app/layout.tsx` - Root layout with providers, bottom nav, and Organization JSON-LD
+- `src/app/page.tsx` - Home feed with simplified layout (Featured + Latest)
+- `src/app/globals.css` - Tailwind config, CSS variables, and font imports
 - `src/lib/api.ts` - API client
 - `src/lib/utils.ts` - Utilities (cn, formatTimeAgo, isValidImageUrl)
+- `src/lib/constants.ts` - Centralized countries and categories (single source of truth)
 - `src/contexts/preferences-context.tsx` - User preferences context
+- `src/components/ui/json-ld.tsx` - Schema.org JSON-LD with XSS prevention
+- `src/components/ui/breadcrumb.tsx` - Breadcrumb navigation component
+- `src/components/layout/bottom-nav.tsx` - Mobile bottom navigation
 - `src/components/ui/skeleton.tsx` - Skeleton loading components
 - `src/components/ui/error-boundary.tsx` - Error boundary component
 - `vitest.config.ts` - Frontend test configuration
