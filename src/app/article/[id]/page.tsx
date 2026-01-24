@@ -15,6 +15,7 @@ import {
   Check,
 } from "lucide-react";
 import { api, type Article } from "@/lib/api";
+import { getArticleUrl } from "@/lib/constants";
 import { ArticlePageSkeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ArticleJsonLd } from "@/components/ui/json-ld";
@@ -79,8 +80,8 @@ export default function ArticleDetailPage() {
     }
   }, [copySuccess]);
 
-  // SSR-safe article URL
-  const articleUrl = `https://mukoko.news/article/${articleId}`;
+  // SSR-safe article URL using centralized base URL
+  const articleUrl = getArticleUrl(articleId);
 
   const handleShare = async () => {
     if (!article) return;
@@ -105,10 +106,25 @@ export default function ArticleDetailPage() {
 
   const copyToClipboard = async () => {
     try {
+      // Check if clipboard API is available
+      if (!navigator.clipboard) {
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = articleUrl;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand("copy");
+        document.body.removeChild(textArea);
+        setCopySuccess(true);
+        return;
+      }
       await navigator.clipboard.writeText(articleUrl);
       setCopySuccess(true);
     } catch (err) {
       console.error("Failed to copy:", err);
+      // Still show feedback even on error - user can manually copy
     }
   };
 

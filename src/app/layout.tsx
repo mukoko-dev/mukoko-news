@@ -32,6 +32,9 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
+        {/* Preconnect to Google Fonts for faster font loading */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <OrganizationJsonLd />
       </head>
       <body className="font-sans antialiased min-h-screen flex flex-col">
