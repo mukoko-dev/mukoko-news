@@ -119,3 +119,81 @@ describe('getFullUrl', () => {
     expect(url).toBe(`${BASE_URL}/`);
   });
 });
+
+// ─── Security: URL utility injection & path traversal tests ─────────────
+describe('getArticleUrl - security', () => {
+  it('should preserve path traversal sequences in article ID (no server-side resolution)', () => {
+    // These are string-concatenated, so traversal chars stay literal
+    const url = getArticleUrl('../../etc/passwd');
+    expect(url).toBe(`${BASE_URL}/article/../../etc/passwd`);
+    // Important: the base URL is always prepended, no origin escaping
+    expect(url).toMatch(new RegExp(`^${BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  });
+
+  it('should handle script injection in article ID', () => {
+    const url = getArticleUrl('<script>alert(1)</script>');
+    // URL is string concatenation; < > stay literal (escaped at render time by React)
+    expect(url).toBe(`${BASE_URL}/article/<script>alert(1)</script>`);
+    expect(url).toMatch(new RegExp(`^${BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  });
+
+  it('should always start with BASE_URL regardless of input', () => {
+    const inputs = [
+      '123',
+      '../../../admin',
+      'javascript:alert(1)',
+      '//evil.com/steal',
+      '\n\r<script>',
+    ];
+    for (const input of inputs) {
+      expect(getArticleUrl(input)).toMatch(new RegExp(`^${BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    }
+  });
+});
+
+describe('getFullUrl - security', () => {
+  it('should always start with BASE_URL regardless of path', () => {
+    const paths = [
+      '/normal',
+      '//evil.com',
+      '/../../../etc/passwd',
+      'javascript:alert(1)',
+      '\n\r<script>alert(1)</script>',
+    ];
+    for (const path of paths) {
+      expect(getFullUrl(path)).toMatch(new RegExp(`^${BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    }
+  });
+
+  it('should normalize paths without leading slash', () => {
+    expect(getFullUrl('discover')).toBe(`${BASE_URL}/discover`);
+    expect(getFullUrl('admin/settings')).toBe(`${BASE_URL}/admin/settings`);
+  });
+
+  it('should handle protocol-relative path (//evil.com)', () => {
+    // getFullUrl prepends BASE_URL, so //evil.com becomes BASE_URL//evil.com
+    const url = getFullUrl('//evil.com');
+    expect(url).toMatch(new RegExp(`^${BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    // The result won't resolve to evil.com when used as a relative link on the page
+  });
+
+  it('should handle empty path', () => {
+    const url = getFullUrl('');
+    // Empty path normalizes to /
+    expect(url).toBe(`${BASE_URL}/`);
+  });
+});
+
+describe('BASE_URL - security invariants', () => {
+  it('should use HTTPS protocol', () => {
+    expect(BASE_URL).toMatch(/^https:\/\//);
+  });
+
+  it('should not end with a trailing slash', () => {
+    expect(BASE_URL).not.toMatch(/\/$/);
+  });
+
+  it('should be a valid URL', () => {
+    expect(() => new URL(BASE_URL)).not.toThrow();
+  });
+});

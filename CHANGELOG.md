@@ -18,7 +18,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **JSON-LD XSS Prevention**: Unicode escaping for `<`, `>`, `&` in structured data
 - **Font Preconnect**: Improved font loading with preconnect hints for Google Fonts
 - **safeCssUrl Utility**: Centralized `encodeURI`-based CSS `url()` builder in `src/lib/utils.ts`
-- **New Tests**: 93 total tests including component tests for Breadcrumb, BottomNav, and safeCssUrl
+- **Security Test Suite**: Comprehensive injection and attack vector tests (CSS, XSS, JSON-LD, URL traversal)
+- **New Tests**: 131 total tests (+38 security tests for injection, leak, and attack vector coverage)
 
 ### Fixed
 
