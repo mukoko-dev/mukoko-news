@@ -46,52 +46,74 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
 
   // Load preferences from localStorage
   useEffect(() => {
-    const countries = localStorage.getItem(STORAGE_KEYS.countries);
-    const primary = localStorage.getItem(STORAGE_KEYS.primaryCountry);
-    const categories = localStorage.getItem(STORAGE_KEYS.categories);
-    const onboarding = localStorage.getItem(STORAGE_KEYS.onboarding);
+    try {
+      const countries = localStorage.getItem(STORAGE_KEYS.countries);
+      const primary = localStorage.getItem(STORAGE_KEYS.primaryCountry);
+      const categories = localStorage.getItem(STORAGE_KEYS.categories);
+      const onboarding = localStorage.getItem(STORAGE_KEYS.onboarding);
 
-    if (countries) {
-      setSelectedCountries(JSON.parse(countries));
-    } else {
-      // Default to Zimbabwe if no countries saved
+      if (countries) {
+        const parsed = JSON.parse(countries);
+        if (Array.isArray(parsed)) {
+          setSelectedCountries(parsed);
+        } else {
+          setSelectedCountries(["ZW"]);
+        }
+      } else {
+        setSelectedCountries(["ZW"]);
+      }
+
+      if (primary) {
+        setPrimaryCountryState(primary);
+      } else {
+        setPrimaryCountryState("ZW");
+      }
+
+      if (categories) {
+        const parsed = JSON.parse(categories);
+        if (Array.isArray(parsed)) {
+          setSelectedCategories(parsed);
+        }
+      }
+
+      const completed = onboarding === "true";
+      setHasCompletedOnboarding(completed);
+
+      if (!completed) {
+        setShowOnboarding(true);
+      }
+    } catch (error) {
+      console.error("Failed to read preferences from localStorage:", error);
       setSelectedCountries(["ZW"]);
-    }
-
-    if (primary) {
-      setPrimaryCountryState(primary);
-    } else {
-      // Default to Zimbabwe if no primary country saved
       setPrimaryCountryState("ZW");
+      setSelectedCategories(["all"]);
+    } finally {
+      setIsLoaded(true);
     }
-
-    if (categories) setSelectedCategories(JSON.parse(categories));
-
-    const completed = onboarding === "true";
-    setHasCompletedOnboarding(completed);
-
-    // Show onboarding if not completed
-    if (!completed) {
-      setShowOnboarding(true);
-    }
-
-    setIsLoaded(true);
   }, []);
 
   // Save countries
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem(STORAGE_KEYS.countries, JSON.stringify(selectedCountries));
+      try {
+        localStorage.setItem(STORAGE_KEYS.countries, JSON.stringify(selectedCountries));
+      } catch (error) {
+        console.error("Failed to save countries:", error);
+      }
     }
   }, [selectedCountries, isLoaded]);
 
   // Save primary country
   useEffect(() => {
     if (isLoaded) {
-      if (primaryCountry) {
-        localStorage.setItem(STORAGE_KEYS.primaryCountry, primaryCountry);
-      } else {
-        localStorage.removeItem(STORAGE_KEYS.primaryCountry);
+      try {
+        if (primaryCountry) {
+          localStorage.setItem(STORAGE_KEYS.primaryCountry, primaryCountry);
+        } else {
+          localStorage.removeItem(STORAGE_KEYS.primaryCountry);
+        }
+      } catch (error) {
+        console.error("Failed to save primary country:", error);
       }
     }
   }, [primaryCountry, isLoaded]);
@@ -99,7 +121,11 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   // Save categories
   useEffect(() => {
     if (isLoaded) {
-      localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(selectedCategories));
+      try {
+        localStorage.setItem(STORAGE_KEYS.categories, JSON.stringify(selectedCategories));
+      } catch (error) {
+        console.error("Failed to save categories:", error);
+      }
     }
   }, [selectedCategories, isLoaded]);
 
@@ -137,7 +163,11 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
   const completeOnboarding = () => {
     setHasCompletedOnboarding(true);
     setShowOnboarding(false);
-    localStorage.setItem(STORAGE_KEYS.onboarding, "true");
+    try {
+      localStorage.setItem(STORAGE_KEYS.onboarding, "true");
+    } catch (error) {
+      console.error("Failed to save onboarding state:", error);
+    }
   };
 
   const resetPreferences = () => {
@@ -145,17 +175,17 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     setPrimaryCountryState(null);
     setSelectedCategories([]);
     setHasCompletedOnboarding(false);
-    Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+    try {
+      Object.values(STORAGE_KEYS).forEach((key) => localStorage.removeItem(key));
+    } catch (error) {
+      console.error("Failed to clear preferences:", error);
+    }
   };
 
   // Don't render children until preferences are loaded from localStorage
-  // This prevents blank screen flash on initial load or after skip
+  // Returns null to avoid a loading spinner flash — localStorage reads are synchronous
   if (!isLoaded) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
+    return null;
   }
 
   return (

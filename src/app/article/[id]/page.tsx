@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { api, type Article } from "@/lib/api";
 import { getArticleUrl } from "@/lib/constants";
+import { isValidImageUrl } from "@/lib/utils";
 import { ArticlePageSkeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ArticleJsonLd } from "@/components/ui/json-ld";
@@ -241,7 +242,7 @@ export default function ArticleDetailPage() {
       </div>
 
       {/* Article Image */}
-      {article.image_url && (
+      {article.image_url && isValidImageUrl(article.image_url) && (
         <div className="max-w-[900px] mx-auto px-6 -mt-6">
           <div className="rounded-2xl overflow-hidden shadow-xl">
             <img
