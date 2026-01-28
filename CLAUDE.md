@@ -313,15 +313,15 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files**:
-- `src/lib/__tests__/utils.test.ts` - Utility function tests (formatTimeAgo, isValidImageUrl, cn)
-- `src/lib/__tests__/constants.test.ts` - Constants and helper tests (COUNTRIES, getCategoryEmoji, BASE_URL)
-- `src/components/__tests__/json-ld.test.tsx` - JSON-LD XSS prevention tests
+**Test Files** (131 tests):
+- `src/lib/__tests__/utils.test.ts` - Utility functions, safeCssUrl, CSS injection vectors, XSS attack vectors
+- `src/lib/__tests__/constants.test.ts` - Constants, URL helpers, path traversal, URL injection security tests
+- `src/components/__tests__/json-ld.test.tsx` - JSON-LD rendering, XSS prevention, expanded injection payloads
 - `src/components/__tests__/hero-card.test.tsx` - HeroCard component tests
 - `src/components/__tests__/compact-card.test.tsx` - CompactCard component tests
 - `src/components/__tests__/error-boundary.test.tsx` - ErrorBoundary tests
 - `src/components/__tests__/breadcrumb.test.tsx` - Breadcrumb navigation tests
-- `src/components/__tests__/bottom-nav.test.tsx` - Mobile bottom navigation tests
+- `src/components/__tests__/bottom-nav.test.tsx` - Mobile bottom navigation + routing tests
 
 **Test Pattern**: Vitest with jsdom environment, React Testing Library
 
