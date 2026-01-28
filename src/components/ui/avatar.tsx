@@ -7,6 +7,17 @@ interface AvatarProps {
   className?: string;
 }
 
+function buildBackgroundImage(src: string): string {
+  try {
+    // Normalize the URL; if it's relative, resolve it against the current origin
+    const url = new URL(src, window.location.origin).toString();
+    return `url('${encodeURI(url)}')`;
+  } catch {
+    // Fallback to a safe, encoded version of the original src
+    return `url('${encodeURI(src)}')`;
+  }
+}
+
 export function Avatar({ initials, src, size = "md", className = "" }: AvatarProps) {
   const sizes = {
     sm: "w-8 h-8 text-xs",
@@ -19,7 +30,7 @@ export function Avatar({ initials, src, size = "md", className = "" }: AvatarPro
     return (
       <div
         className={`${sizes[size]} rounded-full bg-cover bg-center ${className}`}
-        style={{ backgroundImage: `url('${src.replace(/'/g, "\\'")}')` }}
+        style={{ backgroundImage: buildBackgroundImage(src) }}
       />
     );
   }
