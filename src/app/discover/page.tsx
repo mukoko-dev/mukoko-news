@@ -40,59 +40,75 @@ export default function DiscoverPage() {
   const activeCountry = searchParams.get("country");
   const activeSource = searchParams.get("source");
 
-  // Fetch articles with server-side filtering when filters change
+  const [metadataLoaded, setMetadataLoaded] = useState(false);
+
+  // Fetch articles (re-runs when filters change) and metadata (once on mount)
   useEffect(() => {
-    async function fetchArticles() {
+    async function fetchData() {
       setLoading(true);
       try {
-        // Use server-side filtering for category and country
-        const articlesRes = await api.getArticles({
-          limit: 50,
-          category: activeCategory || undefined,
-          country: activeCountry || undefined,
-        });
+        const promises: Promise<unknown>[] = [
+          api.getArticles({
+            limit: 50,
+            category: activeCategory || undefined,
+            country: activeCountry || undefined,
+          }),
+        ];
+
+        // Fetch metadata only on first load
+        if (!metadataLoaded) {
+          promises.push(
+            api.getCategories(),
+            api.getSources(),
+            api.getKeywords(32),
+          );
+        }
+
+        const results = await Promise.all(promises);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const articlesRes = results[0] as any;
         setArticles(articlesRes.articles || []);
+
+        if (!metadataLoaded) {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const categoriesRes = results[1] as any;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const sourcesRes = results[2] as any;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const keywordsRes = results[3] as any;
+          setCategories(categoriesRes.categories?.filter((c: Category) => c.id !== "all") || []);
+          setSources(sourcesRes.sources || []);
+          setKeywords(keywordsRes.keywords || []);
+          setMetadataLoaded(true);
+        }
       } catch (error) {
-        console.error("Failed to fetch articles:", error);
+        console.error("Failed to fetch data:", error);
       } finally {
         setLoading(false);
       }
     }
-    fetchArticles();
+    fetchData();
+  // metadataLoaded is intentionally excluded — it only gates the initial metadata fetch
+  // and must not trigger a re-run when it flips to true
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeCategory, activeCountry]);
 
-  // Fetch categories, sources, keywords on initial load
-  useEffect(() => {
-    async function fetchMetadata() {
-      try {
-        const [categoriesRes, sourcesRes, keywordsRes] = await Promise.all([
-          api.getCategories(),
-          api.getSources(),
-          api.getKeywords(32),
-        ]);
-        setCategories(categoriesRes.categories?.filter(c => c.id !== "all") || []);
-        setSources(sourcesRes.sources || []);
-        setKeywords(keywordsRes.keywords || []);
-      } catch (error) {
-        console.error("Failed to fetch metadata:", error);
-      }
-    }
-    fetchMetadata();
-  }, []);
-
   // Client-side filter for source and search (server doesn't support these yet)
-  const filteredArticles = articles.filter((a) => {
-    if (activeSource && a.source !== activeSource) return false;
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      return (
-        a.title.toLowerCase().includes(query) ||
-        a.description?.toLowerCase().includes(query) ||
-        a.source?.toLowerCase().includes(query)
-      );
-    }
-    return true;
-  });
+  const filteredArticles = useMemo(() => {
+    return articles.filter((a) => {
+      if (activeSource && a.source !== activeSource) return false;
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
+          a.title.toLowerCase().includes(query) ||
+          a.description?.toLowerCase().includes(query) ||
+          a.source?.toLowerCase().includes(query)
+        );
+      }
+      return true;
+    });
+  }, [articles, activeSource, searchQuery]);
 
   // Handle search
   const handleSearch = (e: React.FormEvent) => {

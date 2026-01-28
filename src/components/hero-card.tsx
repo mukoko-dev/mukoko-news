@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Clock } from "lucide-react";
@@ -14,6 +14,11 @@ interface HeroCardProps {
 
 export function HeroCard({ article }: HeroCardProps) {
   const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [article.id]);
+
   const hasImage = isValidImageUrl(article.image_url) && !imageError;
   const timeAgo = formatTimeAgo(article.published_at);
   const category = article.category_id || article.category;
