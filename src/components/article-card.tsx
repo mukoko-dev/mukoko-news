@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Clock } from "lucide-react";
 import type { Article } from "@/lib/api";
+import { isValidImageUrl, safeCssUrl } from "@/lib/utils";
 import { SourceBadge } from "@/components/ui/source-icon";
 import { InlineEngagement } from "@/components/ui/engagement-bar";
 
@@ -35,12 +36,12 @@ function formatDate(dateString: string): { day: string; month: string; time: str
 }
 
 export function ArticleCard({ article }: ArticleCardProps) {
-  const hasImage = article.image_url && article.image_url.startsWith("http");
+  const hasImage = article.image_url && isValidImageUrl(article.image_url);
   const dateInfo = formatDate(article.published_at);
 
   const coverStyle = hasImage
     ? {
-        background: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.6)), url('${article.image_url}') center/cover`,
+        background: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.6)), ${safeCssUrl(article.image_url!)} center/cover`,
       }
     : { background: "linear-gradient(135deg, var(--primary), var(--secondary))" };
 
