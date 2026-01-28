@@ -24,12 +24,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **XSS Vulnerabilities**: Fixed potential XSS in Avatar, NewsBytes, and JSON-LD components
 - **Memory Leak**: Fixed timeout cleanup in article page share functionality
 - **SSR Safety**: Fixed server-side rendering issues with window.location usage
-- **useEffect Dependencies**: Fixed React hook dependency array with memoized countryKey
+- **useEffect Dependencies**: Fixed React hook dependency chain - `fetchData` now derives countries from `countryKey`
+- **Stale Closure**: Pull-to-refresh uses ref pattern to avoid re-registering touch listeners on every state change
 - **Performance**: Fixed O(n²) keyword cloud rendering with memoization
 - **Theme Consistency**: Replaced hardcoded colors in onboarding modal with theme tokens
 - **Breadcrumb Keys**: Use stable keys instead of array indices for React list rendering
 - **Clipboard Fallback**: Added error handling and success check for legacy `document.execCommand("copy")`
 - **Bottom Nav Routing**: Improved pathname matching with regex for `/article/{id}` pattern
+- **IntersectionObserver**: NewsBytes observer depends on `bytes.length` to avoid unnecessary re-creation
 
 ### Changed
 
@@ -42,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **JSON-LD Escaping**: All JSON-LD content sanitized with Unicode escaping
 - **Image URL Validation**: Added `isValidImageUrl()` checks to prevent XSS via image URLs
+- **CSS Injection Prevention**: Quote-escaped URLs in CSS `url()` values (Avatar, NewsBytes)
 
 ---
 

@@ -19,7 +19,7 @@ export function Avatar({ initials, src, size = "md", className = "" }: AvatarPro
     return (
       <div
         className={`${sizes[size]} rounded-full bg-cover bg-center ${className}`}
-        style={{ backgroundImage: `url(${src})` }}
+        style={{ backgroundImage: `url('${src.replace(/'/g, "\\'")}')` }}
       />
     );
   }

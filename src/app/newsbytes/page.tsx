@@ -66,6 +66,7 @@ export default function NewsBytesPage() {
   };
 
   // Track which item is in view using IntersectionObserver
+  // Depends on bytes.length (not bytes reference) to avoid unnecessary observer re-creation
   useEffect(() => {
     if (bytes.length === 0) return;
 
@@ -91,7 +92,7 @@ export default function NewsBytesPage() {
     });
 
     return () => observer.disconnect();
-  }, [bytes]);
+  }, [bytes.length]);
 
   const handleLike = (byteId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -231,7 +232,7 @@ export default function NewsBytesPage() {
               ref={(el) => setItemRef(el, index)}
               className="relative w-full h-full snap-start snap-always"
               style={{
-                backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url('${byte.image_url}')`,
+                backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url('${(byte.image_url ?? "").replace(/'/g, "\\'")}')`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}
