@@ -187,17 +187,17 @@ export default function FeedPage() {
   }, [filteredArticles]);
 
   // Get personalized category chips - show user's selected categories first
+  const selectedCategorySet = useMemo(
+    () => new Set(selectedCategories),
+    [selectedCategories]
+  );
   const displayCategories = useMemo(() => {
-    if (selectedCategories.length === 0) return categories;
+    if (selectedCategorySet.size === 0) return categories;
 
-    const selected = categories.filter((c) =>
-      selectedCategories.includes(c.id)
-    );
-    const others = categories.filter(
-      (c) => !selectedCategories.includes(c.id)
-    );
+    const selected = categories.filter((c) => selectedCategorySet.has(c.id));
+    const others = categories.filter((c) => !selectedCategorySet.has(c.id));
     return [...selected, ...others];
-  }, [categories, selectedCategories]);
+  }, [categories, selectedCategorySet]);
 
   return (
     <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
