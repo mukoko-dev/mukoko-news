@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Clock } from "lucide-react";
@@ -14,6 +14,11 @@ interface HeroCardProps {
 
 export function HeroCard({ article }: HeroCardProps) {
   const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [article.id]);
+
   const hasImage = isValidImageUrl(article.image_url) && !imageError;
   const timeAgo = formatTimeAgo(article.published_at);
   const category = article.category_id || article.category;
@@ -24,7 +29,7 @@ export function HeroCard({ article }: HeroCardProps) {
       className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-2xl"
       aria-label={`Read article: ${article.title}`}
     >
-      <article className="relative rounded-2xl overflow-hidden bg-surface">
+      <article className="relative rounded-2xl overflow-hidden bg-surface border border-border">
         {/* Image area with gradient overlay */}
         <div className="relative h-[280px] sm:h-[340px] md:h-[400px] w-full">
           {/* Background - either image or gradient fallback */}

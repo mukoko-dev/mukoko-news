@@ -1,6 +1,6 @@
-# Harare Metro Backend Worker
+# Mukoko News Backend Worker
 
-Backend API and Admin Interface for Harare Metro - Zimbabwe's Premier News Aggregation Platform.
+Backend API and Admin Interface for Mukoko News - Pan-African Digital News Aggregation Platform.
 
 ## Deployment
 
@@ -29,9 +29,9 @@ cd backend && npm run deploy
 
 ### Why Manual Deployment?
 
-The Cloudflare Workers CI/CD for `harare-metro-backend` is **disabled** because:
+The Cloudflare Workers CI/CD for `mukoko-news-backend` is **disabled** because:
 
-1. The repository root contains the frontend (React Router) application
+1. The repository root contains the frontend (Next.js) application
 2. CI runs `npm run build` which builds the frontend, not the backend
 3. This creates a config mismatch where frontend config tries to deploy to backend worker
 
@@ -46,7 +46,7 @@ Test Locally (npm run dev)
     ↓
 Manual Deploy (npm run deploy)
     ↓
-Production (admin.hararemetro.co.zw)
+Production (mukoko-news-backend.nyuchi.workers.dev)
 ```
 
 ## Development
@@ -72,8 +72,8 @@ npm run deploy
 
 Worker configuration: `backend/wrangler.jsonc`
 
-- **Name**: harare-metro-backend
-- **Route**: admin.hararemetro.co.zw/*
+- **Name**: mukoko-news-backend
+- **Route**: mukoko-news-backend.nyuchi.workers.dev/*
 - **Main**: index.ts
 
 ## Architecture

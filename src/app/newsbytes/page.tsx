@@ -11,6 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, type Article } from "@/lib/api";
+import { isValidImageUrl, safeCssUrl } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { NewsBytesSkeleton } from "@/components/ui/discover-skeleton";
 
@@ -42,10 +43,8 @@ export default function NewsBytesPage() {
       const data = await api.getNewsBytes({ limit: 50 });
       const articles = data.articles || [];
 
-      // Filter to only articles with images
-      const withImages = articles.filter(
-        (a) => a.image_url && a.image_url.startsWith("http")
-      );
+      // Filter to only articles with valid image URLs
+      const withImages = articles.filter((a) => isValidImageUrl(a.image_url));
 
       const initialState: Record<string, { isLiked: boolean; isSaved: boolean; likesCount: number }> = {};
       withImages.forEach((byte) => {
@@ -67,6 +66,7 @@ export default function NewsBytesPage() {
   };
 
   // Track which item is in view using IntersectionObserver
+  // Depends on bytes.length (not bytes reference) to avoid unnecessary observer re-creation
   useEffect(() => {
     if (bytes.length === 0) return;
 
@@ -92,7 +92,7 @@ export default function NewsBytesPage() {
     });
 
     return () => observer.disconnect();
-  }, [bytes]);
+  }, [bytes.length]);
 
   const handleLike = (byteId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -232,7 +232,7 @@ export default function NewsBytesPage() {
               ref={(el) => setItemRef(el, index)}
               className="relative w-full h-full snap-start snap-always"
               style={{
-                backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url('${byte.image_url}')`,
+                backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), ${safeCssUrl(byte.image_url ?? "")}`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}
@@ -282,6 +282,8 @@ export default function NewsBytesPage() {
                 <button
                   onClick={(e) => handleLike(byte.id, e)}
                   className="flex flex-col items-center"
+                  aria-label={byteState.isLiked ? "Unlike article" : "Like article"}
+                  aria-pressed={byteState.isLiked}
                 >
                   <div className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-black/30 backdrop-blur-sm rounded-full">
                     <Heart
@@ -298,6 +300,7 @@ export default function NewsBytesPage() {
                 <button
                   onClick={(e) => handleShare(byte, e)}
                   className="flex flex-col items-center"
+                  aria-label="Share article"
                 >
                   <div className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-black/30 backdrop-blur-sm rounded-full">
                     <Share2 className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
@@ -308,6 +311,8 @@ export default function NewsBytesPage() {
                 <button
                   onClick={(e) => handleSave(byte.id, e)}
                   className="flex flex-col items-center"
+                  aria-label={byteState.isSaved ? "Remove from saved" : "Save article"}
+                  aria-pressed={byteState.isSaved}
                 >
                   <div className="w-11 h-11 sm:w-12 sm:h-12 flex items-center justify-center bg-black/30 backdrop-blur-sm rounded-full">
                     <Bookmark

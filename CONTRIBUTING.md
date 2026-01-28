@@ -65,12 +65,11 @@ We love code contributions! Here's how to get started:
 
 ### Prerequisites
 
-- Node.js 18+
-- npm or pnpm
+- Node.js 20+
+- npm
 - Cloudflare account (for backend development)
-- Expo CLI (for mobile development)
 
-### Backend Setup
+### Frontend Setup
 
 ```bash
 # Clone the repository
@@ -84,29 +83,33 @@ npm install
 cp .env.example .env.local
 # Edit .env.local with your values
 
-# Apply database schema
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Run tests
+npm run test
+```
+
+### Backend Setup
+
+```bash
+# Navigate to backend directory
+cd backend
+
+# Install dependencies
+npm install
+
+# Apply database schema locally
 npm run db:local
 
 # Start development server
 npm run dev
-```
 
-### Mobile App Setup
-
-```bash
-# Navigate to mobile directory
-cd mobile
-
-# Install dependencies (use legacy peer deps for React Native)
-npm install --legacy-peer-deps
-
-# Start Expo dev server
-npm start
-
-# Run on specific platform
-npm run ios      # iOS simulator
-npm run android  # Android emulator
-npm run web      # Web browser
+# Run tests
+npm run test
 ```
 
 ### Environment Variables
@@ -114,14 +117,12 @@ npm run web      # Web browser
 Create `.env.local` in the root directory:
 
 ```env
-# Vercel OIDC Token (for local development)
-VERCEL_OIDC_TOKEN="your_token_here"
+# API URL
+NEXT_PUBLIC_API_URL=https://mukoko-news-backend.nyuchi.workers.dev
 
-# Mukoko News Backend API Secret
-EXPO_PUBLIC_API_SECRET="your_api_secret_here"
+# API Secret (for server-side requests)
+API_SECRET="your_api_secret_here"
 ```
-
-See [API_SECRET_SETUP.md](API_SECRET_SETUP.md) for detailed setup instructions.
 
 ## Pull Request Process
 
@@ -176,7 +177,7 @@ Add screenshots here
 - [ ] I have run `npm run test` and all tests pass
 - [ ] I have updated the documentation
 - [ ] I have added tests for my changes
-- [ ] I have tested on mobile (iOS/Android/Web)
+- [ ] I have tested on desktop and mobile browsers
 ```
 
 ## Coding Standards
@@ -195,12 +196,13 @@ Add screenshots here
 - **Type Everything**: Avoid `any` types when possible
 - **Use Interfaces**: Define interfaces for complex objects
 
-### React Native
+### React / Next.js
 
 - **Functional Components**: Use functional components with hooks
-- **PropTypes**: Define prop types for all components
+- **TypeScript**: Define TypeScript interfaces for props
 - **Component Organization**: One component per file
 - **Naming**: Use PascalCase for components, camelCase for functions
+- **Client Components**: Add "use client" directive when using hooks or browser APIs
 
 ### Backend
 
@@ -221,17 +223,17 @@ Add screenshots here
 
 ```
 mukoko-news/
+├── src/               # Next.js frontend
+│   ├── app/           # App Router pages
+│   ├── components/    # React components
+│   │   ├── ui/        # Reusable UI components
+│   │   └── layout/    # Layout components (header, footer, bottom-nav)
+│   ├── contexts/      # React contexts
+│   └── lib/           # Utilities, API client, constants
 ├── backend/           # Cloudflare Workers API
 │   ├── services/      # Business logic services
 │   ├── middleware/    # Route middleware
-│   ├── utils/         # Utility functions
 │   └── index.ts       # API entry point
-├── mobile/            # React Native Expo app
-│   ├── components/    # React components
-│   ├── screens/       # Screen components
-│   ├── navigation/    # Navigation setup
-│   ├── api/           # API client
-│   └── App.js         # App entry point
 └── database/          # D1 schema and migrations
     ├── schema.sql     # Complete schema
     └── migrations/    # Migration files
@@ -281,9 +283,28 @@ BREAKING CHANGE: Old session-based auth is no longer supported
 
 ## Testing
 
+### Frontend Tests
+
+```bash
+# Run all tests
+npm run test
+
+# Watch mode
+npm run test:watch
+
+# With coverage
+npm run test:coverage
+```
+
+**Test Files**:
+- `src/lib/__tests__/` - Utility and constant tests
+- `src/components/__tests__/` - Component tests (including JSON-LD security)
+
 ### Backend Tests
 
 ```bash
+cd backend
+
 # Run all tests
 npm run test
 
@@ -301,20 +322,13 @@ npm run test:coverage
 - Maintain or improve code coverage
 - Tests should pass before merging
 
-### Mobile Tests
-
-```bash
-cd mobile
-npm test
-```
-
 ### Manual Testing
 
 For UI changes, please test on:
 
-- **iOS**: iPhone (recent model)
-- **Android**: Recent Android device
-- **Web**: Chrome, Safari, Firefox
+- **Desktop**: Chrome, Safari, Firefox
+- **Mobile**: Chrome (Android), Safari (iOS)
+- **Dark Mode**: Test both light and dark themes
 
 ## Documentation
 

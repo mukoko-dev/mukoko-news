@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { formatTimeAgo, isValidImageUrl, cn } from '../utils';
+import { formatTimeAgo, isValidImageUrl, cn, safeCssUrl } from '../utils';
 
 describe('formatTimeAgo', () => {
   beforeEach(() => {
@@ -166,5 +166,154 @@ describe('cn', () => {
 
   it('should handle undefined and null', () => {
     expect(cn('foo', undefined, null, 'bar')).toBe('foo bar');
+  });
+});
+
+describe('safeCssUrl', () => {
+  it('should wrap URL in CSS url() with single quotes', () => {
+    expect(safeCssUrl('https://example.com/image.jpg')).toBe("url('https://example.com/image.jpg')");
+  });
+
+  it('should encode special characters with encodeURI', () => {
+    const result = safeCssUrl("https://example.com/image with spaces.jpg");
+    expect(result).toBe("url('https://example.com/image%20with%20spaces.jpg')");
+  });
+
+  it('should handle relative paths', () => {
+    expect(safeCssUrl('/images/logo.png')).toBe("url('/images/logo.png')");
+  });
+
+  it('should handle empty string', () => {
+    expect(safeCssUrl('')).toBe("url('')");
+  });
+
+  it('should handle URLs with hash fragments', () => {
+    expect(safeCssUrl('https://example.com/image.jpg#section')).toBe("url('https://example.com/image.jpg#section')");
+  });
+
+  it('should handle URLs with unicode characters', () => {
+    const result = safeCssUrl('https://example.com/图片/photo.jpg');
+    expect(result).toMatch(/^url\('.*'\)$/);
+    expect(result).toContain('%');
+  });
+
+  it('should handle very long URLs without truncation', () => {
+    const longPath = 'a'.repeat(2000);
+    const url = `https://example.com/${longPath}`;
+    const result = safeCssUrl(url);
+    expect(result).toBe(`url('${encodeURI(url)}')`);
+  });
+});
+
+// ─── Security: CSS injection attack vectors ──────────────────────────────
+describe('safeCssUrl - CSS injection prevention', () => {
+  it('should neutralize double-quote paren breakout: ..."); background:url(evil)', () => {
+    const payload = 'https://example.com/img"); background:url(https://evil.com/steal';
+    const result = safeCssUrl(payload);
+    // The result should always be a single url('...') token
+    expect(result).toMatch(/^url\('.*'\)$/);
+    expect(result).not.toContain('");');
+  });
+
+  it('should neutralize single-quote breakout attempt', () => {
+    const payload = "https://example.com/img'); background:url('https://evil.com/steal";
+    const result = safeCssUrl(payload);
+    expect(result).toMatch(/^url\('.*'\)$/);
+  });
+
+  it('should encode newlines that could break CSS context', () => {
+    const payload = "https://example.com/img\n} body { background: red } .x {";
+    const result = safeCssUrl(payload);
+    expect(result).not.toContain('\n');
+    expect(result).toContain('%0A');
+  });
+
+  it('should encode angle brackets to prevent HTML injection in style attrs', () => {
+    const payload = 'https://example.com/<script>alert(1)</script>';
+    const result = safeCssUrl(payload);
+    expect(result).not.toContain('<script>');
+    expect(result).toContain('%3C');
+    expect(result).toContain('%3E');
+  });
+
+  it('should handle data URI payloads (defense in depth)', () => {
+    const payload = "data:text/css,body{background:red}";
+    const result = safeCssUrl(payload);
+    expect(result).toMatch(/^url\('.*'\)$/);
+  });
+
+  it('should handle backslash escape sequences', () => {
+    const payload = 'https://example.com/img\\';
+    const result = safeCssUrl(payload);
+    expect(result).toMatch(/^url\('.*'\)$/);
+  });
+
+  it('should handle carriage return injection', () => {
+    const payload = "https://example.com/img\r} .evil { color: red } .x {";
+    const result = safeCssUrl(payload);
+    expect(result).not.toContain('\r');
+    expect(result).toContain('%0D');
+  });
+});
+
+// ─── Security: isValidImageUrl attack vectors ────────────────────────────
+describe('isValidImageUrl - XSS attack vectors', () => {
+  it('should block javascript: with varied casing (bypass attempt)', () => {
+    expect(isValidImageUrl('JavaScript:alert(1)')).toBe(false);
+    expect(isValidImageUrl('JAVASCRIPT:alert(1)')).toBe(false);
+    expect(isValidImageUrl('jAvAsCrIpT:alert(1)')).toBe(false);
+  });
+
+  it('should block javascript: with leading whitespace', () => {
+    expect(isValidImageUrl('  javascript:alert(1)')).toBe(false);
+    expect(isValidImageUrl('\tjavascript:alert(1)')).toBe(false);
+    expect(isValidImageUrl('\njavascript:alert(1)')).toBe(false);
+  });
+
+  it('should block javascript: with tab/newline obfuscation in protocol', () => {
+    expect(isValidImageUrl('java\tscript:alert(1)')).toBe(false);
+    expect(isValidImageUrl('java\nscript:alert(1)')).toBe(false);
+  });
+
+  it('should block data: URIs with dangerous MIME types', () => {
+    expect(isValidImageUrl('data:text/html,<script>alert(1)</script>')).toBe(false);
+    expect(isValidImageUrl('data:image/svg+xml,<svg onload=alert(1)>')).toBe(false);
+    expect(isValidImageUrl('data:application/javascript,alert(1)')).toBe(false);
+  });
+
+  it('should block vbscript: with varied casing', () => {
+    expect(isValidImageUrl('VBScript:alert(1)')).toBe(false);
+    expect(isValidImageUrl('VBSCRIPT:alert(1)')).toBe(false);
+  });
+
+  it('should block file: protocol (local file access)', () => {
+    expect(isValidImageUrl('file:///etc/passwd')).toBe(false);
+    expect(isValidImageUrl('file:///C:/Windows/system.ini')).toBe(false);
+  });
+
+  it('should block custom protocol handlers', () => {
+    expect(isValidImageUrl('custom-proto:payload')).toBe(false);
+    expect(isValidImageUrl('myapp://callback')).toBe(false);
+    expect(isValidImageUrl('tel:+1234567890')).toBe(false);
+    expect(isValidImageUrl('mailto:test@example.com')).toBe(false);
+  });
+
+  it('should accept legitimate CDN URLs with complex paths', () => {
+    expect(isValidImageUrl('https://cdn.example.com/v1/images/resize/800x600/photo.webp?q=80&format=auto')).toBe(true);
+    expect(isValidImageUrl('https://images.unsplash.com/photo-1234?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200')).toBe(true);
+  });
+
+  it('should accept URLs with encoded characters', () => {
+    expect(isValidImageUrl('https://example.com/image%20with%20spaces.jpg')).toBe(true);
+    expect(isValidImageUrl('https://example.com/%E5%9B%BE%E7%89%87.jpg')).toBe(true);
+  });
+
+  it('should accept URLs with authentication (user:pass@ format)', () => {
+    expect(isValidImageUrl('https://user:pass@cdn.example.com/image.jpg')).toBe(true);
+  });
+
+  it('should accept URLs with ports', () => {
+    expect(isValidImageUrl('https://cdn.example.com:8443/image.jpg')).toBe(true);
+    expect(isValidImageUrl('http://localhost:3000/image.jpg')).toBe(true);
   });
 });

@@ -20,7 +20,7 @@ export function CompactCard({ article }: CompactCardProps) {
       className="block group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-xl"
       aria-label={`Read article: ${article.title}`}
     >
-      <article className="p-4 rounded-xl bg-surface hover:bg-elevated transition-colors border-l-4 border-primary/60 hover:border-primary">
+      <article className="p-4 rounded-xl bg-surface hover:bg-elevated transition-colors border border-border hover:border-primary/60">
         {/* Category */}
         {category && (
           <span className="text-xs font-semibold text-primary uppercase tracking-wide">

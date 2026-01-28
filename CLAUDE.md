@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Mukoko News is a Pan-African digital news aggregation platform. "Mukoko" means "Beehive" in Shona - where community gathers and stores knowledge. Primary market is Zimbabwe with expansion across 12 African countries.
+Mukoko News is a Pan-African digital news aggregation platform. "Mukoko" means "Beehive" in Shona - where community gathers and stores knowledge. Primary market is Zimbabwe with expansion across 16 African countries.
 
 **Architecture**: Next.js 15 frontend with Cloudflare Workers backend
 
@@ -165,7 +165,8 @@ src/
 ├── components/
 │   ├── layout/
 │   │   ├── header.tsx       # Navigation header
-│   │   └── footer.tsx       # Footer component
+│   │   ├── footer.tsx       # Footer component
+│   │   └── bottom-nav.tsx   # Mobile bottom navigation
 │   ├── ui/                  # Reusable UI components (Radix UI based)
 │   │   ├── button.tsx
 │   │   ├── card.tsx
@@ -176,7 +177,9 @@ src/
 │   │   ├── source-icon.tsx
 │   │   ├── error-boundary.tsx  # React error boundary component
 │   │   ├── skeleton.tsx        # Skeleton loading components
-│   │   └── discover-skeleton.tsx # Page-specific skeletons
+│   │   ├── discover-skeleton.tsx # Page-specific skeletons
+│   │   ├── json-ld.tsx         # Schema.org JSON-LD components
+│   │   └── breadcrumb.tsx      # Breadcrumb navigation
 │   ├── article-card.tsx     # Main article display component
 │   ├── hero-card.tsx        # Featured article card with large image
 │   ├── compact-card.tsx     # Text-focused card for articles without images
@@ -188,9 +191,11 @@ src/
 └── lib/
     ├── api.ts               # API client with fetch utilities
     ├── utils.ts             # Utility functions (cn, formatTimeAgo, isValidImageUrl)
+    ├── constants.ts         # Centralized countries and categories data
     ├── source-profiles.ts   # News source configurations
     └── __tests__/           # Unit tests
-        └── utils.test.ts    # Tests for utility functions
+        ├── utils.test.ts    # Tests for utility functions
+        └── constants.test.ts # Tests for constants and helpers
 ```
 
 ## Backend Structure
@@ -270,6 +275,7 @@ Schema in `database/schema.sql`. 18 migrations in `database/migrations/`.
 
 ```bash
 NEXT_PUBLIC_API_URL=https://mukoko-news-backend.nyuchi.workers.dev
+NEXT_PUBLIC_BASE_URL=https://news.mukoko.com  # Base URL for SEO/schema.org (optional, has default)
 NEXT_PUBLIC_API_SECRET=your-api-secret  # Optional: for direct browser auth
 API_SECRET=your-api-secret               # Server-side API authentication
 ```
@@ -307,8 +313,15 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (`src/lib/__tests__/`):
-- `utils.test.ts` - Utility function tests (formatTimeAgo, isValidImageUrl, cn)
+**Test Files** (131 tests):
+- `src/lib/__tests__/utils.test.ts` - Utility functions, safeCssUrl, CSS injection vectors, XSS attack vectors
+- `src/lib/__tests__/constants.test.ts` - Constants, URL helpers, path traversal, URL injection security tests
+- `src/components/__tests__/json-ld.test.tsx` - JSON-LD rendering, XSS prevention, expanded injection payloads
+- `src/components/__tests__/hero-card.test.tsx` - HeroCard component tests
+- `src/components/__tests__/compact-card.test.tsx` - CompactCard component tests
+- `src/components/__tests__/error-boundary.test.tsx` - ErrorBoundary tests
+- `src/components/__tests__/breadcrumb.test.tsx` - Breadcrumb navigation tests
+- `src/components/__tests__/bottom-nav.test.tsx` - Mobile bottom navigation + routing tests
 
 **Test Pattern**: Vitest with jsdom environment, React Testing Library
 
@@ -404,6 +417,112 @@ Use Tailwind classes like `bg-primary`, `text-foreground`, `bg-surface` etc.
 - Error boundaries on all pages with data fetching
 - Skeleton loaders for graceful loading states
 
+### React Best Practices
+
+**List Keys**: Use stable, unique keys instead of array indices:
+```tsx
+// Good - uses stable identifier
+{items.map((item) => (
+  <li key={item.id || item.href || item.label}>{item.name}</li>
+))}
+
+// Bad - array index can cause issues with reordering
+{items.map((item, index) => (
+  <li key={index}>{item.name}</li>
+))}
+```
+
+**Memoization**: Use `useMemo` to prevent expensive recalculations:
+```tsx
+// Stable sorted key - prevents refetch when array is reordered
+// Example: [ZW, KE] and [KE, ZW] produce same key "KE,ZW"
+const countryKey = useMemo(
+  () => selectedCountries.slice().sort().join(","),
+  [selectedCountries]
+);
+```
+
+**Cleanup Effects**: Always clean up timeouts and subscriptions:
+```tsx
+useEffect(() => {
+  const timer = setTimeout(() => setFlag(false), 2000);
+  return () => clearTimeout(timer);  // Cleanup prevents memory leaks
+}, [dependency]);
+```
+
+**Pathname Matching**: Use anchored regex for robust route matching:
+```tsx
+// Good - anchored regex matches exactly /article/{id}, not sub-routes
+if (/^\/article\/[^/]+$/.test(pathname)) return null;
+
+// Less robust - matches sub-routes like /article/123/comments
+if (/^\/article\/[^/]+/.test(pathname)) return null;
+
+// Least robust - matches any path starting with /article/
+if (pathname.startsWith("/article/")) return null;
+```
+
+**Clipboard API**: Provide fallbacks for older browsers:
+```tsx
+const copyToClipboard = async (text: string) => {
+  if (!navigator.clipboard) {
+    // Fallback for older browsers
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.select();
+    const success = document.execCommand("copy");
+    document.body.removeChild(textArea);
+    return success;
+  }
+  await navigator.clipboard.writeText(text);
+  return true;
+};
+```
+
+**useCallback Dependencies**: Align callback dependencies with the effect that triggers them:
+```tsx
+// fetchData derives countries from countryKey (not selectedCountries directly)
+// This ensures fetchData only changes when countryKey changes
+const fetchData = useCallback(async () => {
+  const countries = countryKey ? countryKey.split(",") : [];
+  await api.getArticles({ countries });
+}, [countryKey]);
+
+// Effect depends on fetchData, which only changes when countryKey changes
+useEffect(() => { fetchData(); }, [fetchData]);
+```
+
+**Stable Event Handlers via Refs**: Avoid re-registering event listeners on state changes:
+```tsx
+// Ref always holds the latest handler without causing effect re-runs
+const handleRefreshRef = useRef(() => {});
+useEffect(() => { handleRefreshRef.current = handleRefresh; }, [handleRefresh]);
+
+// Touch listener registered once, calls latest handler via ref
+useEffect(() => {
+  const onTouchEnd = () => { handleRefreshRef.current(); };
+  window.addEventListener("touchend", onTouchEnd);
+  return () => window.removeEventListener("touchend", onTouchEnd);
+}, []); // No dependencies - never re-registers
+```
+
+**CSS URL Escaping**: Use `safeCssUrl()` from `@/lib/utils` for CSS `url()` values:
+```tsx
+import { safeCssUrl } from "@/lib/utils";
+
+// Good - uses encodeURI for standards-compliant escaping
+style={{ backgroundImage: safeCssUrl(src) }}
+
+// Bad - manual escaping is incomplete and error-prone
+style={{ backgroundImage: `url('${src.replace(/'/g, "\\'")}')` }}
+
+// Bad - unescaped URL could break out of quotes
+style={{ backgroundImage: `url(${src})` }}
+```
+
 ### Error Boundaries
 
 Error boundaries wrap page content in:
@@ -436,6 +555,44 @@ Components: `src/components/ui/skeleton.tsx`, `src/components/ui/discover-skelet
 - Error handling: AbortError → timeout message
 - Response validation required (non-OK throws)
 
+### JSON-LD Security Pattern
+
+All JSON-LD structured data uses `safeJsonLdStringify()` to prevent XSS:
+- Escapes `<` to `\u003c` (prevents `</script>` injection)
+- Escapes `>` to `\u003e` (prevents HTML tag injection)
+- Escapes `&` to `\u0026` (prevents HTML entity issues)
+
+Component: `src/components/ui/json-ld.tsx`
+Tests: `src/components/__tests__/json-ld.test.tsx`
+
+### Image URL Validation
+
+Use `isValidImageUrl()` from `src/lib/utils.ts` before rendering user-provided image URLs:
+- Allows: `http://`, `https://`, `/` (relative paths)
+- Blocks: `javascript:`, `data:`, `blob:`, `vbscript:` protocols
+
+### Base URL Pattern
+
+Use centralized URL utilities from `src/lib/constants.ts`:
+- `BASE_URL` - Uses `NEXT_PUBLIC_BASE_URL` env var or defaults to production URL
+- `getArticleUrl(id)` - Generates full article URLs
+- `getFullUrl(path)` - Generates full URLs from relative paths
+
+```typescript
+import { BASE_URL, getArticleUrl, getFullUrl } from "@/lib/constants";
+
+// Examples
+const url = getArticleUrl("123");  // https://news.mukoko.com/article/123
+const fullUrl = getFullUrl("/discover");  // https://news.mukoko.com/discover
+```
+
+### Font Loading
+
+Fonts are loaded via CSS `@import` in `globals.css` with preconnect hints in `layout.tsx`:
+- Preconnect hints improve loading performance
+- CSS @import chosen for build reliability (network-independent)
+- Fonts: Noto Serif (headings), Plus Jakarta Sans (body)
+
 ### Backend Error Handling
 
 - Hono responses: `c.json({ error, message }, statusCode)`
@@ -445,7 +602,7 @@ Components: `src/components/ui/skeleton.tsx`, `src/components/ui/discover-skelet
 
 ## Pan-African Country Support
 
-Supported countries (12 total):
+Supported countries (16 total) defined in `src/lib/constants.ts`:
 - Zimbabwe (ZW) - Primary market
 - South Africa (ZA)
 - Kenya (KE)
@@ -458,8 +615,13 @@ Supported countries (12 total):
 - Botswana (BW)
 - Zambia (ZM)
 - Malawi (MW)
+- Egypt (EG)
+- Morocco (MA)
+- Namibia (NA)
+- Mozambique (MZ)
 
 RSS articles inherit `country_id` from source configuration.
+Country data is centralized in `src/lib/constants.ts` (single source of truth).
 
 ## Key Features
 
@@ -472,17 +634,23 @@ RSS articles inherit `country_id` from source configuration.
 7. **Personalized Feeds**: Country/category filtering with localStorage persistence
 8. **Onboarding Flow**: Modal-based country/category selection
 9. **Dark Mode**: System detection or manual toggle with next-themes
-10. **SEO Features**: Metadata generation, sitemap generation
+10. **Schema.org SEO**: JSON-LD structured data (NewsArticle, Organization, BreadcrumbList)
+11. **Mobile Bottom Navigation**: Quick access to Home, Discover, NewsBytes, Search, Profile
+12. **Breadcrumb Navigation**: Clear navigation hierarchy on article pages
 
 ## Key Files
 
 ### Frontend
-- `src/app/layout.tsx` - Root layout with providers
-- `src/app/page.tsx` - Home feed with visual hierarchy (Hero, Top Stories, Quick Reads)
-- `src/app/globals.css` - Tailwind config and CSS variables
+- `src/app/layout.tsx` - Root layout with providers, bottom nav, and Organization JSON-LD
+- `src/app/page.tsx` - Home feed with simplified layout (Featured + Latest)
+- `src/app/globals.css` - Tailwind config, CSS variables, and font imports
 - `src/lib/api.ts` - API client
 - `src/lib/utils.ts` - Utilities (cn, formatTimeAgo, isValidImageUrl)
+- `src/lib/constants.ts` - Centralized countries and categories (single source of truth)
 - `src/contexts/preferences-context.tsx` - User preferences context
+- `src/components/ui/json-ld.tsx` - Schema.org JSON-LD with XSS prevention
+- `src/components/ui/breadcrumb.tsx` - Breadcrumb navigation component
+- `src/components/layout/bottom-nav.tsx` - Mobile bottom navigation
 - `src/components/ui/skeleton.tsx` - Skeleton loading components
 - `src/components/ui/error-boundary.tsx` - Error boundary component
 - `vitest.config.ts` - Frontend test configuration
