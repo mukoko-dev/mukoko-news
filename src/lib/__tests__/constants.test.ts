@@ -127,14 +127,14 @@ describe('getArticleUrl - security', () => {
     const url = getArticleUrl('../../etc/passwd');
     expect(url).toBe(`${BASE_URL}/article/../../etc/passwd`);
     // Important: the base URL is always prepended, no origin escaping
-    expect(url).toMatch(new RegExp(`^${BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    expect(url.startsWith(BASE_URL)).toBe(true);
   });
 
   it('should handle script injection in article ID', () => {
     const url = getArticleUrl('<script>alert(1)</script>');
     // URL is string concatenation; < > stay literal (escaped at render time by React)
     expect(url).toBe(`${BASE_URL}/article/<script>alert(1)</script>`);
-    expect(url).toMatch(new RegExp(`^${BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    expect(url.startsWith(BASE_URL)).toBe(true);
   });
 
   it('should always start with BASE_URL regardless of input', () => {
@@ -146,7 +146,7 @@ describe('getArticleUrl - security', () => {
       '\n\r<script>',
     ];
     for (const input of inputs) {
-      expect(getArticleUrl(input)).toMatch(new RegExp(`^${BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+      expect(getArticleUrl(input).startsWith(BASE_URL)).toBe(true);
     }
   });
 });
@@ -161,7 +161,7 @@ describe('getFullUrl - security', () => {
       '\n\r<script>alert(1)</script>',
     ];
     for (const path of paths) {
-      expect(getFullUrl(path)).toMatch(new RegExp(`^${BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+      expect(getFullUrl(path).startsWith(BASE_URL)).toBe(true);
     }
   });
 
@@ -173,7 +173,7 @@ describe('getFullUrl - security', () => {
   it('should handle protocol-relative path (//evil.com)', () => {
     // getFullUrl prepends BASE_URL, so //evil.com becomes BASE_URL//evil.com
     const url = getFullUrl('//evil.com');
-    expect(url).toMatch(new RegExp(`^${BASE_URL.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+    expect(url.startsWith(BASE_URL)).toBe(true);
     // The result won't resolve to evil.com when used as a relative link on the page
   });
 
