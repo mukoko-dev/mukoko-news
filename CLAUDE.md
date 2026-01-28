@@ -477,6 +477,43 @@ const copyToClipboard = async (text: string) => {
   await navigator.clipboard.writeText(text);
   return true;
 };
+```
+
+**useCallback Dependencies**: Align callback dependencies with the effect that triggers them:
+```tsx
+// fetchData derives countries from countryKey (not selectedCountries directly)
+// This ensures fetchData only changes when countryKey changes
+const fetchData = useCallback(async () => {
+  const countries = countryKey ? countryKey.split(",") : [];
+  await api.getArticles({ countries });
+}, [countryKey]);
+
+// Effect depends on fetchData, which only changes when countryKey changes
+useEffect(() => { fetchData(); }, [fetchData]);
+```
+
+**Stable Event Handlers via Refs**: Avoid re-registering event listeners on state changes:
+```tsx
+// Ref always holds the latest handler without causing effect re-runs
+const handleRefreshRef = useRef(() => {});
+useEffect(() => { handleRefreshRef.current = handleRefresh; }, [handleRefresh]);
+
+// Touch listener registered once, calls latest handler via ref
+useEffect(() => {
+  const onTouchEnd = () => { handleRefreshRef.current(); };
+  window.addEventListener("touchend", onTouchEnd);
+  return () => window.removeEventListener("touchend", onTouchEnd);
+}, []); // No dependencies - never re-registers
+```
+
+**CSS URL Escaping**: Always escape quotes in CSS `url()` values for defense in depth:
+```tsx
+// Good - escapes single quotes to prevent CSS injection
+style={{ backgroundImage: `url('${src.replace(/'/g, "\\'")}')` }}
+
+// Bad - unescaped URL could break out of quotes
+style={{ backgroundImage: `url(${src})` }}
+```
 
 ### Error Boundaries
 

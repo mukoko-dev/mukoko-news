@@ -38,6 +38,7 @@ export default function FeedPage() {
   );
 
   // Fetch articles and categories
+  // Derives countries from countryKey to keep dependency aligned with the effect trigger
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
@@ -46,10 +47,11 @@ export default function FeedPage() {
     }
     setError(null);
     try {
+      const countries = countryKey ? countryKey.split(",") : [];
       const [articlesResponse, categoriesData] = await Promise.all([
         api.getArticles({
           limit: 50,
-          countries: selectedCountries.length > 0 ? selectedCountries : undefined,
+          countries: countries.length > 0 ? countries : undefined,
         }),
         api.getCategories(),
       ]);
@@ -62,7 +64,10 @@ export default function FeedPage() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedCountries]);
+  }, [countryKey]);
+
+  // Ref to always hold the latest handleRefresh, avoiding effect re-registration
+  const handleRefreshRef = useRef(() => {});
 
   // Refresh handler
   const handleRefresh = useCallback(() => {
@@ -71,14 +76,19 @@ export default function FeedPage() {
     }
   }, [refreshing, loading, fetchData]);
 
+  // Keep ref in sync with latest handleRefresh
+  useEffect(() => {
+    handleRefreshRef.current = handleRefresh;
+  }, [handleRefresh]);
+
   // Fetch data when countries change (sorted key prevents reorder refetch)
   useEffect(() => {
     fetchData();
-  }, [countryKey, fetchData]);
+  }, [fetchData]);
 
   // Pull-to-refresh for mobile
+  // Uses handleRefreshRef to avoid re-registering touch listeners on every state change
   useEffect(() => {
-    // Use refs to avoid stale closure and excessive re-renders
     let currentPullDistance = 0;
     let rafId: number | null = null;
 
@@ -111,7 +121,7 @@ export default function FeedPage() {
 
     const handleTouchEnd = () => {
       if (currentPullDistance > 80) {
-        handleRefresh();
+        handleRefreshRef.current();
       }
       currentPullDistance = 0;
       // Use requestAnimationFrame for final state update
@@ -136,7 +146,7 @@ export default function FeedPage() {
         cancelAnimationFrame(rafId);
       }
     };
-  }, [handleRefresh]);
+  }, []);
 
   // Sticky header on scroll
   useEffect(() => {

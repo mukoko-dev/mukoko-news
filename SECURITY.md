@@ -131,6 +131,13 @@ All API endpoints (`https://mukoko-news-backend.nyuchi.workers.dev`) are protect
 - **Implementation**: `isValidImageUrl()` in `src/lib/utils.ts`
 - **Usage**: Applied to Avatar, NewsBytes, and article image components
 
+#### CSS URL Injection Prevention
+
+- **Quote Escaping**: All CSS `url()` values escape single quotes (`'` → `\'`)
+- **Defense in Depth**: Applied even when URLs are already validated by `isValidImageUrl()`
+- **Components**: Avatar (`src/components/ui/avatar.tsx`), NewsBytes (`src/app/newsbytes/page.tsx`)
+- **Pattern**: `url('${src.replace(/'/g, "\\'")}')`
+
 ### Deployment Security
 
 #### Backend (Cloudflare Workers)
