@@ -103,22 +103,23 @@ export function PreferencesProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedCategories, isLoaded]);
 
+  // Sync primaryCountry when selectedCountries changes
+  // Kept outside toggleCountry to avoid stale closure over primaryCountry
+  useEffect(() => {
+    if (!isLoaded) return;
+    if (selectedCountries.length === 0) {
+      setPrimaryCountryState(null);
+    } else if (!primaryCountry || !selectedCountries.includes(primaryCountry)) {
+      setPrimaryCountryState(selectedCountries[0]);
+    }
+  }, [selectedCountries, isLoaded, primaryCountry]);
+
   const toggleCountry = (code: string) => {
-    setSelectedCountries((prev) => {
-      const newSelection = prev.includes(code)
+    setSelectedCountries((prev) =>
+      prev.includes(code)
         ? prev.filter((c) => c !== code)
-        : [...prev, code];
-
-      // Update primary if needed
-      if (primaryCountry === code && !newSelection.includes(code)) {
-        setPrimaryCountryState(newSelection[0] || null);
-      }
-      if (!primaryCountry && newSelection.length > 0) {
-        setPrimaryCountryState(newSelection[0]);
-      }
-
-      return newSelection;
-    });
+        : [...prev, code]
+    );
   };
 
   const setPrimaryCountry = (code: string) => {
