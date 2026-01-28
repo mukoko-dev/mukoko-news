@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -8,15 +8,19 @@ import {
   Bookmark,
   Share2,
   ChevronLeft,
-  ExternalLink,
   AlertCircle,
   Clock,
   Tag,
   RefreshCw,
+  Check,
 } from "lucide-react";
 import { api, type Article } from "@/lib/api";
+import { getArticleUrl } from "@/lib/constants";
+import { isValidImageUrl } from "@/lib/utils";
 import { ArticlePageSkeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { ArticleJsonLd } from "@/components/ui/json-ld";
+import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 export default function ArticleDetailPage() {
   const params = useParams();
@@ -30,13 +34,7 @@ export default function ArticleDetailPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
 
-  useEffect(() => {
-    if (articleId) {
-      loadArticle();
-    }
-  }, [articleId]);
-
-  const loadArticle = async () => {
+  const loadArticle = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -56,7 +54,13 @@ export default function ArticleDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [articleId]);
+
+  useEffect(() => {
+    if (articleId) {
+      loadArticle();
+    }
+  }, [articleId, loadArticle]);
 
   const handleLike = () => {
     setIsLiked(!isLiked);
@@ -67,6 +71,19 @@ export default function ArticleDetailPage() {
     setIsSaved(!isSaved);
   };
 
+  const [copySuccess, setCopySuccess] = useState(false);
+
+  // Cleanup timeout on unmount to prevent memory leak
+  useEffect(() => {
+    if (copySuccess) {
+      const timer = setTimeout(() => setCopySuccess(false), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copySuccess]);
+
+  // SSR-safe article URL using centralized base URL
+  const articleUrl = getArticleUrl(articleId);
+
   const handleShare = async () => {
     if (!article) return;
 
@@ -75,14 +92,40 @@ export default function ArticleDetailPage() {
         await navigator.share({
           title: article.title,
           text: article.description || article.title,
-          url: window.location.href,
+          url: articleUrl,
         });
       } catch (err) {
-        console.log("Share cancelled");
+        // User cancelled or share failed - fallback to clipboard
+        if ((err as Error).name !== "AbortError") {
+          await copyToClipboard();
+        }
       }
     } else {
-      // Fallback: copy to clipboard
-      navigator.clipboard.writeText(window.location.href);
+      await copyToClipboard();
+    }
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      // Check if clipboard API is available
+      if (!navigator.clipboard) {
+        // Fallback for older browsers
+        const textArea = document.createElement("textarea");
+        textArea.value = articleUrl;
+        textArea.style.position = "fixed";
+        textArea.style.opacity = "0";
+        document.body.appendChild(textArea);
+        textArea.select();
+        const success = document.execCommand("copy");
+        document.body.removeChild(textArea);
+        if (success) setCopySuccess(true);
+        return;
+      }
+      await navigator.clipboard.writeText(articleUrl);
+      setCopySuccess(true);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+      // Still show feedback even on error - user can manually copy
     }
   };
 
@@ -137,9 +180,22 @@ export default function ArticleDetailPage() {
     );
   }
 
+  const category = article.category_id || article.category;
+
   return (
     <ErrorBoundary fallback={<div className="p-8 text-center text-text-secondary">Failed to render article content</div>}>
+      <ArticleJsonLd article={article} url={articleUrl} />
       <div className="pb-16">
+        {/* Breadcrumb */}
+        <div className="max-w-[800px] mx-auto px-6 py-3">
+          <Breadcrumb
+            items={[
+              ...(category ? [{ label: category, href: `/discover?category=${category}` }] : []),
+              { label: article.title },
+            ]}
+          />
+        </div>
+
         {/* Hero Section */}
         <div className="bg-primary text-white px-6 py-12 relative">
         {/* Back Button */}
@@ -186,7 +242,7 @@ export default function ArticleDetailPage() {
       </div>
 
       {/* Article Image */}
-      {article.image_url && (
+      {article.image_url && isValidImageUrl(article.image_url) && (
         <div className="max-w-[900px] mx-auto px-6 -mt-6">
           <div className="rounded-2xl overflow-hidden shadow-xl">
             <img
@@ -249,22 +305,15 @@ export default function ArticleDetailPage() {
 
           <button
             onClick={handleShare}
-            className="flex items-center gap-2 px-4 py-2.5 bg-surface text-foreground rounded-xl hover:bg-elevated transition-colors"
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all ml-auto ${
+              copySuccess
+                ? "bg-success text-white"
+                : "bg-primary text-white hover:opacity-90"
+            }`}
           >
-            <Share2 className="w-5 h-5" />
-            <span className="font-medium">Share</span>
+            {copySuccess ? <Check className="w-5 h-5" /> : <Share2 className="w-5 h-5" />}
+            <span className="font-medium">{copySuccess ? "Copied!" : "Share"}</span>
           </button>
-
-          {/* Read Original Link */}
-          <a
-            href={`https://google.com/search?q=${encodeURIComponent(article.title)}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2.5 bg-primary text-white rounded-xl hover:opacity-90 transition-opacity ml-auto"
-          >
-            <span className="font-medium">Read Original</span>
-            <ExternalLink className="w-4 h-4" />
-          </a>
         </div>
       </div>
       </div>

@@ -113,9 +113,30 @@ All API endpoints (`https://mukoko-news-backend.nyuchi.workers.dev`) are protect
 #### User-Generated Content
 
 - **Input Validation**: All user inputs sanitized
-- **XSS Prevention**: React Native auto-escapes by default
+- **XSS Prevention**: React auto-escapes by default, plus manual sanitization
 - **SQL Injection**: Parameterized queries only
 - **CSRF**: Not applicable (API-only, no session cookies)
+
+#### JSON-LD Structured Data
+
+- **XSS Prevention**: All JSON-LD content uses Unicode escaping
+- **Escaped Characters**: `<` → `\u003c`, `>` → `\u003e`, `&` → `\u0026`
+- **Implementation**: `safeJsonLdStringify()` in `src/components/ui/json-ld.tsx`
+- **Test Coverage**: Dedicated XSS prevention tests in `src/components/__tests__/json-ld.test.tsx`
+
+#### Image URL Validation
+
+- **Protocol Whitelist**: Only `http://`, `https://`, and `/` (relative) URLs allowed
+- **Blocked Protocols**: `javascript:`, `data:`, `blob:`, `vbscript:` URLs rejected
+- **Implementation**: `isValidImageUrl()` in `src/lib/utils.ts`
+- **Usage**: Applied to Avatar, NewsBytes, and article image components
+
+#### CSS URL Injection Prevention
+
+- **Standards-compliant Escaping**: All CSS `url()` values use `encodeURI()` via `safeCssUrl()` utility
+- **Defense in Depth**: Applied even when URLs are already validated by `isValidImageUrl()`
+- **Implementation**: `safeCssUrl()` in `src/lib/utils.ts`
+- **Components**: Avatar (`src/components/ui/avatar.tsx`), NewsBytes (`src/app/newsbytes/page.tsx`)
 
 ### Deployment Security
 
@@ -191,6 +212,6 @@ Security updates will be announced via:
 
 ---
 
-**Last Updated**: 2025-12-20
+**Last Updated**: 2026-01-24
 
 Built with security in mind by [Nyuchi Technologies](https://brand.nyuchi.com)

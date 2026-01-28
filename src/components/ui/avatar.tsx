@@ -1,3 +1,5 @@
+import { isValidImageUrl, safeCssUrl } from "@/lib/utils";
+
 interface AvatarProps {
   initials?: string;
   src?: string;
@@ -12,11 +14,12 @@ export function Avatar({ initials, src, size = "md", className = "" }: AvatarPro
     lg: "w-12 h-12 text-base",
   };
 
-  if (src) {
+  // Validate URL to prevent XSS via javascript: or data: URLs
+  if (src && isValidImageUrl(src)) {
     return (
       <div
         className={`${sizes[size]} rounded-full bg-cover bg-center ${className}`}
-        style={{ backgroundImage: `url(${src})` }}
+        style={{ backgroundImage: safeCssUrl(src) }}
       />
     );
   }

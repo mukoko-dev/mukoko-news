@@ -5,6 +5,53 @@ All notable changes to Mukoko News will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.2] - 2026-01-24
+
+### Added
+
+- **Schema.org JSON-LD**: Structured data for SEO (NewsArticle, Organization, BreadcrumbList)
+- **Mobile Bottom Navigation**: Quick access to Home, Discover, NewsBytes, Search, Profile
+- **Breadcrumb Navigation**: Clear navigation hierarchy on article pages
+- **Country Selector Integration**: Onboarding modal country selection now filters news feed
+- **Centralized Constants**: Single source of truth for countries and categories (`src/lib/constants.ts`)
+- **BASE_URL Utilities**: `getArticleUrl()` and `getFullUrl()` for consistent URL generation
+- **JSON-LD XSS Prevention**: Unicode escaping for `<`, `>`, `&` in structured data
+- **Font Preconnect**: Improved font loading with preconnect hints for Google Fonts
+- **safeCssUrl Utility**: Centralized `encodeURI`-based CSS `url()` builder in `src/lib/utils.ts`
+- **Security Test Suite**: Comprehensive injection and attack vector tests (CSS, XSS, JSON-LD, URL traversal)
+- **New Tests**: 131 total tests (+38 security tests for injection, leak, and attack vector coverage)
+
+### Fixed
+
+- **XSS Vulnerabilities**: Fixed potential XSS in Avatar, NewsBytes, and JSON-LD components
+- **Memory Leak**: Fixed timeout cleanup in article page share functionality
+- **SSR Safety**: Fixed server-side rendering issues with window.location usage
+- **useEffect Dependencies**: Fixed React hook dependency chain - `fetchData` now derives countries from `countryKey`
+- **Stale Closure**: Pull-to-refresh uses ref pattern to avoid re-registering touch listeners on every state change
+- **Performance**: Fixed O(n²) keyword cloud rendering with memoization
+- **Theme Consistency**: Replaced hardcoded colors in onboarding modal with theme tokens
+- **Breadcrumb Keys**: Use stable keys (`href || label`) without index fallback
+- **Clipboard Fallback**: Added error handling and success check for legacy `document.execCommand("copy")`
+- **Bottom Nav Routing**: Anchored regex `/^\/article\/[^/]+$/` to match exact article paths only
+- **IntersectionObserver**: NewsBytes observer depends on `bytes.length` to avoid unnecessary re-creation
+- **Article Page Dependencies**: Wrapped `loadArticle` in `useCallback` with proper effect dependency
+- **Pull-to-Refresh**: Moved `rafId` to ref for safer cleanup on unmount
+
+### Changed
+
+- **Simplified Feed Layout**: Reduced from 5 sections to 2 (Featured + Latest)
+- **Font Loading**: Switched from next/font to CSS @import for build reliability
+- **Card Styling**: Updated to thin 1px border instead of one-sided border
+- **Article Cards**: Removed misleading "Read Original" Google search link
+
+### Security
+
+- **JSON-LD Escaping**: All JSON-LD content sanitized with Unicode escaping
+- **Image URL Validation**: Added `isValidImageUrl()` checks to prevent XSS via image URLs
+- **CSS Injection Prevention**: Centralized `safeCssUrl()` with `encodeURI()` for standards-compliant CSS URL escaping
+
+---
+
 ## [4.0.1] - 2025-12-31
 
 ### Added
@@ -120,6 +167,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **[4.0.2]** - 2026-01-24 - Schema.org SEO, mobile bottom nav, simplified feed, XSS fixes
 - **[4.0.1]** - 2025-12-31 - Keywords API, TikTok desktop layout, Pan-African country support
 - **[4.0.0]** - 2025-12-31 - Next.js migration (major rewrite)
 - **[0.1.0]** - 2025-12-20 - Initial release (React Native Expo)

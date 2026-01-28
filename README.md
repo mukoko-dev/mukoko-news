@@ -16,6 +16,8 @@ Mukoko News aggregates news from 56+ Pan-African sources across 16 countries, pr
 - **AI-Powered**: Workers AI for content processing and semantic search
 - **Real-Time Analytics**: Durable Objects for live engagement tracking
 - **Dark Mode Support**: Full theme support with system preference detection
+- **Schema.org SEO**: JSON-LD structured data for NewsArticle, Organization, BreadcrumbList
+- **Mobile Bottom Navigation**: Easy access to key sections on mobile devices
 
 ## Project Structure
 
@@ -24,7 +26,10 @@ mukoko-news/
 ├── src/              # Next.js frontend
 │   ├── app/          # App Router pages
 │   ├── components/   # React components
-│   └── lib/          # Utilities and API client
+│   │   ├── ui/       # Reusable UI (json-ld, breadcrumb, skeleton)
+│   │   └── layout/   # Layout components (header, footer, bottom-nav)
+│   ├── contexts/     # React contexts (preferences, theme)
+│   └── lib/          # Utilities, API client, constants
 ├── backend/          # Cloudflare Workers API (Hono framework)
 ├── database/         # D1 schema and migrations
 ├── public/           # Static assets
@@ -80,6 +85,7 @@ Create `.env.local` in the root directory:
 
 ```env
 NEXT_PUBLIC_API_URL=https://mukoko-news-backend.nyuchi.workers.dev
+NEXT_PUBLIC_BASE_URL=https://news.mukoko.com  # Optional: Base URL for SEO/JSON-LD
 NEXT_PUBLIC_API_SECRET=your_api_secret_here
 ```
 
@@ -186,21 +192,25 @@ npm run db:local     # Apply schema to local D1
 ### Core Features
 
 - **Responsive Design**: Mobile-first, works on all devices
-- **Visual Hierarchy**: Hero article, Top Stories, Quick Reads, Latest sections
+- **Simplified Feed Layout**: Featured article + Latest articles grid
 - **TikTok-Style NewsBytes**: Vertical scroll news feed with snap scrolling
+- **Mobile Bottom Navigation**: Quick access to Home, Discover, NewsBytes, Search, Profile
+- **Schema.org SEO**: JSON-LD structured data (NewsArticle, Organization, Breadcrumb)
+- **Breadcrumb Navigation**: Clear navigation hierarchy on article pages
 - **Real-Time Engagement**: Live likes, saves, and views
 - **AI-Powered Search**: Semantic search with Vectorize
 - **Pan-African Coverage**: 16 countries, 56+ news sources
+- **Country-Filtered Feed**: Personalized news based on selected countries
 - **Dark Mode**: Full theme support with system detection
 - **Skeleton Loaders**: Graceful loading states across all pages
 - **Error Boundaries**: Graceful error handling with fallback UI
 
 ### Pages
 
-- **Feed** (`/`) - Personalized news feed with Hero, Top Stories, Quick Reads, Latest sections
+- **Feed** (`/`) - Personalized news feed with Featured + Latest layout
 - **Discover** (`/discover`) - Browse by country, category, source, or trending topics
 - **NewsBytes** (`/newsbytes`) - TikTok-style vertical swipeable feed
-- **Article** (`/article/[id]`) - Full article view with engagement actions
+- **Article** (`/article/[id]`) - Full article view with breadcrumbs and JSON-LD
 - **Search** (`/search`) - Search articles with category filters
 - **Profile** (`/profile`) - User settings and preferences
 - **Admin** (`/admin`) - Dashboard for analytics, sources, users
@@ -215,7 +225,16 @@ npm run test:watch   # Watch mode
 npm run test:coverage # With coverage
 ```
 
-**Test Files**: `src/lib/__tests__/utils.test.ts`
+**Test Files** (131 tests total):
+- `src/lib/__tests__/utils.test.ts` - Utility functions + CSS injection & XSS attack vector tests
+- `src/lib/__tests__/constants.test.ts` - Constants, URL helpers, path traversal & injection tests
+- `src/components/__tests__/json-ld.test.tsx` - JSON-LD XSS prevention + expanded injection payloads
+- `src/components/__tests__/breadcrumb.test.tsx` - Breadcrumb navigation tests
+- `src/components/__tests__/bottom-nav.test.tsx` - Mobile bottom navigation + routing tests
+- `src/components/__tests__/hero-card.test.tsx` - HeroCard component tests
+- `src/components/__tests__/compact-card.test.tsx` - CompactCard component tests
+- `src/components/__tests__/error-boundary.test.tsx` - ErrorBoundary tests
+
 **Test Framework**: Vitest with jsdom environment
 
 ### Backend Tests
