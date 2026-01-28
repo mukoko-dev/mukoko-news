@@ -29,6 +29,7 @@ export default function FeedPage() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
   const isPulling = useRef(false);
+  const rafIdRef = useRef<number | null>(null);
 
   // Stable sorted country key - prevents unnecessary refetch when countries are reordered
   // Example: [ZW, KE] and [KE, ZW] produce the same key "KE,ZW", avoiding duplicate API calls
@@ -88,9 +89,9 @@ export default function FeedPage() {
 
   // Pull-to-refresh for mobile
   // Uses handleRefreshRef to avoid re-registering touch listeners on every state change
+  // Uses rafIdRef so the RAF can be cancelled safely even after unmount
   useEffect(() => {
     let currentPullDistance = 0;
-    let rafId: number | null = null;
 
     const handleTouchStart = (e: TouchEvent) => {
       if (window.scrollY === 0) {
@@ -110,10 +111,10 @@ export default function FeedPage() {
       if (distance > 0 && distance < 150) {
         currentPullDistance = distance;
         // Use requestAnimationFrame for smoother animation
-        if (rafId !== null) {
-          cancelAnimationFrame(rafId);
+        if (rafIdRef.current !== null) {
+          cancelAnimationFrame(rafIdRef.current);
         }
-        rafId = requestAnimationFrame(() => {
+        rafIdRef.current = requestAnimationFrame(() => {
           setPullDistance(distance);
         });
       }
@@ -125,10 +126,10 @@ export default function FeedPage() {
       }
       currentPullDistance = 0;
       // Use requestAnimationFrame for final state update
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
       }
-      rafId = requestAnimationFrame(() => {
+      rafIdRef.current = requestAnimationFrame(() => {
         setPullDistance(0);
       });
       isPulling.current = false;
@@ -142,8 +143,8 @@ export default function FeedPage() {
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
       }
     };
   }, []);

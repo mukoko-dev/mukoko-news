@@ -101,4 +101,12 @@ describe('BottomNav', () => {
     const profileLink = screen.getByRole('link', { name: /profile/i });
     expect(profileLink).toHaveAttribute('aria-current', 'page');
   });
+
+  it('should render on article sub-routes (anchored regex)', () => {
+    mockUsePathname.mockReturnValue('/article/123/comments');
+
+    render(<BottomNav />);
+
+    expect(screen.getByRole('navigation')).toBeInTheDocument();
+  });
 });

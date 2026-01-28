@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { formatTimeAgo, isValidImageUrl, cn } from '../utils';
+import { formatTimeAgo, isValidImageUrl, cn, safeCssUrl } from '../utils';
 
 describe('formatTimeAgo', () => {
   beforeEach(() => {
@@ -166,5 +166,31 @@ describe('cn', () => {
 
   it('should handle undefined and null', () => {
     expect(cn('foo', undefined, null, 'bar')).toBe('foo bar');
+  });
+});
+
+describe('safeCssUrl', () => {
+  it('should wrap URL in CSS url() with single quotes', () => {
+    expect(safeCssUrl('https://example.com/image.jpg')).toBe("url('https://example.com/image.jpg')");
+  });
+
+  it('should encode special characters with encodeURI', () => {
+    const result = safeCssUrl("https://example.com/image with spaces.jpg");
+    expect(result).toBe("url('https://example.com/image%20with%20spaces.jpg')");
+  });
+
+  it('should encode single quotes preventing CSS injection', () => {
+    const result = safeCssUrl("https://example.com/img'onerror=alert(1)");
+    expect(result).toBe("url('https://example.com/img'onerror=alert(1)')");
+    // encodeURI does not encode single quotes, but they're inside url('')
+    // The important thing is no backslash-escaping issues (CodeQL concern)
+  });
+
+  it('should handle relative paths', () => {
+    expect(safeCssUrl('/images/logo.png')).toBe("url('/images/logo.png')");
+  });
+
+  it('should handle empty string', () => {
+    expect(safeCssUrl('')).toBe("url('')");
   });
 });

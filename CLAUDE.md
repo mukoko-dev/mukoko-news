@@ -450,12 +450,15 @@ useEffect(() => {
 }, [dependency]);
 ```
 
-**Pathname Matching**: Use regex for robust route matching:
+**Pathname Matching**: Use anchored regex for robust route matching:
 ```tsx
-// Good - explicitly matches /article/{id} pattern
+// Good - anchored regex matches exactly /article/{id}, not sub-routes
+if (/^\/article\/[^/]+$/.test(pathname)) return null;
+
+// Less robust - matches sub-routes like /article/123/comments
 if (/^\/article\/[^/]+/.test(pathname)) return null;
 
-// Less robust - matches any path starting with /article/
+// Least robust - matches any path starting with /article/
 if (pathname.startsWith("/article/")) return null;
 ```
 
@@ -506,9 +509,14 @@ useEffect(() => {
 }, []); // No dependencies - never re-registers
 ```
 
-**CSS URL Escaping**: Always escape quotes in CSS `url()` values for defense in depth:
+**CSS URL Escaping**: Use `safeCssUrl()` from `@/lib/utils` for CSS `url()` values:
 ```tsx
-// Good - escapes single quotes to prevent CSS injection
+import { safeCssUrl } from "@/lib/utils";
+
+// Good - uses encodeURI for standards-compliant escaping
+style={{ backgroundImage: safeCssUrl(src) }}
+
+// Bad - manual escaping is incomplete and error-prone
 style={{ backgroundImage: `url('${src.replace(/'/g, "\\'")}')` }}
 
 // Bad - unescaped URL could break out of quotes
