@@ -17,7 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **BASE_URL Utilities**: `getArticleUrl()` and `getFullUrl()` for consistent URL generation
 - **JSON-LD XSS Prevention**: Unicode escaping for `<`, `>`, `&` in structured data
 - **Font Preconnect**: Improved font loading with preconnect hints for Google Fonts
-- **New Tests**: 87 total tests including component tests for Breadcrumb and BottomNav
+- **safeCssUrl Utility**: Centralized `encodeURI`-based CSS `url()` builder in `src/lib/utils.ts`
+- **New Tests**: 93 total tests including component tests for Breadcrumb, BottomNav, and safeCssUrl
 
 ### Fixed
 
@@ -28,10 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Stale Closure**: Pull-to-refresh uses ref pattern to avoid re-registering touch listeners on every state change
 - **Performance**: Fixed O(n²) keyword cloud rendering with memoization
 - **Theme Consistency**: Replaced hardcoded colors in onboarding modal with theme tokens
-- **Breadcrumb Keys**: Use stable keys instead of array indices for React list rendering
+- **Breadcrumb Keys**: Use stable keys (`href || label`) without index fallback
 - **Clipboard Fallback**: Added error handling and success check for legacy `document.execCommand("copy")`
-- **Bottom Nav Routing**: Improved pathname matching with regex for `/article/{id}` pattern
+- **Bottom Nav Routing**: Anchored regex `/^\/article\/[^/]+$/` to match exact article paths only
 - **IntersectionObserver**: NewsBytes observer depends on `bytes.length` to avoid unnecessary re-creation
+- **Article Page Dependencies**: Wrapped `loadArticle` in `useCallback` with proper effect dependency
+- **Pull-to-Refresh**: Moved `rafId` to ref for safer cleanup on unmount
 
 ### Changed
 
@@ -44,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **JSON-LD Escaping**: All JSON-LD content sanitized with Unicode escaping
 - **Image URL Validation**: Added `isValidImageUrl()` checks to prevent XSS via image URLs
-- **CSS Injection Prevention**: Quote-escaped URLs in CSS `url()` values (Avatar, NewsBytes)
+- **CSS Injection Prevention**: Centralized `safeCssUrl()` with `encodeURI()` for standards-compliant CSS URL escaping
 
 ---
 

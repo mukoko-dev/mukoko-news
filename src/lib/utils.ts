@@ -34,6 +34,15 @@ export function formatTimeAgo(dateString: string): string {
 }
 
 /**
+ * Build a safe CSS url() value using encodeURI for standards-compliant escaping.
+ * Prevents CSS injection by encoding all special characters rather than
+ * hand-rolling partial quote escaping.
+ */
+export function safeCssUrl(src: string): string {
+  return `url('${encodeURI(src)}')`;
+}
+
+/**
  * Validate that a URL is safe for use in image src attributes
  * Prevents XSS via javascript: URLs or other dangerous protocols
  * Supports relative URLs for local images (Next.js Image handles these)

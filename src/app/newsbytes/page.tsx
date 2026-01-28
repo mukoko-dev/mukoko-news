@@ -11,7 +11,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { api, type Article } from "@/lib/api";
-import { isValidImageUrl } from "@/lib/utils";
+import { isValidImageUrl, safeCssUrl } from "@/lib/utils";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { NewsBytesSkeleton } from "@/components/ui/discover-skeleton";
 
@@ -232,7 +232,7 @@ export default function NewsBytesPage() {
               ref={(el) => setItemRef(el, index)}
               className="relative w-full h-full snap-start snap-always"
               style={{
-                backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), url('${(byte.image_url ?? "").replace(/'/g, "\\'")}')`,
+                backgroundImage: `linear-gradient(135deg, rgba(0,0,0,0.3), rgba(0,0,0,0.7)), ${safeCssUrl(byte.image_url ?? "")}`,
                 backgroundSize: "cover",
                 backgroundPosition: "center",
               }}

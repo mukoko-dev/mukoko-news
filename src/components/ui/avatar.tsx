@@ -1,21 +1,10 @@
-import { isValidImageUrl } from "@/lib/utils";
+import { isValidImageUrl, safeCssUrl } from "@/lib/utils";
 
 interface AvatarProps {
   initials?: string;
   src?: string;
   size?: "sm" | "md" | "lg";
   className?: string;
-}
-
-function buildBackgroundImage(src: string): string {
-  try {
-    // Normalize the URL; if it's relative, resolve it against the current origin
-    const url = new URL(src, window.location.origin).toString();
-    return `url('${encodeURI(url)}')`;
-  } catch {
-    // Fallback to a safe, encoded version of the original src
-    return `url('${encodeURI(src)}')`;
-  }
 }
 
 export function Avatar({ initials, src, size = "md", className = "" }: AvatarProps) {
@@ -30,7 +19,7 @@ export function Avatar({ initials, src, size = "md", className = "" }: AvatarPro
     return (
       <div
         className={`${sizes[size]} rounded-full bg-cover bg-center ${className}`}
-        style={{ backgroundImage: buildBackgroundImage(src) }}
+        style={{ backgroundImage: safeCssUrl(src) }}
       />
     );
   }

@@ -133,10 +133,10 @@ All API endpoints (`https://mukoko-news-backend.nyuchi.workers.dev`) are protect
 
 #### CSS URL Injection Prevention
 
-- **Quote Escaping**: All CSS `url()` values escape single quotes (`'` → `\'`)
+- **Standards-compliant Escaping**: All CSS `url()` values use `encodeURI()` via `safeCssUrl()` utility
 - **Defense in Depth**: Applied even when URLs are already validated by `isValidImageUrl()`
+- **Implementation**: `safeCssUrl()` in `src/lib/utils.ts`
 - **Components**: Avatar (`src/components/ui/avatar.tsx`), NewsBytes (`src/app/newsbytes/page.tsx`)
-- **Pattern**: `url('${src.replace(/'/g, "\\'")}')`
 
 ### Deployment Security
 

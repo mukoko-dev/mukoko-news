@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -33,13 +33,7 @@ export default function ArticleDetailPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
 
-  useEffect(() => {
-    if (articleId) {
-      loadArticle();
-    }
-  }, [articleId]);
-
-  const loadArticle = async () => {
+  const loadArticle = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -59,7 +53,13 @@ export default function ArticleDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [articleId]);
+
+  useEffect(() => {
+    if (articleId) {
+      loadArticle();
+    }
+  }, [articleId, loadArticle]);
 
   const handleLike = () => {
     setIsLiked(!isLiked);
