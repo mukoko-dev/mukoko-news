@@ -976,6 +976,208 @@ app.get("/api/feeds/personalized/explain", async (c) => {
   }
 });
 
+// Sectioned feed endpoint - returns top stories with clustering, your news, and by category
+// This endpoint powers the redesigned home feed with Google News-style story clustering
+app.get("/api/feeds/sectioned", async (c) => {
+  try {
+    const countriesParam = c.req.query("countries");
+    const countries = countriesParam ? countriesParam.split(",").filter(c => c.trim()) : null;
+    const categoriesParam = c.req.query("categories");
+    const preferredCategories = categoriesParam ? categoriesParam.split(",").filter(c => c.trim()) : [];
+
+    // Helper function to normalize title for comparison
+    const normalizeTitle = (title: string): string[] => {
+      return title
+        .toLowerCase()
+        .replace(/[^\w\s]/g, '')
+        .split(/\s+/)
+        .filter(word => word.length > 3 && !['the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'will', 'been', 'after', 'says', 'said'].includes(word));
+    };
+
+    // Helper function to calculate title similarity (Jaccard index)
+    const titleSimilarity = (words1: string[], words2: string[]): number => {
+      if (words1.length === 0 || words2.length === 0) return 0;
+      const set1 = new Set(words1);
+      const set2 = new Set(words2);
+      const intersection = [...set1].filter(w => set2.has(w)).length;
+      const union = new Set([...set1, ...set2]).size;
+      return intersection / union;
+    };
+
+    // Build country filter clause
+    let countryClause = '';
+    const countryParams: string[] = [];
+    if (countries && countries.length > 0) {
+      const placeholders = countries.map(() => '?').join(',');
+      countryClause = ` AND country_id IN (${placeholders})`;
+      countryParams.push(...countries);
+    }
+
+    // 1. FETCH TOP STORIES (trending from last 48 hours, will cluster these)
+    const topStoriesQuery = `
+      SELECT id, title, slug, description, content_snippet, author, source, source_id,
+             published_at, image_url, original_url, category_id, country_id, view_count,
+             like_count, bookmark_count
+      FROM articles
+      WHERE status = 'published'
+        AND published_at > datetime('now', '-48 hours')
+        ${countryClause}
+      ORDER BY (view_count + like_count * 3 + bookmark_count * 2) DESC, published_at DESC
+      LIMIT 30
+    `;
+
+    const topStoriesResult = await c.env.DB.prepare(topStoriesQuery)
+      .bind(...countryParams).all();
+
+    const topStoriesRaw = (topStoriesResult.results || []) as any[];
+
+    // Cluster similar stories together
+    interface StoryCluster {
+      id: string;
+      primaryArticle: any;
+      relatedArticles: any[];
+      articleCount: number;
+    }
+
+    const clusters: StoryCluster[] = [];
+    const clusteredIds = new Set<string>();
+
+    for (const article of topStoriesRaw) {
+      if (clusteredIds.has(article.id)) continue;
+
+      const articleWords = normalizeTitle(article.title);
+      const cluster: StoryCluster = {
+        id: `cluster-${article.id}`,
+        primaryArticle: article,
+        relatedArticles: [],
+        articleCount: 1,
+      };
+
+      clusteredIds.add(article.id);
+
+      // Find related articles (same story from different sources)
+      for (const other of topStoriesRaw) {
+        if (clusteredIds.has(other.id)) continue;
+        if (article.source === other.source) continue; // Must be different sources
+
+        const otherWords = normalizeTitle(other.title);
+        const similarity = titleSimilarity(articleWords, otherWords);
+
+        // If titles are >40% similar, consider them the same story
+        if (similarity > 0.4) {
+          cluster.relatedArticles.push(other);
+          cluster.articleCount++;
+          clusteredIds.add(other.id);
+
+          // Limit related articles per cluster
+          if (cluster.relatedArticles.length >= 4) break;
+        }
+      }
+
+      clusters.push(cluster);
+
+      // Limit total clusters
+      if (clusters.length >= 10) break;
+    }
+
+    // 2. FETCH YOUR NEWS (latest articles matching preferred categories)
+    let yourNews: any[] = [];
+    if (preferredCategories.length > 0) {
+      const catPlaceholders = preferredCategories.map(() => '?').join(',');
+      const yourNewsQuery = `
+        SELECT id, title, slug, description, content_snippet, author, source, source_id,
+               published_at, image_url, original_url, category_id, country_id, view_count,
+               like_count, bookmark_count
+        FROM articles
+        WHERE status = 'published'
+          AND category_id IN (${catPlaceholders})
+          ${countryClause}
+        ORDER BY published_at DESC
+        LIMIT 15
+      `;
+
+      const yourNewsResult = await c.env.DB.prepare(yourNewsQuery)
+        .bind(...preferredCategories, ...countryParams).all();
+
+      yourNews = (yourNewsResult.results || []) as any[];
+    }
+
+    // 3. FETCH BY CATEGORY (articles grouped by preferred categories)
+    interface CategorySection {
+      id: string;
+      name: string;
+      articles: any[];
+    }
+
+    const categorySections: CategorySection[] = [];
+
+    // Get category names
+    const allCategories = preferredCategories.length > 0 ? preferredCategories : ['politics', 'economy', 'technology', 'sports'];
+
+    for (const categoryId of allCategories.slice(0, 5)) { // Limit to 5 categories
+      const categoryQuery = `
+        SELECT id, title, slug, description, content_snippet, author, source, source_id,
+               published_at, image_url, original_url, category_id, country_id, view_count,
+               like_count, bookmark_count
+        FROM articles
+        WHERE status = 'published'
+          AND category_id = ?
+          ${countryClause}
+        ORDER BY published_at DESC
+        LIMIT 8
+      `;
+
+      const categoryResult = await c.env.DB.prepare(categoryQuery)
+        .bind(categoryId, ...countryParams).all();
+
+      const articles = (categoryResult.results || []) as any[];
+
+      if (articles.length > 0) {
+        // Get category name from first article or use ID
+        const categoryName = categoryId.charAt(0).toUpperCase() + categoryId.slice(1);
+
+        categorySections.push({
+          id: categoryId,
+          name: categoryName,
+          articles,
+        });
+      }
+    }
+
+    // 4. FETCH LATEST (all latest articles, sorted by date - newest first)
+    const latestQuery = `
+      SELECT id, title, slug, description, content_snippet, author, source, source_id,
+             published_at, image_url, original_url, category_id, country_id, view_count,
+             like_count, bookmark_count
+      FROM articles
+      WHERE status = 'published'
+        ${countryClause}
+      ORDER BY published_at DESC
+      LIMIT 20
+    `;
+
+    const latestResult = await c.env.DB.prepare(latestQuery)
+      .bind(...countryParams).all();
+
+    const latestArticles = (latestResult.results || []) as any[];
+
+    return c.json({
+      topStories: clusters,
+      yourNews,
+      byCategory: categorySections,
+      latest: latestArticles,
+      countries: countries || undefined,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error("Error fetching sectioned feed:", error?.message || error);
+    return c.json({
+      error: "Failed to fetch sectioned feed",
+      details: error?.message || String(error)
+    }, 500);
+  }
+});
+
 // Debug endpoint to test single RSS feed fetch
 app.get("/api/test-feed", async (c) => {
   const { XMLParser } = await import('fast-xml-parser');
