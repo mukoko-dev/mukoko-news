@@ -20,6 +20,31 @@ interface Article {
   isSaved?: boolean;
 }
 
+// Story cluster - groups related articles from different sources
+interface StoryCluster {
+  id: string;
+  primaryArticle: Article;
+  relatedArticles: Article[];
+  articleCount: number;
+}
+
+// Category section with articles
+interface CategorySection {
+  id: string;
+  name: string;
+  articles: Article[];
+}
+
+// Sectioned feed response
+interface SectionedFeedResponse {
+  topStories: StoryCluster[];
+  yourNews: Article[];
+  byCategory: CategorySection[];
+  latest: Article[];
+  countries?: string[];
+  timestamp: string;
+}
+
 interface ArticlesResponse {
   articles: Article[];
   pagination?: {
@@ -82,16 +107,31 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
 export const api = {
   // Articles (uses /api/feeds endpoint)
-  getArticles: (params?: { limit?: number; page?: number; category?: string; country?: string; countries?: string[] }) => {
+  getArticles: (params?: { limit?: number; page?: number; category?: string; country?: string; countries?: string[]; sort?: 'latest' | 'trending' | 'popular' }) => {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.page) searchParams.set('page', String(params.page));
     if (params?.category) searchParams.set('category', params.category);
     if (params?.country) searchParams.set('countries', params.country);
     if (params?.countries) searchParams.set('countries', params.countries.join(','));
+    if (params?.sort) searchParams.set('sort', params.sort);
 
     const query = searchParams.toString();
     return fetchAPI<ArticlesResponse>(`/api/feeds${query ? `?${query}` : ''}`);
+  },
+
+  // Sectioned feed (top stories, your news, by category) with story clustering
+  getSectionedFeed: (params?: { countries?: string[]; categories?: string[] }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.countries && params.countries.length > 0) {
+      searchParams.set('countries', params.countries.join(','));
+    }
+    if (params?.categories && params.categories.length > 0) {
+      searchParams.set('categories', params.categories.join(','));
+    }
+
+    const query = searchParams.toString();
+    return fetchAPI<SectionedFeedResponse>(`/api/feeds/sectioned${query ? `?${query}` : ''}`);
   },
 
   getArticle: (id: string) => {
@@ -247,4 +287,4 @@ export const api = {
   },
 };
 
-export type { Article, ArticlesResponse, Category };
+export type { Article, ArticlesResponse, Category, StoryCluster, CategorySection, SectionedFeedResponse };
