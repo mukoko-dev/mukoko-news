@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { ThemeProvider } from '@/components/theme-provider';
 import { PreferencesProvider } from '@/contexts/preferences-context';
@@ -11,17 +11,91 @@ import { OrganizationJsonLd } from '@/components/ui/json-ld';
 // Fonts are loaded via CSS @import in globals.css for better reliability
 // This avoids build failures when Google Fonts API is unreachable
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'https://news.mukoko.com';
+
 export const metadata: Metadata = {
-  title: 'Mukoko News - Africa\'s News Hub',
-  description: 'Pan-African digital news aggregation platform. Your trusted source for news from Zimbabwe and across Africa.',
-  keywords: ['news', 'Africa', 'Zimbabwe', 'pan-African', 'digital news'],
-  authors: [{ name: 'Nyuchi' }],
-  openGraph: {
-    title: 'Mukoko News',
-    description: 'Pan-African digital news aggregation platform',
-    type: 'website',
-    locale: 'en_US',
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: 'Mukoko News - Pan-African News Hub',
+    template: '%s | Mukoko News',
   },
+  description: 'Pan-African digital news aggregation platform. Your trusted source for breaking news, top stories, and in-depth coverage from Zimbabwe and 16 African countries.',
+  keywords: [
+    'African news',
+    'Pan-African news',
+    'Zimbabwe news',
+    'Africa headlines',
+    'breaking news Africa',
+    'South Africa news',
+    'Kenya news',
+    'Nigeria news',
+    'African politics',
+    'African economy',
+    'news aggregator',
+  ],
+  authors: [{ name: 'Nyuchi', url: 'https://nyuchi.com' }],
+  creator: 'Nyuchi',
+  publisher: 'Mukoko News',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  openGraph: {
+    title: 'Mukoko News - Pan-African News Hub',
+    description: 'Your trusted source for breaking news and top stories from across Africa. Coverage from Zimbabwe, South Africa, Kenya, Nigeria, and 12 more countries.',
+    url: BASE_URL,
+    siteName: 'Mukoko News',
+    images: [
+      {
+        url: '/mukoko-icon-dark.png',
+        width: 512,
+        height: 512,
+        alt: 'Mukoko News - Pan-African News Hub',
+      },
+    ],
+    locale: 'en_US',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Mukoko News - Pan-African News Hub',
+    description: 'Your trusted source for breaking news and top stories from across Africa.',
+    images: ['/mukoko-icon-dark.png'],
+    creator: '@mukokonews',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  alternates: {
+    canonical: BASE_URL,
+  },
+  category: 'news',
+  classification: 'News Aggregator',
+  referrer: 'origin-when-cross-origin',
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
+  manifest: '/manifest.json',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#FAF9F5' },
+    { media: '(prefers-color-scheme: dark)', color: '#0a0a0a' },
+  ],
 };
 
 export default function RootLayout({
