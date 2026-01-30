@@ -34,6 +34,8 @@ import { UserBehaviorDO } from "./services/UserBehaviorDO.js";
 import { RealtimeCountersDO } from "./services/RealtimeCountersDO.js";
 // Unified Auth Provider Service (Single Auth Wrapper with RBAC)
 import { AuthProviderService, UserRole } from "./services/AuthProviderService.js";
+// Story clustering for feed sections
+import { normalizeTitle, titleSimilarity, clusterArticles, STOP_WORDS } from "./services/StoryClusteringService.js";
 
 // Import admin interface
 import { getAdminHTML, getLoginHTML } from "./admin/index.js";
@@ -1011,11 +1013,7 @@ const VALID_CATEGORIES = new Set([
   'harare', 'agriculture', 'crime', 'environment'
 ]);
 
-// Stop words for title normalization
-const STOP_WORDS = new Set([
-  'the', 'and', 'for', 'with', 'from', 'that', 'this',
-  'have', 'will', 'been', 'after', 'says', 'said'
-]);
+// STOP_WORDS imported from StoryClusteringService
 
 // Sectioned feed endpoint - returns top stories with clustering, your news, and by category
 // This endpoint powers the redesigned home feed with Google News-style story clustering
@@ -1038,24 +1036,8 @@ app.get("/api/feeds/sectioned", async (c) => {
           .filter(cat => VALID_CATEGORIES.has(cat))
       : [];
 
-    // Helper function to normalize title for comparison
-    const normalizeTitle = (title: string): string[] => {
-      return title
-        .toLowerCase()
-        .replace(/[^\w\s]/g, '')
-        .split(/\s+/)
-        .filter(word => word.length > 3 && !STOP_WORDS.has(word));
-    };
-
-    // Helper function to calculate title similarity (Jaccard index)
-    const titleSimilarity = (words1: string[], words2: string[]): number => {
-      if (words1.length === 0 || words2.length === 0) return 0;
-      const set1 = new Set(words1);
-      const set2 = new Set(words2);
-      const intersection = [...set1].filter(w => set2.has(w)).length;
-      const union = new Set([...set1, ...set2]).size;
-      return intersection / union;
-    };
+    // normalizeTitle and titleSimilarity imported from StoryClusteringService
+    // with DoS prevention (title length limit: 500 chars, word limit: 50)
 
     // Build country filter clause
     let countryClause = '';
@@ -1146,7 +1128,7 @@ app.get("/api/feeds/sectioned", async (c) => {
       if (clusters.length >= CLUSTERING_CONFIG.MAX_CLUSTERS) break;
     }
 
-    // Phase 2: Fetch category-based content in parallel
+    // Phase 2: Fetch category-based content with batch query (fixes N+1 pattern)
     let yourNews: any[] = [];
     const categorySections: { id: string; name: string; articles: any[] }[] = [];
 
@@ -1156,23 +1138,29 @@ app.get("/api/feeds/sectioned", async (c) => {
       : ['politics', 'economy', 'technology', 'sports'];
     const categoriesToFetch = allCategories.slice(0, CLUSTERING_CONFIG.MAX_CATEGORIES);
 
-    // Build all category queries
-    const categoryQueries = categoriesToFetch.map(categoryId => {
-      const query = `
+    // PERFORMANCE: Single batch query with IN clause instead of multiple queries
+    // Uses window function ROW_NUMBER() to limit per-category results
+    const categoryPlaceholders = categoriesToFetch.map(() => '?').join(',');
+    const batchCategoryQuery = `
+      WITH ranked_articles AS (
         SELECT id, title, slug, description, content_snippet, author, source, source_id,
                published_at, image_url, original_url, category_id, country_id, view_count,
-               like_count, bookmark_count
+               like_count, bookmark_count,
+               ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY published_at DESC) as rn
         FROM articles
         WHERE status = 'published'
-          AND category_id = ?
+          AND category_id IN (${categoryPlaceholders})
           ${countryClause}
-        ORDER BY published_at DESC
-        LIMIT ${CLUSTERING_CONFIG.CATEGORY_LIMIT}
-      `;
-      return c.env.DB.prepare(query).bind(categoryId, ...countryParams).all();
-    });
+      )
+      SELECT id, title, slug, description, content_snippet, author, source, source_id,
+             published_at, image_url, original_url, category_id, country_id, view_count,
+             like_count, bookmark_count
+      FROM ranked_articles
+      WHERE rn <= ${CLUSTERING_CONFIG.CATEGORY_LIMIT}
+      ORDER BY category_id, published_at DESC
+    `;
 
-    // Add "Your News" query if user has preferences
+    // Build "Your News" query for user preferences
     let yourNewsPromise: Promise<any> | null = null;
     if (preferredCategories.length > 0) {
       const catPlaceholders = preferredCategories.map(() => '?').join(',');
@@ -1191,12 +1179,24 @@ app.get("/api/feeds/sectioned", async (c) => {
         .bind(...preferredCategories, ...countryParams).all();
     }
 
-    // Execute all category queries in parallel
-    const categoryResults = await Promise.all(categoryQueries);
+    // Execute batch category query
+    const categoryResult = await c.env.DB.prepare(batchCategoryQuery)
+      .bind(...categoriesToFetch, ...countryParams).all();
+    const allCategoryArticles = (categoryResult.results || []) as any[];
 
-    // Process category results
-    categoriesToFetch.forEach((categoryId, index) => {
-      const articles = (categoryResults[index].results || []) as any[];
+    // Group results by category
+    const articlesByCategory = new Map<string, any[]>();
+    for (const article of allCategoryArticles) {
+      const catId = article.category_id;
+      if (!articlesByCategory.has(catId)) {
+        articlesByCategory.set(catId, []);
+      }
+      articlesByCategory.get(catId)!.push(article);
+    }
+
+    // Build category sections in requested order
+    for (const categoryId of categoriesToFetch) {
+      const articles = articlesByCategory.get(categoryId) || [];
       if (articles.length > 0) {
         categorySections.push({
           id: categoryId,
@@ -1204,7 +1204,7 @@ app.get("/api/feeds/sectioned", async (c) => {
           articles,
         });
       }
-    });
+    }
 
     // Get "Your News" result if applicable
     if (yourNewsPromise) {

@@ -988,6 +988,12 @@ CREATE INDEX IF NOT EXISTS idx_articles_reading_time ON articles(reading_time);
 CREATE INDEX IF NOT EXISTS idx_articles_country ON articles(country_id);
 CREATE INDEX IF NOT EXISTS idx_articles_country_published ON articles(country_id, published_at DESC);
 CREATE INDEX IF NOT EXISTS idx_articles_country_category ON articles(country_id, category_id);
+-- Feed performance indexes (sectioned feed queries)
+CREATE INDEX IF NOT EXISTS idx_articles_status_published ON articles(status, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_status_country_published ON articles(status, country_id, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_status_category_published ON articles(status, category_id, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_status_country_category_published ON articles(status, country_id, category_id, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_articles_engagement ON articles(status, published_at DESC, view_count, like_count, bookmark_count) WHERE status = 'published';
 
 -- Authors
 CREATE INDEX IF NOT EXISTS idx_authors_normalized_name ON authors(normalized_name);

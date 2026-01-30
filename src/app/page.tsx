@@ -37,6 +37,8 @@ export default function FeedPage() {
   const touchStartY = useRef(0);
   const isPulling = useRef(false);
   const rafIdRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
+  const lastRefreshTimeRef = useRef(0);
 
   // Stable sorted country key - prevents unnecessary refetch when countries are reordered
   const countryKey = useMemo(
@@ -102,7 +104,10 @@ export default function FeedPage() {
 
   // Pull-to-refresh for mobile
   useEffect(() => {
+    // Track mount status for cleanup safety
+    isMountedRef.current = true;
     let currentPullDistance = 0;
+    const DEBOUNCE_MS = 2000; // 2 second debounce between refreshes
 
     const handleTouchStart = (e: TouchEvent) => {
       if (window.scrollY === 0) {
@@ -125,13 +130,22 @@ export default function FeedPage() {
           cancelAnimationFrame(rafIdRef.current);
         }
         rafIdRef.current = requestAnimationFrame(() => {
-          setPullDistance(distance);
+          if (isMountedRef.current) {
+            setPullDistance(distance);
+          }
         });
       }
     };
 
     const handleTouchEnd = () => {
-      if (currentPullDistance > 80) {
+      const now = Date.now();
+      // Guard: only refresh if mounted and debounce period has passed
+      if (
+        currentPullDistance > 80 &&
+        isMountedRef.current &&
+        now - lastRefreshTimeRef.current > DEBOUNCE_MS
+      ) {
+        lastRefreshTimeRef.current = now;
         handleRefreshRef.current();
       }
       currentPullDistance = 0;
@@ -139,7 +153,9 @@ export default function FeedPage() {
         cancelAnimationFrame(rafIdRef.current);
       }
       rafIdRef.current = requestAnimationFrame(() => {
-        setPullDistance(0);
+        if (isMountedRef.current) {
+          setPullDistance(0);
+        }
       });
       isPulling.current = false;
     };
@@ -149,6 +165,7 @@ export default function FeedPage() {
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
 
     return () => {
+      isMountedRef.current = false;
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
