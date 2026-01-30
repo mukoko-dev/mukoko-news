@@ -4,23 +4,22 @@ import { logger } from "hono/logger";
 
 // Import all business logic services - backend does the heavy lifting
 import { D1Service } from "../database/D1Service.js";
-import { D1ConfigService } from "./services/D1ConfigService.js";
+// D1ConfigService removed - was instantiated but never used
 import { D1CacheService } from "./services/D1CacheService.js";
 import { AnalyticsEngineService } from "./services/AnalyticsEngineService.js";
 import { ArticleService } from "./services/ArticleService.js";
 import { ArticleAIService } from "./services/ArticleAIService.js";
-import { ContentProcessingPipeline } from "./services/ContentProcessingPipeline.js";
+// ContentProcessingPipeline removed - was instantiated but never used (SimpleRSSService is the active pipeline)
 import { AuthorProfileService } from "./services/AuthorProfileService.js";
 import { NewsSourceService } from "./services/NewsSourceService.js";
 import { NewsSourceManager } from "./services/NewsSourceManager.js";
 import { SimpleRSSService } from "./services/SimpleRSSService.js";
 import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
-// OIDC Auth - using id.mukoko.com for authentication
-import { OIDCAuthService } from "./services/OIDCAuthService.js";
+// OIDC Auth - using id.mukoko.com for authentication (OIDCAuthService used internally by oidcAuth middleware)
 import { oidcAuth, requireAuth, requireAdmin as requireAdminRole, getCurrentUser, getCurrentUserId, isAuthenticated } from "./middleware/oidcAuth.js";
 // API Key Auth - for frontend (Vercel) to backend authentication
 import { apiAuth, requireApiKey } from "./middleware/apiAuth.js";
-import { EmailService } from "./services/EmailService.js";
+// EmailService removed - was imported but never used
 // Additional enhancement services
 import { CategoryManager } from "./services/CategoryManager.js";
 import { ObservabilityService } from "./services/ObservabilityService.js";
@@ -136,7 +135,6 @@ app.use("/api/admin/*", async (c, next) => {
 // Initialize all business services
 function initializeServices(env: Bindings) {
   const d1Service = new D1Service(env.DB);
-  const configService = new D1ConfigService(env.DB);
   const cacheService = new D1CacheService(env.DB);
   const analyticsService = new AnalyticsEngineService({
     NEWS_ANALYTICS: env.NEWS_ANALYTICS,
@@ -146,7 +144,6 @@ function initializeServices(env: Bindings) {
     PERFORMANCE_ANALYTICS: env.PERFORMANCE_ANALYTICS
   });
   const articleAIService = new ArticleAIService(env.AI, null, d1Service); // Vectorize disabled for now
-  const contentPipeline = new ContentProcessingPipeline(d1Service, articleAIService);
   const authorProfileService = new AuthorProfileService(d1Service);
   const articleService = new ArticleService(env.DB); // Fix: ArticleService takes database directly
   const newsSourceService = new NewsSourceService(); // Fix: NewsSourceService takes no parameters
@@ -173,11 +170,9 @@ function initializeServices(env: Bindings) {
 
   return {
     d1Service,
-    configService,
     cacheService,
     analyticsService,
     articleAIService,
-    contentPipeline,
     authorProfileService,
     articleService,
     newsSourceService,
