@@ -378,63 +378,145 @@ export class CategoryManager {
   // CONTENT CLASSIFICATION
   // ===============================================================
 
+  // Cached category keywords for performance
+  private categoryKeywordsCache: Map<string, string[]> | null = null;
+  private keywordsCacheTime = 0;
+  private static readonly CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private static readonly MIN_CONFIDENCE_SCORE = 2;
+  private static readonly SOURCE_CATEGORY_BOOST = 3;
+
   /**
-   * Classify content into categories using keywords and ML
+   * Escape special regex characters in a string
    */
-  async classifyContent(title: string, description?: string): Promise<string> {
+  private escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  /**
+   * Load and cache category keywords from database
+   */
+  private async loadCategoryKeywords(): Promise<Map<string, string[]>> {
+    const now = Date.now();
+
+    // Return cached keywords if still valid
+    if (this.categoryKeywordsCache && (now - this.keywordsCacheTime) < CategoryManager.CACHE_TTL_MS) {
+      return this.categoryKeywordsCache;
+    }
+
+    const result = await this.db
+      .prepare(`
+        SELECT id, keywords
+        FROM categories
+        WHERE keywords IS NOT NULL AND keywords != '' AND keywords != '[]'
+        ORDER BY sort_order
+      `)
+      .all();
+
+    const categories = result.results as Array<{ id: string; keywords: string }>;
+    const keywordsMap = new Map<string, string[]>();
+
+    for (const category of categories) {
+      if (category.id === 'all') continue;
+
+      try {
+        let keywords: string[] = [];
+        if (category.keywords.startsWith('[')) {
+          keywords = JSON.parse(category.keywords).map((k: string) => k.toLowerCase().trim());
+        } else {
+          keywords = category.keywords.split(',').map(k => k.trim().toLowerCase());
+        }
+        keywordsMap.set(category.id, keywords.filter(k => k.length > 0));
+      } catch (parseError) {
+        console.warn(`[CategoryManager] Error parsing keywords for category ${category.id}:`, parseError);
+      }
+    }
+
+    this.categoryKeywordsCache = keywordsMap;
+    this.keywordsCacheTime = now;
+
+    return keywordsMap;
+  }
+
+  /**
+   * Classify content into categories using word-boundary keyword matching.
+   *
+   * Improvements over simple substring matching:
+   * 1. Uses word boundaries to prevent false positives (e.g., "election" won't match "collection")
+   * 2. Accepts source's configured category as a hint/boost
+   * 3. Requires minimum confidence score to avoid weak matches
+   * 4. Title matches get extra weight
+   *
+   * @param title - Article title (required)
+   * @param description - Article description (optional)
+   * @param sourceCategory - RSS source's configured category (optional hint)
+   * @returns Category ID
+   */
+  async classifyContent(title: string, description?: string, sourceCategory?: string): Promise<string> {
     try {
-      // Get all categories with keywords
-      const result = await this.db
-        .prepare(`
-          SELECT id, name, keywords
-          FROM categories
-          WHERE keywords IS NOT NULL AND keywords != '' AND keywords != '[]'
-          ORDER BY sort_order
-        `)
-        .all();
+      const categoryKeywords = await this.loadCategoryKeywords();
+      const text = `${title} ${description || ''}`.toLowerCase();
+      const titleLower = title.toLowerCase();
 
-      const categories = result.results as Array<{
-        id: string;
-        name: string;
-        keywords: string;
-      }>;
+      const scores = new Map<string, number>();
 
-      const content = `${title} ${description || ''}`.toLowerCase();
+      for (const [categoryId, keywords] of categoryKeywords) {
+        if (categoryId === 'general') continue;
 
-      let bestMatch = 'general';
-      let bestScore = 0;
+        let score = 0;
 
-      for (const category of categories) {
-        if (category.id === 'all' || category.id === 'general') continue;
+        for (const keyword of keywords) {
+          // Use word boundary matching to prevent false positives
+          const regex = new RegExp(`\\b${this.escapeRegex(keyword)}\\b`, 'i');
 
-        try {
-          // Parse JSON keywords array
-          let keywords: string[] = [];
-          if (category.keywords.startsWith('[')) {
-            keywords = JSON.parse(category.keywords).map((k: string) => k.toLowerCase());
-          } else {
-            // Fallback to comma-separated for backward compatibility
-            keywords = category.keywords.split(',').map(k => k.trim().toLowerCase());
-          }
+          if (regex.test(text)) {
+            // Base score for keyword match
+            score += keyword.length > 5 ? 2 : 1;
 
-          const score = keywords.reduce((acc, keyword) => {
-            if (content.includes(keyword)) {
-              return acc + (keyword.length > 3 ? 2 : 1); // Weight longer keywords higher
+            // Bonus for keyword in title (more relevant)
+            if (regex.test(titleLower)) {
+              score += 0.5;
             }
-            return acc;
-          }, 0);
-
-          if (score > bestScore) {
-            bestScore = score;
-            bestMatch = category.id;
           }
-        } catch (parseError) {
-          console.warn(`[CategoryManager] Error parsing keywords for category ${category.id}:`, parseError);
+        }
+
+        // Apply source category boost if this matches
+        if (sourceCategory && categoryId === sourceCategory.toLowerCase() && score > 0) {
+          score += CategoryManager.SOURCE_CATEGORY_BOOST;
+        }
+
+        if (score > 0) {
+          scores.set(categoryId, score);
         }
       }
 
-      console.log(`[CategoryManager] Classified "${title.substring(0, 50)}..." as '${bestMatch}' (score: ${bestScore})`);
-      return bestMatch;
+      // Find best match
+      let bestMatch: { categoryId: string; score: number } | null = null;
+      for (const [categoryId, score] of scores) {
+        if (!bestMatch || score > bestMatch.score) {
+          bestMatch = { categoryId, score };
+        }
+      }
+
+      // Return best match if confident enough
+      if (bestMatch) {
+        const hasSourceHint = sourceCategory && bestMatch.categoryId === sourceCategory.toLowerCase();
+        if (bestMatch.score >= CategoryManager.MIN_CONFIDENCE_SCORE || hasSourceHint) {
+          console.log(`[CategoryManager] Classified "${title.substring(0, 40)}..." as '${bestMatch.categoryId}' (score: ${bestMatch.score.toFixed(1)})`);
+          return bestMatch.categoryId;
+        }
+      }
+
+      // Fall back to source category if no confident keyword match
+      if (sourceCategory && sourceCategory !== 'general') {
+        const normalizedSourceCat = sourceCategory.toLowerCase();
+        if (categoryKeywords.has(normalizedSourceCat)) {
+          console.log(`[CategoryManager] Using source category '${normalizedSourceCat}' as fallback for "${title.substring(0, 40)}..."`);
+          return normalizedSourceCat;
+        }
+      }
+
+      console.log(`[CategoryManager] No confident match for "${title.substring(0, 40)}...", using 'general'`);
+      return 'general';
     } catch (error) {
       console.error('[CategoryManager] Error classifying content:', error);
       return 'general';
