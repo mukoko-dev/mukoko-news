@@ -4,14 +4,15 @@
  * A clean, minimal implementation that focuses on:
  * 1. Fetching RSS feeds reliably
  * 2. Extracting images from feeds
- * 3. Database-driven category assignment
- * 4. Database-driven keyword extraction
+ * 3. Parsing and storing articles
  *
+ * Categorization is delegated to CategoryManager (single source of truth).
  * All configuration is loaded from D1 database - no hardcoded values.
  */
 
 import { XMLParser } from 'fast-xml-parser';
 import TurndownService from 'turndown';
+import { CategoryManager } from './CategoryManager';
 
 // Initialize Turndown for HTML to Markdown conversion
 const turndownService = new TurndownService({
@@ -105,15 +106,16 @@ interface Article {
 export class SimpleRSSService {
   private db: D1Database;
   private parser: XMLParser;
+  private categoryManager: CategoryManager;
 
-  // Cached configuration from database
+  // Cached configuration from database (for RSS-specific settings)
   private trustedDomains: Set<string> = new Set();
-  private categoryKeywords: Map<string, string[]> = new Map();
   private extractionKeywords: string[] = [];
   private configLoaded = false;
 
   constructor(db: D1Database) {
     this.db = db;
+    this.categoryManager = new CategoryManager(db);
 
     // Configure XML parser with simple settings
     this.parser = new XMLParser({
@@ -124,8 +126,9 @@ export class SimpleRSSService {
   }
 
   /**
-   * Load configuration from database (trusted domains, keywords, categories)
+   * Load configuration from database (trusted domains, extraction keywords)
    * Called once at the start of feed refresh
+   * Note: Category keywords are managed by CategoryManager
    */
   private async loadConfiguration(): Promise<void> {
     if (this.configLoaded) return;
@@ -146,29 +149,7 @@ export class SimpleRSSService {
         console.log(`[SIMPLE-RSS] Loaded ${this.trustedDomains.size} trusted image domains`);
       }
 
-      // Load category keywords for assignment
-      const categoriesResult = await this.db
-        .prepare('SELECT id, keywords FROM categories WHERE enabled = 1')
-        .all();
-
-      if (categoriesResult.results) {
-        for (const cat of categoriesResult.results as any[]) {
-          if (cat.keywords) {
-            try {
-              const keywords = typeof cat.keywords === 'string'
-                ? JSON.parse(cat.keywords)
-                : cat.keywords;
-              if (Array.isArray(keywords)) {
-                this.categoryKeywords.set(cat.id, keywords.map((k: string) => k.toLowerCase()));
-              }
-            } catch {
-              // If keywords is a comma-separated string
-              this.categoryKeywords.set(cat.id, cat.keywords.split(',').map((k: string) => k.trim().toLowerCase()));
-            }
-          }
-        }
-        console.log(`[SIMPLE-RSS] Loaded keywords for ${this.categoryKeywords.size} categories`);
-      }
+      // Note: Category keywords are now managed by CategoryManager (single source of truth)
 
       // Load extraction keywords from countries
       const countriesResult = await this.db
@@ -376,8 +357,10 @@ export class SimpleRSSService {
       }
 
       // Convert items to articles (limit to 20 most recent)
-      const articles = items.slice(0, 20).map(item => this.parseItem(item, source));
-      const validArticles = articles.filter(a => a !== null) as Article[];
+      // parseItem is async due to CategoryManager delegation
+      const articlePromises = items.slice(0, 20).map(item => this.parseItem(item, source));
+      const articles = await Promise.all(articlePromises);
+      const validArticles = articles.filter((a): a is Article => a !== null);
 
       console.log(`[SIMPLE-RSS] ${source.name}: Parsed ${validArticles.length} valid articles from ${items.length} items`);
 
@@ -394,8 +377,9 @@ export class SimpleRSSService {
 
   /**
    * Parse a single RSS item into an Article
+   * Note: This is async because categorization is delegated to CategoryManager
    */
-  private parseItem(item: any, source: RSSSource): Article | null {
+  private async parseItem(item: any, source: RSSSource): Promise<Article | null> {
     try {
       // Extract title (required)
       const title = this.extractText(item.title);
@@ -445,8 +429,8 @@ export class SimpleRSSService {
       // Generate RSS GUID for deduplication
       const guid = this.extractText(item.guid) || link;
 
-      // Assign category based on title, description, and source's configured category
-      const category = this.assignCategory(title, description || '', source.category);
+      // Delegate categorization to CategoryManager (single source of truth)
+      const category = await this.categoryManager.classifyContent(title, description || '', source.category);
 
       // Generate slug from title
       const slug = this.generateSlug(title);
@@ -635,95 +619,8 @@ export class SimpleRSSService {
     return imageExtensions.test(url) || url.includes('/image/') || url.includes('/img/');
   }
 
-  // Minimum score required for a confident category match
-  private static readonly MIN_CATEGORY_CONFIDENCE = 2;
-  // Boost given to the source's configured category
-  private static readonly SOURCE_CATEGORY_BOOST = 3;
-
-  /**
-   * Assign category using word-boundary matching and source category hint.
-   *
-   * Improvements over simple substring matching:
-   * 1. Uses word boundaries to prevent false positives (e.g., "election" won't match "collection")
-   * 2. Uses source's configured category as a hint/boost
-   * 3. Requires minimum confidence score to avoid weak matches
-   *
-   * @param title - Article title
-   * @param description - Article description
-   * @param sourceCategory - The RSS source's configured category (optional hint)
-   */
-  private assignCategory(title: string, description: string, sourceCategory?: string): string {
-    const text = `${title} ${description}`.toLowerCase();
-
-    // Use database-loaded category keywords
-    if (this.categoryKeywords.size > 0) {
-      const scores = new Map<string, number>();
-
-      for (const [categoryId, keywords] of this.categoryKeywords) {
-        let score = 0;
-
-        for (const keyword of keywords) {
-          // Use word boundary matching to prevent false positives
-          // \b matches word boundaries (start/end of word)
-          // This prevents "election" matching "collection" or "selection"
-          const regex = new RegExp(`\\b${this.escapeRegex(keyword)}\\b`, 'i');
-          if (regex.test(text)) {
-            score++;
-
-            // Bonus for keyword appearing in title (more relevant than description)
-            if (regex.test(title.toLowerCase())) {
-              score += 0.5;
-            }
-          }
-        }
-
-        // Apply source category boost if this category matches the source's configured category
-        if (sourceCategory && categoryId === sourceCategory.toLowerCase() && score > 0) {
-          score += SimpleRSSService.SOURCE_CATEGORY_BOOST;
-        }
-
-        if (score > 0) {
-          scores.set(categoryId, score);
-        }
-      }
-
-      // Find the best match
-      let bestMatch: { categoryId: string; score: number } | null = null;
-      for (const [categoryId, score] of scores) {
-        if (!bestMatch || score > bestMatch.score) {
-          bestMatch = { categoryId, score };
-        }
-      }
-
-      // Only return if we have a confident match (score >= minimum threshold)
-      // OR if the source has a configured category and we found at least some match
-      if (bestMatch) {
-        const hasSourceHint = sourceCategory && bestMatch.categoryId === sourceCategory.toLowerCase();
-        if (bestMatch.score >= SimpleRSSService.MIN_CATEGORY_CONFIDENCE || hasSourceHint) {
-          return bestMatch.categoryId;
-        }
-      }
-
-      // If no confident keyword match but source has a category, use it as fallback
-      if (sourceCategory && sourceCategory !== 'general') {
-        const normalizedSourceCat = sourceCategory.toLowerCase();
-        // Validate the source category exists
-        if (this.categoryKeywords.has(normalizedSourceCat)) {
-          return normalizedSourceCat;
-        }
-      }
-    }
-
-    // Default to general if no category keywords loaded or no confident match
-    return 'general';
-  }
-
-  /**
-   * Escape special regex characters in a string
-   */
-  private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  }
+  // Note: Categorization is now delegated to CategoryManager (single source of truth)
+  // This removes code duplication and ensures consistent categorization across the app
 
   /**
    * Parse date string to ISO format
