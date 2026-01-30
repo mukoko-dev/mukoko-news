@@ -285,6 +285,88 @@ export const api = {
       total: number;
     }>(`/api/keywords?limit=${limit}`);
   },
+
+  // =====================================================
+  // USER ENGAGEMENT - Likes, Saves, Views
+  // =====================================================
+
+  // Like/Unlike an article
+  likeArticle: (articleId: string) => {
+    return fetchAPI<{
+      success: boolean;
+      liked: boolean;
+      message: string;
+    }>(`/api/articles/${articleId}/like`, {
+      method: 'POST',
+    });
+  },
+
+  // Save/Unsave (bookmark) an article
+  saveArticle: (articleId: string) => {
+    return fetchAPI<{
+      success: boolean;
+      saved: boolean;
+      message: string;
+    }>(`/api/articles/${articleId}/save`, {
+      method: 'POST',
+    });
+  },
+
+  // Track article view with reading metrics
+  trackView: (articleId: string, metrics?: { readingTime?: number; scrollDepth?: number }) => {
+    return fetchAPI<{
+      success: boolean;
+      views: number;
+    }>(`/api/articles/${articleId}/view`, {
+      method: 'POST',
+      body: JSON.stringify({
+        reading_time: metrics?.readingTime || 0,
+        scroll_depth: metrics?.scrollDepth || 0,
+      }),
+    });
+  },
+
+  // Get user's saved/bookmarked articles
+  getSavedArticles: () => {
+    return fetchAPI<{
+      articles: Article[];
+      total: number;
+    }>('/api/user/bookmarks');
+  },
+
+  // Get article engagement counts (for real-time updates)
+  getArticleEngagement: (articleId: string) => {
+    return fetchAPI<{
+      likes: number;
+      saves: number;
+      shares: number;
+      views: number;
+    }>(`/api/articles/${articleId}/engagement`);
+  },
+
+  // =====================================================
+  // ENHANCED SEARCH - with semantic search support
+  // =====================================================
+
+  // Search with AI semantic search support
+  searchWithAI: (query: string, params?: {
+    limit?: number;
+    category?: string;
+    useAI?: boolean;  // Enable/disable semantic search
+  }) => {
+    const searchParams = new URLSearchParams({ q: query });
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.category) searchParams.set('category', params.category);
+    if (params?.useAI === false) searchParams.set('ai', 'false');
+
+    return fetchAPI<{
+      results: Article[];
+      query: string;
+      count: number;
+      category: string;
+      searchMethod: 'semantic' | 'keyword';
+    }>(`/api/search?${searchParams.toString()}`);
+  },
 };
 
 export type { Article, ArticlesResponse, Category, StoryCluster, CategorySection, SectionedFeedResponse };

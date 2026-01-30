@@ -94,8 +94,10 @@ export default function NewsBytesPage() {
     return () => observer.disconnect();
   }, [bytes.length]);
 
-  const handleLike = (byteId: string, e: React.MouseEvent) => {
+  const handleLike = async (byteId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+
+    // Optimistic update
     setBytesState((prev) => {
       const current = prev[byteId] || { isLiked: false, isSaved: false, likesCount: 0 };
       return {
@@ -107,10 +109,31 @@ export default function NewsBytesPage() {
         },
       };
     });
+
+    // Call API
+    try {
+      await api.likeArticle(byteId);
+    } catch (err) {
+      // Revert on error
+      console.error("Failed to like article:", err);
+      setBytesState((prev) => {
+        const current = prev[byteId] || { isLiked: false, isSaved: false, likesCount: 0 };
+        return {
+          ...prev,
+          [byteId]: {
+            ...current,
+            isLiked: !current.isLiked,
+            likesCount: current.isLiked ? current.likesCount + 1 : current.likesCount - 1,
+          },
+        };
+      });
+    }
   };
 
-  const handleSave = (byteId: string, e: React.MouseEvent) => {
+  const handleSave = async (byteId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+
+    // Optimistic update
     setBytesState((prev) => {
       const current = prev[byteId] || { isLiked: false, isSaved: false, likesCount: 0 };
       return {
@@ -121,6 +144,24 @@ export default function NewsBytesPage() {
         },
       };
     });
+
+    // Call API
+    try {
+      await api.saveArticle(byteId);
+    } catch (err) {
+      // Revert on error
+      console.error("Failed to save article:", err);
+      setBytesState((prev) => {
+        const current = prev[byteId] || { isLiked: false, isSaved: false, likesCount: 0 };
+        return {
+          ...prev,
+          [byteId]: {
+            ...current,
+            isSaved: !current.isSaved,
+          },
+        };
+      });
+    }
   };
 
   const handleShare = async (byte: Article, e: React.MouseEvent) => {
