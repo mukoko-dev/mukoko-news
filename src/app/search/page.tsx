@@ -16,23 +16,17 @@ export default function SearchPage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [insightsLoading, setInsightsLoading] = useState(true);
+  const [searchMethod, setSearchMethod] = useState<'semantic' | 'keyword' | null>(null);
 
-  // Sample trending topics (would come from API)
-  const trendingTopics = [
-    { name: "Zimbabwe", count: 1245 },
-    { name: "Politics", count: 892 },
-    { name: "Economy", count: 734 },
-    { name: "Sports", count: 621 },
-    { name: "Business", count: 512 },
-    { name: "Health", count: 423 },
-  ];
+  // Real trending topics from categories
+  const [trendingTopics, setTrendingTopics] = useState<Array<{ name: string; count: number }>>([]);
 
-  // Sample stats (would come from API)
-  const stats = {
-    totalArticles: 15420,
-    activeSources: 56,
-    categories: 12,
-  };
+  // Real stats from API
+  const [stats, setStats] = useState({
+    totalArticles: 0,
+    activeSources: 0,
+    categories: 0,
+  });
 
   useEffect(() => {
     loadInitialData();
@@ -41,10 +35,39 @@ export default function SearchPage() {
   const loadInitialData = async () => {
     setInsightsLoading(true);
     try {
-      const categoriesData = await api.getCategories();
+      // Load categories, stats, and trending in parallel
+      const [categoriesData, statsData, trendingData] = await Promise.all([
+        api.getCategories().catch(() => ({ categories: [] })),
+        api.getStats().catch(() => ({ database: { total_articles: 0, active_sources: 0, categories: 0 } })),
+        api.getTrendingCategories(6).catch(() => ({ trending: [] })),
+      ]);
+
       setCategories(categoriesData.categories || []);
+
+      // Set real stats from API
+      if (statsData.database) {
+        setStats({
+          totalArticles: statsData.database.total_articles || 0,
+          activeSources: statsData.database.active_sources || 0,
+          categories: statsData.database.categories || 0,
+        });
+      }
+
+      // Set trending topics from API
+      if (trendingData.trending && trendingData.trending.length > 0) {
+        setTrendingTopics(trendingData.trending.map((t) => ({
+          name: t.name,
+          count: t.article_count || 0,
+        })));
+      } else {
+        // Fallback to categories if no trending data
+        setTrendingTopics(categoriesData.categories?.slice(0, 6).map((c) => ({
+          name: c.name,
+          count: c.article_count || 0,
+        })) || []);
+      }
     } catch (error) {
-      console.error("Failed to load categories:", error);
+      console.error("Failed to load initial data:", error);
     } finally {
       setInsightsLoading(false);
     }
@@ -54,6 +77,7 @@ export default function SearchPage() {
     if (!searchQuery.trim()) {
       setResults([]);
       setActiveQuery("");
+      setSearchMethod(null);
       return;
     }
 
@@ -61,19 +85,19 @@ export default function SearchPage() {
     setActiveQuery(searchQuery);
 
     try {
-      const data = await api.search(searchQuery, { limit: 50 });
-      let filtered = data.articles || [];
+      // Use enhanced search with AI semantic search
+      const data = await api.searchWithAI(searchQuery, {
+        limit: 50,
+        category: category || undefined,
+        useAI: true, // Enable semantic search
+      });
 
-      if (category) {
-        filtered = filtered.filter(
-          (a) => (a.category_id || a.category)?.toLowerCase() === category.toLowerCase()
-        );
-      }
-
-      setResults(filtered);
+      setResults(data.results || []);
+      setSearchMethod(data.searchMethod || 'keyword');
     } catch (error) {
       console.error("Search error:", error);
       setResults([]);
+      setSearchMethod(null);
     } finally {
       setLoading(false);
     }
@@ -154,8 +178,19 @@ export default function SearchPage() {
       {/* Search Results */}
       {isSearchMode && !loading && (
         <>
-          <div className="flex items-center gap-2 mb-6 text-sm text-text-secondary">
-            <span>Found {results.length} results for &quot;{activeQuery}&quot;</span>
+          <div className="flex items-center justify-between mb-6">
+            <span className="text-sm text-text-secondary">
+              Found {results.length} results for &quot;{activeQuery}&quot;
+            </span>
+            {searchMethod && (
+              <span className={`text-xs px-2 py-1 rounded-full ${
+                searchMethod === 'semantic'
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-surface text-text-tertiary'
+              }`}>
+                {searchMethod === 'semantic' ? '✨ AI Search' : 'Keyword Search'}
+              </span>
+            )}
           </div>
 
           {results.length > 0 ? (

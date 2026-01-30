@@ -4,23 +4,23 @@ import { logger } from "hono/logger";
 
 // Import all business logic services - backend does the heavy lifting
 import { D1Service } from "../database/D1Service.js";
-import { D1ConfigService } from "./services/D1ConfigService.js";
 import { D1CacheService } from "./services/D1CacheService.js";
 import { AnalyticsEngineService } from "./services/AnalyticsEngineService.js";
 import { ArticleService } from "./services/ArticleService.js";
 import { ArticleAIService } from "./services/ArticleAIService.js";
-import { ContentProcessingPipeline } from "./services/ContentProcessingPipeline.js";
 import { AuthorProfileService } from "./services/AuthorProfileService.js";
-import { NewsSourceService } from "./services/NewsSourceService.js";
 import { NewsSourceManager } from "./services/NewsSourceManager.js";
 import { SimpleRSSService } from "./services/SimpleRSSService.js";
 import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
+// AI and Search services
+import { AISearchService } from "./services/AISearchService.js";
+// Security services
+import { RateLimitService } from "./services/RateLimitService.js";
+import { CSRFService } from "./services/CSRFService.js";
 // OIDC Auth - using id.mukoko.com for authentication
-import { OIDCAuthService } from "./services/OIDCAuthService.js";
 import { oidcAuth, requireAuth, requireAdmin as requireAdminRole, getCurrentUser, getCurrentUserId, isAuthenticated } from "./middleware/oidcAuth.js";
 // API Key Auth - for frontend (Vercel) to backend authentication
 import { apiAuth, requireApiKey } from "./middleware/apiAuth.js";
-import { EmailService } from "./services/EmailService.js";
 // Additional enhancement services
 import { CategoryManager } from "./services/CategoryManager.js";
 import { ObservabilityService } from "./services/ObservabilityService.js";
@@ -34,6 +34,8 @@ import { UserBehaviorDO } from "./services/UserBehaviorDO.js";
 import { RealtimeCountersDO } from "./services/RealtimeCountersDO.js";
 // Unified Auth Provider Service (Single Auth Wrapper with RBAC)
 import { AuthProviderService, UserRole } from "./services/AuthProviderService.js";
+// Story clustering for feed sections
+import { normalizeTitle, titleSimilarity, clusterArticles, STOP_WORDS } from "./services/StoryClusteringService.js";
 
 // Import admin interface
 import { getAdminHTML, getLoginHTML } from "./admin/index.js";
@@ -136,7 +138,6 @@ app.use("/api/admin/*", async (c, next) => {
 // Initialize all business services
 function initializeServices(env: Bindings) {
   const d1Service = new D1Service(env.DB);
-  const configService = new D1ConfigService(env.DB);
   const cacheService = new D1CacheService(env.DB);
   const analyticsService = new AnalyticsEngineService({
     NEWS_ANALYTICS: env.NEWS_ANALYTICS,
@@ -146,11 +147,21 @@ function initializeServices(env: Bindings) {
     PERFORMANCE_ANALYTICS: env.PERFORMANCE_ANALYTICS
   });
   const articleAIService = new ArticleAIService(env.AI, null, d1Service); // Vectorize disabled for now
-  const contentPipeline = new ContentProcessingPipeline(d1Service, articleAIService);
   const authorProfileService = new AuthorProfileService(d1Service);
-  const articleService = new ArticleService(env.DB); // Fix: ArticleService takes database directly
-  const newsSourceService = new NewsSourceService(); // Fix: NewsSourceService takes no parameters
+  const articleService = new ArticleService(env.DB);
   const newsSourceManager = new NewsSourceManager(env.DB);
+
+  // Initialize AI Search Service for semantic search
+  const aiSearchService = new AISearchService(
+    env.AI,
+    env.VECTORIZE_INDEX,
+    env.DB,
+    env.SEARCH_ANALYTICS
+  );
+
+  // Initialize Security Services
+  const rateLimitService = new RateLimitService(env.CACHE_STORAGE);
+  const csrfService = new CSRFService(env.CACHE_STORAGE);
 
   // Initialize CloudflareImagesService if available
   let imagesService = null;
@@ -173,19 +184,19 @@ function initializeServices(env: Bindings) {
 
   return {
     d1Service,
-    configService,
     cacheService,
     analyticsService,
     articleAIService,
-    contentPipeline,
     authorProfileService,
     articleService,
-    newsSourceService,
     newsSourceManager,
     categoryManager,
     observabilityService,
     userService,
-    rssService
+    rssService,
+    aiSearchService,
+    rateLimitService,
+    csrfService
   };
 }
 
@@ -976,6 +987,248 @@ app.get("/api/feeds/personalized/explain", async (c) => {
   }
 });
 
+// Constants for story clustering algorithm
+const CLUSTERING_CONFIG = {
+  SIMILARITY_THRESHOLD: 0.4,    // Jaccard similarity threshold for grouping stories
+  MAX_CLUSTERS: 10,             // Maximum number of story clusters to return
+  MAX_RELATED_PER_CLUSTER: 4,   // Maximum related articles per cluster
+  TOP_STORIES_LIMIT: 30,        // Articles to fetch for clustering
+  YOUR_NEWS_LIMIT: 15,          // Articles for personalized section
+  CATEGORY_LIMIT: 8,            // Articles per category section
+  LATEST_LIMIT: 20,             // Latest articles to return
+  MAX_CATEGORIES: 5,            // Maximum category sections
+  TRENDING_HOURS: 48,           // Hours to look back for trending
+};
+
+// Valid country codes (Pan-African countries)
+const VALID_COUNTRIES = new Set([
+  'ZW', 'ZA', 'KE', 'NG', 'GH', 'TZ', 'UG', 'RW',
+  'ET', 'BW', 'ZM', 'MW', 'EG', 'MA', 'NA', 'MZ'
+]);
+
+// Valid category IDs
+const VALID_CATEGORIES = new Set([
+  'politics', 'economy', 'technology', 'sports', 'health',
+  'education', 'entertainment', 'international', 'general',
+  'harare', 'agriculture', 'crime', 'environment'
+]);
+
+// STOP_WORDS imported from StoryClusteringService
+
+// Sectioned feed endpoint - returns top stories with clustering, your news, and by category
+// This endpoint powers the redesigned home feed with Google News-style story clustering
+app.get("/api/feeds/sectioned", async (c) => {
+  try {
+    const countriesParam = c.req.query("countries");
+    const categoriesParam = c.req.query("categories");
+
+    // SECURITY: Validate country codes against allowlist to prevent injection
+    const countries = countriesParam
+      ? countriesParam.split(",")
+          .map(code => code.trim().toUpperCase())
+          .filter(code => VALID_COUNTRIES.has(code))
+      : null;
+
+    // SECURITY: Validate category IDs against allowlist
+    const preferredCategories = categoriesParam
+      ? categoriesParam.split(",")
+          .map(cat => cat.trim().toLowerCase())
+          .filter(cat => VALID_CATEGORIES.has(cat))
+      : [];
+
+    // normalizeTitle and titleSimilarity imported from StoryClusteringService
+    // with DoS prevention (title length limit: 500 chars, word limit: 50)
+
+    // Build country filter clause
+    let countryClause = '';
+    const countryParams: string[] = [];
+    if (countries && countries.length > 0) {
+      const placeholders = countries.map(() => '?').join(',');
+      countryClause = ` AND country_id IN (${placeholders})`;
+      countryParams.push(...countries);
+    }
+
+    // PERFORMANCE: Run independent queries in parallel
+    // Phase 1: Fetch top stories and latest (independent of categories)
+    const topStoriesQuery = `
+      SELECT id, title, slug, description, content_snippet, author, source, source_id,
+             published_at, image_url, original_url, category_id, country_id, view_count,
+             like_count, bookmark_count
+      FROM articles
+      WHERE status = 'published'
+        AND published_at > datetime('now', '-${CLUSTERING_CONFIG.TRENDING_HOURS} hours')
+        ${countryClause}
+      ORDER BY (view_count + like_count * 3 + bookmark_count * 2) DESC, published_at DESC
+      LIMIT ${CLUSTERING_CONFIG.TOP_STORIES_LIMIT}
+    `;
+
+    const latestQuery = `
+      SELECT id, title, slug, description, content_snippet, author, source, source_id,
+             published_at, image_url, original_url, category_id, country_id, view_count,
+             like_count, bookmark_count
+      FROM articles
+      WHERE status = 'published'
+        ${countryClause}
+      ORDER BY published_at DESC
+      LIMIT ${CLUSTERING_CONFIG.LATEST_LIMIT}
+    `;
+
+    // Execute top stories and latest in parallel
+    const [topStoriesResult, latestResult] = await Promise.all([
+      c.env.DB.prepare(topStoriesQuery).bind(...countryParams).all(),
+      c.env.DB.prepare(latestQuery).bind(...countryParams).all(),
+    ]);
+
+    const topStoriesRaw = (topStoriesResult.results || []) as any[];
+    const latestArticles = (latestResult.results || []) as any[];
+
+    // Cluster similar stories together
+    interface StoryCluster {
+      id: string;
+      primaryArticle: any;
+      relatedArticles: any[];
+      articleCount: number;
+    }
+
+    const clusters: StoryCluster[] = [];
+    const clusteredIds = new Set<string>();
+
+    for (const article of topStoriesRaw) {
+      if (clusteredIds.has(article.id)) continue;
+
+      const articleWords = normalizeTitle(article.title);
+      const cluster: StoryCluster = {
+        id: `cluster-${article.id}`,
+        primaryArticle: article,
+        relatedArticles: [],
+        articleCount: 1,
+      };
+
+      clusteredIds.add(article.id);
+
+      // Find related articles (same story from different sources)
+      for (const other of topStoriesRaw) {
+        if (clusteredIds.has(other.id)) continue;
+        if (article.source === other.source) continue; // Must be different sources
+
+        const otherWords = normalizeTitle(other.title);
+        const similarity = titleSimilarity(articleWords, otherWords);
+
+        // Group stories that exceed similarity threshold
+        if (similarity > CLUSTERING_CONFIG.SIMILARITY_THRESHOLD) {
+          cluster.relatedArticles.push(other);
+          cluster.articleCount++;
+          clusteredIds.add(other.id);
+
+          if (cluster.relatedArticles.length >= CLUSTERING_CONFIG.MAX_RELATED_PER_CLUSTER) break;
+        }
+      }
+
+      clusters.push(cluster);
+      if (clusters.length >= CLUSTERING_CONFIG.MAX_CLUSTERS) break;
+    }
+
+    // Phase 2: Fetch category-based content with batch query (fixes N+1 pattern)
+    let yourNews: any[] = [];
+    const categorySections: { id: string; name: string; articles: any[] }[] = [];
+
+    // Get categories to query
+    const allCategories = preferredCategories.length > 0
+      ? preferredCategories
+      : ['politics', 'economy', 'technology', 'sports'];
+    const categoriesToFetch = allCategories.slice(0, CLUSTERING_CONFIG.MAX_CATEGORIES);
+
+    // PERFORMANCE: Single batch query with IN clause instead of multiple queries
+    // Uses window function ROW_NUMBER() to limit per-category results
+    const categoryPlaceholders = categoriesToFetch.map(() => '?').join(',');
+    const batchCategoryQuery = `
+      WITH ranked_articles AS (
+        SELECT id, title, slug, description, content_snippet, author, source, source_id,
+               published_at, image_url, original_url, category_id, country_id, view_count,
+               like_count, bookmark_count,
+               ROW_NUMBER() OVER (PARTITION BY category_id ORDER BY published_at DESC) as rn
+        FROM articles
+        WHERE status = 'published'
+          AND category_id IN (${categoryPlaceholders})
+          ${countryClause}
+      )
+      SELECT id, title, slug, description, content_snippet, author, source, source_id,
+             published_at, image_url, original_url, category_id, country_id, view_count,
+             like_count, bookmark_count
+      FROM ranked_articles
+      WHERE rn <= ${CLUSTERING_CONFIG.CATEGORY_LIMIT}
+      ORDER BY category_id, published_at DESC
+    `;
+
+    // Build "Your News" query for user preferences
+    let yourNewsPromise: Promise<any> | null = null;
+    if (preferredCategories.length > 0) {
+      const catPlaceholders = preferredCategories.map(() => '?').join(',');
+      const yourNewsQuery = `
+        SELECT id, title, slug, description, content_snippet, author, source, source_id,
+               published_at, image_url, original_url, category_id, country_id, view_count,
+               like_count, bookmark_count
+        FROM articles
+        WHERE status = 'published'
+          AND category_id IN (${catPlaceholders})
+          ${countryClause}
+        ORDER BY published_at DESC
+        LIMIT ${CLUSTERING_CONFIG.YOUR_NEWS_LIMIT}
+      `;
+      yourNewsPromise = c.env.DB.prepare(yourNewsQuery)
+        .bind(...preferredCategories, ...countryParams).all();
+    }
+
+    // Execute batch category query
+    const categoryResult = await c.env.DB.prepare(batchCategoryQuery)
+      .bind(...categoriesToFetch, ...countryParams).all();
+    const allCategoryArticles = (categoryResult.results || []) as any[];
+
+    // Group results by category
+    const articlesByCategory = new Map<string, any[]>();
+    for (const article of allCategoryArticles) {
+      const catId = article.category_id;
+      if (!articlesByCategory.has(catId)) {
+        articlesByCategory.set(catId, []);
+      }
+      articlesByCategory.get(catId)!.push(article);
+    }
+
+    // Build category sections in requested order
+    for (const categoryId of categoriesToFetch) {
+      const articles = articlesByCategory.get(categoryId) || [];
+      if (articles.length > 0) {
+        categorySections.push({
+          id: categoryId,
+          name: categoryId.charAt(0).toUpperCase() + categoryId.slice(1),
+          articles,
+        });
+      }
+    }
+
+    // Get "Your News" result if applicable
+    if (yourNewsPromise) {
+      const yourNewsResult = await yourNewsPromise;
+      yourNews = (yourNewsResult.results || []) as any[];
+    }
+
+    return c.json({
+      topStories: clusters,
+      yourNews,
+      byCategory: categorySections,
+      latest: latestArticles,
+      countries: countries || undefined,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error("Error fetching sectioned feed:", error?.message || error);
+    return c.json({
+      error: "Failed to fetch sectioned feed",
+      details: error?.message || String(error)
+    }, 500);
+  }
+});
+
 // Debug endpoint to test single RSS feed fetch
 app.get("/api/test-feed", async (c) => {
   const { XMLParser } = await import('fast-xml-parser');
@@ -1625,30 +1878,29 @@ app.put("/api/admin/rss-source/:sourceId", async (c) => {
   }
 });
 
-// Admin sources management with full service integration
-// TODO: Add authentication back when OpenAuthService is fixed
+// Admin sources management - fetches real sources from database
 app.get("/api/admin/sources", async (c) => {
   try {
     const services = initializeServices(c.env);
-    
-    // Get actual news sources from the news source service
-    const sources = await services.newsSourceService.getAllSources();
-    
-    // Enhance with statistics and status
+
+    // Get all sources from database via NewsSourceManager
+    const sources = await services.newsSourceManager.getAllSources();
+
+    // Enhance with statistics
     const sourcesWithStats = await Promise.all(
-      sources.map(async (source: any) => {
+      sources.map(async (source) => {
         const articleCount = await services.d1Service.getArticleCount({ source_id: source.id });
         const lastFetch = await services.cacheService.getLastFetch(source.id);
 
         return {
           ...source,
           articles: articleCount,
-          last_fetch: lastFetch || new Date().toISOString(),
+          last_fetch: lastFetch || source.last_successful_fetch || new Date().toISOString(),
           status: source.enabled ? "active" : "inactive"
         };
       })
     );
-    
+
     return c.json({ sources: sourcesWithStats });
   } catch (error) {
     console.error("Error fetching sources:", error);
@@ -2323,69 +2575,93 @@ app.get("/api/news-bytes", async (c) => {
   }
 });
 
-// Search endpoint - Full-text search with keywords
+// Search endpoint - Semantic search with AI, falls back to keyword search
 app.get("/api/search", async (c) => {
   try {
     const query = c.req.query("q");
     const category = c.req.query("category");
     const limit = parseInt(c.req.query("limit") || "50");
+    const useAI = c.req.query("ai") !== "false"; // Enable AI search by default
 
     if (!query || query.trim().length === 0) {
       return c.json({ error: "Search query is required" }, 400);
     }
 
-    const searchTerm = `%${query.trim()}%`;
+    const services = initializeServices(c.env);
+    let searchResults: any[] = [];
+    let searchMethod = "keyword";
 
-    // Search in title, description, and keywords
-    let searchQuery = `
-      SELECT DISTINCT a.id, a.title, a.slug, a.description, a.content_snippet,
-             a.author, a.source, a.published_at, a.image_url, a.original_url,
-             a.category_id, a.view_count, a.like_count, a.bookmark_count
-      FROM articles a
-      LEFT JOIN article_keywords ak ON a.id = ak.article_id
-      WHERE a.status = 'published'
-      AND (
-        a.title LIKE ? OR
-        a.description LIKE ? OR
-        a.content LIKE ? OR
-        a.content_snippet LIKE ? OR
-        ak.keyword LIKE ?
-      )
-    `;
+    // Try semantic search first if AI is enabled
+    if (useAI && c.env.VECTORIZE_INDEX) {
+      try {
+        const aiResults = await services.aiSearchService.semanticSearch(query.trim(), {
+          limit,
+          category: category !== 'all' ? category : undefined,
+          includeInsights: true
+        });
 
-    const params: (string | number)[] = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
-
-    if (category && category !== 'all') {
-      searchQuery += ` AND a.category_id = ?`;
-      params.push(category);
+        if (aiResults && aiResults.length > 0) {
+          searchResults = aiResults;
+          searchMethod = "semantic";
+          console.log(`[SEARCH] Semantic search returned ${aiResults.length} results for "${query}"`);
+        }
+      } catch (aiError) {
+        console.warn("[SEARCH] Semantic search failed, falling back to keyword:", aiError);
+      }
     }
 
-    searchQuery += ` ORDER BY a.published_at DESC LIMIT ?`;
-    params.push(limit);
+    // Fall back to keyword search if semantic search didn't return results
+    if (searchResults.length === 0) {
+      const searchTerm = `%${query.trim()}%`;
 
-    const results = await c.env.DB.prepare(searchQuery).bind(...params).all();
+      let searchQuery = `
+        SELECT DISTINCT a.id, a.title, a.slug, a.description, a.content_snippet,
+               a.author, a.source, a.published_at, a.image_url, a.original_url,
+               a.category_id, a.view_count, a.like_count, a.bookmark_count
+        FROM articles a
+        LEFT JOIN article_keywords ak ON a.id = ak.article_id
+        WHERE a.status = 'published'
+        AND (
+          a.title LIKE ? OR
+          a.description LIKE ? OR
+          a.content LIKE ? OR
+          a.content_snippet LIKE ? OR
+          ak.keyword LIKE ?
+        )
+      `;
+
+      const params: (string | number)[] = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
+
+      if (category && category !== 'all') {
+        searchQuery += ` AND a.category_id = ?`;
+        params.push(category);
+      }
+
+      searchQuery += ` ORDER BY a.published_at DESC LIMIT ?`;
+      params.push(limit);
+
+      const results = await c.env.DB.prepare(searchQuery).bind(...params).all();
+      searchResults = results.results || [];
+    }
 
     // Log search query for analytics
     try {
-      await c.env.DB.prepare(`
-        INSERT INTO search_logs (query, category_filter, results_count, session_id, created_at)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `).bind(
-        query.trim(),
-        category || null,
-        results.results.length,
-        c.req.header('x-session-id') || 'anonymous'
-      ).run();
+      await services.analyticsService.trackSearch({
+        query: query.trim(),
+        category: category || null,
+        resultsCount: searchResults.length,
+        userId: c.req.header('x-session-id') || 'anonymous'
+      });
     } catch (logError) {
       console.error("Failed to log search:", logError);
-      // Don't fail the search if logging fails
     }
 
     return c.json({
-      results: results.results,
+      results: searchResults,
       query: query.trim(),
-      count: results.results.length,
-      category: category || 'all'
+      count: searchResults.length,
+      category: category || 'all',
+      searchMethod
     });
   } catch (error) {
     console.error("Error searching articles:", error);
@@ -2551,17 +2827,18 @@ app.post("/api/refresh", async (c) => {
 
 // ===== PHASE 2: USER ENGAGEMENT APIs (REQUIRE AUTH) =====
 
-// Article Like/Unlike
+// Article Like/Unlike - with real-time Durable Object updates
 app.post("/api/articles/:id/like", async (c) => {
   try {
     const articleId = c.req.param("id");
-    // TODO: Get from authenticated user when auth is re-enabled
     const userId = c.req.header('x-user-id') || c.req.header('x-session-id') || 'anonymous';
 
     // Check if already liked
     const existing = await c.env.DB.prepare(`
       SELECT id FROM user_likes WHERE user_id = ? AND article_id = ?
     `).bind(userId, articleId).first();
+
+    const isLiking = !existing;
 
     if (existing) {
       // Unlike
@@ -2572,8 +2849,6 @@ app.post("/api/articles/:id/like", async (c) => {
       await c.env.DB.prepare(`
         UPDATE articles SET like_count = like_count - 1 WHERE id = ?
       `).bind(articleId).run();
-
-      return c.json({ success: true, liked: false, message: "Article unliked" });
     } else {
       // Like
       await c.env.DB.prepare(`
@@ -2583,29 +2858,41 @@ app.post("/api/articles/:id/like", async (c) => {
       await c.env.DB.prepare(`
         UPDATE articles SET like_count = like_count + 1 WHERE id = ?
       `).bind(articleId).run();
-
-      // Track in analytics
-      if (c.env.NEWS_ANALYTICS) {
-        try {
-          c.env.NEWS_ANALYTICS.writeDataPoint({
-            blobs: ['article_like', userId, articleId.toString()],
-            doubles: [Date.now()],
-            indexes: ['engagement']
-          });
-        } catch (analyticsError) {
-          console.error('[LIKE] Analytics tracking failed:', analyticsError);
-        }
-      }
-
-      return c.json({ success: true, liked: true, message: "Article liked" });
     }
+
+    // Update real-time counts via Durable Object
+    try {
+      const doId = c.env.ARTICLE_INTERACTIONS.idFromName(`article:${articleId}`);
+      const stub = c.env.ARTICLE_INTERACTIONS.get(doId);
+      await stub.fetch(new Request('https://do/like', {
+        method: 'POST',
+        body: JSON.stringify({ userId, type: isLiking ? 'like' : 'unlike' })
+      }));
+    } catch (doError) {
+      console.warn('[LIKE] Durable Object update failed:', doError);
+    }
+
+    // Track in analytics
+    if (c.env.NEWS_ANALYTICS) {
+      try {
+        c.env.NEWS_ANALYTICS.writeDataPoint({
+          blobs: [isLiking ? 'article_like' : 'article_unlike', userId, articleId.toString()],
+          doubles: [Date.now()],
+          indexes: ['engagement']
+        });
+      } catch (analyticsError) {
+        console.error('[LIKE] Analytics tracking failed:', analyticsError);
+      }
+    }
+
+    return c.json({ success: true, liked: isLiking, message: isLiking ? "Article liked" : "Article unliked" });
   } catch (error) {
     console.error("[LIKE] Error:", error);
     return c.json({ error: "Failed to like article" }, 500);
   }
 });
 
-// Article Save/Bookmark
+// Article Save/Bookmark - with real-time Durable Object updates
 app.post("/api/articles/:id/save", async (c) => {
   try {
     const articleId = c.req.param("id");
@@ -2616,6 +2903,8 @@ app.post("/api/articles/:id/save", async (c) => {
       SELECT id FROM user_bookmarks WHERE user_id = ? AND article_id = ?
     `).bind(userId, articleId).first();
 
+    const isSaving = !existing;
+
     if (existing) {
       // Unsave
       await c.env.DB.prepare(`
@@ -2625,8 +2914,6 @@ app.post("/api/articles/:id/save", async (c) => {
       await c.env.DB.prepare(`
         UPDATE articles SET bookmark_count = bookmark_count - 1 WHERE id = ?
       `).bind(articleId).run();
-
-      return c.json({ success: true, saved: false, message: "Bookmark removed" });
     } else {
       // Save
       await c.env.DB.prepare(`
@@ -2636,22 +2923,34 @@ app.post("/api/articles/:id/save", async (c) => {
       await c.env.DB.prepare(`
         UPDATE articles SET bookmark_count = bookmark_count + 1 WHERE id = ?
       `).bind(articleId).run();
-
-      // Track in analytics
-      if (c.env.NEWS_ANALYTICS) {
-        try {
-          c.env.NEWS_ANALYTICS.writeDataPoint({
-            blobs: ['article_save', userId, articleId.toString()],
-            doubles: [Date.now()],
-            indexes: ['engagement']
-          });
-        } catch (analyticsError) {
-          console.error('[SAVE] Analytics tracking failed:', analyticsError);
-        }
-      }
-
-      return c.json({ success: true, saved: true, message: "Article bookmarked" });
     }
+
+    // Update real-time counts via Durable Object
+    try {
+      const doId = c.env.ARTICLE_INTERACTIONS.idFromName(`article:${articleId}`);
+      const stub = c.env.ARTICLE_INTERACTIONS.get(doId);
+      await stub.fetch(new Request('https://do/save', {
+        method: 'POST',
+        body: JSON.stringify({ userId, type: isSaving ? 'save' : 'unsave' })
+      }));
+    } catch (doError) {
+      console.warn('[SAVE] Durable Object update failed:', doError);
+    }
+
+    // Track in analytics
+    if (c.env.NEWS_ANALYTICS) {
+      try {
+        c.env.NEWS_ANALYTICS.writeDataPoint({
+          blobs: [isSaving ? 'article_save' : 'article_unsave', userId, articleId.toString()],
+          doubles: [Date.now()],
+          indexes: ['engagement']
+        });
+      } catch (analyticsError) {
+        console.error('[SAVE] Analytics tracking failed:', analyticsError);
+      }
+    }
+
+    return c.json({ success: true, saved: isSaving, message: isSaving ? "Article bookmarked" : "Bookmark removed" });
   } catch (error) {
     console.error("[SAVE] Error:", error);
     return c.json({ error: "Failed to save article" }, 500);
@@ -4341,11 +4640,36 @@ app.post("/api/auth/login", async (c) => {
 
 // OIDC Callback - Exchange authorization code for tokens
 // Called by mobile/web after redirect from id.mukoko.com
+// Rate limited to prevent brute-force attacks
 app.post("/api/auth/oidc/callback", async (c) => {
   try {
+    const services = initializeServices(c.env);
+    const clientIP = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+
+    // Rate limit: 10 attempts per 15 minutes per IP
+    const rateLimit = await services.rateLimitService.checkRateLimit(`oidc:${clientIP}`, {
+      maxAttempts: 10,
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      blockDurationMs: 30 * 60 * 1000 // 30 minute block
+    });
+
+    if (!rateLimit.allowed) {
+      console.warn(`[AUTH] Rate limit exceeded for IP: ${clientIP}`);
+      return c.json({
+        error: "Too many authentication attempts",
+        retryAfter: rateLimit.retryAfter
+      }, 429);
+    }
+
     const { code, redirect_uri } = await c.req.json();
 
     if (!code || !redirect_uri) {
+      // Record failed attempt
+      await services.rateLimitService.recordAttempt(`oidc:${clientIP}`, {
+        maxAttempts: 10,
+        windowMs: 15 * 60 * 1000,
+        blockDurationMs: 30 * 60 * 1000
+      });
       return c.json({ error: "Missing code or redirect_uri" }, 400);
     }
 

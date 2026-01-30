@@ -1,21 +1,36 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { Bookmark, Loader2 } from "lucide-react";
+import { Bookmark, Loader2, RefreshCw } from "lucide-react";
 import { ArticleCard } from "@/components/article-card";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import type { Article } from "@/lib/api";
+import { api, type Article } from "@/lib/api";
 
 function SavedContent() {
   const [savedArticles, setSavedArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadSavedArticles = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await api.getSavedArticles();
+      setSavedArticles(data.articles || []);
+    } catch (err) {
+      console.error("Failed to load saved articles:", err);
+      setError("Failed to load saved articles");
+      setSavedArticles([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    // In a real app, this would fetch from API or localStorage
-    // For now, show empty state
-    setLoading(false);
-  }, []);
+    loadSavedArticles();
+  }, [loadSavedArticles]);
 
   if (loading) {
     return (
