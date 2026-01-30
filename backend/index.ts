@@ -12,6 +12,11 @@ import { AuthorProfileService } from "./services/AuthorProfileService.js";
 import { NewsSourceManager } from "./services/NewsSourceManager.js";
 import { SimpleRSSService } from "./services/SimpleRSSService.js";
 import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
+// AI and Search services
+import { AISearchService } from "./services/AISearchService.js";
+// Security services
+import { RateLimitService } from "./services/RateLimitService.js";
+import { CSRFService } from "./services/CSRFService.js";
 // OIDC Auth - using id.mukoko.com for authentication
 import { oidcAuth, requireAuth, requireAdmin as requireAdminRole, getCurrentUser, getCurrentUserId, isAuthenticated } from "./middleware/oidcAuth.js";
 // API Key Auth - for frontend (Vercel) to backend authentication
@@ -144,6 +149,18 @@ function initializeServices(env: Bindings) {
   const articleService = new ArticleService(env.DB);
   const newsSourceManager = new NewsSourceManager(env.DB);
 
+  // Initialize AI Search Service for semantic search
+  const aiSearchService = new AISearchService(
+    env.AI,
+    env.VECTORIZE_INDEX,
+    env.DB,
+    env.SEARCH_ANALYTICS
+  );
+
+  // Initialize Security Services
+  const rateLimitService = new RateLimitService(env.CACHE_STORAGE);
+  const csrfService = new CSRFService(env.CACHE_STORAGE);
+
   // Initialize CloudflareImagesService if available
   let imagesService = null;
   if (env.IMAGES && env.CLOUDFLARE_ACCOUNT_ID) {
@@ -174,7 +191,10 @@ function initializeServices(env: Bindings) {
     categoryManager,
     observabilityService,
     userService,
-    rssService
+    rssService,
+    aiSearchService,
+    rateLimitService,
+    csrfService
   };
 }
 
@@ -2555,69 +2575,93 @@ app.get("/api/news-bytes", async (c) => {
   }
 });
 
-// Search endpoint - Full-text search with keywords
+// Search endpoint - Semantic search with AI, falls back to keyword search
 app.get("/api/search", async (c) => {
   try {
     const query = c.req.query("q");
     const category = c.req.query("category");
     const limit = parseInt(c.req.query("limit") || "50");
+    const useAI = c.req.query("ai") !== "false"; // Enable AI search by default
 
     if (!query || query.trim().length === 0) {
       return c.json({ error: "Search query is required" }, 400);
     }
 
-    const searchTerm = `%${query.trim()}%`;
+    const services = initializeServices(c.env);
+    let searchResults: any[] = [];
+    let searchMethod = "keyword";
 
-    // Search in title, description, and keywords
-    let searchQuery = `
-      SELECT DISTINCT a.id, a.title, a.slug, a.description, a.content_snippet,
-             a.author, a.source, a.published_at, a.image_url, a.original_url,
-             a.category_id, a.view_count, a.like_count, a.bookmark_count
-      FROM articles a
-      LEFT JOIN article_keywords ak ON a.id = ak.article_id
-      WHERE a.status = 'published'
-      AND (
-        a.title LIKE ? OR
-        a.description LIKE ? OR
-        a.content LIKE ? OR
-        a.content_snippet LIKE ? OR
-        ak.keyword LIKE ?
-      )
-    `;
+    // Try semantic search first if AI is enabled
+    if (useAI && c.env.VECTORIZE_INDEX) {
+      try {
+        const aiResults = await services.aiSearchService.semanticSearch(query.trim(), {
+          limit,
+          category: category !== 'all' ? category : undefined,
+          includeInsights: true
+        });
 
-    const params: (string | number)[] = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
-
-    if (category && category !== 'all') {
-      searchQuery += ` AND a.category_id = ?`;
-      params.push(category);
+        if (aiResults && aiResults.length > 0) {
+          searchResults = aiResults;
+          searchMethod = "semantic";
+          console.log(`[SEARCH] Semantic search returned ${aiResults.length} results for "${query}"`);
+        }
+      } catch (aiError) {
+        console.warn("[SEARCH] Semantic search failed, falling back to keyword:", aiError);
+      }
     }
 
-    searchQuery += ` ORDER BY a.published_at DESC LIMIT ?`;
-    params.push(limit);
+    // Fall back to keyword search if semantic search didn't return results
+    if (searchResults.length === 0) {
+      const searchTerm = `%${query.trim()}%`;
 
-    const results = await c.env.DB.prepare(searchQuery).bind(...params).all();
+      let searchQuery = `
+        SELECT DISTINCT a.id, a.title, a.slug, a.description, a.content_snippet,
+               a.author, a.source, a.published_at, a.image_url, a.original_url,
+               a.category_id, a.view_count, a.like_count, a.bookmark_count
+        FROM articles a
+        LEFT JOIN article_keywords ak ON a.id = ak.article_id
+        WHERE a.status = 'published'
+        AND (
+          a.title LIKE ? OR
+          a.description LIKE ? OR
+          a.content LIKE ? OR
+          a.content_snippet LIKE ? OR
+          ak.keyword LIKE ?
+        )
+      `;
+
+      const params: (string | number)[] = [searchTerm, searchTerm, searchTerm, searchTerm, searchTerm];
+
+      if (category && category !== 'all') {
+        searchQuery += ` AND a.category_id = ?`;
+        params.push(category);
+      }
+
+      searchQuery += ` ORDER BY a.published_at DESC LIMIT ?`;
+      params.push(limit);
+
+      const results = await c.env.DB.prepare(searchQuery).bind(...params).all();
+      searchResults = results.results || [];
+    }
 
     // Log search query for analytics
     try {
-      await c.env.DB.prepare(`
-        INSERT INTO search_logs (query, category_filter, results_count, session_id, created_at)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `).bind(
-        query.trim(),
-        category || null,
-        results.results.length,
-        c.req.header('x-session-id') || 'anonymous'
-      ).run();
+      await services.analyticsService.trackSearch({
+        query: query.trim(),
+        category: category || null,
+        resultsCount: searchResults.length,
+        userId: c.req.header('x-session-id') || 'anonymous'
+      });
     } catch (logError) {
       console.error("Failed to log search:", logError);
-      // Don't fail the search if logging fails
     }
 
     return c.json({
-      results: results.results,
+      results: searchResults,
       query: query.trim(),
-      count: results.results.length,
-      category: category || 'all'
+      count: searchResults.length,
+      category: category || 'all',
+      searchMethod
     });
   } catch (error) {
     console.error("Error searching articles:", error);
@@ -2783,17 +2827,18 @@ app.post("/api/refresh", async (c) => {
 
 // ===== PHASE 2: USER ENGAGEMENT APIs (REQUIRE AUTH) =====
 
-// Article Like/Unlike
+// Article Like/Unlike - with real-time Durable Object updates
 app.post("/api/articles/:id/like", async (c) => {
   try {
     const articleId = c.req.param("id");
-    // TODO: Get from authenticated user when auth is re-enabled
     const userId = c.req.header('x-user-id') || c.req.header('x-session-id') || 'anonymous';
 
     // Check if already liked
     const existing = await c.env.DB.prepare(`
       SELECT id FROM user_likes WHERE user_id = ? AND article_id = ?
     `).bind(userId, articleId).first();
+
+    const isLiking = !existing;
 
     if (existing) {
       // Unlike
@@ -2804,8 +2849,6 @@ app.post("/api/articles/:id/like", async (c) => {
       await c.env.DB.prepare(`
         UPDATE articles SET like_count = like_count - 1 WHERE id = ?
       `).bind(articleId).run();
-
-      return c.json({ success: true, liked: false, message: "Article unliked" });
     } else {
       // Like
       await c.env.DB.prepare(`
@@ -2815,29 +2858,41 @@ app.post("/api/articles/:id/like", async (c) => {
       await c.env.DB.prepare(`
         UPDATE articles SET like_count = like_count + 1 WHERE id = ?
       `).bind(articleId).run();
-
-      // Track in analytics
-      if (c.env.NEWS_ANALYTICS) {
-        try {
-          c.env.NEWS_ANALYTICS.writeDataPoint({
-            blobs: ['article_like', userId, articleId.toString()],
-            doubles: [Date.now()],
-            indexes: ['engagement']
-          });
-        } catch (analyticsError) {
-          console.error('[LIKE] Analytics tracking failed:', analyticsError);
-        }
-      }
-
-      return c.json({ success: true, liked: true, message: "Article liked" });
     }
+
+    // Update real-time counts via Durable Object
+    try {
+      const doId = c.env.ARTICLE_INTERACTIONS.idFromName(`article:${articleId}`);
+      const stub = c.env.ARTICLE_INTERACTIONS.get(doId);
+      await stub.fetch(new Request('https://do/like', {
+        method: 'POST',
+        body: JSON.stringify({ userId, type: isLiking ? 'like' : 'unlike' })
+      }));
+    } catch (doError) {
+      console.warn('[LIKE] Durable Object update failed:', doError);
+    }
+
+    // Track in analytics
+    if (c.env.NEWS_ANALYTICS) {
+      try {
+        c.env.NEWS_ANALYTICS.writeDataPoint({
+          blobs: [isLiking ? 'article_like' : 'article_unlike', userId, articleId.toString()],
+          doubles: [Date.now()],
+          indexes: ['engagement']
+        });
+      } catch (analyticsError) {
+        console.error('[LIKE] Analytics tracking failed:', analyticsError);
+      }
+    }
+
+    return c.json({ success: true, liked: isLiking, message: isLiking ? "Article liked" : "Article unliked" });
   } catch (error) {
     console.error("[LIKE] Error:", error);
     return c.json({ error: "Failed to like article" }, 500);
   }
 });
 
-// Article Save/Bookmark
+// Article Save/Bookmark - with real-time Durable Object updates
 app.post("/api/articles/:id/save", async (c) => {
   try {
     const articleId = c.req.param("id");
@@ -2848,6 +2903,8 @@ app.post("/api/articles/:id/save", async (c) => {
       SELECT id FROM user_bookmarks WHERE user_id = ? AND article_id = ?
     `).bind(userId, articleId).first();
 
+    const isSaving = !existing;
+
     if (existing) {
       // Unsave
       await c.env.DB.prepare(`
@@ -2857,8 +2914,6 @@ app.post("/api/articles/:id/save", async (c) => {
       await c.env.DB.prepare(`
         UPDATE articles SET bookmark_count = bookmark_count - 1 WHERE id = ?
       `).bind(articleId).run();
-
-      return c.json({ success: true, saved: false, message: "Bookmark removed" });
     } else {
       // Save
       await c.env.DB.prepare(`
@@ -2868,22 +2923,34 @@ app.post("/api/articles/:id/save", async (c) => {
       await c.env.DB.prepare(`
         UPDATE articles SET bookmark_count = bookmark_count + 1 WHERE id = ?
       `).bind(articleId).run();
-
-      // Track in analytics
-      if (c.env.NEWS_ANALYTICS) {
-        try {
-          c.env.NEWS_ANALYTICS.writeDataPoint({
-            blobs: ['article_save', userId, articleId.toString()],
-            doubles: [Date.now()],
-            indexes: ['engagement']
-          });
-        } catch (analyticsError) {
-          console.error('[SAVE] Analytics tracking failed:', analyticsError);
-        }
-      }
-
-      return c.json({ success: true, saved: true, message: "Article bookmarked" });
     }
+
+    // Update real-time counts via Durable Object
+    try {
+      const doId = c.env.ARTICLE_INTERACTIONS.idFromName(`article:${articleId}`);
+      const stub = c.env.ARTICLE_INTERACTIONS.get(doId);
+      await stub.fetch(new Request('https://do/save', {
+        method: 'POST',
+        body: JSON.stringify({ userId, type: isSaving ? 'save' : 'unsave' })
+      }));
+    } catch (doError) {
+      console.warn('[SAVE] Durable Object update failed:', doError);
+    }
+
+    // Track in analytics
+    if (c.env.NEWS_ANALYTICS) {
+      try {
+        c.env.NEWS_ANALYTICS.writeDataPoint({
+          blobs: [isSaving ? 'article_save' : 'article_unsave', userId, articleId.toString()],
+          doubles: [Date.now()],
+          indexes: ['engagement']
+        });
+      } catch (analyticsError) {
+        console.error('[SAVE] Analytics tracking failed:', analyticsError);
+      }
+    }
+
+    return c.json({ success: true, saved: isSaving, message: isSaving ? "Article bookmarked" : "Bookmark removed" });
   } catch (error) {
     console.error("[SAVE] Error:", error);
     return c.json({ error: "Failed to save article" }, 500);
@@ -4573,11 +4640,36 @@ app.post("/api/auth/login", async (c) => {
 
 // OIDC Callback - Exchange authorization code for tokens
 // Called by mobile/web after redirect from id.mukoko.com
+// Rate limited to prevent brute-force attacks
 app.post("/api/auth/oidc/callback", async (c) => {
   try {
+    const services = initializeServices(c.env);
+    const clientIP = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+
+    // Rate limit: 10 attempts per 15 minutes per IP
+    const rateLimit = await services.rateLimitService.checkRateLimit(`oidc:${clientIP}`, {
+      maxAttempts: 10,
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      blockDurationMs: 30 * 60 * 1000 // 30 minute block
+    });
+
+    if (!rateLimit.allowed) {
+      console.warn(`[AUTH] Rate limit exceeded for IP: ${clientIP}`);
+      return c.json({
+        error: "Too many authentication attempts",
+        retryAfter: rateLimit.retryAfter
+      }, 429);
+    }
+
     const { code, redirect_uri } = await c.req.json();
 
     if (!code || !redirect_uri) {
+      // Record failed attempt
+      await services.rateLimitService.recordAttempt(`oidc:${clientIP}`, {
+        maxAttempts: 10,
+        windowMs: 15 * 60 * 1000,
+        blockDurationMs: 30 * 60 * 1000
+      });
       return c.json({ error: "Missing code or redirect_uri" }, 400);
     }
 
