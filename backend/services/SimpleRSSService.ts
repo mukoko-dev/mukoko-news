@@ -83,6 +83,7 @@ interface RSSSource {
   name: string;
   url: string;
   enabled: number;
+  category?: string;    // Source's configured category (used as hint)
   country_id?: string;  // Pan-African support
 }
 
@@ -251,9 +252,9 @@ export class SimpleRSSService {
     };
 
     try {
-      // Get all enabled RSS sources
+      // Get all enabled RSS sources (including category for categorization hints)
       const sources = await this.db
-        .prepare('SELECT id, name, url, enabled, country_id FROM rss_sources WHERE enabled = 1 ORDER BY priority DESC, id ASC')
+        .prepare('SELECT id, name, url, enabled, category, country_id FROM rss_sources WHERE enabled = 1 ORDER BY priority DESC, id ASC')
         .all<RSSSource>();
 
       if (!sources.results || sources.results.length === 0) {
@@ -444,8 +445,8 @@ export class SimpleRSSService {
       // Generate RSS GUID for deduplication
       const guid = this.extractText(item.guid) || link;
 
-      // Assign category based on title and description
-      const category = this.assignCategory(title, description || '');
+      // Assign category based on title, description, and source's configured category
+      const category = this.assignCategory(title, description || '', source.category);
 
       // Generate slug from title
       const slug = this.generateSlug(title);
@@ -634,36 +635,94 @@ export class SimpleRSSService {
     return imageExtensions.test(url) || url.includes('/image/') || url.includes('/img/');
   }
 
+  // Minimum score required for a confident category match
+  private static readonly MIN_CATEGORY_CONFIDENCE = 2;
+  // Boost given to the source's configured category
+  private static readonly SOURCE_CATEGORY_BOOST = 3;
+
   /**
-   * Assign category based on database-loaded category keywords
-   * Falls back to 'general' if no match found
+   * Assign category using word-boundary matching and source category hint.
+   *
+   * Improvements over simple substring matching:
+   * 1. Uses word boundaries to prevent false positives (e.g., "election" won't match "collection")
+   * 2. Uses source's configured category as a hint/boost
+   * 3. Requires minimum confidence score to avoid weak matches
+   *
+   * @param title - Article title
+   * @param description - Article description
+   * @param sourceCategory - The RSS source's configured category (optional hint)
    */
-  private assignCategory(title: string, description: string): string {
+  private assignCategory(title: string, description: string, sourceCategory?: string): string {
     const text = `${title} ${description}`.toLowerCase();
 
     // Use database-loaded category keywords
     if (this.categoryKeywords.size > 0) {
-      let bestMatch: { categoryId: string; score: number } | null = null;
+      const scores = new Map<string, number>();
 
       for (const [categoryId, keywords] of this.categoryKeywords) {
         let score = 0;
+
         for (const keyword of keywords) {
-          if (text.includes(keyword)) {
+          // Use word boundary matching to prevent false positives
+          // \b matches word boundaries (start/end of word)
+          // This prevents "election" matching "collection" or "selection"
+          const regex = new RegExp(`\\b${this.escapeRegex(keyword)}\\b`, 'i');
+          if (regex.test(text)) {
             score++;
+
+            // Bonus for keyword appearing in title (more relevant than description)
+            if (regex.test(title.toLowerCase())) {
+              score += 0.5;
+            }
           }
         }
-        if (score > 0 && (!bestMatch || score > bestMatch.score)) {
+
+        // Apply source category boost if this category matches the source's configured category
+        if (sourceCategory && categoryId === sourceCategory.toLowerCase() && score > 0) {
+          score += SimpleRSSService.SOURCE_CATEGORY_BOOST;
+        }
+
+        if (score > 0) {
+          scores.set(categoryId, score);
+        }
+      }
+
+      // Find the best match
+      let bestMatch: { categoryId: string; score: number } | null = null;
+      for (const [categoryId, score] of scores) {
+        if (!bestMatch || score > bestMatch.score) {
           bestMatch = { categoryId, score };
         }
       }
 
+      // Only return if we have a confident match (score >= minimum threshold)
+      // OR if the source has a configured category and we found at least some match
       if (bestMatch) {
-        return bestMatch.categoryId;
+        const hasSourceHint = sourceCategory && bestMatch.categoryId === sourceCategory.toLowerCase();
+        if (bestMatch.score >= SimpleRSSService.MIN_CATEGORY_CONFIDENCE || hasSourceHint) {
+          return bestMatch.categoryId;
+        }
+      }
+
+      // If no confident keyword match but source has a category, use it as fallback
+      if (sourceCategory && sourceCategory !== 'general') {
+        const normalizedSourceCat = sourceCategory.toLowerCase();
+        // Validate the source category exists
+        if (this.categoryKeywords.has(normalizedSourceCat)) {
+          return normalizedSourceCat;
+        }
       }
     }
 
-    // Default to general if no category keywords loaded or no match
+    // Default to general if no category keywords loaded or no confident match
     return 'general';
+  }
+
+  /**
+   * Escape special regex characters in a string
+   */
+  private escapeRegex(str: string): string {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
 
   /**
