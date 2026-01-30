@@ -4,22 +4,18 @@ import { logger } from "hono/logger";
 
 // Import all business logic services - backend does the heavy lifting
 import { D1Service } from "../database/D1Service.js";
-// D1ConfigService removed - was instantiated but never used
 import { D1CacheService } from "./services/D1CacheService.js";
 import { AnalyticsEngineService } from "./services/AnalyticsEngineService.js";
 import { ArticleService } from "./services/ArticleService.js";
 import { ArticleAIService } from "./services/ArticleAIService.js";
-// ContentProcessingPipeline removed - was instantiated but never used (SimpleRSSService is the active pipeline)
 import { AuthorProfileService } from "./services/AuthorProfileService.js";
-import { NewsSourceService } from "./services/NewsSourceService.js";
 import { NewsSourceManager } from "./services/NewsSourceManager.js";
 import { SimpleRSSService } from "./services/SimpleRSSService.js";
 import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
-// OIDC Auth - using id.mukoko.com for authentication (OIDCAuthService used internally by oidcAuth middleware)
+// OIDC Auth - using id.mukoko.com for authentication
 import { oidcAuth, requireAuth, requireAdmin as requireAdminRole, getCurrentUser, getCurrentUserId, isAuthenticated } from "./middleware/oidcAuth.js";
 // API Key Auth - for frontend (Vercel) to backend authentication
 import { apiAuth, requireApiKey } from "./middleware/apiAuth.js";
-// EmailService removed - was imported but never used
 // Additional enhancement services
 import { CategoryManager } from "./services/CategoryManager.js";
 import { ObservabilityService } from "./services/ObservabilityService.js";
@@ -145,8 +141,7 @@ function initializeServices(env: Bindings) {
   });
   const articleAIService = new ArticleAIService(env.AI, null, d1Service); // Vectorize disabled for now
   const authorProfileService = new AuthorProfileService(d1Service);
-  const articleService = new ArticleService(env.DB); // Fix: ArticleService takes database directly
-  const newsSourceService = new NewsSourceService(); // Fix: NewsSourceService takes no parameters
+  const articleService = new ArticleService(env.DB);
   const newsSourceManager = new NewsSourceManager(env.DB);
 
   // Initialize CloudflareImagesService if available
@@ -175,7 +170,6 @@ function initializeServices(env: Bindings) {
     articleAIService,
     authorProfileService,
     articleService,
-    newsSourceService,
     newsSourceManager,
     categoryManager,
     observabilityService,
@@ -1864,30 +1858,29 @@ app.put("/api/admin/rss-source/:sourceId", async (c) => {
   }
 });
 
-// Admin sources management with full service integration
-// TODO: Add authentication back when OpenAuthService is fixed
+// Admin sources management - fetches real sources from database
 app.get("/api/admin/sources", async (c) => {
   try {
     const services = initializeServices(c.env);
-    
-    // Get actual news sources from the news source service
-    const sources = await services.newsSourceService.getAllSources();
-    
-    // Enhance with statistics and status
+
+    // Get all sources from database via NewsSourceManager
+    const sources = await services.newsSourceManager.getAllSources();
+
+    // Enhance with statistics
     const sourcesWithStats = await Promise.all(
-      sources.map(async (source: any) => {
+      sources.map(async (source) => {
         const articleCount = await services.d1Service.getArticleCount({ source_id: source.id });
         const lastFetch = await services.cacheService.getLastFetch(source.id);
 
         return {
           ...source,
           articles: articleCount,
-          last_fetch: lastFetch || new Date().toISOString(),
+          last_fetch: lastFetch || source.last_successful_fetch || new Date().toISOString(),
           status: source.enabled ? "active" : "inactive"
         };
       })
     );
-    
+
     return c.json({ sources: sourcesWithStats });
   } catch (error) {
     console.error("Error fetching sources:", error);
