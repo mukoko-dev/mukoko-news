@@ -88,6 +88,25 @@ export class NewsSourceManager {
   }
 
   /**
+   * Get all news sources from the database
+   */
+  async getAllSources(options?: { enabledOnly?: boolean }): Promise<NewsSource[]> {
+    try {
+      const query = options?.enabledOnly
+        ? 'SELECT * FROM rss_sources WHERE enabled = 1 ORDER BY priority DESC, name ASC'
+        : 'SELECT * FROM rss_sources ORDER BY priority DESC, name ASC';
+
+      const result = await this.db.prepare(query).all();
+      const validated = validateNewsSourceRows(result.results);
+
+      return validated.map((row) => this.rowToNewsSource(row));
+    } catch (error) {
+      console.error('[NewsSourceManager] Error fetching all sources:', error);
+      return [];
+    }
+  }
+
+  /**
    * Convert a validated row to NewsSource with proper defaults
    */
   private rowToNewsSource(row: NewsSourceRow): NewsSource {
