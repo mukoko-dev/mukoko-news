@@ -20,6 +20,31 @@ interface Article {
   isSaved?: boolean;
 }
 
+// Story cluster - groups related articles from different sources
+interface StoryCluster {
+  id: string;
+  primaryArticle: Article;
+  relatedArticles: Article[];
+  articleCount: number;
+}
+
+// Category section with articles
+interface CategorySection {
+  id: string;
+  name: string;
+  articles: Article[];
+}
+
+// Sectioned feed response
+interface SectionedFeedResponse {
+  topStories: StoryCluster[];
+  yourNews: Article[];
+  byCategory: CategorySection[];
+  latest: Article[];
+  countries?: string[];
+  timestamp: string;
+}
+
 interface ArticlesResponse {
   articles: Article[];
   pagination?: {
@@ -82,16 +107,31 @@ async function fetchAPI<T>(endpoint: string, options?: RequestInit): Promise<T> 
 
 export const api = {
   // Articles (uses /api/feeds endpoint)
-  getArticles: (params?: { limit?: number; page?: number; category?: string; country?: string; countries?: string[] }) => {
+  getArticles: (params?: { limit?: number; page?: number; category?: string; country?: string; countries?: string[]; sort?: 'latest' | 'trending' | 'popular' }) => {
     const searchParams = new URLSearchParams();
     if (params?.limit) searchParams.set('limit', String(params.limit));
     if (params?.page) searchParams.set('page', String(params.page));
     if (params?.category) searchParams.set('category', params.category);
     if (params?.country) searchParams.set('countries', params.country);
     if (params?.countries) searchParams.set('countries', params.countries.join(','));
+    if (params?.sort) searchParams.set('sort', params.sort);
 
     const query = searchParams.toString();
     return fetchAPI<ArticlesResponse>(`/api/feeds${query ? `?${query}` : ''}`);
+  },
+
+  // Sectioned feed (top stories, your news, by category) with story clustering
+  getSectionedFeed: (params?: { countries?: string[]; categories?: string[] }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.countries && params.countries.length > 0) {
+      searchParams.set('countries', params.countries.join(','));
+    }
+    if (params?.categories && params.categories.length > 0) {
+      searchParams.set('categories', params.categories.join(','));
+    }
+
+    const query = searchParams.toString();
+    return fetchAPI<SectionedFeedResponse>(`/api/feeds/sectioned${query ? `?${query}` : ''}`);
   },
 
   getArticle: (id: string) => {
@@ -245,6 +285,88 @@ export const api = {
       total: number;
     }>(`/api/keywords?limit=${limit}`);
   },
+
+  // =====================================================
+  // USER ENGAGEMENT - Likes, Saves, Views
+  // =====================================================
+
+  // Like/Unlike an article
+  likeArticle: (articleId: string) => {
+    return fetchAPI<{
+      success: boolean;
+      liked: boolean;
+      message: string;
+    }>(`/api/articles/${articleId}/like`, {
+      method: 'POST',
+    });
+  },
+
+  // Save/Unsave (bookmark) an article
+  saveArticle: (articleId: string) => {
+    return fetchAPI<{
+      success: boolean;
+      saved: boolean;
+      message: string;
+    }>(`/api/articles/${articleId}/save`, {
+      method: 'POST',
+    });
+  },
+
+  // Track article view with reading metrics
+  trackView: (articleId: string, metrics?: { readingTime?: number; scrollDepth?: number }) => {
+    return fetchAPI<{
+      success: boolean;
+      views: number;
+    }>(`/api/articles/${articleId}/view`, {
+      method: 'POST',
+      body: JSON.stringify({
+        reading_time: metrics?.readingTime || 0,
+        scroll_depth: metrics?.scrollDepth || 0,
+      }),
+    });
+  },
+
+  // Get user's saved/bookmarked articles
+  getSavedArticles: () => {
+    return fetchAPI<{
+      articles: Article[];
+      total: number;
+    }>('/api/user/bookmarks');
+  },
+
+  // Get article engagement counts (for real-time updates)
+  getArticleEngagement: (articleId: string) => {
+    return fetchAPI<{
+      likes: number;
+      saves: number;
+      shares: number;
+      views: number;
+    }>(`/api/articles/${articleId}/engagement`);
+  },
+
+  // =====================================================
+  // ENHANCED SEARCH - with semantic search support
+  // =====================================================
+
+  // Search with AI semantic search support
+  searchWithAI: (query: string, params?: {
+    limit?: number;
+    category?: string;
+    useAI?: boolean;  // Enable/disable semantic search
+  }) => {
+    const searchParams = new URLSearchParams({ q: query });
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+    if (params?.category) searchParams.set('category', params.category);
+    if (params?.useAI === false) searchParams.set('ai', 'false');
+
+    return fetchAPI<{
+      results: Article[];
+      query: string;
+      count: number;
+      category: string;
+      searchMethod: 'semantic' | 'keyword';
+    }>(`/api/search?${searchParams.toString()}`);
+  },
 };
 
-export type { Article, ArticlesResponse, Category };
+export type { Article, ArticlesResponse, Category, StoryCluster, CategorySection, SectionedFeedResponse };

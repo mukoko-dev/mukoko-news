@@ -2,44 +2,57 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { Loader2, ChevronLeft, ChevronRight, Compass, RefreshCw, WifiOff } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Compass, RefreshCw, WifiOff, TrendingUp, Newspaper } from "lucide-react";
 import { CategoryChip } from "@/components/ui/category-chip";
 import { ArticleCard } from "@/components/article-card";
 import { HeroCard } from "@/components/hero-card";
+import { CompactCard } from "@/components/compact-card";
+import { StoryCluster, StoryClusterCompact } from "@/components/story-cluster";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { FeedPageSkeleton, CategoryChipSkeleton } from "@/components/ui/skeleton";
+import { FeedPageSkeleton } from "@/components/ui/skeleton";
+import { CollectionPageJsonLd, ItemListJsonLd } from "@/components/ui/json-ld";
 import { usePreferences } from "@/contexts/preferences-context";
-import { api, type Article, type Category } from "@/lib/api";
+import { api, type Article, type StoryCluster as StoryClusterType, type CategorySection } from "@/lib/api";
 import { isValidImageUrl } from "@/lib/utils";
+import { BASE_URL } from "@/lib/constants";
 
-// Simplified layout - Featured + Latest only
+// Redesigned layout - Top Stories, Your News, By Category, Latest
 
 export default function FeedPage() {
   const { selectedCategories, selectedCountries } = usePreferences();
 
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  // Sectioned feed state
+  const [topStories, setTopStories] = useState<StoryClusterType[]>([]);
+  const [yourNews, setYourNews] = useState<Article[]>([]);
+  const [byCategory, setByCategory] = useState<CategorySection[]>([]);
+  const [latestArticles, setLatestArticles] = useState<Article[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [isSticky, setIsSticky] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
   const filtersSectionRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const topStoriesScrollRef = useRef<HTMLDivElement>(null);
   const touchStartY = useRef(0);
   const isPulling = useRef(false);
   const rafIdRef = useRef<number | null>(null);
+  const isMountedRef = useRef(true);
+  const lastRefreshTimeRef = useRef(0);
 
   // Stable sorted country key - prevents unnecessary refetch when countries are reordered
-  // Example: [ZW, KE] and [KE, ZW] produce the same key "KE,ZW", avoiding duplicate API calls
   const countryKey = useMemo(
     () => selectedCountries.slice().sort().join(","),
     [selectedCountries]
   );
 
-  // Fetch articles and categories
-  // Derives countries from countryKey to keep dependency aligned with the effect trigger
+  // Stable sorted category key
+  const categoryKey = useMemo(
+    () => selectedCategories.slice().sort().join(","),
+    [selectedCategories]
+  );
+
+  // Fetch sectioned feed
   const fetchData = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setRefreshing(true);
@@ -49,25 +62,27 @@ export default function FeedPage() {
     setError(null);
     try {
       const countries = countryKey ? countryKey.split(",") : [];
-      const [articlesResponse, categoriesData] = await Promise.all([
-        api.getArticles({
-          limit: 50,
-          countries: countries.length > 0 ? countries : undefined,
-        }),
-        api.getCategories(),
-      ]);
-      setArticles(articlesResponse.articles || []);
-      setCategories(categoriesData.categories || []);
+      const categories = categoryKey ? categoryKey.split(",") : [];
+
+      const response = await api.getSectionedFeed({
+        countries: countries.length > 0 ? countries : undefined,
+        categories: categories.length > 0 ? categories : undefined,
+      });
+
+      setTopStories(response.topStories || []);
+      setYourNews(response.yourNews || []);
+      setByCategory(response.byCategory || []);
+      setLatestArticles(response.latest || []);
     } catch (err) {
-      console.error("Failed to fetch data:", err);
+      console.error("Failed to fetch feed:", err);
       setError(err instanceof Error ? err.message : "Failed to load news feed");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [countryKey]);
+  }, [countryKey, categoryKey]);
 
-  // Ref to always hold the latest handleRefresh, avoiding effect re-registration
+  // Ref to always hold the latest handleRefresh
   const handleRefreshRef = useRef(() => {});
 
   // Refresh handler
@@ -77,21 +92,22 @@ export default function FeedPage() {
     }
   }, [refreshing, loading, fetchData]);
 
-  // Keep ref in sync with latest handleRefresh
+  // Keep ref in sync
   useEffect(() => {
     handleRefreshRef.current = handleRefresh;
   }, [handleRefresh]);
 
-  // Fetch data when countries change (sorted key prevents reorder refetch)
+  // Fetch data when preferences change
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   // Pull-to-refresh for mobile
-  // Uses handleRefreshRef to avoid re-registering touch listeners on every state change
-  // Uses rafIdRef so the RAF can be cancelled safely even after unmount
   useEffect(() => {
+    // Track mount status for cleanup safety
+    isMountedRef.current = true;
     let currentPullDistance = 0;
+    const DEBOUNCE_MS = 2000; // 2 second debounce between refreshes
 
     const handleTouchStart = (e: TouchEvent) => {
       if (window.scrollY === 0) {
@@ -110,27 +126,36 @@ export default function FeedPage() {
       const distance = Math.max(0, (touchY - touchStartY.current) * 0.5);
       if (distance > 0 && distance < 150) {
         currentPullDistance = distance;
-        // Use requestAnimationFrame for smoother animation
         if (rafIdRef.current !== null) {
           cancelAnimationFrame(rafIdRef.current);
         }
         rafIdRef.current = requestAnimationFrame(() => {
-          setPullDistance(distance);
+          if (isMountedRef.current) {
+            setPullDistance(distance);
+          }
         });
       }
     };
 
     const handleTouchEnd = () => {
-      if (currentPullDistance > 80) {
+      const now = Date.now();
+      // Guard: only refresh if mounted and debounce period has passed
+      if (
+        currentPullDistance > 80 &&
+        isMountedRef.current &&
+        now - lastRefreshTimeRef.current > DEBOUNCE_MS
+      ) {
+        lastRefreshTimeRef.current = now;
         handleRefreshRef.current();
       }
       currentPullDistance = 0;
-      // Use requestAnimationFrame for final state update
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
       }
       rafIdRef.current = requestAnimationFrame(() => {
-        setPullDistance(0);
+        if (isMountedRef.current) {
+          setPullDistance(0);
+        }
       });
       isPulling.current = false;
     };
@@ -140,6 +165,7 @@ export default function FeedPage() {
     window.addEventListener("touchend", handleTouchEnd, { passive: true });
 
     return () => {
+      isMountedRef.current = false;
       window.removeEventListener("touchstart", handleTouchStart);
       window.removeEventListener("touchmove", handleTouchMove);
       window.removeEventListener("touchend", handleTouchEnd);
@@ -161,46 +187,48 @@ export default function FeedPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const scrollCategories = (direction: "left" | "right") => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({
-        left: direction === "left" ? -200 : 200,
+  const scrollTopStories = (direction: "left" | "right") => {
+    if (topStoriesScrollRef.current) {
+      topStoriesScrollRef.current.scrollBy({
+        left: direction === "left" ? -300 : 300,
         behavior: "smooth",
       });
     }
   };
 
-  // Filter articles by selected category and user's country/category preferences
-  const filteredArticles = useMemo(() => {
-    if (!activeCategory) return articles;
+  const hasContent = topStories.length > 0 || yourNews.length > 0 || byCategory.length > 0 || latestArticles.length > 0;
 
-    return articles.filter(
-      (a) => (a.category_id || a.category)?.toLowerCase() === activeCategory.toLowerCase()
-    );
-  }, [articles, activeCategory]);
-
-  // Simple split: Featured (first with image) + Latest (all others)
-  const { featuredArticle, latestArticles } = useMemo(() => {
-    const featured = filteredArticles.find((a) => isValidImageUrl(a.image_url)) || filteredArticles[0];
-    const latest = filteredArticles.filter((a) => a.id !== featured?.id);
-    return { featuredArticle: featured || null, latestArticles: latest };
-  }, [filteredArticles]);
-
-  // Get personalized category chips - show user's selected categories first
-  const selectedCategorySet = useMemo(
-    () => new Set(selectedCategories),
-    [selectedCategories]
+  // Extract primary articles from story clusters for schema.org
+  const topStoriesArticles = useMemo(
+    () => topStories.map((cluster) => cluster.primaryArticle),
+    [topStories]
   );
-  const displayCategories = useMemo(() => {
-    if (selectedCategorySet.size === 0) return categories;
-
-    const selected = categories.filter((c) => selectedCategorySet.has(c.id));
-    const others = categories.filter((c) => !selectedCategorySet.has(c.id));
-    return [...selected, ...others];
-  }, [categories, selectedCategorySet]);
 
   return (
-    <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
+    <>
+      {/* Schema.org structured data for SEO */}
+      <CollectionPageJsonLd
+        name="For You - Mukoko News"
+        description="Pan-African news feed with top stories, personalized news, and the latest articles from across Africa."
+        url={BASE_URL}
+        articles={[...topStoriesArticles, ...latestArticles].slice(0, 10)}
+      />
+      {topStoriesArticles.length > 0 && (
+        <ItemListJsonLd
+          articles={topStoriesArticles}
+          name="Top Stories"
+          description="Trending news stories from across Africa"
+        />
+      )}
+      {latestArticles.length > 0 && (
+        <ItemListJsonLd
+          articles={latestArticles}
+          name="Latest News"
+          description="Most recent news articles from Pan-African sources"
+        />
+      )}
+
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
       {/* Pull-to-refresh indicator (mobile) */}
       {pullDistance > 0 && (
         <div
@@ -256,10 +284,10 @@ export default function FeedPage() {
         </div>
       </header>
 
-      {/* Category Filters - Sticky on scroll */}
+      {/* Quick Category Pills */}
       <div ref={filtersSectionRef}>
         <nav
-          aria-label="Category filters"
+          aria-label="Quick navigation"
           className={`py-3 border-b border-elevated transition-all duration-300 ${
             isSticky
               ? "fixed top-[72px] left-0 right-0 z-40 bg-background/80 backdrop-blur-xl shadow-sm"
@@ -267,50 +295,18 @@ export default function FeedPage() {
           }`}
         >
           <div className={isSticky ? "max-w-[1200px] mx-auto px-4 sm:px-6" : ""}>
-            <div className="relative flex items-center">
-              {isSticky && (
-                <button
-                  onClick={() => scrollCategories("left")}
-                  className="absolute left-0 z-10 w-8 h-8 flex items-center justify-center bg-background/90 rounded-full shadow-md hover:bg-elevated transition-colors"
-                  aria-label="Scroll categories left"
-                >
-                  <ChevronLeft className="w-4 h-4" aria-hidden="true" />
-                </button>
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide" style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}>
+              <CategoryChip label="Top Stories" active icon={<TrendingUp className="w-3.5 h-3.5" />} onClick={() => document.getElementById('top-stories')?.scrollIntoView({ behavior: 'smooth' })} />
+              {selectedCategories.length > 0 && (
+                <CategoryChip label="Your News" icon={<Newspaper className="w-3.5 h-3.5" />} onClick={() => document.getElementById('your-news')?.scrollIntoView({ behavior: 'smooth' })} />
               )}
-
-              <div
-                ref={scrollContainerRef}
-                className={`flex gap-2 overflow-x-auto scrollbar-hide ${
-                  isSticky ? "px-10 scroll-smooth" : "flex-wrap"
-                }`}
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-                role="tablist"
-                aria-label="News categories"
-              >
+              {byCategory.map((section) => (
                 <CategoryChip
-                  label="All"
-                  active={activeCategory === null}
-                  onClick={() => setActiveCategory(null)}
+                  key={section.id}
+                  label={section.name}
+                  onClick={() => document.getElementById(`category-${section.id}`)?.scrollIntoView({ behavior: 'smooth' })}
                 />
-                {displayCategories.map((category) => (
-                  <CategoryChip
-                    key={category.id}
-                    label={category.name}
-                    active={activeCategory === category.id}
-                    onClick={() => setActiveCategory(category.id)}
-                  />
-                ))}
-              </div>
-
-              {isSticky && (
-                <button
-                  onClick={() => scrollCategories("right")}
-                  className="absolute right-0 z-10 w-8 h-8 flex items-center justify-center bg-background/90 rounded-full shadow-md hover:bg-elevated transition-colors"
-                  aria-label="Scroll categories right"
-                >
-                  <ChevronRight className="w-4 h-4" aria-hidden="true" />
-                </button>
-              )}
+              ))}
             </div>
           </div>
         </nav>
@@ -334,28 +330,133 @@ export default function FeedPage() {
               Try Again
             </button>
           </div>
-        ) : filteredArticles.length > 0 ? (
-          <div className="py-6 space-y-8">
-            {/* Featured Article */}
-            {featuredArticle && (
-              <ErrorBoundary fallback={<div className="p-8 rounded-2xl bg-surface text-center text-text-secondary">Featured story unavailable</div>}>
-                <section aria-labelledby="featured-heading">
-                  <h2 id="featured-heading" className="sr-only">Featured Story</h2>
-                  <HeroCard article={featuredArticle} />
+        ) : hasContent ? (
+          <div className="py-6 space-y-10">
+            {/* TOP STORIES - Trending with story clustering */}
+            {topStories.length > 0 && (
+              <ErrorBoundary fallback={<div className="p-8 rounded-2xl bg-surface text-center text-text-secondary">Top stories unavailable</div>}>
+                <section id="top-stories" aria-labelledby="top-stories-heading" className="scroll-mt-32">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-primary" aria-hidden="true" />
+                      <h2 id="top-stories-heading" className="text-lg font-bold">Top Stories</h2>
+                    </div>
+                    <div className="hidden sm:flex items-center gap-1">
+                      <button
+                        onClick={() => scrollTopStories("left")}
+                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface transition-colors"
+                        aria-label="Scroll left"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => scrollTopStories("right")}
+                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface transition-colors"
+                        aria-label="Scroll right"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Featured top story (first cluster) */}
+                  {topStories[0] && (
+                    <div className="mb-4">
+                      <StoryCluster cluster={topStories[0]} />
+                    </div>
+                  )}
+
+                  {/* Horizontal scrolling for more top stories */}
+                  {topStories.length > 1 && (
+                    <div
+                      ref={topStoriesScrollRef}
+                      className="flex gap-4 overflow-x-auto scrollbar-hide pb-2"
+                      style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                    >
+                      {topStories.slice(1).map((cluster) => (
+                        <StoryClusterCompact key={cluster.id} cluster={cluster} />
+                      ))}
+                    </div>
+                  )}
                 </section>
               </ErrorBoundary>
             )}
 
-            {/* Latest Articles */}
+            {/* YOUR NEWS - Based on preferred categories */}
+            {yourNews.length > 0 && selectedCategories.length > 0 && (
+              <ErrorBoundary fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">Your news unavailable</div>}>
+                <section id="your-news" aria-labelledby="your-news-heading" className="scroll-mt-32">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <Newspaper className="w-5 h-5 text-secondary" aria-hidden="true" />
+                      <h2 id="your-news-heading" className="text-lg font-bold">Your News</h2>
+                    </div>
+                    <span className="text-sm text-text-tertiary">
+                      Based on your interests
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {yourNews.slice(0, 6).map((article) => (
+                      <ArticleCard key={article.id} article={article} />
+                    ))}
+                  </div>
+                </section>
+              </ErrorBoundary>
+            )}
+
+            {/* BY CATEGORY - Sections for each preferred category */}
+            {byCategory.map((section) => (
+              <ErrorBoundary key={section.id} fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">{section.name} unavailable</div>}>
+                <section id={`category-${section.id}`} aria-labelledby={`category-${section.id}-heading`} className="scroll-mt-32">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 id={`category-${section.id}-heading`} className="text-lg font-bold">{section.name}</h2>
+                    <Link
+                      href={`/discover?category=${section.id}`}
+                      className="text-sm text-primary font-medium hover:underline flex items-center gap-1"
+                    >
+                      See all
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+
+                  {/* First article as hero, rest as compact cards */}
+                  {section.articles.length > 0 && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                      {/* Hero for first article if it has an image */}
+                      {section.articles[0] && isValidImageUrl(section.articles[0].image_url) ? (
+                        <div className="lg:col-span-2">
+                          <HeroCard article={section.articles[0]} />
+                        </div>
+                      ) : (
+                        <div className="lg:col-span-2">
+                          <ArticleCard article={section.articles[0]} />
+                        </div>
+                      )}
+
+                      {/* Compact cards for rest */}
+                      <div className="space-y-3">
+                        {section.articles.slice(1, 5).map((article) => (
+                          <CompactCard key={article.id} article={article} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              </ErrorBoundary>
+            ))}
+
+            {/* LATEST - All latest articles sorted by date */}
             {latestArticles.length > 0 && (
               <ErrorBoundary fallback={<div className="p-4 rounded-lg bg-surface text-center text-text-secondary">Latest articles unavailable</div>}>
-                <section aria-labelledby="latest-heading">
-                  <div className="flex justify-between items-center mb-4">
+                <section id="latest" aria-labelledby="latest-heading" className="scroll-mt-32">
+                  <div className="flex items-center justify-between mb-4">
                     <h2 id="latest-heading" className="text-lg font-bold">Latest</h2>
                     <span className="text-sm text-text-tertiary">
                       {latestArticles.length} articles
                     </span>
                   </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {latestArticles.map((article) => (
                       <ArticleCard key={article.id} article={article} />
@@ -368,15 +469,16 @@ export default function FeedPage() {
         ) : (
           <div className="text-center py-16 text-text-secondary">
             <p className="text-lg">No articles found.</p>
-            <button
-              onClick={() => setActiveCategory(null)}
-              className="mt-4 text-primary font-medium hover:underline"
+            <Link
+              href="/discover"
+              className="mt-4 inline-block text-primary font-medium hover:underline"
             >
-              Clear filter
-            </button>
+              Explore categories
+            </Link>
           </div>
         )}
       </main>
     </div>
+    </>
   );
 }

@@ -62,14 +62,57 @@ export default function ArticleDetailPage() {
     }
   }, [articleId, loadArticle]);
 
-  const handleLike = () => {
-    setIsLiked(!isLiked);
-    setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
+  const handleLike = async () => {
+    // Optimistic update
+    const wasLiked = isLiked;
+    setIsLiked(!wasLiked);
+    setLikesCount(wasLiked ? likesCount - 1 : likesCount + 1);
+
+    try {
+      const result = await api.likeArticle(articleId);
+      // Sync with server state if different
+      if (result.liked !== !wasLiked) {
+        setIsLiked(result.liked);
+      }
+    } catch (err) {
+      // Revert on error
+      console.error("Failed to like article:", err);
+      setIsLiked(wasLiked);
+      setLikesCount(wasLiked ? likesCount : likesCount - 1);
+    }
   };
 
-  const handleSave = () => {
-    setIsSaved(!isSaved);
+  const handleSave = async () => {
+    // Optimistic update
+    const wasSaved = isSaved;
+    setIsSaved(!wasSaved);
+
+    try {
+      const result = await api.saveArticle(articleId);
+      // Sync with server state if different
+      if (result.saved !== !wasSaved) {
+        setIsSaved(result.saved);
+      }
+    } catch (err) {
+      // Revert on error
+      console.error("Failed to save article:", err);
+      setIsSaved(wasSaved);
+    }
   };
+
+  // Track article view on load
+  useEffect(() => {
+    if (article && articleId) {
+      // Track view after short delay (avoid counting bounces)
+      const viewTimer = setTimeout(() => {
+        api.trackView(articleId, { readingTime: 0, scrollDepth: 0 }).catch(() => {
+          // Silent fail - view tracking is non-critical
+        });
+      }, 2000);
+
+      return () => clearTimeout(viewTimer);
+    }
+  }, [article, articleId]);
 
   const [copySuccess, setCopySuccess] = useState(false);
 

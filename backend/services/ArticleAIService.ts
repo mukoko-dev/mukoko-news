@@ -730,6 +730,109 @@ Return only a number between 0.0 and 1.0 (e.g., 0.75):`,
   }
 
   /**
+   * AI-based news category classification.
+   * Uses Workers AI to classify articles into the proper news category.
+   * More accurate than keyword matching for ambiguous content.
+   *
+   * @param title - Article title
+   * @param description - Article description or summary
+   * @param content - Full article content (optional, will use first 1500 chars)
+   * @returns Category ID and confidence score
+   */
+  async classifyNewsCategory(
+    title: string,
+    description?: string,
+    content?: string
+  ): Promise<{ category: string; confidence: number }> {
+    // Valid categories for Pan-African news
+    const validCategories = [
+      'politics',
+      'economy',
+      'technology',
+      'sports',
+      'health',
+      'education',
+      'entertainment',
+      'international',
+      'agriculture',
+      'crime',
+      'environment',
+      'general'
+    ];
+
+    const textContent = content
+      ? content.substring(0, 1500)
+      : description || '';
+
+    const prompt = `
+    Classify this Pan-African news article into exactly ONE category.
+
+    Title: "${title}"
+    Content: "${textContent}..."
+
+    Available categories:
+    - politics: Government, elections, parliament, policy, political parties
+    - economy: Business, finance, markets, trade, inflation, currency, banking
+    - technology: Tech, digital, startups, AI, software, mobile, internet
+    - sports: Football, cricket, rugby, athletics, sports news
+    - health: Medical, healthcare, hospitals, disease, wellness
+    - education: Schools, universities, students, education policy
+    - entertainment: Music, movies, celebrities, arts, culture
+    - international: World news, foreign affairs, global events
+    - agriculture: Farming, crops, livestock, rural development
+    - crime: Police, courts, arrests, criminal justice
+    - environment: Climate, conservation, wildlife, pollution
+    - general: Other news that doesn't fit above categories
+
+    IMPORTANT: Return ONLY valid JSON with category ID and confidence:
+    {"category": "politics", "confidence": 0.85}
+
+    Choose the single most relevant category. Confidence should be between 0.5 and 1.0.
+    `;
+
+    try {
+      const response = await this.ai.run('@cf/meta/llama-3-8b-instruct', {
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a news article classifier for Pan-African media. Return only valid JSON with category and confidence.'
+          },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 100,
+        temperature: 0.1
+      });
+
+      // Parse the response
+      const responseText = response.response.trim();
+
+      // Try to extract JSON from the response
+      const jsonMatch = responseText.match(/\{[^}]+\}/);
+      if (!jsonMatch) {
+        console.warn('[ArticleAIService] No JSON found in category response:', responseText);
+        return { category: 'general', confidence: 0.3 };
+      }
+
+      const result = JSON.parse(jsonMatch[0]);
+      const category = String(result.category || 'general').toLowerCase();
+      const confidence = Math.max(0.3, Math.min(1, parseFloat(result.confidence) || 0.5));
+
+      // Validate category is in our list
+      if (!validCategories.includes(category)) {
+        console.warn(`[ArticleAIService] Invalid category "${category}", defaulting to general`);
+        return { category: 'general', confidence: 0.3 };
+      }
+
+      console.log(`[ArticleAIService] Classified "${title.substring(0, 50)}..." as '${category}' (confidence: ${confidence})`);
+      return { category, confidence };
+
+    } catch (error) {
+      console.error('[ArticleAIService] Category classification failed:', error);
+      return { category: 'general', confidence: 0.3 };
+    }
+  }
+
+  /**
    * Assess grammar quality
    */
   async assessGrammar(content: string): Promise<number> {

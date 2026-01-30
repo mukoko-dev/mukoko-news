@@ -80,20 +80,17 @@ Services are in `backend/services/`. Key services include:
 - `ArticleService` - Article CRUD and queries
 - `ArticleAIService` - AI-powered content processing
 - `SimpleRSSService` - RSS feed aggregation
-- `ContentProcessingPipeline` - RSS → parse → process → store
-- `NewsSourceService` / `NewsSourceManager` - Source management
-- `CategoryManager` - Category operations
+- `NewsSourceManager` - News source management
+- `CategoryManager` - Category operations (single source of truth)
 - `CountryService` - Pan-African country management
+- `StoryClusteringService` - Groups similar articles using Jaccard similarity
 
 **Auth Services**:
 - `AuthProviderService` - Unified auth service with RBAC
 - `OIDCAuthService` - OIDC token validation
-- `MobileAuthService` - SMS-based mobile authentication
-- `Web3AuthService` - Ethereum/EVM wallet authentication
 
 **Data Services**:
 - `D1Service` / `D1CacheService` - Database operations and caching
-- `D1ConfigService` - Configuration management
 - `D1UserService` - User database operations
 - `PersonalizedFeedService` - User-specific feeds
 
@@ -104,8 +101,6 @@ Services are in `backend/services/`. Key services include:
 - `RateLimitService` - Rate limiting
 - `CSRFService` - CSRF protection
 - `ObservabilityService` - Logging and monitoring
-- `EmailService` - Email notifications
-- `SEOService` - SEO metadata generation
 
 **Durable Objects**:
 - `ArticleInteractionsDO` - Article engagement tracking
@@ -313,12 +308,13 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (131 tests):
+**Test Files** (161 tests):
 - `src/lib/__tests__/utils.test.ts` - Utility functions, safeCssUrl, CSS injection vectors, XSS attack vectors
 - `src/lib/__tests__/constants.test.ts` - Constants, URL helpers, path traversal, URL injection security tests
 - `src/components/__tests__/json-ld.test.tsx` - JSON-LD rendering, XSS prevention, expanded injection payloads
 - `src/components/__tests__/hero-card.test.tsx` - HeroCard component tests
 - `src/components/__tests__/compact-card.test.tsx` - CompactCard component tests
+- `src/components/__tests__/story-cluster.test.tsx` - StoryCluster component tests
 - `src/components/__tests__/error-boundary.test.tsx` - ErrorBoundary tests
 - `src/components/__tests__/breadcrumb.test.tsx` - Breadcrumb navigation tests
 - `src/components/__tests__/bottom-nav.test.tsx` - Mobile bottom navigation + routing tests
@@ -334,12 +330,16 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (`backend/services/__tests__/`):
+**Test Files** (378 tests in `backend/services/__tests__/`):
 - `ArticleService.test.ts` - Slug generation, content extraction
+- `ArticleInteractionsDO.test.ts` - Durable Object engagement tracking
 - `CategoryManager.test.ts` - Category operations
 - `D1CacheService.test.ts` - Caching logic
+- `D1UserService.test.ts` - User database operations
+- `StoryClusteringService.test.ts` - Title normalization, Jaccard similarity, clustering
 - `RateLimitService.test.ts` - Rate limiting
 - `CSRFService.test.ts` - CSRF protection
+- `OIDCAuthService.test.ts` - OIDC authentication
 
 **Mock Pattern**: Mock D1Database with `prepare().bind().first/all/run()` chain
 

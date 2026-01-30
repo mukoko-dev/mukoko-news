@@ -1,5 +1,5 @@
-# Harare Metro Robots.txt
-# https://www.hararemetro.co.zw
+# Mukoko News Robots.txt
+# https://news.mukoko.com
 
 User-agent: *
 Allow: /
@@ -7,12 +7,11 @@ Disallow: /api/
 Allow: /api/schema
 
 # Sitemaps
-Sitemap: https://www.hararemetro.co.zw/sitemap.xml
+Sitemap: https://news.mukoko.com/sitemap.xml
 
-# Crawl-delay
+# Crawl-delay for politeness
 Crawl-delay: 1
 
-# Zimbabwe news aggregator - optimized for search engines
-# Categories: politics, economy, business, sports, harare, agriculture, 
-# technology, health, education, entertainment, environment, crime, 
-# international, lifestyle, finance
+# Pan-African news aggregator - optimized for search engines
+# Countries: Zimbabwe, South Africa, Kenya, Nigeria, Ghana, Tanzania, Uganda, Rwanda, Ethiopia, Botswana, Zambia, Malawi, Egypt, Morocco, Namibia, Mozambique
+# Categories: politics, economy, technology, sports, health, education, entertainment, international, general, harare, agriculture, crime, environment
