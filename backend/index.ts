@@ -976,14 +976,58 @@ app.get("/api/feeds/personalized/explain", async (c) => {
   }
 });
 
+// Constants for story clustering algorithm
+const CLUSTERING_CONFIG = {
+  SIMILARITY_THRESHOLD: 0.4,    // Jaccard similarity threshold for grouping stories
+  MAX_CLUSTERS: 10,             // Maximum number of story clusters to return
+  MAX_RELATED_PER_CLUSTER: 4,   // Maximum related articles per cluster
+  TOP_STORIES_LIMIT: 30,        // Articles to fetch for clustering
+  YOUR_NEWS_LIMIT: 15,          // Articles for personalized section
+  CATEGORY_LIMIT: 8,            // Articles per category section
+  LATEST_LIMIT: 20,             // Latest articles to return
+  MAX_CATEGORIES: 5,            // Maximum category sections
+  TRENDING_HOURS: 48,           // Hours to look back for trending
+};
+
+// Valid country codes (Pan-African countries)
+const VALID_COUNTRIES = new Set([
+  'ZW', 'ZA', 'KE', 'NG', 'GH', 'TZ', 'UG', 'RW',
+  'ET', 'BW', 'ZM', 'MW', 'EG', 'MA', 'NA', 'MZ'
+]);
+
+// Valid category IDs
+const VALID_CATEGORIES = new Set([
+  'politics', 'economy', 'technology', 'sports', 'health',
+  'education', 'entertainment', 'international', 'general',
+  'harare', 'agriculture', 'crime', 'environment'
+]);
+
+// Stop words for title normalization
+const STOP_WORDS = new Set([
+  'the', 'and', 'for', 'with', 'from', 'that', 'this',
+  'have', 'will', 'been', 'after', 'says', 'said'
+]);
+
 // Sectioned feed endpoint - returns top stories with clustering, your news, and by category
 // This endpoint powers the redesigned home feed with Google News-style story clustering
 app.get("/api/feeds/sectioned", async (c) => {
   try {
     const countriesParam = c.req.query("countries");
-    const countries = countriesParam ? countriesParam.split(",").filter(c => c.trim()) : null;
     const categoriesParam = c.req.query("categories");
-    const preferredCategories = categoriesParam ? categoriesParam.split(",").filter(c => c.trim()) : [];
+
+    // SECURITY: Validate country codes against allowlist to prevent injection
+    const countries = countriesParam
+      ? countriesParam.split(",")
+          .map(code => code.trim().toUpperCase())
+          .filter(code => VALID_COUNTRIES.has(code))
+      : null;
+
+    // SECURITY: Validate category IDs against allowlist
+    const preferredCategories = categoriesParam
+      ? categoriesParam.split(",")
+          .map(cat => cat.trim().toLowerCase())
+          .filter(cat => VALID_CATEGORIES.has(cat))
+      : [];
 
     // Helper function to normalize title for comparison
     const normalizeTitle = (title: string): string[] => {
@@ -991,7 +1035,7 @@ app.get("/api/feeds/sectioned", async (c) => {
         .toLowerCase()
         .replace(/[^\w\s]/g, '')
         .split(/\s+/)
-        .filter(word => word.length > 3 && !['the', 'and', 'for', 'with', 'from', 'that', 'this', 'have', 'will', 'been', 'after', 'says', 'said'].includes(word));
+        .filter(word => word.length > 3 && !STOP_WORDS.has(word));
     };
 
     // Helper function to calculate title similarity (Jaccard index)
@@ -1013,23 +1057,39 @@ app.get("/api/feeds/sectioned", async (c) => {
       countryParams.push(...countries);
     }
 
-    // 1. FETCH TOP STORIES (trending from last 48 hours, will cluster these)
+    // PERFORMANCE: Run independent queries in parallel
+    // Phase 1: Fetch top stories and latest (independent of categories)
     const topStoriesQuery = `
       SELECT id, title, slug, description, content_snippet, author, source, source_id,
              published_at, image_url, original_url, category_id, country_id, view_count,
              like_count, bookmark_count
       FROM articles
       WHERE status = 'published'
-        AND published_at > datetime('now', '-48 hours')
+        AND published_at > datetime('now', '-${CLUSTERING_CONFIG.TRENDING_HOURS} hours')
         ${countryClause}
       ORDER BY (view_count + like_count * 3 + bookmark_count * 2) DESC, published_at DESC
-      LIMIT 30
+      LIMIT ${CLUSTERING_CONFIG.TOP_STORIES_LIMIT}
     `;
 
-    const topStoriesResult = await c.env.DB.prepare(topStoriesQuery)
-      .bind(...countryParams).all();
+    const latestQuery = `
+      SELECT id, title, slug, description, content_snippet, author, source, source_id,
+             published_at, image_url, original_url, category_id, country_id, view_count,
+             like_count, bookmark_count
+      FROM articles
+      WHERE status = 'published'
+        ${countryClause}
+      ORDER BY published_at DESC
+      LIMIT ${CLUSTERING_CONFIG.LATEST_LIMIT}
+    `;
+
+    // Execute top stories and latest in parallel
+    const [topStoriesResult, latestResult] = await Promise.all([
+      c.env.DB.prepare(topStoriesQuery).bind(...countryParams).all(),
+      c.env.DB.prepare(latestQuery).bind(...countryParams).all(),
+    ]);
 
     const topStoriesRaw = (topStoriesResult.results || []) as any[];
+    const latestArticles = (latestResult.results || []) as any[];
 
     // Cluster similar stories together
     interface StoryCluster {
@@ -1063,25 +1123,48 @@ app.get("/api/feeds/sectioned", async (c) => {
         const otherWords = normalizeTitle(other.title);
         const similarity = titleSimilarity(articleWords, otherWords);
 
-        // If titles are >40% similar, consider them the same story
-        if (similarity > 0.4) {
+        // Group stories that exceed similarity threshold
+        if (similarity > CLUSTERING_CONFIG.SIMILARITY_THRESHOLD) {
           cluster.relatedArticles.push(other);
           cluster.articleCount++;
           clusteredIds.add(other.id);
 
-          // Limit related articles per cluster
-          if (cluster.relatedArticles.length >= 4) break;
+          if (cluster.relatedArticles.length >= CLUSTERING_CONFIG.MAX_RELATED_PER_CLUSTER) break;
         }
       }
 
       clusters.push(cluster);
-
-      // Limit total clusters
-      if (clusters.length >= 10) break;
+      if (clusters.length >= CLUSTERING_CONFIG.MAX_CLUSTERS) break;
     }
 
-    // 2. FETCH YOUR NEWS (latest articles matching preferred categories)
+    // Phase 2: Fetch category-based content in parallel
     let yourNews: any[] = [];
+    const categorySections: { id: string; name: string; articles: any[] }[] = [];
+
+    // Get categories to query
+    const allCategories = preferredCategories.length > 0
+      ? preferredCategories
+      : ['politics', 'economy', 'technology', 'sports'];
+    const categoriesToFetch = allCategories.slice(0, CLUSTERING_CONFIG.MAX_CATEGORIES);
+
+    // Build all category queries
+    const categoryQueries = categoriesToFetch.map(categoryId => {
+      const query = `
+        SELECT id, title, slug, description, content_snippet, author, source, source_id,
+               published_at, image_url, original_url, category_id, country_id, view_count,
+               like_count, bookmark_count
+        FROM articles
+        WHERE status = 'published'
+          AND category_id = ?
+          ${countryClause}
+        ORDER BY published_at DESC
+        LIMIT ${CLUSTERING_CONFIG.CATEGORY_LIMIT}
+      `;
+      return c.env.DB.prepare(query).bind(categoryId, ...countryParams).all();
+    });
+
+    // Add "Your News" query if user has preferences
+    let yourNewsPromise: Promise<any> | null = null;
     if (preferredCategories.length > 0) {
       const catPlaceholders = preferredCategories.map(() => '?').join(',');
       const yourNewsQuery = `
@@ -1093,73 +1176,32 @@ app.get("/api/feeds/sectioned", async (c) => {
           AND category_id IN (${catPlaceholders})
           ${countryClause}
         ORDER BY published_at DESC
-        LIMIT 15
+        LIMIT ${CLUSTERING_CONFIG.YOUR_NEWS_LIMIT}
       `;
-
-      const yourNewsResult = await c.env.DB.prepare(yourNewsQuery)
+      yourNewsPromise = c.env.DB.prepare(yourNewsQuery)
         .bind(...preferredCategories, ...countryParams).all();
-
-      yourNews = (yourNewsResult.results || []) as any[];
     }
 
-    // 3. FETCH BY CATEGORY (articles grouped by preferred categories)
-    interface CategorySection {
-      id: string;
-      name: string;
-      articles: any[];
-    }
+    // Execute all category queries in parallel
+    const categoryResults = await Promise.all(categoryQueries);
 
-    const categorySections: CategorySection[] = [];
-
-    // Get category names
-    const allCategories = preferredCategories.length > 0 ? preferredCategories : ['politics', 'economy', 'technology', 'sports'];
-
-    for (const categoryId of allCategories.slice(0, 5)) { // Limit to 5 categories
-      const categoryQuery = `
-        SELECT id, title, slug, description, content_snippet, author, source, source_id,
-               published_at, image_url, original_url, category_id, country_id, view_count,
-               like_count, bookmark_count
-        FROM articles
-        WHERE status = 'published'
-          AND category_id = ?
-          ${countryClause}
-        ORDER BY published_at DESC
-        LIMIT 8
-      `;
-
-      const categoryResult = await c.env.DB.prepare(categoryQuery)
-        .bind(categoryId, ...countryParams).all();
-
-      const articles = (categoryResult.results || []) as any[];
-
+    // Process category results
+    categoriesToFetch.forEach((categoryId, index) => {
+      const articles = (categoryResults[index].results || []) as any[];
       if (articles.length > 0) {
-        // Get category name from first article or use ID
-        const categoryName = categoryId.charAt(0).toUpperCase() + categoryId.slice(1);
-
         categorySections.push({
           id: categoryId,
-          name: categoryName,
+          name: categoryId.charAt(0).toUpperCase() + categoryId.slice(1),
           articles,
         });
       }
+    });
+
+    // Get "Your News" result if applicable
+    if (yourNewsPromise) {
+      const yourNewsResult = await yourNewsPromise;
+      yourNews = (yourNewsResult.results || []) as any[];
     }
-
-    // 4. FETCH LATEST (all latest articles, sorted by date - newest first)
-    const latestQuery = `
-      SELECT id, title, slug, description, content_snippet, author, source, source_id,
-             published_at, image_url, original_url, category_id, country_id, view_count,
-             like_count, bookmark_count
-      FROM articles
-      WHERE status = 'published'
-        ${countryClause}
-      ORDER BY published_at DESC
-      LIMIT 20
-    `;
-
-    const latestResult = await c.env.DB.prepare(latestQuery)
-      .bind(...countryParams).all();
-
-    const latestArticles = (latestResult.results || []) as any[];
 
     return c.json({
       topStories: clusters,

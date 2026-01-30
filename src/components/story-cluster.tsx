@@ -103,16 +103,17 @@ export function StoryCluster({ cluster }: StoryClusterProps) {
             </Link>
           ))}
 
-          {/* Full Coverage Button */}
+          {/* Full Coverage Link - searches for related stories */}
           {articleCount > 2 && (
-            <button
+            <Link
+              href={`/search?q=${encodeURIComponent(primaryArticle.title.split(' ').slice(0, 5).join(' '))}`}
               className="w-full flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium text-primary hover:bg-elevated transition-colors"
-              aria-label={`View full coverage: ${articleCount} sources`}
+              aria-label={`View full coverage: ${articleCount} sources covering this story`}
             >
               <Layers className="w-4 h-4" aria-hidden="true" />
               Full Coverage · {articleCount} sources
               <ChevronRight className="w-4 h-4" aria-hidden="true" />
-            </button>
+            </Link>
           )}
         </div>
       )}
