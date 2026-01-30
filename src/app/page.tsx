@@ -2,17 +2,19 @@
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
-import { Loader2, ChevronLeft, ChevronRight, Compass, RefreshCw, WifiOff, TrendingUp, Newspaper, Layers } from "lucide-react";
+import { Loader2, ChevronLeft, ChevronRight, Compass, RefreshCw, WifiOff, TrendingUp, Newspaper } from "lucide-react";
 import { CategoryChip } from "@/components/ui/category-chip";
 import { ArticleCard } from "@/components/article-card";
 import { HeroCard } from "@/components/hero-card";
 import { CompactCard } from "@/components/compact-card";
 import { StoryCluster, StoryClusterCompact } from "@/components/story-cluster";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { FeedPageSkeleton, CategoryChipSkeleton } from "@/components/ui/skeleton";
+import { FeedPageSkeleton } from "@/components/ui/skeleton";
+import { CollectionPageJsonLd, ItemListJsonLd } from "@/components/ui/json-ld";
 import { usePreferences } from "@/contexts/preferences-context";
 import { api, type Article, type StoryCluster as StoryClusterType, type CategorySection } from "@/lib/api";
 import { isValidImageUrl } from "@/lib/utils";
+import { BASE_URL } from "@/lib/constants";
 
 // Redesigned layout - Top Stories, Your News, By Category, Latest
 
@@ -179,8 +181,37 @@ export default function FeedPage() {
 
   const hasContent = topStories.length > 0 || yourNews.length > 0 || byCategory.length > 0 || latestArticles.length > 0;
 
+  // Extract primary articles from story clusters for schema.org
+  const topStoriesArticles = useMemo(
+    () => topStories.map((cluster) => cluster.primaryArticle),
+    [topStories]
+  );
+
   return (
-    <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
+    <>
+      {/* Schema.org structured data for SEO */}
+      <CollectionPageJsonLd
+        name="For You - Mukoko News"
+        description="Pan-African news feed with top stories, personalized news, and the latest articles from across Africa."
+        url={BASE_URL}
+        articles={[...topStoriesArticles, ...latestArticles].slice(0, 10)}
+      />
+      {topStoriesArticles.length > 0 && (
+        <ItemListJsonLd
+          articles={topStoriesArticles}
+          name="Top Stories"
+          description="Trending news stories from across Africa"
+        />
+      )}
+      {latestArticles.length > 0 && (
+        <ItemListJsonLd
+          articles={latestArticles}
+          name="Latest News"
+          description="Most recent news articles from Pan-African sources"
+        />
+      )}
+
+      <div className="max-w-[1200px] mx-auto px-4 sm:px-6">
       {/* Pull-to-refresh indicator (mobile) */}
       {pullDistance > 0 && (
         <div
@@ -431,5 +462,6 @@ export default function FeedPage() {
         )}
       </main>
     </div>
+    </>
   );
 }
