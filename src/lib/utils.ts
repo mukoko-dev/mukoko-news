@@ -35,11 +35,19 @@ export function formatTimeAgo(dateString: string): string {
 
 /**
  * Build a safe CSS url() value using encodeURI for standards-compliant escaping.
- * Prevents CSS injection by encoding all special characters rather than
- * hand-rolling partial quote escaping.
+ * Prevents CSS injection by encoding all special characters.
+ * Handles already-encoded URLs by decoding first to avoid double-encoding.
  */
 export function safeCssUrl(src: string): string {
-  return `url('${encodeURI(src)}')`;
+  try {
+    // Decode first to handle already-encoded URLs, then encode fresh
+    // This prevents double-encoding (e.g., %20 becoming %2520)
+    const decoded = decodeURI(src);
+    return `url('${encodeURI(decoded)}')`;
+  } catch {
+    // If decodeURI fails (malformed %), just encode as-is
+    return `url('${encodeURI(src)}')`;
+  }
 }
 
 /**
