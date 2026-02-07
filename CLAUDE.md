@@ -323,10 +323,10 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (296 tests in 15 files):
+**Test Files** (299 tests in 15 files):
 
 `src/lib/__tests__/`:
-- `api.test.ts` - API client, fetch wrapper, error handling, all endpoints (30 tests)
+- `api.test.ts` - API client, fetch wrapper, error handling, rate limiting, all endpoints (33 tests)
 - `utils.test.ts` - Utility functions, safeCssUrl, CSS injection vectors, XSS attack vectors (51 tests)
 - `constants.test.ts` - Constants, URL helpers, path traversal, URL injection security tests (28 tests)
 
@@ -357,12 +357,12 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (487 tests in `backend/services/__tests__/`):
-- `ArticleAIService.test.ts` - AI content processing, keyword extraction, quality scoring, embeddings (62 tests)
+**Test Files** (494 tests in `backend/services/__tests__/`):
+- `ArticleAIService.test.ts` - AI content processing, keyword extraction, quality scoring, embeddings, JSON edge cases (67 tests)
 - `StoryClusteringService.test.ts` - Title normalization, Jaccard similarity, clustering (41 tests)
 - `CategoryManager.test.ts` - Category operations, batch updates, cleanup (36 tests)
 - `AISearchService.test.ts` - Semantic search, keyword fallback, AI insights, article indexing (28 tests)
-- `PersonalizedFeedService.test.ts` - Personalized feed generation, scoring algorithms, diversity factors (19 tests)
+- `PersonalizedFeedService.test.ts` - Personalized feed generation, scoring algorithms, diversity factors, large preference lists (21 tests)
 - `ArticleService.test.ts` - Slug generation, content extraction
 - `ArticleInteractionsDO.test.ts` - Durable Object engagement tracking
 - `D1CacheService.test.ts` - Caching logic
@@ -380,7 +380,7 @@ npm run test:coverage     # With v8 coverage report
 
 **Pre-commit Hook**: Runs typecheck + build validation via Husky
 
-### Total Test Count: 783 tests (296 frontend + 487 backend)
+### Total Test Count: 793 tests (299 frontend + 494 backend)
 
 ## Cloudflare Bindings
 

@@ -609,6 +609,80 @@ describe('ArticleAIService', () => {
 
       expect(result.confidence).toBeGreaterThanOrEqual(0.3);
     });
+
+    it('should handle valid JSON with missing category field', async () => {
+      mockAI.run.mockResolvedValue({
+        response: '{"confidence": 0.9}', // Missing category
+      });
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await service.classifyNewsCategory('Title', 'Content');
+
+      // Falls back to 'general' for missing category, but keeps confidence
+      expect(result.category).toBe('general');
+      expect(result.confidence).toBe(0.9); // Uses provided confidence, clamped
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle valid JSON with unexpected structure', async () => {
+      // This response has nested objects - the regex \{[^}]+\} captures incomplete JSON
+      // which causes JSON.parse to fail, triggering the fallback
+      mockAI.run.mockResolvedValue({
+        response: '{"result": {"cat": "politics"}, "score": 0.9}', // Nested structure
+      });
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await service.classifyNewsCategory('Title', 'Content');
+
+      // Nested JSON causes parse error, returns default fallback
+      expect(result.category).toBe('general');
+      expect(result.confidence).toBe(0.3);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle array response - extracts first object', async () => {
+      mockAI.run.mockResolvedValue({
+        response: '[{"category": "sports", "confidence": 0.8}]', // Array wrapping valid object
+      });
+
+      const result = await service.classifyNewsCategory('Title', 'Content');
+
+      // Regex extracts the inner JSON object from the array
+      expect(result.category).toBe('sports');
+      expect(result.confidence).toBe(0.8);
+    });
+
+    it('should handle null response fields with defaults', async () => {
+      mockAI.run.mockResolvedValue({
+        response: '{"category": null, "confidence": null}',
+      });
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await service.classifyNewsCategory('Title', 'Content');
+
+      // null category triggers fallback to 'general'
+      // null confidence falls back to 0.5
+      expect(result.category).toBe('general');
+      expect(result.confidence).toBe(0.5);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should handle response with no valid JSON', async () => {
+      mockAI.run.mockResolvedValue({
+        response: 'This is not valid JSON at all',
+      });
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+      const result = await service.classifyNewsCategory('Title', 'Content');
+
+      expect(result.category).toBe('general');
+      expect(result.confidence).toBe(0.3);
+
+      consoleSpy.mockRestore();
+    });
   });
 
   describe('processArticle', () => {
