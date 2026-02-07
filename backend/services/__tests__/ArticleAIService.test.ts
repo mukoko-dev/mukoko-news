@@ -216,6 +216,54 @@ describe('ArticleAIService', () => {
       expect(result.cleanedContent).toBeDefined();
       consoleSpy.mockRestore();
     });
+
+    // Security: HTML tag removal tests
+    // Note: cleanContent removes HTML tags but preserves text content
+    // Full XSS sanitization should happen at render time (React escapes by default)
+    it('should remove script tags from content', async () => {
+      const content = '<p>Hello World</p><script>alert("xss")</script><p>More content here</p>';
+
+      const result = await service.cleanContent(content, shortContentOptions);
+
+      // Tags are removed, text content may remain (sanitized at render)
+      expect(result.cleanedContent).not.toContain('<script');
+      expect(result.cleanedContent).not.toContain('</script>');
+    });
+
+    it('should remove style tags', async () => {
+      const content = '<p>Article text</p><style>.malicious{}</style><p>More text</p>';
+
+      const result = await service.cleanContent(content, shortContentOptions);
+
+      expect(result.cleanedContent).not.toContain('<style');
+      expect(result.cleanedContent).not.toContain('</style>');
+    });
+
+    it('should remove iframe tags', async () => {
+      const content = '<p>Article</p><iframe src="evil.com"></iframe><p>More content here</p>';
+
+      const result = await service.cleanContent(content, shortContentOptions);
+
+      expect(result.cleanedContent).not.toContain('<iframe');
+      expect(result.cleanedContent).not.toContain('</iframe>');
+    });
+
+    it('should remove object and embed tags', async () => {
+      const content = '<p>Article</p><object data="malware.swf"></object><embed src="bad.swf"><p>More text</p>';
+
+      const result = await service.cleanContent(content, shortContentOptions);
+
+      expect(result.cleanedContent).not.toContain('<object');
+      expect(result.cleanedContent).not.toContain('<embed');
+    });
+
+    it('should handle nested dangerous tags', async () => {
+      const content = '<div><p>Article</p><script><script>nested</script></script><p>More text here</p></div>';
+
+      const result = await service.cleanContent(content, shortContentOptions);
+
+      expect(result.cleanedContent).not.toContain('<script');
+    });
   });
 
   describe('extractKeywords', () => {

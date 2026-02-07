@@ -380,7 +380,7 @@ npm run test:coverage     # With v8 coverage report
 
 **Pre-commit Hook**: Runs typecheck + build validation via Husky
 
-### Total Test Count: 811 tests (310 frontend + 501 backend)
+### Total Test Count: 820 tests (310 frontend + 510 backend)
 
 ## Cloudflare Bindings
 

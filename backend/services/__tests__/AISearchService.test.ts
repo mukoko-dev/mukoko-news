@@ -543,9 +543,21 @@ describe('AISearchService', () => {
 
       // Verify bind was called (parameterized query)
       expect(mockDb._statement.bind).toHaveBeenCalled();
-      // The malicious string should be passed to bind, not concatenated into SQL
-      const bindCall = mockDb._statement.bind.mock.calls[0];
-      expect(bindCall.some((arg: unknown) => String(arg).includes(maliciousQuery))).toBe(true);
+
+      // Verify the malicious string is passed to bind, not concatenated into SQL
+      const bindCalls = mockDb._statement.bind.mock.calls;
+      const boundValues = bindCalls.flat();
+      expect(boundValues.some((arg: unknown) => String(arg).includes(maliciousQuery))).toBe(true);
+
+      // CRITICAL: Verify SQL string doesn't contain the malicious input directly
+      const prepareCalls = mockDb.prepare.mock.calls;
+      prepareCalls.forEach((call: unknown[]) => {
+        const sql = call[0] as string;
+        expect(sql).not.toContain("DROP TABLE");
+        expect(sql).not.toContain("'; --");
+        // SQL should use placeholders
+        expect(sql).toMatch(/LIKE\s+\?|=\s*\?/);
+      });
 
       consoleSpy.mockRestore();
     });
@@ -561,6 +573,12 @@ describe('AISearchService', () => {
 
       // Verify query uses parameterization
       expect(mockDb._statement.bind).toHaveBeenCalled();
+
+      // Verify SQL string doesn't contain the injection
+      const prepareCalls = mockDb.prepare.mock.calls;
+      prepareCalls.forEach((call: unknown[]) => {
+        expect(call[0]).not.toContain("UNION SELECT");
+      });
     });
 
     it('should safely handle nested SQL in source filter', async () => {
@@ -572,6 +590,12 @@ describe('AISearchService', () => {
       await service.semanticSearch('test', { source: maliciousSource });
 
       expect(mockDb._statement.bind).toHaveBeenCalled();
+
+      // Verify SQL doesn't contain the injection
+      const prepareCalls = mockDb.prepare.mock.calls;
+      prepareCalls.forEach((call: unknown[]) => {
+        expect(call[0]).not.toContain("DELETE FROM");
+      });
     });
 
     it('should handle boolean-based blind injection attempts', async () => {

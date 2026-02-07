@@ -438,5 +438,77 @@ describe('PersonalizedFeedService', () => {
 
       expect(result.countries).toEqual(['ZW', 'ZA']);
     });
+
+    it('should handle all 16 Pan-African countries', async () => {
+      const allCountries = ['ZW', 'ZA', 'KE', 'NG', 'GH', 'TZ', 'UG', 'RW',
+                          'ET', 'BW', 'ZM', 'MW', 'EG', 'MA', 'NA', 'MZ'];
+
+      mockDb._statement.all.mockResolvedValue({ results: sampleArticles });
+      mockDb._statement.first.mockResolvedValue({ total: sampleArticles.length });
+
+      const result = await service.getPersonalizedFeed(null, {
+        countries: allCountries
+      });
+
+      expect(result.countries).toEqual(allCountries);
+    });
+  });
+
+  // ─── Security: SQL injection prevention ─────────────────────────────────
+  describe('SQL injection prevention', () => {
+    it('should use parameterized queries for country filter', async () => {
+      const maliciousCountry = "ZW' OR '1'='1";
+
+      mockDb._statement.all.mockResolvedValue({ results: [] });
+      mockDb._statement.first.mockResolvedValue({ total: 0 });
+
+      await service.getPersonalizedFeed(null, {
+        countries: [maliciousCountry]
+      });
+
+      // Verify bind() was called with the malicious input (parameterized)
+      expect(mockDb._statement.bind).toHaveBeenCalled();
+
+      // Verify SQL string uses placeholders, not concatenated values
+      const prepareCalls = mockDb.prepare.mock.calls;
+      const sqlStrings = prepareCalls.map((call: unknown[]) => call[0] as string);
+
+      // None of the SQL strings should contain the malicious input directly
+      sqlStrings.forEach((sql: string) => {
+        expect(sql).not.toContain("ZW' OR");
+        expect(sql).not.toContain("'1'='1");
+      });
+    });
+
+    it('should use parameterized queries for user ID', async () => {
+      const maliciousUserId = "user'; DROP TABLE users; --";
+
+      mockDb._statement.all.mockResolvedValue({ results: [] });
+      mockDb._statement.first.mockResolvedValue({ total: 0 });
+
+      await service.getPersonalizedFeed(maliciousUserId);
+
+      // Verify SQL doesn't contain the malicious input
+      const prepareCalls = mockDb.prepare.mock.calls;
+      prepareCalls.forEach((call: unknown[]) => {
+        expect(call[0]).not.toContain("DROP TABLE");
+        expect(call[0]).not.toContain("user';");
+      });
+    });
+
+    it('should use parameterized queries for limit/offset options', async () => {
+      mockDb._statement.all.mockResolvedValue({ results: [] });
+      mockDb._statement.first.mockResolvedValue({ total: 0 });
+
+      // Test with numeric options that could be manipulated
+      await service.getPersonalizedFeed(null, {
+        limit: 10,
+        offset: 0,
+      });
+
+      // Verify queries use proper parameterization
+      expect(mockDb._statement.bind).toHaveBeenCalled();
+      expect(mockDb.prepare).toHaveBeenCalled();
+    });
   });
 });
