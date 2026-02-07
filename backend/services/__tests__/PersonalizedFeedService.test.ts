@@ -287,10 +287,7 @@ describe('PersonalizedFeedService', () => {
 
         // With no preferences and no articles, returns empty result
         expect(result.articles.length).toBe(0);
-        // Check pagination exists and total is 0
-        if (result.pagination) {
-          expect(result.pagination.total).toBe(0);
-        }
+        expect(result.total).toBe(0);
       });
     });
 

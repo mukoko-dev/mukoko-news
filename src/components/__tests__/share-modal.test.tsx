@@ -10,7 +10,8 @@ import type { Article } from '@/lib/api';
 
 // Mock article for testing
 const mockArticle: Article = {
-  id: 123,
+  id: '123',
+  slug: 'test-article-title',
   title: 'Test Article Title',
   source: 'Test Source',
   description: 'Test description',
