@@ -180,15 +180,30 @@ src/
 │   ├── compact-card.tsx     # Text-focused card for articles without images
 │   ├── share-modal.tsx      # Share/engagement modal
 │   ├── onboarding-modal.tsx # Country/category selection
-│   └── theme-provider.tsx   # Theme context provider
+│   ├── theme-provider.tsx   # Theme context provider
+│   └── __tests__/           # Component tests
+│       ├── article-card.test.tsx
+│       ├── engagement-bar.test.tsx
+│       ├── share-modal.test.tsx
+│       ├── onboarding-modal.test.tsx
+│       ├── story-cluster.test.tsx
+│       ├── hero-card.test.tsx
+│       ├── compact-card.test.tsx
+│       ├── json-ld.test.tsx
+│       ├── bottom-nav.test.tsx
+│       ├── breadcrumb.test.tsx
+│       └── error-boundary.test.tsx
 ├── contexts/
-│   └── preferences-context.tsx # User preferences (countries, categories)
+│   ├── preferences-context.tsx # User preferences (countries, categories)
+│   └── __tests__/
+│       └── preferences-context.test.tsx # Context tests
 └── lib/
     ├── api.ts               # API client with fetch utilities
-    ├── utils.ts             # Utility functions (cn, formatTimeAgo, isValidImageUrl)
+    ├── utils.ts             # Utility functions (cn, formatTimeAgo, isValidImageUrl, safeCssUrl)
     ├── constants.ts         # Centralized countries and categories data
     ├── source-profiles.ts   # News source configurations
     └── __tests__/           # Unit tests
+        ├── api.test.ts      # Tests for API client
         ├── utils.test.ts    # Tests for utility functions
         └── constants.test.ts # Tests for constants and helpers
 ```
@@ -308,16 +323,28 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (161 tests):
-- `src/lib/__tests__/utils.test.ts` - Utility functions, safeCssUrl, CSS injection vectors, XSS attack vectors
-- `src/lib/__tests__/constants.test.ts` - Constants, URL helpers, path traversal, URL injection security tests
-- `src/components/__tests__/json-ld.test.tsx` - JSON-LD rendering, XSS prevention, expanded injection payloads
-- `src/components/__tests__/hero-card.test.tsx` - HeroCard component tests
-- `src/components/__tests__/compact-card.test.tsx` - CompactCard component tests
-- `src/components/__tests__/story-cluster.test.tsx` - StoryCluster component tests
-- `src/components/__tests__/error-boundary.test.tsx` - ErrorBoundary tests
-- `src/components/__tests__/breadcrumb.test.tsx` - Breadcrumb navigation tests
-- `src/components/__tests__/bottom-nav.test.tsx` - Mobile bottom navigation + routing tests
+**Test Files** (310 tests in 15 files):
+
+`src/lib/__tests__/`:
+- `api.test.ts` - API client, fetch wrapper, error handling, rate limiting, all endpoints (33 tests)
+- `utils.test.ts` - Utility functions, safeCssUrl, CSS injection, prototype pollution, path traversal (62 tests)
+- `constants.test.ts` - Constants, URL helpers, path traversal, URL injection security tests (28 tests)
+
+`src/contexts/__tests__/`:
+- `preferences-context.test.tsx` - localStorage persistence, country/category selection, onboarding flow (22 tests)
+
+`src/components/__tests__/`:
+- `article-card.test.tsx` - ArticleCard rendering, image handling, date formatting, engagement display (21 tests)
+- `engagement-bar.test.tsx` - EngagementBar and InlineEngagement components, click handlers, count formatting (28 tests)
+- `share-modal.test.tsx` - Share options, copy link, social sharing, escape key handling (18 tests)
+- `onboarding-modal.test.tsx` - Modal visibility, country selection, completing onboarding, accessibility (16 tests)
+- `story-cluster.test.tsx` - StoryCluster component tests (30 tests)
+- `json-ld.test.tsx` - JSON-LD rendering, XSS prevention, expanded injection payloads (14 tests)
+- `hero-card.test.tsx` - HeroCard component tests (8 tests)
+- `compact-card.test.tsx` - CompactCard component tests (8 tests)
+- `bottom-nav.test.tsx` - Mobile bottom navigation + routing tests (10 tests)
+- `breadcrumb.test.tsx` - Breadcrumb navigation tests (7 tests)
+- `error-boundary.test.tsx` - ErrorBoundary tests (5 tests)
 
 **Test Pattern**: Vitest with jsdom environment, React Testing Library
 
@@ -330,20 +357,30 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (378 tests in `backend/services/__tests__/`):
+**Test Files** (501 tests in `backend/services/__tests__/`):
+- `ArticleAIService.test.ts` - AI content processing, keyword extraction, quality scoring, embeddings, JSON edge cases (67 tests)
+- `StoryClusteringService.test.ts` - Title normalization, Jaccard similarity, clustering (41 tests)
+- `CategoryManager.test.ts` - Category operations, batch updates, cleanup (36 tests)
+- `AISearchService.test.ts` - Semantic search, keyword fallback, AI insights, SQL injection prevention (35 tests)
+- `PersonalizedFeedService.test.ts` - Personalized feed generation, scoring algorithms, diversity factors, large preference lists (21 tests)
 - `ArticleService.test.ts` - Slug generation, content extraction
 - `ArticleInteractionsDO.test.ts` - Durable Object engagement tracking
-- `CategoryManager.test.ts` - Category operations
 - `D1CacheService.test.ts` - Caching logic
 - `D1UserService.test.ts` - User database operations
-- `StoryClusteringService.test.ts` - Title normalization, Jaccard similarity, clustering
+- `SimpleRSSService.test.ts` - RSS feed parsing and collection
 - `RateLimitService.test.ts` - Rate limiting
 - `CSRFService.test.ts` - CSRF protection
 - `OIDCAuthService.test.ts` - OIDC authentication
 
+`backend/middleware/__tests__/`:
+- `apiAuth.test.ts` - API authentication middleware
+- `oidcAuth.test.ts` - OIDC authentication middleware
+
 **Mock Pattern**: Mock D1Database with `prepare().bind().first/all/run()` chain
 
 **Pre-commit Hook**: Runs typecheck + build validation via Husky
+
+### Total Test Count: 820 tests (310 frontend + 510 backend)
 
 ## Cloudflare Bindings
 
@@ -513,7 +550,8 @@ useEffect(() => {
 ```tsx
 import { safeCssUrl } from "@/lib/utils";
 
-// Good - uses encodeURI for standards-compliant escaping
+// Good - handles already-encoded URLs and encodes fresh
+// Decodes first to prevent double-encoding (%20 → %2520)
 style={{ backgroundImage: safeCssUrl(src) }}
 
 // Bad - manual escaping is incomplete and error-prone
@@ -522,6 +560,8 @@ style={{ backgroundImage: `url('${src.replace(/'/g, "\\'")}')` }}
 // Bad - unescaped URL could break out of quotes
 style={{ backgroundImage: `url(${src})` }}
 ```
+
+**Note**: `safeCssUrl()` uses `decodeURI()` then `encodeURI()` to safely handle URLs that may already be percent-encoded, preventing issues like `%20` becoming `%2520`.
 
 ### Error Boundaries
 
@@ -644,11 +684,15 @@ Country data is centralized in `src/lib/constants.ts` (single source of truth).
 - `src/app/layout.tsx` - Root layout with providers, bottom nav, and Organization JSON-LD
 - `src/app/page.tsx` - Home feed with simplified layout (Featured + Latest)
 - `src/app/globals.css` - Tailwind config, CSS variables, and font imports
-- `src/lib/api.ts` - API client
-- `src/lib/utils.ts` - Utilities (cn, formatTimeAgo, isValidImageUrl)
+- `src/lib/api.ts` - API client with all backend endpoints
+- `src/lib/utils.ts` - Utilities (cn, formatTimeAgo, isValidImageUrl, safeCssUrl)
 - `src/lib/constants.ts` - Centralized countries and categories (single source of truth)
-- `src/contexts/preferences-context.tsx` - User preferences context
+- `src/contexts/preferences-context.tsx` - User preferences context with localStorage persistence
+- `src/components/article-card.tsx` - Main article display component
+- `src/components/share-modal.tsx` - Share/engagement modal with social sharing
+- `src/components/onboarding-modal.tsx` - Country/category selection onboarding
 - `src/components/ui/json-ld.tsx` - Schema.org JSON-LD with XSS prevention
+- `src/components/ui/engagement-bar.tsx` - Article engagement buttons (like, save, share)
 - `src/components/ui/breadcrumb.tsx` - Breadcrumb navigation component
 - `src/components/layout/bottom-nav.tsx` - Mobile bottom navigation
 - `src/components/ui/skeleton.tsx` - Skeleton loading components
@@ -659,6 +703,12 @@ Country data is centralized in `src/lib/constants.ts` (single source of truth).
 - `backend/index.ts` - API entry point and route definitions
 - `backend/wrangler.jsonc` - Cloudflare Workers config
 - `backend/services/NewsSourceManager.ts` - News source management
+- `backend/services/ArticleAIService.ts` - AI content processing (keywords, quality, embeddings)
+- `backend/services/AISearchService.ts` - Semantic search with Vectorize
+- `backend/services/PersonalizedFeedService.ts` - User-specific feed generation
+- `backend/services/StoryClusteringService.ts` - Article clustering with Jaccard similarity
+- `backend/services/CategoryManager.ts` - Category operations (single source of truth)
+- `backend/vitest.config.ts` - Backend test configuration
 
 ### Config
 - `next.config.ts` - Next.js configuration

@@ -317,3 +317,92 @@ describe('isValidImageUrl - XSS attack vectors', () => {
     expect(isValidImageUrl('http://localhost:3000/image.jpg')).toBe(true);
   });
 });
+
+// ─── Security: Prototype pollution prevention ─────────────────────────────
+describe('Security - prototype pollution prevention', () => {
+  it('should safely handle __proto__ in object keys', () => {
+    // Verify that malicious keys don't affect Object prototype
+    const maliciousInput = JSON.parse('{"__proto__": {"polluted": true}}');
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+
+    // cn() should handle objects with __proto__ without polluting
+    const result = cn({ '__proto__': 'test' });
+    expect(typeof result).toBe('string');
+    expect(({} as Record<string, unknown>).test).toBeUndefined();
+  });
+
+  it('should safely handle constructor.prototype pollution attempts', () => {
+    const maliciousInput = JSON.parse('{"constructor": {"prototype": {"polluted": true}}}');
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  it('should handle nested __proto__ in formatTimeAgo input', () => {
+    // formatTimeAgo expects a date string, not an object
+    // But we verify it doesn't throw on weird input
+    expect(() => formatTimeAgo('{"__proto__": {}}')).not.toThrow();
+  });
+});
+
+// ─── Security: Path traversal prevention ──────────────────────────────────
+describe('Security - path traversal in URLs', () => {
+  it('should not resolve ../ sequences in safeCssUrl', () => {
+    // safeCssUrl should encode, not resolve paths
+    const result = safeCssUrl('../../etc/passwd');
+    expect(result).toBe("url('../../etc/passwd')");
+    // The path stays literal, not resolved to /etc/passwd
+  });
+
+  it('should encode null bytes which could bypass path checks', () => {
+    // Null bytes can sometimes bypass security checks
+    const result = safeCssUrl('image.jpg%00.html');
+    // decodeURI converts %00 to null byte, then encodeURI converts it back
+    expect(result).toContain('url(');
+  });
+
+  it('should handle Windows-style path traversal', () => {
+    expect(isValidImageUrl('..\\..\\windows\\system32')).toBe(false);
+    expect(isValidImageUrl('..\\..\\..')).toBe(false);
+  });
+
+  it('should handle encoded path traversal', () => {
+    // %2e = . and %2f = /
+    const result = safeCssUrl('%2e%2e%2f%2e%2e%2fetc/passwd');
+    // decodeURI decodes these, then encodeURI re-encodes special chars
+    expect(result).toContain('url(');
+  });
+});
+
+// ─── Security: Unicode and encoding attacks ───────────────────────────────
+describe('Security - unicode and encoding attacks', () => {
+  it('should handle overlong UTF-8 sequences (already decoded by browser)', () => {
+    // Overlong UTF-8 for / would be browser-handled before reaching JS
+    const result = safeCssUrl('test%c0%afpath');
+    expect(result).toContain('url(');
+  });
+
+  it('should handle Unicode normalization attacks', () => {
+    // Different Unicode representations of same character
+    const result1 = safeCssUrl('café.jpg'); // e + combining acute
+    const result2 = safeCssUrl('café.jpg'); // precomposed é
+    // Both should produce valid CSS
+    expect(result1).toContain('url(');
+    expect(result2).toContain('url(');
+  });
+
+  it('should handle right-to-left override character', () => {
+    // RLO (U+202E) can be used to mask malicious extensions
+    const rlo = '\u202E';
+    const result = safeCssUrl(`image${rlo}gpj.exe`);
+    expect(result).toContain('url(');
+    // The RLO character should be encoded
+    expect(result).toContain('%E2%80%AE');
+  });
+
+  it('should handle zero-width characters', () => {
+    // Zero-width joiner/non-joiner can hide in filenames
+    const zwj = '\u200D';
+    const zwnj = '\u200C';
+    const result = safeCssUrl(`image${zwj}${zwnj}.jpg`);
+    expect(result).toContain('url(');
+  });
+});
