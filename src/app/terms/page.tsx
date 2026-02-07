@@ -1,3 +1,19 @@
+import type { Metadata } from "next";
+import { getFullUrl } from "@/lib/constants";
+
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description:
+    "Terms of Service for Mukoko News, the Pan-African digital news aggregation platform by Nyuchi Africa. Read our terms of use, content policies, and user guidelines.",
+  alternates: {
+    canonical: getFullUrl("/terms"),
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
 export default function TermsPage() {
   return (
     <div className="max-w-[800px] mx-auto px-6 py-12">

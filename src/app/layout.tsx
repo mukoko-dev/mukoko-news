@@ -6,7 +6,7 @@ import { Header } from '@/components/layout/header';
 import { Footer } from '@/components/layout/footer';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { OnboardingModal } from '@/components/onboarding-modal';
-import { OrganizationJsonLd } from '@/components/ui/json-ld';
+import { OrganizationJsonLd, WebSiteJsonLd } from '@/components/ui/json-ld';
 
 // Fonts are loaded via CSS @import in globals.css for better reliability
 // This avoids build failures when Google Fonts API is unreachable
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     title: 'Mukoko News - Pan-African News Hub',
     description: 'Your trusted source for breaking news and top stories from across Africa.',
     images: ['/mukoko-icon-dark.png'],
-    creator: '@mukokonews',
+    creator: '@mukokoafrica',
   },
   robots: {
     index: true,
@@ -110,6 +110,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <OrganizationJsonLd />
+        <WebSiteJsonLd />
       </head>
       <body className="font-sans antialiased min-h-screen flex flex-col">
         <ThemeProvider defaultTheme="system" storageKey="mukoko-news-theme">
