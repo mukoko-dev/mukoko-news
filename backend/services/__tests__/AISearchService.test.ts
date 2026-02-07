@@ -3,7 +3,7 @@
  * Tests semantic search, keyword search, AI insights, and article indexing
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { AISearchService } from '../AISearchService';
 
 // Mock AI binding
@@ -79,6 +79,10 @@ describe('AISearchService', () => {
       mockDb as unknown as D1Database,
       mockAnalytics as unknown as AnalyticsEngineDataset
     );
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('semanticSearch', () => {
@@ -523,6 +527,106 @@ describe('AISearchService', () => {
       const results = await serviceWithoutAnalytics.semanticSearch('test');
 
       expect(results).toBeDefined();
+    });
+  });
+
+  // ─── Security: SQL injection prevention ─────────────────────────────────
+  describe('SQL injection prevention', () => {
+    it('should use parameterized queries for search input', async () => {
+      mockAI.run.mockRejectedValue(new Error('AI error')); // Force keyword fallback
+      mockDb._statement.all.mockResolvedValue({ results: [] });
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // SQL injection attempt
+      const maliciousQuery = "'; DROP TABLE articles; --";
+      await service.semanticSearch(maliciousQuery);
+
+      // Verify bind was called (parameterized query)
+      expect(mockDb._statement.bind).toHaveBeenCalled();
+      // The malicious string should be passed to bind, not concatenated into SQL
+      const bindCall = mockDb._statement.bind.mock.calls[0];
+      expect(bindCall.some((arg: unknown) => String(arg).includes(maliciousQuery))).toBe(true);
+
+      consoleSpy.mockRestore();
+    });
+
+    it('should safely handle UNION-based SQL injection in category filter', async () => {
+      mockAI.run.mockResolvedValue({ data: [[0.1, 0.2, 0.3]] });
+      mockVectorize.query.mockResolvedValue({ matches: [] });
+      mockDb._statement.all.mockResolvedValue({ results: [] });
+
+      // UNION injection attempt
+      const maliciousCategory = "' UNION SELECT * FROM users --";
+      await service.semanticSearch('test', { category: maliciousCategory });
+
+      // Verify query uses parameterization
+      expect(mockDb._statement.bind).toHaveBeenCalled();
+    });
+
+    it('should safely handle nested SQL in source filter', async () => {
+      mockAI.run.mockResolvedValue({ data: [[0.1, 0.2, 0.3]] });
+      mockVectorize.query.mockResolvedValue({ matches: [] });
+      mockDb._statement.all.mockResolvedValue({ results: [] });
+
+      const maliciousSource = "source'; DELETE FROM articles WHERE '1'='1";
+      await service.semanticSearch('test', { source: maliciousSource });
+
+      expect(mockDb._statement.bind).toHaveBeenCalled();
+    });
+
+    it('should handle boolean-based blind injection attempts', async () => {
+      mockAI.run.mockResolvedValue({ data: [[0.1, 0.2, 0.3]] });
+      mockVectorize.query.mockResolvedValue({ matches: [] });
+      mockDb._statement.all.mockResolvedValue({ results: [] });
+
+      // Boolean blind injection
+      const maliciousQuery = "test' AND 1=1 --";
+      await service.semanticSearch(maliciousQuery);
+
+      // Query should complete without error (parameterized)
+      expect(mockDb.prepare).toHaveBeenCalled();
+    });
+
+    it('should handle time-based blind injection attempts', async () => {
+      mockAI.run.mockResolvedValue({ data: [[0.1, 0.2, 0.3]] });
+      mockVectorize.query.mockResolvedValue({ matches: [] });
+      mockDb._statement.all.mockResolvedValue({ results: [] });
+
+      // Time-based blind injection (SQLite uses LIKE for delay simulation)
+      const maliciousQuery = "test'; SELECT CASE WHEN (1=1) THEN sqlite_version() ELSE '' END--";
+      await service.semanticSearch(maliciousQuery);
+
+      expect(mockDb.prepare).toHaveBeenCalled();
+    });
+  });
+
+  // ─── Security: Prototype pollution prevention ───────────────────────────
+  describe('prototype pollution prevention', () => {
+    it('should safely handle __proto__ in search options', async () => {
+      mockAI.run.mockResolvedValue({ data: [[0.1, 0.2, 0.3]] });
+      mockVectorize.query.mockResolvedValue({ matches: [] });
+      mockDb._statement.all.mockResolvedValue({ results: [] });
+
+      const maliciousOptions = JSON.parse('{"category": "test", "__proto__": {"polluted": true}}');
+      await service.semanticSearch('test', maliciousOptions);
+
+      // Verify Object prototype wasn't polluted
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    });
+
+    it('should safely handle constructor pollution attempts', async () => {
+      mockAI.run.mockResolvedValue({ data: [[0.1, 0.2, 0.3]] });
+      mockVectorize.query.mockResolvedValue({ matches: [] });
+      mockDb._statement.all.mockResolvedValue({ results: [] });
+
+      const maliciousOptions = {
+        category: 'test',
+        constructor: { prototype: { polluted: true } },
+      };
+
+      await service.semanticSearch('test', maliciousOptions as Parameters<typeof service.semanticSearch>[1]);
+
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     });
   });
 });

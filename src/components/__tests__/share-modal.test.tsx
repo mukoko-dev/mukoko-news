@@ -283,12 +283,14 @@ describe('ShareModal', () => {
         expect(screen.getByText('Copied!')).toBeInTheDocument();
       });
 
-      // Close and reopen modal
+      // Close and reopen modal - the useEffect should reset copied state
       rerender(<ShareModal article={mockArticle} isOpen={false} onClose={() => {}} />);
       rerender(<ShareModal article={mockArticle} isOpen={true} onClose={() => {}} />);
 
       // Should show Copy Link again, not Copied!
-      expect(screen.getByText('Copy Link')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByText('Copy Link')).toBeInTheDocument();
+      });
     });
   });
 });

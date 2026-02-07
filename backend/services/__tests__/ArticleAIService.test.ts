@@ -3,7 +3,7 @@
  * Tests content cleaning, keyword extraction, quality scoring, and AI processing
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ArticleAIService } from '../ArticleAIService';
 
 // Mock AI binding
@@ -53,6 +53,10 @@ describe('ArticleAIService', () => {
     mockD1Service = createMockD1Service();
     mockImages = createMockImages();
     service = new ArticleAIService(mockAI, mockVectorize, mockD1Service, mockImages);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   describe('cleanContent', () => {
