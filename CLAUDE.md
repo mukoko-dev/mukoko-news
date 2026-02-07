@@ -323,11 +323,11 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (299 tests in 15 files):
+**Test Files** (310 tests in 15 files):
 
 `src/lib/__tests__/`:
 - `api.test.ts` - API client, fetch wrapper, error handling, rate limiting, all endpoints (33 tests)
-- `utils.test.ts` - Utility functions, safeCssUrl, CSS injection vectors, XSS attack vectors (51 tests)
+- `utils.test.ts` - Utility functions, safeCssUrl, CSS injection, prototype pollution, path traversal (62 tests)
 - `constants.test.ts` - Constants, URL helpers, path traversal, URL injection security tests (28 tests)
 
 `src/contexts/__tests__/`:
@@ -357,11 +357,11 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (494 tests in `backend/services/__tests__/`):
+**Test Files** (501 tests in `backend/services/__tests__/`):
 - `ArticleAIService.test.ts` - AI content processing, keyword extraction, quality scoring, embeddings, JSON edge cases (67 tests)
 - `StoryClusteringService.test.ts` - Title normalization, Jaccard similarity, clustering (41 tests)
 - `CategoryManager.test.ts` - Category operations, batch updates, cleanup (36 tests)
-- `AISearchService.test.ts` - Semantic search, keyword fallback, AI insights, article indexing (28 tests)
+- `AISearchService.test.ts` - Semantic search, keyword fallback, AI insights, SQL injection prevention (35 tests)
 - `PersonalizedFeedService.test.ts` - Personalized feed generation, scoring algorithms, diversity factors, large preference lists (21 tests)
 - `ArticleService.test.ts` - Slug generation, content extraction
 - `ArticleInteractionsDO.test.ts` - Durable Object engagement tracking
@@ -380,7 +380,7 @@ npm run test:coverage     # With v8 coverage report
 
 **Pre-commit Hook**: Runs typecheck + build validation via Husky
 
-### Total Test Count: 793 tests (299 frontend + 494 backend)
+### Total Test Count: 811 tests (310 frontend + 501 backend)
 
 ## Cloudflare Bindings
 
