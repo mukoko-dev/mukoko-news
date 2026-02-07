@@ -245,6 +245,53 @@ describe('PersonalizedFeedService', () => {
 
         expect(result.countries).toEqual(['KE']);
       });
+
+      it('should handle extremely large preference lists (100+ categories)', async () => {
+        // Generate 100 followed categories
+        const manyCategories = Array.from({ length: 100 }, (_, i) => ({ follow_id: `category-${i}` }));
+        // Generate 50 followed sources
+        const manySources = Array.from({ length: 50 }, (_, i) => ({ follow_id: `source-${i}` }));
+        // Generate 30 followed authors
+        const manyAuthors = Array.from({ length: 30 }, (_, i) => ({ follow_id: `author-${i}` }));
+
+        mockDb._statement.all
+          .mockResolvedValueOnce({ results: manySources }) // followed sources
+          .mockResolvedValueOnce({ results: manyAuthors }) // followed authors
+          .mockResolvedValueOnce({ results: manyCategories }) // followed categories
+          .mockResolvedValueOnce({ results: [{ country_id: 'ZW', is_primary: true }] }) // countries
+          .mockResolvedValueOnce({ results: [] }) // history
+          .mockResolvedValueOnce({ results: [] }) // recent reads
+          .mockResolvedValueOnce({ results: sampleArticles }); // candidates - only return once
+
+        mockDb._statement.first.mockResolvedValue({ total: 3 });
+
+        const result = await service.getPersonalizedFeed('user-123');
+
+        expect(result.isPersonalized).toBe(true);
+        expect(result.articles).toBeDefined();
+        // Service processes preferences without performance issues
+        expect(result.articles.length).toBeGreaterThan(0);
+      });
+
+      it('should handle user with empty candidate results', async () => {
+        // Reset mocks for this test
+        vi.clearAllMocks();
+        mockDb = createMockD1();
+        service = new PersonalizedFeedService(mockDb as unknown as D1Database);
+
+        // All queries return empty results
+        mockDb._statement.all.mockResolvedValue({ results: [] });
+        mockDb._statement.first.mockResolvedValue({ total: 0 });
+
+        const result = await service.getPersonalizedFeed('user-123');
+
+        // With no preferences and no articles, returns empty result
+        expect(result.articles.length).toBe(0);
+        // Check pagination exists and total is 0
+        if (result.pagination) {
+          expect(result.pagination.total).toBe(0);
+        }
+      });
     });
 
     describe('diversity factor', () => {

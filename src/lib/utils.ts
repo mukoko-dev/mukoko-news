@@ -37,15 +37,25 @@ export function formatTimeAgo(dateString: string): string {
  * Build a safe CSS url() value using encodeURI for standards-compliant escaping.
  * Prevents CSS injection by encoding all special characters.
  * Handles already-encoded URLs by decoding first to avoid double-encoding.
+ *
+ * @example
+ * safeCssUrl("image.jpg")                    // url('image.jpg')
+ * safeCssUrl("path/to/image%20name.jpg")     // url('path/to/image%20name.jpg') - not double-encoded
+ * safeCssUrl("image with spaces.jpg")        // url('image%20with%20spaces.jpg')
+ *
+ * Edge case: decodeURI throws URIError for malformed percent sequences like "%GG" or
+ * incomplete sequences like "%2". In these cases, we fall back to encoding as-is.
  */
 export function safeCssUrl(src: string): string {
   try {
     // Decode first to handle already-encoded URLs, then encode fresh
     // This prevents double-encoding (e.g., %20 becoming %2520)
+    // decodeURI throws URIError for malformed sequences like "%GG" or "%2"
     const decoded = decodeURI(src);
     return `url('${encodeURI(decoded)}')`;
   } catch {
-    // If decodeURI fails (malformed %), just encode as-is
+    // If decodeURI fails (malformed % sequences), encode as-is
+    // This handles edge cases like "%GG" which isn't valid percent-encoding
     return `url('${encodeURI(src)}')`;
   }
 }

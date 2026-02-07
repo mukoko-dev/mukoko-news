@@ -61,6 +61,36 @@ describe('API Client', () => {
 
       await expect(api.health()).rejects.toThrow('Network error: Failed to fetch');
     });
+
+    it('should throw on 429 rate limit response', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+      });
+
+      await expect(api.health()).rejects.toThrow('API error: 429 Too Many Requests');
+    });
+
+    it('should throw on 500 server error response', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+        statusText: 'Internal Server Error',
+      });
+
+      await expect(api.health()).rejects.toThrow('API error: 500 Internal Server Error');
+    });
+
+    it('should throw on 503 service unavailable response', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+      });
+
+      await expect(api.health()).rejects.toThrow('API error: 503 Service Unavailable');
+    });
   });
 
   describe('getArticles', () => {
