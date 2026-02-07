@@ -15,7 +15,6 @@ const mockArticle: Article = {
   title: 'Test Article Title',
   source: 'Test Source',
   description: 'Test description',
-  url: 'https://example.com/article',
   published_at: '2024-01-15T10:00:00Z',
 };
 
