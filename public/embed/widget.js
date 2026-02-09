@@ -15,11 +15,16 @@
  *        data-height="600">
  *   </div>
  *   <script src="https://news.mukoko.com/embed/widget.js" async></script>
+ *
+ * The base URL can be overridden for staging/dev environments:
+ *   <script src="..." data-base-url="https://staging.mukoko.com" async></script>
  */
 (function () {
   "use strict";
 
-  var BASE = "https://news.mukoko.com";
+  // Resolve base URL: data-base-url on the script tag, or default to production
+  var scriptEl = document.currentScript;
+  var BASE = (scriptEl && scriptEl.getAttribute("data-base-url")) || "https://news.mukoko.com";
 
   // Sizes per layout
   var LAYOUT_DEFAULTS = {
@@ -28,6 +33,13 @@
     hero:    { width: 420, height: 340 },
     ticker:  { width: 600, height: 200 },
     list:    { width: 400, height: 600 },
+  };
+
+  var TYPE_LABELS = {
+    top: "Top Stories",
+    featured: "Featured",
+    latest: "Latest News",
+    location: "Local News",
   };
 
   function init() {
@@ -66,6 +78,10 @@
 
     var src = BASE + "/embed/iframe?" + params.join("&");
 
+    // Build accessible title including feed type
+    var typeLabel = TYPE_LABELS[type] || "News";
+    var title = country + " " + typeLabel + " — Mukoko News";
+
     var iframe = document.createElement("iframe");
     iframe.src = src;
     iframe.width = String(w);
@@ -73,10 +89,11 @@
     iframe.style.border = "none";
     iframe.style.borderRadius = "12px";
     iframe.style.maxWidth = "100%";
+    iframe.setAttribute("frameborder", "0");
     iframe.setAttribute("loading", "lazy");
-    iframe.setAttribute("title", country + " News — Mukoko News");
+    iframe.setAttribute("title", title);
     iframe.setAttribute("allow", "clipboard-write");
-    iframe.setAttribute("sandbox", "allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox");
+    iframe.setAttribute("sandbox", "allow-scripts allow-popups allow-popups-to-escape-sandbox");
 
     el.appendChild(iframe);
   }
