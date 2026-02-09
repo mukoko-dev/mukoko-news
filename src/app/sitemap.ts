@@ -58,8 +58,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'weekly' as const,
       priority: 0.7,
     }));
-  } catch {
-    // Silently fail - sitemap still works with static URLs
+  } catch (error) {
+    console.error('[Sitemap] Failed to fetch articles:', error);
   }
 
   return [...staticUrls, ...categoryUrls, ...countryUrls, ...articleUrls];
