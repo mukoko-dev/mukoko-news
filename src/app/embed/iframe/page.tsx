@@ -328,13 +328,16 @@ export default function EmbedIframePage() {
   const category = searchParams.get("category") || undefined;
   const theme = searchParams.get("theme") || "auto";
   const limitParam = searchParams.get("limit");
-  const limit = limitParam ? Math.min(Math.max(parseInt(limitParam, 10) || DEFAULT_LIMITS[layout], 1), 20) : DEFAULT_LIMITS[layout];
 
   // Validate params
   const validFeedType: FeedType = ["top", "featured", "latest", "location"].includes(feedType) ? feedType : "latest";
   const validLayout: LayoutType = ["cards", "compact", "hero", "ticker", "list"].includes(layout) ? layout : "cards";
-  const validCountries = COUNTRIES.map((c) => c.code);
-  const resolvedCountry = validCountries.includes(country as typeof validCountries[number]) ? country : "ZW";
+  const resolvedCountry = COUNTRIES.some((c) => c.code === country) ? country : "ZW";
+
+  const parsedLimit = limitParam !== null ? parseInt(limitParam, 10) : NaN;
+  const limit = !isNaN(parsedLimit)
+    ? Math.min(Math.max(parsedLimit, 1), 20)
+    : DEFAULT_LIMITS[validLayout];
 
   const countryInfo = useMemo(
     () => COUNTRIES.find((c) => c.code === resolvedCountry),
@@ -392,11 +395,19 @@ export default function EmbedIframePage() {
     return () => clearInterval(interval);
   }, [loadArticles]);
 
-  // Apply forced theme
+  // Apply forced theme with cleanup to restore original state
   useEffect(() => {
     if (theme === "light" || theme === "dark") {
+      const hadLight = document.documentElement.classList.contains("light");
+      const hadDark = document.documentElement.classList.contains("dark");
       document.documentElement.classList.remove("light", "dark");
       document.documentElement.classList.add(theme);
+
+      return () => {
+        document.documentElement.classList.remove("light", "dark");
+        if (hadLight) document.documentElement.classList.add("light");
+        else if (hadDark) document.documentElement.classList.add("dark");
+      };
     }
   }, [theme]);
 
@@ -434,7 +445,11 @@ export default function EmbedIframePage() {
           <div className="p-3">
             <HeroEmbed article={articles[0]} />
           </div>
-        ) : null;
+        ) : (
+          <div className="flex items-center justify-center h-full p-6 text-center">
+            <p className="text-sm text-text-tertiary">No stories available</p>
+          </div>
+        );
 
       case "cards":
         return (
@@ -446,7 +461,13 @@ export default function EmbedIframePage() {
         );
 
       case "ticker":
-        return <TickerEmbed articles={articles} />;
+        return articles.length > 0 ? (
+          <TickerEmbed articles={articles} />
+        ) : (
+          <div className="flex items-center justify-center w-full p-4">
+            <p className="text-sm text-text-tertiary">No stories available</p>
+          </div>
+        );
 
       case "compact":
         return (
