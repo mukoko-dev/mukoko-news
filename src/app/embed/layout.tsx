@@ -2,24 +2,24 @@ import type { Metadata } from "next";
 import { getFullUrl } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Embed News Widgets",
+  title: "Embed Location News Cards",
   description:
-    "Add live Zimbabwe news to any website or app. Embeddable news feed powered by Mukoko News — free, no API key required.",
+    "Add live, location-based African news to any website or app. Embeddable news cards for top stories, featured content, and local news across 16 countries — free, no API key required.",
   alternates: {
     canonical: getFullUrl("/embed"),
   },
   openGraph: {
-    title: "Embed News Widgets | Mukoko News",
+    title: "Embed Location News Cards | Mukoko News",
     description:
-      "Add live Zimbabwe news to any website or app. Free embeddable news widget.",
+      "Embeddable news cards for top stories, featured content, and location-based African news. Free widget for any website.",
     url: getFullUrl("/embed"),
     type: "website",
   },
   twitter: {
     card: "summary",
-    title: "Embed News Widgets | Mukoko News",
+    title: "Embed Location News Cards | Mukoko News",
     description:
-      "Add live Zimbabwe news to any website or app. Free embeddable news widget.",
+      "Embeddable news cards for top stories, featured content, and location-based African news. Free widget for any website.",
     creator: "@mukokoafrica",
     site: "@mukokoafrica",
   },
