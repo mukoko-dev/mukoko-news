@@ -1,3 +1,4 @@
+import { cache } from "react";
 import type { Metadata } from "next";
 import { api } from "@/lib/api";
 import { getArticleUrl, BASE_URL } from "@/lib/constants";
@@ -8,14 +9,14 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-async function fetchArticle(id: string) {
+const fetchArticle = cache(async (id: string) => {
   try {
     const data = await api.getArticle(id);
     return data.article || null;
   } catch {
     return null;
   }
-}
+});
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
