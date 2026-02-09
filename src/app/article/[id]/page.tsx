@@ -13,7 +13,8 @@ const fetchArticle = cache(async (id: string) => {
   try {
     const data = await api.getArticle(id);
     return data.article || null;
-  } catch {
+  } catch (error) {
+    console.error("[ArticlePage] Failed to fetch article:", id, error);
     return null;
   }
 });
