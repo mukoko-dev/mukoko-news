@@ -1,3 +1,19 @@
+import type { Metadata } from "next";
+import { getFullUrl } from "@/lib/constants";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description:
+    "Learn how Mukoko News collects, uses, and protects your data. Our privacy policy covers data collection, cookies, and your rights as a user of our Pan-African news platform.",
+  alternates: {
+    canonical: getFullUrl("/privacy"),
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+};
+
 export default function PrivacyPage() {
   return (
     <div className="max-w-[800px] mx-auto px-6 py-12">
