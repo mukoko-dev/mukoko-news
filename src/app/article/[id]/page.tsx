@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { api } from "@/lib/api";
 import { getArticleUrl, BASE_URL } from "@/lib/constants";
+import { isValidImageUrl } from "@/lib/utils";
 import ArticleDetailClient from "./article-detail-client";
 
 interface Props {
@@ -29,6 +30,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     article.description ||
     `Read "${article.title}" — latest news from ${article.source} on Mukoko News.`;
 
+  const hasValidImage = isValidImageUrl(article.image_url);
+
   return {
     title: article.title,
     description,
@@ -41,10 +44,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       publishedTime: article.published_at,
       section: article.category_id || article.category || undefined,
       siteName: "Mukoko News",
-      images: article.image_url
+      images: hasValidImage
         ? [
             {
-              url: article.image_url,
+              url: article.image_url!,
               alt: article.title,
             },
           ]
@@ -58,10 +61,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
           ],
     },
     twitter: {
-      card: article.image_url ? "summary_large_image" : "summary",
+      card: hasValidImage ? "summary_large_image" : "summary",
       title: article.title,
       description,
-      images: article.image_url ? [article.image_url] : undefined,
+      site: "@mukokoafrica",
+      images: hasValidImage ? [article.image_url!] : undefined,
       creator: "@mukokoafrica",
     },
     alternates: {
