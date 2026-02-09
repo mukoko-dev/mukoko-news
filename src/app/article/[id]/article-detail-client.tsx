@@ -19,7 +19,7 @@ import { getArticleUrl } from "@/lib/constants";
 import { isValidImageUrl } from "@/lib/utils";
 import { ArticlePageSkeleton } from "@/components/ui/skeleton";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { ArticleJsonLd, BreadcrumbJsonLd } from "@/components/ui/json-ld";
+import { ArticleJsonLd } from "@/components/ui/json-ld";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 
 export default function ArticleDetailClient({
@@ -233,13 +233,6 @@ export default function ArticleDetailClient({
   return (
     <ErrorBoundary fallback={<div className="p-8 text-center text-text-secondary">Failed to render article content</div>}>
       <ArticleJsonLd article={article} url={articleUrl} />
-      <BreadcrumbJsonLd
-        items={[
-          { name: "Home", href: "/" },
-          ...(category ? [{ name: category, href: `/discover?category=${category}` }] : []),
-          { name: article.title },
-        ]}
-      />
       <div className="pb-16">
         {/* Breadcrumb */}
         <div className="max-w-[800px] mx-auto px-6 py-3">

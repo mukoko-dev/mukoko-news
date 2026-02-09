@@ -62,6 +62,7 @@ export const metadata: Metadata = {
     title: 'Mukoko News - Pan-African News Hub',
     description: 'Your trusted source for breaking news and top stories from across Africa.',
     images: ['/mukoko-icon-dark.png'],
+    site: '@mukokoafrica',
     creator: '@mukokoafrica',
   },
   robots: {
