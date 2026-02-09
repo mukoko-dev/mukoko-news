@@ -22,15 +22,21 @@ import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { ArticleJsonLd, BreadcrumbJsonLd } from "@/components/ui/json-ld";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 
-export default function ArticleDetailClient({ articleId }: { articleId: string }) {
+export default function ArticleDetailClient({
+  articleId,
+  initialArticle,
+}: {
+  articleId: string;
+  initialArticle?: Article | null;
+}) {
   const router = useRouter();
 
-  const [article, setArticle] = useState<Article | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [article, setArticle] = useState<Article | null>(initialArticle ?? null);
+  const [loading, setLoading] = useState(!initialArticle);
   const [error, setError] = useState<string | null>(null);
-  const [isLiked, setIsLiked] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
+  const [isLiked, setIsLiked] = useState(initialArticle?.isLiked || false);
+  const [isSaved, setIsSaved] = useState(initialArticle?.isSaved || false);
+  const [likesCount, setLikesCount] = useState(initialArticle?.likesCount || 0);
 
   const loadArticle = useCallback(async () => {
     setLoading(true);
@@ -54,11 +60,12 @@ export default function ArticleDetailClient({ articleId }: { articleId: string }
     }
   }, [articleId]);
 
+  // Only fetch client-side if no initial data was provided by the server
   useEffect(() => {
-    if (articleId) {
+    if (!initialArticle && articleId) {
       loadArticle();
     }
-  }, [articleId, loadArticle]);
+  }, [articleId, initialArticle, loadArticle]);
 
   const handleLike = async () => {
     // Optimistic update

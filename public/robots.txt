@@ -9,12 +9,9 @@ Disallow: /profile
 Disallow: /saved
 Allow: /api/schema
 
-# Google News bot - welcome
+# Google News bot - explicitly welcome
 User-agent: Googlebot-News
 Allow: /
-Disallow: /api/
-Disallow: /profile
-Disallow: /saved
 
 # Sitemaps
 Sitemap: https://news.mukoko.com/sitemap.xml

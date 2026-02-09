@@ -7,76 +7,77 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
-
+async function fetchArticle(id: string) {
   try {
     const data = await api.getArticle(id);
-    const article = data.article;
+    return data.article || null;
+  } catch {
+    return null;
+  }
+}
 
-    if (!article) {
-      return { title: "Article Not Found" };
-    }
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const article = await fetchArticle(id);
 
-    const articleUrl = getArticleUrl(id);
-    const description =
-      article.description ||
-      `Read "${article.title}" — latest news from ${article.source} on Mukoko News.`;
+  if (!article) {
+    return { title: "Article Not Found" };
+  }
 
-    return {
+  const articleUrl = getArticleUrl(id);
+  const description =
+    article.description ||
+    `Read "${article.title}" — latest news from ${article.source} on Mukoko News.`;
+
+  return {
+    title: article.title,
+    description,
+    authors: article.source ? [{ name: article.source }] : undefined,
+    openGraph: {
       title: article.title,
       description,
-      authors: article.source ? [{ name: article.source }] : undefined,
-      openGraph: {
-        title: article.title,
-        description,
-        url: articleUrl,
-        type: "article",
-        publishedTime: article.published_at,
-        section: article.category_id || article.category || undefined,
-        siteName: "Mukoko News",
-        images: article.image_url
-          ? [
-              {
-                url: article.image_url,
-                alt: article.title,
-              },
-            ]
-          : [
-              {
-                url: `${BASE_URL}/mukoko-icon-dark.png`,
-                width: 512,
-                height: 512,
-                alt: "Mukoko News",
-              },
-            ],
-      },
-      twitter: {
-        card: article.image_url ? "summary_large_image" : "summary",
-        title: article.title,
-        description,
-        images: article.image_url ? [article.image_url] : undefined,
-        creator: "@mukokoafrica",
-      },
-      alternates: {
-        canonical: articleUrl,
-      },
-      robots: {
-        index: true,
-        follow: true,
-        "max-image-preview": "large",
-        "max-snippet": -1,
-      },
-    };
-  } catch {
-    return {
-      title: "Article",
-      description: "Read the latest news on Mukoko News.",
-    };
-  }
+      url: articleUrl,
+      type: "article",
+      publishedTime: article.published_at,
+      section: article.category_id || article.category || undefined,
+      siteName: "Mukoko News",
+      images: article.image_url
+        ? [
+            {
+              url: article.image_url,
+              alt: article.title,
+            },
+          ]
+        : [
+            {
+              url: `${BASE_URL}/mukoko-icon-dark.png`,
+              width: 512,
+              height: 512,
+              alt: "Mukoko News",
+            },
+          ],
+    },
+    twitter: {
+      card: article.image_url ? "summary_large_image" : "summary",
+      title: article.title,
+      description,
+      images: article.image_url ? [article.image_url] : undefined,
+      creator: "@mukokoafrica",
+    },
+    alternates: {
+      canonical: articleUrl,
+    },
+    robots: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  };
 }
 
 export default async function ArticleDetailPage({ params }: Props) {
   const { id } = await params;
-  return <ArticleDetailClient articleId={id} />;
+  const article = await fetchArticle(id);
+  return <ArticleDetailClient articleId={id} initialArticle={article} />;
 }
