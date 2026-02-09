@@ -118,7 +118,7 @@ export function ArticleJsonLd({ article, url }: { article: Article; url: string 
       name: "Mukoko News",
       logo: {
         "@type": "ImageObject",
-        url: `${BASE_URL}/icon.png`,
+        url: `${BASE_URL}/mukoko-icon-dark.png`,
       },
     },
     mainEntityOfPage: {
@@ -164,12 +164,32 @@ export function BreadcrumbJsonLd({ items }: { items: Array<{ name: string; href?
 export function OrganizationJsonLd() {
   const schema = {
     "@context": "https://schema.org",
-    "@type": "Organization",
+    "@type": "NewsMediaOrganization",
     name: "Mukoko News",
-    description: "Pan-African digital news aggregation platform",
+    description:
+      "Pan-African digital news aggregation platform covering Zimbabwe, South Africa, Kenya, Nigeria, and 12 more African countries.",
     url: BASE_URL,
-    logo: `${BASE_URL}/icon.png`,
-    sameAs: [],
+    logo: {
+      "@type": "ImageObject",
+      url: `${BASE_URL}/mukoko-icon-dark.png`,
+      width: 512,
+      height: 512,
+    },
+    sameAs: [
+      "https://x.com/mukokoafrica",
+      "https://www.instagram.com/mukokoafrica",
+      "https://www.facebook.com/mukokoafrica",
+    ],
+    foundingDate: "2024",
+    founder: {
+      "@type": "Organization",
+      name: "Nyuchi",
+      url: "https://nyuchi.com",
+    },
+    areaServed: {
+      "@type": "Place",
+      name: "Africa",
+    },
   };
 
   // safeJsonLdStringify escapes <, >, & to Unicode to prevent XSS
@@ -292,6 +312,47 @@ export function CollectionPageJsonLd({
 }
 
 /**
+ * WebSite JSON-LD with SearchAction for Google Sitelinks Searchbox.
+ * When Google recognizes this schema, it may show a search box directly in search results.
+ * @see https://schema.org/WebSite
+ * @see https://developers.google.com/search/docs/appearance/sitelinks-searchbox
+ */
+export function WebSiteJsonLd() {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Mukoko News",
+    alternateName: "Mukoko",
+    url: BASE_URL,
+    description:
+      "Pan-African digital news aggregation platform. Breaking news, top stories, and in-depth coverage from 16 African countries.",
+    publisher: {
+      "@type": "NewsMediaOrganization",
+      name: "Mukoko News",
+      url: BASE_URL,
+    },
+    potentialAction: {
+      "@type": "SearchAction",
+      target: {
+        "@type": "EntryPoint",
+        urlTemplate: `${BASE_URL}/search?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
+    inLanguage: "en",
+  };
+
+  const safeJson = safeJsonLdStringify(schema);
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: safeJson }}
+    />
+  );
+}
+
+/**
  * WebPage JSON-LD for generic pages.
  * Uses safeJsonLdStringify to escape <, >, & and prevent XSS attacks.
  * @see https://schema.org/WebPage
@@ -321,7 +382,7 @@ export function WebPageJsonLd({
       name: "Mukoko News",
       logo: {
         "@type": "ImageObject",
-        url: `${BASE_URL}/icon.png`,
+        url: `${BASE_URL}/mukoko-icon-dark.png`,
       },
     },
   };

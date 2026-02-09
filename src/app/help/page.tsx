@@ -53,7 +53,7 @@ export default function HelpPage() {
           </div>
         </Link>
         <Link
-          href="https://twitter.com/mukokonews"
+          href="https://x.com/mukokoafrica"
           target="_blank"
           className="flex items-center gap-4 p-4 bg-surface rounded-xl hover:bg-elevated transition-colors"
         >
@@ -62,7 +62,7 @@ export default function HelpPage() {
           </div>
           <div>
             <p className="font-semibold text-foreground">Social Support</p>
-            <p className="text-sm text-text-secondary">@mukokonews</p>
+            <p className="text-sm text-text-secondary">@mukokoafrica</p>
           </div>
         </Link>
       </div>

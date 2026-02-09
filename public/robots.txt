@@ -1,17 +1,21 @@
 # Mukoko News Robots.txt
 # https://news.mukoko.com
+# Pan-African news aggregator covering 16 African countries
 
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /profile
+Disallow: /saved
+Disallow: /embed/iframe
 Allow: /api/schema
+
+# Google News bot - explicitly welcome
+User-agent: Googlebot-News
+Allow: /
 
 # Sitemaps
 Sitemap: https://news.mukoko.com/sitemap.xml
 
 # Crawl-delay for politeness
 Crawl-delay: 1
-
-# Pan-African news aggregator - optimized for search engines
-# Countries: Zimbabwe, South Africa, Kenya, Nigeria, Ghana, Tanzania, Uganda, Rwanda, Ethiopia, Botswana, Zambia, Malawi, Egypt, Morocco, Namibia, Mozambique
-# Categories: politics, economy, technology, sports, health, education, entertainment, international, general, harare, agriculture, crime, environment
