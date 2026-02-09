@@ -1,12 +1,27 @@
 import type { Metadata } from "next";
+import { getFullUrl } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Zimbabwe News Widget",
+  title: "Embed News Widgets",
   description:
-    "Embeddable Zimbabwe news feed powered by Mukoko News. Latest headlines from Zimbabwe's top news sources.",
-  robots: {
-    index: false,
-    follow: false,
+    "Add live Zimbabwe news to any website or app. Embeddable news feed powered by Mukoko News — free, no API key required.",
+  alternates: {
+    canonical: getFullUrl("/embed"),
+  },
+  openGraph: {
+    title: "Embed News Widgets | Mukoko News",
+    description:
+      "Add live Zimbabwe news to any website or app. Free embeddable news widget.",
+    url: getFullUrl("/embed"),
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Embed News Widgets | Mukoko News",
+    description:
+      "Add live Zimbabwe news to any website or app. Free embeddable news widget.",
+    creator: "@mukokoafrica",
+    site: "@mukokoafrica",
   },
 };
 

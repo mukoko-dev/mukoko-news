@@ -15,9 +15,9 @@ const navItems = [
 export function BottomNav() {
   const pathname = usePathname();
 
-  // Hide on NewsBytes (fullscreen experience), article pages, and embed
+  // Hide on NewsBytes (fullscreen experience), article pages, and embed iframe
   // Regex anchored with $ to match exactly /article/{id}, not sub-routes like /article/{id}/comments
-  if (pathname === "/newsbytes" || pathname === "/embed" || /^\/article\/[^/]+$/.test(pathname)) {
+  if (pathname === "/newsbytes" || pathname === "/embed/iframe" || /^\/article\/[^/]+$/.test(pathname)) {
     return null;
   }
 
