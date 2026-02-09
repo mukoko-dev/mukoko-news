@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
-import { ArticleJsonLd, BreadcrumbJsonLd, OrganizationJsonLd } from '../ui/json-ld';
+import { ArticleJsonLd, BreadcrumbJsonLd, OrganizationJsonLd, WebSiteJsonLd } from '../ui/json-ld';
 
 describe('JSON-LD Components', () => {
   describe('ArticleJsonLd', () => {
@@ -118,6 +118,53 @@ describe('JSON-LD Components', () => {
       const content = script?.innerHTML || '';
       expect(content).toContain('Organization');
       expect(content).toContain('Mukoko News');
+    });
+  });
+
+  describe('WebSiteJsonLd', () => {
+    it('should render WebSite schema with SearchAction', () => {
+      const { container } = render(<WebSiteJsonLd />);
+
+      const script = container.querySelector('script[type="application/ld+json"]');
+      expect(script).toBeTruthy();
+
+      const content = script?.innerHTML || '';
+      expect(content).toContain('WebSite');
+      expect(content).toContain('SearchAction');
+      expect(content).toContain('Mukoko News');
+    });
+
+    it('should include search URL template', () => {
+      const { container } = render(<WebSiteJsonLd />);
+
+      const script = container.querySelector('script[type="application/ld+json"]');
+      const content = script?.innerHTML || '';
+      expect(content).toContain('search?q={search_term_string}');
+      expect(content).toContain('query-input');
+    });
+
+    it('should escape XSS in search action output', () => {
+      const { container } = render(<WebSiteJsonLd />);
+
+      const script = container.querySelector('script[type="application/ld+json"]');
+      const content = script?.innerHTML || '';
+      // Verify no raw HTML characters leak through
+      expect(content).not.toContain('<');
+      expect(content).not.toContain('>');
+    });
+
+    it('should produce parseable JSON', () => {
+      const { container } = render(<WebSiteJsonLd />);
+
+      const script = container.querySelector('script[type="application/ld+json"]');
+      const content = script?.innerHTML || '';
+      const unescaped = content
+        .replace(/\\u003c/g, '<')
+        .replace(/\\u003e/g, '>')
+        .replace(/\\u0026/g, '&');
+      const parsed = JSON.parse(unescaped);
+      expect(parsed['@type']).toBe('WebSite');
+      expect(parsed.potentialAction['@type']).toBe('SearchAction');
     });
   });
 

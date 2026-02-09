@@ -118,7 +118,7 @@ export function ArticleJsonLd({ article, url }: { article: Article; url: string 
       name: "Mukoko News",
       logo: {
         "@type": "ImageObject",
-        url: `${BASE_URL}/icon.png`,
+        url: `${BASE_URL}/mukoko-icon-dark.png`,
       },
     },
     mainEntityOfPage: {
@@ -382,7 +382,7 @@ export function WebPageJsonLd({
       name: "Mukoko News",
       logo: {
         "@type": "ImageObject",
-        url: `${BASE_URL}/icon.png`,
+        url: `${BASE_URL}/mukoko-icon-dark.png`,
       },
     },
   };

@@ -179,6 +179,7 @@ export default function ArticleDetailClient({
 
   const formatDate = (dateString: string) => {
     try {
+      if (!dateString) return "Recently";
       const date = new Date(dateString);
       if (isNaN(date.getTime())) return "Recently";
       return date.toLocaleDateString("en-US", {
@@ -239,7 +240,7 @@ export default function ArticleDetailClient({
           <Breadcrumb
             items={[
               ...(category ? [{ label: category, href: `/discover?category=${category}` }] : []),
-              { label: article.title },
+              { label: (article.title || "Article").substring(0, 100) },
             ]}
           />
         </div>
@@ -315,7 +316,7 @@ export default function ArticleDetailClient({
         {article.content && (
           <div className="prose prose-lg dark:prose-invert max-w-none mb-8">
             {article.content.split("\n").map((paragraph, index) => (
-              <p key={index} className="mb-4 leading-relaxed">
+              <p key={`${article.id}-p-${index}`} className="mb-4 leading-relaxed">
                 {paragraph}
               </p>
             ))}
