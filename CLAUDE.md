@@ -149,6 +149,15 @@ src/
 │   ├── article/[id]/        # Article detail page
 │   ├── categories/          # Categories page
 │   ├── discover/            # Discover page (country/category filtering)
+│   ├── embed/               # Embeddable news card widgets (promotion framework)
+│   │   ├── page.tsx         # Embed documentation & live preview page
+│   │   ├── layout.tsx       # Embed SEO metadata layout
+│   │   ├── iframe/
+│   │   │   ├── page.tsx     # Iframe widget renderer (5 layouts, 4 feed types)
+│   │   │   └── layout.tsx   # Iframe layout with Suspense boundary
+│   │   └── __tests__/
+│   │       ├── embed-iframe.test.tsx  # Widget rendering, params, themes (42 tests)
+│   │       └── widget.test.ts        # widget.js script behavior (38 tests)
 │   ├── newsbytes/           # TikTok-style vertical feed
 │   ├── search/              # Search page
 │   ├── profile/             # User profile/settings
@@ -323,7 +332,7 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (310 tests in 15 files):
+**Test Files** (394 tests in 17 files):
 
 `src/lib/__tests__/`:
 - `api.test.ts` - API client, fetch wrapper, error handling, rate limiting, all endpoints (33 tests)
@@ -345,6 +354,10 @@ npm run test:coverage     # With v8 coverage report
 - `bottom-nav.test.tsx` - Mobile bottom navigation + routing tests (10 tests)
 - `breadcrumb.test.tsx` - Breadcrumb navigation tests (7 tests)
 - `error-boundary.test.tsx` - ErrorBoundary tests (5 tests)
+
+`src/app/embed/__tests__/`:
+- `embed-iframe.test.tsx` - Embed widget rendering, params, themes, layouts, empty states, refresh (42 tests)
+- `widget.test.ts` - widget.js script behavior, URL validation, sizing, security (38 tests)
 
 **Test Pattern**: Vitest with jsdom environment, React Testing Library
 
@@ -380,7 +393,7 @@ npm run test:coverage     # With v8 coverage report
 
 **Pre-commit Hook**: Runs typecheck + build validation via Husky
 
-### Total Test Count: 820 tests (310 frontend + 510 backend)
+### Total Test Count: 904 tests (394 frontend + 510 backend)
 
 ## Cloudflare Bindings
 
@@ -633,6 +646,25 @@ Fonts are loaded via CSS `@import` in `globals.css` with preconnect hints in `la
 - CSS @import chosen for build reliability (network-independent)
 - Fonts: Noto Serif (headings), Plus Jakarta Sans (body)
 
+### Embed Widget Pattern
+
+The embed module provides embeddable news card iframes for sister apps (e.g., weather.mukoko.com):
+
+**Layouts**: `cards` (grid), `compact` (text list), `hero` (featured card), `ticker` (horizontal scroll), `list` (thumbnails)
+**Feed Types**: `top` (trending), `featured` (popular), `latest` (chronological), `location` (local news)
+**Parameters**: `country`, `type`, `layout`, `limit`, `category`, `theme` (via URL search params)
+
+**Widget Script** (`public/embed/widget.js`):
+- Vanilla JS IIFE (~2KB), no dependencies
+- Converts `<div data-mukoko-embed>` elements into sandboxed iframes
+- `data-base-url` attribute validated with `new URL()` constructor (http/https only)
+- Sandbox: `allow-scripts allow-popups allow-popups-to-escape-sandbox` (no `allow-same-origin`)
+
+**Iframe Page** (`src/app/embed/iframe/page.tsx`):
+- Client component using `useSearchParams()` wrapped in `<Suspense>`
+- Theme effect with proper cleanup (restores previous theme on unmount)
+- Empty states for hero/ticker layouts when no articles available
+
 ### Backend Error Handling
 
 - Hono responses: `c.json({ error, message }, statusCode)`
@@ -677,6 +709,7 @@ Country data is centralized in `src/lib/constants.ts` (single source of truth).
 10. **Schema.org SEO**: JSON-LD structured data (NewsArticle, Organization, BreadcrumbList)
 11. **Mobile Bottom Navigation**: Quick access to Home, Discover, NewsBytes, Search, Profile
 12. **Breadcrumb Navigation**: Clear navigation hierarchy on article pages
+13. **Embed Location Cards**: Embeddable news card widgets for sister apps (5 layouts, 4 feed types, 16 countries)
 
 ## Key Files
 
@@ -698,6 +731,9 @@ Country data is centralized in `src/lib/constants.ts` (single source of truth).
 - `src/components/ui/skeleton.tsx` - Skeleton loading components
 - `src/components/ui/error-boundary.tsx` - Error boundary component
 - `vitest.config.ts` - Frontend test configuration
+- `src/app/embed/page.tsx` - Embed documentation page with live previews
+- `src/app/embed/iframe/page.tsx` - Embed iframe widget (5 layouts: cards, compact, hero, ticker, list)
+- `public/embed/widget.js` - Lightweight embed script (~2KB) for sister apps
 
 ### Backend
 - `backend/index.ts` - API entry point and route definitions
