@@ -178,6 +178,8 @@ export function OrganizationJsonLd() {
     sameAs: [
       "https://x.com/mukokoafrica",
       "https://twitter.com/mukokoafrica",
+      "https://www.instagram.com/mukokoafrica",
+      "https://www.facebook.com/mukokoafrica",
     ],
     foundingDate: "2024",
     founder: {
