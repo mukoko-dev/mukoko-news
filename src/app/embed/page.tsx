@@ -1,216 +1,128 @@
-"use client";
+import { BASE_URL } from "@/lib/constants";
 
-import { useState, useEffect, useCallback } from "react";
-import { RefreshCw, ExternalLink, Clock } from "lucide-react";
-import { api, type Article } from "@/lib/api";
-import { getArticleUrl, BASE_URL } from "@/lib/constants";
-import { isValidImageUrl, formatTimeAgo, safeCssUrl } from "@/lib/utils";
-import { SourceIcon } from "@/components/ui/source-icon";
-
-const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
-
-function EmbedCard({ article }: { article: Article }) {
-  const timeAgo = formatTimeAgo(article.published_at);
-  const category = article.category_id || article.category;
-  const articleUrl = getArticleUrl(article.id);
-  const hasImage = isValidImageUrl(article.image_url);
-
+function CodeBlock({ children }: { children: string }) {
   return (
-    <a
-      href={articleUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block group"
-    >
-      <article className="flex gap-3 p-3 rounded-xl hover:bg-elevated transition-colors border border-transparent hover:border-primary/30">
-        {/* Thumbnail */}
-        {hasImage && (
-          <div
-            className="w-20 h-20 rounded-lg bg-elevated bg-cover bg-center shrink-0"
-            style={{ backgroundImage: safeCssUrl(article.image_url!) }}
-          />
-        )}
-
-        <div className="flex-1 min-w-0">
-          {/* Category */}
-          {category && (
-            <span className="text-[10px] font-bold text-primary uppercase tracking-wider">
-              {category}
-            </span>
-          )}
-
-          {/* Title */}
-          <h3 className="text-sm font-semibold leading-snug line-clamp-2 group-hover:text-primary transition-colors">
-            {article.title}
-          </h3>
-
-          {/* Meta */}
-          <div className="flex items-center gap-2 mt-1 text-text-tertiary">
-            <SourceIcon source={article.source} size={12} showBorder={false} />
-            <span className="text-[11px] truncate">{article.source}</span>
-            <time
-              className="flex items-center gap-0.5 text-[11px] shrink-0"
-              dateTime={article.published_at}
-            >
-              <Clock className="w-2.5 h-2.5" aria-hidden="true" />
-              {timeAgo}
-            </time>
-          </div>
-        </div>
-
-        {/* External link indicator */}
-        <ExternalLink className="w-3.5 h-3.5 text-text-tertiary opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-1" />
-      </article>
-    </a>
-  );
-}
-
-function EmbedSkeleton() {
-  return (
-    <div className="space-y-1 p-2" aria-hidden="true">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="flex gap-3 p-3 animate-pulse">
-          <div className="w-20 h-20 rounded-lg bg-elevated shrink-0" />
-          <div className="flex-1 space-y-2 py-1">
-            <div className="h-2 w-12 bg-elevated rounded" />
-            <div className="h-3.5 w-full bg-elevated rounded" />
-            <div className="h-3.5 w-3/4 bg-elevated rounded" />
-            <div className="flex gap-2 mt-1">
-              <div className="h-2.5 w-16 bg-elevated rounded" />
-              <div className="h-2.5 w-12 bg-elevated rounded" />
-            </div>
-          </div>
-        </div>
-      ))}
+    <div className="mt-4 overflow-hidden rounded-2xl bg-surface p-4">
+      <pre className="overflow-x-auto text-sm">
+        <code className="font-mono">{children}</code>
+      </pre>
     </div>
   );
 }
 
 export default function EmbedPage() {
-  const [articles, setArticles] = useState<Article[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-
-  const loadArticles = useCallback(async () => {
-    try {
-      const data = await api.getArticles({
-        countries: ["ZW"],
-        limit: 15,
-        sort: "latest",
-      });
-      setArticles(data.articles || []);
-      setLastUpdated(new Date());
-      setError(null);
-    } catch (err) {
-      console.error("[Embed] Failed to load articles:", err);
-      setError("Failed to load news");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Initial load
-  useEffect(() => {
-    loadArticles();
-  }, [loadArticles]);
-
-  // Auto-refresh every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(loadArticles, REFRESH_INTERVAL);
-    return () => clearInterval(interval);
-  }, [loadArticles]);
-
   return (
-    <div className="fixed inset-0 z-[9999] bg-background flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
-        <a
-          href={BASE_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-        >
-          <img
-            src="/mukoko-icon-dark.png"
-            alt="Mukoko News"
-            className="w-6 h-6 rounded"
+    <div className="mx-auto max-w-3xl px-4 py-10">
+      <h1 className="font-heading text-3xl font-bold">
+        Embed News Widgets
+      </h1>
+      <p className="mt-4 text-text-secondary">
+        Add live Zimbabwe news to any website or app. Embed a scrollable news
+        feed — free, no API key required.
+      </p>
+
+      {/* iframe Embed */}
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold">iframe Embed</h2>
+        <p className="mt-2 text-sm text-text-secondary">
+          Drop this into any HTML page, CMS, or app. The widget auto-refreshes
+          every 5 minutes and links open in a new tab.
+        </p>
+        <CodeBlock>{`<iframe
+  src="${BASE_URL}/embed/iframe"
+  width="400"
+  height="600"
+  frameborder="0"
+  title="Zimbabwe News — Mukoko News"
+  style="border-radius: 12px; border: 1px solid #e5e5e5;"
+></iframe>`}</CodeBlock>
+      </section>
+
+      {/* Responsive Embed */}
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold">Responsive Embed</h2>
+        <p className="mt-2 text-sm text-text-secondary">
+          For full-width layouts, wrap the iframe in a container and use
+          percentage width.
+        </p>
+        <CodeBlock>{`<div style="max-width: 480px; width: 100%;">
+  <iframe
+    src="${BASE_URL}/embed/iframe"
+    width="100%"
+    height="600"
+    frameborder="0"
+    title="Zimbabwe News — Mukoko News"
+    style="border-radius: 12px; border: 1px solid #e5e5e5;"
+  ></iframe>
+</div>`}</CodeBlock>
+      </section>
+
+      {/* Live Preview */}
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold">Live Preview</h2>
+        <p className="mt-2 text-sm text-text-secondary">
+          This is how the embed looks in practice.
+        </p>
+        <div className="mt-4 flex justify-center">
+          <iframe
+            src={`${BASE_URL}/embed/iframe`}
+            width="400"
+            height="600"
+            title="Zimbabwe News — Mukoko News"
+            className="rounded-2xl border border-border"
           />
-          <div>
-            <h1 className="text-sm font-bold leading-none">Zimbabwe News</h1>
-            <p className="text-[10px] text-text-tertiary leading-tight">
-              Powered by Mukoko News
-            </p>
-          </div>
-        </a>
-
-        <div className="flex items-center gap-2">
-          {lastUpdated && (
-            <span className="text-[10px] text-text-tertiary hidden sm:block">
-              {lastUpdated.toLocaleTimeString([], {
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
-            </span>
-          )}
-          <button
-            onClick={() => {
-              setLoading(true);
-              loadArticles();
-            }}
-            className="p-1.5 rounded-lg hover:bg-elevated transition-colors text-text-tertiary hover:text-foreground"
-            aria-label="Refresh news"
-          >
-            <RefreshCw
-              className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`}
-            />
-          </button>
         </div>
-      </header>
+      </section>
 
-      {/* Content */}
-      <div className="flex-1 overflow-y-auto">
-        {loading && articles.length === 0 ? (
-          <EmbedSkeleton />
-        ) : error && articles.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full p-6 text-center">
-            <p className="text-sm text-text-secondary mb-3">{error}</p>
-            <button
-              onClick={() => {
-                setLoading(true);
-                loadArticles();
-              }}
-              className="text-xs px-3 py-1.5 bg-primary text-white rounded-lg hover:opacity-90 transition-opacity"
-            >
-              Try Again
-            </button>
-          </div>
-        ) : (
-          <div className="p-2 space-y-0.5">
-            {articles.map((article) => (
-              <EmbedCard key={article.id} article={article} />
-            ))}
-          </div>
-        )}
-      </div>
+      {/* Configuration */}
+      <section className="mt-10">
+        <h2 className="text-xl font-semibold">Configuration</h2>
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border text-left">
+                <th className="pb-2 pr-4 font-semibold">Attribute</th>
+                <th className="pb-2 pr-4 font-semibold">Default</th>
+                <th className="pb-2 font-semibold">Description</th>
+              </tr>
+            </thead>
+            <tbody className="text-text-secondary">
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4 font-mono text-xs">width</td>
+                <td className="py-2 pr-4">400</td>
+                <td className="py-2">
+                  Widget width in pixels or percentage
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4 font-mono text-xs">height</td>
+                <td className="py-2 pr-4">600</td>
+                <td className="py-2">
+                  Widget height in pixels (min 400 recommended)
+                </td>
+              </tr>
+              <tr className="border-b border-border">
+                <td className="py-2 pr-4 font-mono text-xs">frameborder</td>
+                <td className="py-2 pr-4">0</td>
+                <td className="py-2">Set to 0 for a clean look</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-      {/* Footer */}
-      <footer className="flex items-center justify-between px-4 py-2 border-t border-border text-[10px] text-text-tertiary shrink-0">
-        <span>
-          {articles.length > 0
-            ? `${articles.length} stories`
-            : "Loading..."}
-        </span>
-        <a
-          href={`${BASE_URL}/discover?country=ZW`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 hover:text-primary transition-colors"
-        >
-          More on Mukoko News
-          <ExternalLink className="w-2.5 h-2.5" />
-        </a>
-      </footer>
+      {/* Features */}
+      <section className="mt-10 mb-10">
+        <h2 className="text-xl font-semibold">Features</h2>
+        <ul className="mt-4 space-y-2 text-sm text-text-secondary list-disc pl-5">
+          <li>Live Zimbabwe news from multiple sources</li>
+          <li>Auto-refreshes every 5 minutes</li>
+          <li>Article thumbnails and source attribution</li>
+          <li>Respects system dark/light theme</li>
+          <li>Links open in a new tab (won&apos;t navigate away from your page)</li>
+          <li>Lightweight — under 4 kB</li>
+        </ul>
+      </section>
     </div>
   );
 }

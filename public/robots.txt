@@ -7,7 +7,7 @@ Allow: /
 Disallow: /api/
 Disallow: /profile
 Disallow: /saved
-Disallow: /embed
+Disallow: /embed/iframe
 Allow: /api/schema
 
 # Google News bot - explicitly welcome
