@@ -26,7 +26,15 @@ function loadWidget(options?: { baseUrl?: string }) {
   // The widget script is a self-executing IIFE in the public directory.
   // We simulate its behavior by directly executing the init/mount logic.
   // This approach is used because the widget is plain JS, not a module.
-  const BASE = options?.baseUrl || 'https://news.mukoko.com';
+  let BASE = 'https://news.mukoko.com';
+  if (options?.baseUrl) {
+    try {
+      const parsed = new URL(options.baseUrl);
+      if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        BASE = parsed.origin;
+      }
+    } catch { /* invalid URL — keep default */ }
+  }
   const LAYOUT_DEFAULTS: Record<string, { width: number; height: number }> = {
     cards:   { width: 420, height: 600 },
     compact: { width: 360, height: 500 },
@@ -416,6 +424,47 @@ describe('widget.js', () => {
 
       const iframe = document.querySelector('iframe')!;
       expect(iframe.src).toContain('https://staging.mukoko.com/embed/iframe');
+    });
+
+    it('should reject javascript: protocol in base URL', () => {
+      createEmbedDiv();
+      loadWidget({ baseUrl: 'javascript:alert(1)' });
+
+      const iframe = document.querySelector('iframe')!;
+      expect(iframe.src).toContain('https://news.mukoko.com/embed/iframe');
+    });
+
+    it('should reject data: protocol in base URL', () => {
+      createEmbedDiv();
+      loadWidget({ baseUrl: 'data:text/html,<h1>evil</h1>' });
+
+      const iframe = document.querySelector('iframe')!;
+      expect(iframe.src).toContain('https://news.mukoko.com/embed/iframe');
+    });
+
+    it('should reject invalid URL in base URL', () => {
+      createEmbedDiv();
+      loadWidget({ baseUrl: 'not a valid url' });
+
+      const iframe = document.querySelector('iframe')!;
+      expect(iframe.src).toContain('https://news.mukoko.com/embed/iframe');
+    });
+
+    it('should allow http: protocol in base URL', () => {
+      createEmbedDiv();
+      loadWidget({ baseUrl: 'http://localhost:3000' });
+
+      const iframe = document.querySelector('iframe')!;
+      expect(iframe.src).toContain('http://localhost:3000/embed/iframe');
+    });
+
+    it('should strip path from base URL and use only origin', () => {
+      createEmbedDiv();
+      loadWidget({ baseUrl: 'https://staging.mukoko.com/some/path' });
+
+      const iframe = document.querySelector('iframe')!;
+      expect(iframe.src).toContain('https://staging.mukoko.com/embed/iframe');
+      expect(iframe.src).not.toContain('/some/path');
     });
   });
 

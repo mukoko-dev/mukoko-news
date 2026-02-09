@@ -22,9 +22,21 @@
 (function () {
   "use strict";
 
-  // Resolve base URL: data-base-url on the script tag, or default to production
+  // Resolve base URL: data-base-url on the script tag, or default to production.
+  // Validated with URL constructor to prevent arbitrary URL injection (CodeQL).
   var scriptEl = document.currentScript;
-  var BASE = (scriptEl && scriptEl.getAttribute("data-base-url")) || "https://news.mukoko.com";
+  var BASE = "https://news.mukoko.com";
+  if (scriptEl) {
+    var attrBase = scriptEl.getAttribute("data-base-url");
+    if (attrBase) {
+      try {
+        var parsed = new URL(attrBase);
+        if (parsed.protocol === "http:" || parsed.protocol === "https:") {
+          BASE = parsed.origin;
+        }
+      } catch (_e) { /* invalid URL — keep default */ }
+    }
+  }
 
   // Sizes per layout
   var LAYOUT_DEFAULTS = {
