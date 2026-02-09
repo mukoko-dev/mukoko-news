@@ -260,6 +260,15 @@ a {
   );
 }
 
+/* Hide scrollbar for horizontal ticker embeds */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
 /* Safe area for iOS devices with home indicator */
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0);
