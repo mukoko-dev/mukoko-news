@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import { ShareModal } from '../share-modal';
 import type { Article } from '@/lib/api';
 
@@ -139,7 +139,9 @@ describe('ShareModal', () => {
       render(<ShareModal article={mockArticle} isOpen={true} onClose={onClose} />);
 
       const copyButton = screen.getByText('Copy Link');
-      await fireEvent.click(copyButton);
+      await act(async () => {
+        fireEvent.click(copyButton);
+      });
 
       await waitFor(() => {
         expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
@@ -153,7 +155,9 @@ describe('ShareModal', () => {
       render(<ShareModal article={mockArticle} isOpen={true} onClose={onClose} />);
 
       const copyButton = screen.getByText('Copy Link');
-      await fireEvent.click(copyButton);
+      await act(async () => {
+        fireEvent.click(copyButton);
+      });
 
       await waitFor(() => {
         expect(screen.getByText('Copied!')).toBeInTheDocument();
@@ -167,7 +171,9 @@ describe('ShareModal', () => {
       render(<ShareModal article={mockArticle} isOpen={true} onClose={() => {}} />);
 
       const copyButton = screen.getByText('Copy Link');
-      await fireEvent.click(copyButton);
+      await act(async () => {
+        fireEvent.click(copyButton);
+      });
 
       await waitFor(() => {
         expect(consoleSpy).toHaveBeenCalled();
@@ -258,7 +264,9 @@ describe('ShareModal', () => {
       const onClose = vi.fn();
       render(<ShareModal article={mockArticle} isOpen={true} onClose={onClose} />);
 
-      await fireEvent.click(screen.getByText('More Options'));
+      await act(async () => {
+        fireEvent.click(screen.getByText('More Options'));
+      });
 
       await waitFor(() => {
         expect(mockShare).toHaveBeenCalledWith({
@@ -277,7 +285,9 @@ describe('ShareModal', () => {
       );
 
       // Copy link
-      await fireEvent.click(screen.getByText('Copy Link'));
+      await act(async () => {
+        fireEvent.click(screen.getByText('Copy Link'));
+      });
 
       await waitFor(() => {
         expect(screen.getByText('Copied!')).toBeInTheDocument();

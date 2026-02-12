@@ -361,19 +361,15 @@ export class RealtimeAnalyticsDO {
    */
   async getAnalyticsSummary(timeframe: string = '24h'): Promise<any> {
     const db = this.env.DB
-    
-    let timeCondition = "created_at >= datetime('now', '-24 hours')"
-    switch (timeframe) {
-      case '1h':
-        timeCondition = "created_at >= datetime('now', '-1 hour')"
-        break
-      case '7d':
-        timeCondition = "created_at >= datetime('now', '-7 days')"
-        break
-      case '30d':
-        timeCondition = "created_at >= datetime('now', '-30 days')"
-        break
+
+    // Strict whitelist for timeframe to prevent SQL injection
+    const timeConditions: Record<string, string> = {
+      '1h': "created_at >= datetime('now', '-1 hour')",
+      '24h': "created_at >= datetime('now', '-24 hours')",
+      '7d': "created_at >= datetime('now', '-7 days')",
+      '30d': "created_at >= datetime('now', '-30 days')",
     }
+    const timeCondition = timeConditions[timeframe] || timeConditions['24h']
 
     const [totalEvents, topArticles, topCategories, userActivity] = await Promise.all([
       // Total events by type

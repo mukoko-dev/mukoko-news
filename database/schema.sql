@@ -260,7 +260,10 @@ CREATE TABLE IF NOT EXISTS rss_sources (
     last_fetched_at DATETIME,
     fetch_count INTEGER DEFAULT 0,
     error_count INTEGER DEFAULT 0,
+    consecutive_failures INTEGER DEFAULT 0,
     last_error TEXT,
+    last_error_at DATETIME,
+    last_success_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -1035,6 +1038,7 @@ CREATE INDEX IF NOT EXISTS idx_news_sources_category_id ON news_sources(category
 CREATE INDEX IF NOT EXISTS idx_news_sources_country ON news_sources(country_id);
 CREATE INDEX IF NOT EXISTS idx_rss_sources_enabled ON rss_sources(enabled);
 CREATE INDEX IF NOT EXISTS idx_rss_sources_country ON rss_sources(country_id);
+CREATE INDEX IF NOT EXISTS idx_rss_sources_health ON rss_sources(consecutive_failures DESC, error_count DESC) WHERE enabled = 1;
 
 -- Keywords
 CREATE INDEX IF NOT EXISTS idx_keywords_name ON keywords(name);

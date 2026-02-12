@@ -14,7 +14,8 @@ import { SourceIcon } from "@/components/ui/source-icon";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { Skeleton } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
-import { COUNTRIES } from "@/lib/constants";
+import { COUNTRIES, getFullUrl } from "@/lib/constants";
+import { WebPageJsonLd } from "@/components/ui/json-ld";
 import { formatTimeAgo } from "@/lib/utils";
 
 interface Source {
@@ -129,6 +130,11 @@ export default function SourcesPage() {
         </div>
       }
     >
+      <WebPageJsonLd
+        name="News Sources — Mukoko News"
+        description="Browse all news sources on Mukoko News. View source health, article counts, and coverage across 16 African countries."
+        url={getFullUrl("/sources")}
+      />
       <div className="max-w-[1200px] mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
