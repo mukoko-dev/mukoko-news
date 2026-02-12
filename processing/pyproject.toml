@@ -1,7 +1,7 @@
 [project]
-name = "mukoko-news-processing"
+name = "mukoko-news-api"
 version = "0.1.0"
-description = "Python Data Processing Worker for Mukoko News — RSS parsing, NLP, AI, clustering"
+description = "Mukoko News API — Python Worker for data processing, RSS, AI, and MongoDB operations"
 requires-python = ">=3.12"
 dependencies = [
     "workers-py",

@@ -2,7 +2,7 @@
 Request router — maps Service Binding fetch calls to service handlers.
 
 The main TS Worker calls us like:
-  env.DATA_PROCESSOR.fetch("http://processing/rss/parse", { method: "POST", body: ... })
+  env.DATA_PROCESSOR.fetch("http://news-api/rss/parse", { method: "POST", body: ... })
 
 We parse the path and dispatch to the right service.
 """
@@ -24,7 +24,7 @@ async def handle_request(request, env):
         # Health
         # ---------------------------------------------------------------
         if path == "/health":
-            return _json({"status": "ok", "service": "mukoko-news-processing"})
+            return _json({"status": "ok", "service": "mukoko-news-api"})
 
         # ---------------------------------------------------------------
         # RSS parsing
@@ -147,7 +147,7 @@ async def handle_request(request, env):
         return _json({"error": "Not found", "path": path}, status=404)
 
     except Exception as e:
-        print(f"[PROCESSING] Error handling {method} {path}: {e}")
+        print(f"[NEWS-API] Error handling {method} {path}: {e}")
         return _json({"error": str(e)}, status=500)
 
 

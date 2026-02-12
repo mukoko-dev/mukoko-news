@@ -1,16 +1,26 @@
 """
-Mukoko News — Python Data Processing Worker
+Mukoko News API — Python Data Processing & API Worker
+
+Production: https://news-api.mukoko.com
+Dev:        https://mukoko-news-api.<account>.workers.dev
 
 FastAPI entrypoint called by the main TypeScript Worker via Service Binding.
 All heavy data processing lives here: RSS parsing, content cleaning,
 AI orchestration, clustering, search, and feed ranking.
 
 Bindings available via self.env:
-  - DB          : D1 database
-  - AI          : Workers AI (embeddings) + AI Gateway (Anthropic Claude)
-  - VECTORIZE_INDEX : Vectorize semantic search
-  - CACHE_STORAGE   : KV cache
-  - STORAGE         : R2 file storage
+  - EDGE_CACHE_DB    : D1 database (edge cache for low-bandwidth African markets)
+  - AI               : Workers AI (embeddings) + AI Gateway (Anthropic Claude)
+  - VECTORIZE_INDEX  : Vectorize semantic search
+  - CACHE_STORAGE    : KV cache
+  - STORAGE          : R2 file storage
+
+  MongoDB (primary data store, accessed via HTTP Data API):
+  - MONGODB_DATA_API_URL : Base URL for the Data API
+  - MONGODB_APP_ID       : Atlas App Services app ID (secret)
+  - MONGODB_API_KEY      : Data API key (secret)
+  - MONGODB_CLUSTER      : Cluster name (e.g. "mukoko-news")
+  - MONGODB_DATABASE     : Database name (e.g. "mukoko_news")
 """
 
 from workers import WorkerEntrypoint, Response
@@ -18,7 +28,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 app = FastAPI(
-    title="Mukoko News Processing",
+    title="Mukoko News API",
     version="0.1.0",
 )
 
@@ -55,4 +65,4 @@ class DataProcessor(WorkerEntrypoint):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "mukoko-news-processing"}
+    return {"status": "ok", "service": "mukoko-news-api"}

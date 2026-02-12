@@ -46,9 +46,17 @@ def clean_html_content(raw_html: str, options: dict | None = None) -> dict:
     min_length = opts.get("min_content_length", opts.get("minContentLength", 100))
     remove_ads = opts.get("remove_ad_elements", True)
 
-    if not raw_html or len(raw_html) < min_length:
+    if not raw_html:
         return {
-            "cleaned_content": raw_html or "",
+            "cleaned_content": "",
+            "extracted_images": [],
+            "removed_char_count": 0,
+        }
+
+    # Short plain text (no HTML) — skip bs4 processing
+    if "<" not in raw_html and len(raw_html) < min_length:
+        return {
+            "cleaned_content": raw_html,
             "extracted_images": [],
             "removed_char_count": 0,
         }

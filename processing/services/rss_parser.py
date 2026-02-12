@@ -36,7 +36,7 @@ async def parse_rss_feed(xml_content: str, source: dict, env=None) -> dict:
     Args:
         xml_content: Raw XML string of the feed
         source: Source metadata dict with keys: id, name, category, country_id
-        env: Cloudflare env bindings (for future D1 trusted-domain lookups)
+        env: Cloudflare env bindings (for future edge cache / MongoDB lookups)
 
     Returns:
         {"articles": [...], "feed_title": str, "item_count": int}
@@ -119,7 +119,7 @@ def _parse_entry(entry: dict, source: dict) -> dict | None:
         "author": _clean_text(author) if author else None,
         "source": source.get("name", ""),
         "source_id": source.get("id"),
-        "category_id": source.get("category"),  # TODO: delegate to CategoryManager via env.DB
+        "category_id": source.get("category"),  # TODO: delegate to CategoryManager via MongoDB
         "country_id": source.get("country_id"),
         "published_at": published,
         "image_url": image_url,

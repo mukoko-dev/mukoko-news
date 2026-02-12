@@ -1,10 +1,13 @@
 /**
- * ProcessingClient — thin wrapper for calling the Python Data Processing Worker
- * via Service Binding.
+ * ProcessingClient — thin wrapper for calling the Python News API Worker
+ * (mukoko-news-api) via Service Binding.
+ *
+ * Production: https://news-api.mukoko.com
  *
  * The Python Worker handles: RSS parsing, content cleaning, AI processing,
  * clustering, search, and feed ranking using proper Python libraries
  * (feedparser, beautifulsoup4, numpy, textstat) + Anthropic Claude via AI Gateway.
+ * Primary data store: MongoDB Atlas (via Data API in the Python Worker).
  *
  * Usage:
  *   const client = new ProcessingClient(env.DATA_PROCESSOR);
@@ -228,7 +231,7 @@ export class ProcessingClient {
   // ---------------------------------------------------------------------------
 
   private async _post<T>(path: string, body: unknown): Promise<T> {
-    const res = await this.binding.fetch(`http://processing${path}`, {
+    const res = await this.binding.fetch(`http://news-api${path}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -236,20 +239,20 @@ export class ProcessingClient {
 
     if (!res.ok) {
       const error = await res.text();
-      throw new Error(`Processing Worker error (${res.status}): ${error}`);
+      throw new Error(`News API Worker error (${res.status}): ${error}`);
     }
 
     return res.json() as Promise<T>;
   }
 
   private async _get<T>(path: string): Promise<T> {
-    const res = await this.binding.fetch(`http://processing${path}`, {
+    const res = await this.binding.fetch(`http://news-api${path}`, {
       method: 'GET',
     });
 
     if (!res.ok) {
       const error = await res.text();
-      throw new Error(`Processing Worker error (${res.status}): ${error}`);
+      throw new Error(`News API Worker error (${res.status}): ${error}`);
     }
 
     return res.json() as Promise<T>;

@@ -24,7 +24,7 @@ async def extract_keywords(
         title: Article title
         content: Cleaned article text
         existing_category: Pre-assigned category (from RSS source)
-        env: Cloudflare env bindings (for D1 + AI)
+        env: Cloudflare env bindings (for EDGE_CACHE_DB + AI)
 
     Returns:
         {
@@ -38,14 +38,16 @@ async def extract_keywords(
         return {"keywords": []}
 
     # ---------------------------------------------------------------
-    # Load existing keywords from D1 for context
+    # Load existing keywords from D1 edge cache for context
+    # TODO: migrate to MongoDB as primary source once MongoDBClient
+    # is wired in — D1 is the edge cache, not primary data store
     # ---------------------------------------------------------------
     keyword_list = ""
     db_keywords: list[dict] = []
 
     if env:
         try:
-            result = await env.DB.prepare("""
+            result = await env.EDGE_CACHE_DB.prepare("""
                 SELECT k.keyword, k.category_id, k.relevance_score
                 FROM keywords k
                 JOIN categories c ON k.category_id = c.id
@@ -58,7 +60,7 @@ async def extract_keywords(
                 db_keywords = list(result.results)
                 keyword_list = ", ".join(k["keyword"] for k in db_keywords)
         except Exception as e:
-            print(f"[KEYWORDS] Failed to load DB keywords: {e}")
+            print(f"[KEYWORDS] Failed to load edge cache keywords: {e}")
 
     # ---------------------------------------------------------------
     # AI extraction via Anthropic Claude
