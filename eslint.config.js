@@ -137,7 +137,7 @@ export default [
 
   // Test files config
   {
-    files: ['**/*.test.{js,jsx}', '**/*.spec.{js,jsx}'],
+    files: ['**/*.test.{js,jsx,ts,tsx}', '**/*.spec.{js,jsx,ts,tsx}'],
     languageOptions: {
       globals: {
         describe: 'readonly',

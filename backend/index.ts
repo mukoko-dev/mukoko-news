@@ -27,6 +27,7 @@ import { ObservabilityService } from "./services/ObservabilityService.js";
 import { D1UserService } from "./services/D1UserService.js";
 import { PersonalizedFeedService } from "./services/PersonalizedFeedService.js";
 import { CountryService } from "./services/CountryService.js";
+import { SourceHealthService } from "./services/SourceHealthService.js";
 // Durable Objects for real-time features
 import { RealtimeAnalyticsDO } from "./services/RealtimeAnalyticsDO.js";
 import { ArticleInteractionsDO } from "./services/ArticleInteractionsDO.js";
@@ -180,6 +181,9 @@ function initializeServices(env: Bindings) {
   // Initialize SimpleRSSService for RSS feed processing
   const rssService = new SimpleRSSService(env.DB);
 
+  // Initialize SourceHealthService for monitoring and alerting
+  const sourceHealthService = new SourceHealthService(env.DB);
+
   console.log('[INIT] All services initialized - using SimpleRSSService for RSS processing');
 
   return {
@@ -196,7 +200,8 @@ function initializeServices(env: Bindings) {
     rssService,
     aiSearchService,
     rateLimitService,
-    csrfService
+    csrfService,
+    sourceHealthService
   };
 }
 
@@ -1349,11 +1354,19 @@ app.post("/api/refresh-rss", async (c) => {
 
     // Initialize simple RSS service
     const rssService = new SimpleRSSService(c.env.DB);
+    const sourceHealthService = new SourceHealthService(c.env.DB);
 
     // Fetch and process all feeds
     const results = await rssService.refreshAllFeeds();
 
     const processingTime = Date.now() - startTime;
+
+    // Record per-source health results for monitoring
+    for (const sr of results.sourceResults) {
+      await sourceHealthService.recordFetchResult(sr.sourceId, sr.success, sr.error).catch((err: any) => {
+        console.error(`[API] Failed to record health for ${sr.sourceId}:`, err.message);
+      });
+    }
 
     console.log(`[API] RSS refresh completed in ${processingTime}ms:`, results);
 
@@ -1457,10 +1470,18 @@ app.post("/api/feed/collect", async (c) => {
 
     const startTime = Date.now();
     const rssService = new SimpleRSSService(c.env.DB);
+    const sourceHealthService = new SourceHealthService(c.env.DB);
 
     // Fetch and process all feeds
     const results = await rssService.refreshAllFeeds();
     const processingTime = Date.now() - startTime;
+
+    // Record per-source health results for monitoring
+    for (const sr of results.sourceResults) {
+      await sourceHealthService.recordFetchResult(sr.sourceId, sr.success, sr.error).catch((err: any) => {
+        console.error(`[API] Failed to record health for ${sr.sourceId}:`, err.message);
+      });
+    }
 
     // Update last collection time
     if (c.env.CACHE_STORAGE) {
@@ -4508,6 +4529,84 @@ app.get("/api/admin/observability/alerts", async (c) => {
   }
 });
 
+// ===== SOURCE HEALTH MONITORING ENDPOINTS =====
+
+// Get full source health summary with alerts
+app.get("/api/admin/sources/health", async (c) => {
+  try {
+    const services = initializeServices(c.env);
+    const summary = await services.sourceHealthService.getHealthSummary();
+
+    return c.json({
+      success: true,
+      ...summary,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[API] Error getting source health:', error);
+    return c.json({ error: "Failed to get source health", message: error.message }, 500);
+  }
+});
+
+// Get only failing sources (quick admin view)
+app.get("/api/admin/sources/failing", async (c) => {
+  try {
+    const services = initializeServices(c.env);
+    const failing = await services.sourceHealthService.getFailingSources();
+
+    return c.json({
+      success: true,
+      sources: failing,
+      count: failing.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[API] Error getting failing sources:', error);
+    return c.json({ error: "Failed to get failing sources", message: error.message }, 500);
+  }
+});
+
+// Get health for a single source
+app.get("/api/admin/sources/health/:sourceId", async (c) => {
+  try {
+    const sourceId = c.req.param('sourceId');
+    const services = initializeServices(c.env);
+    const health = await services.sourceHealthService.getSourceHealth(sourceId);
+
+    if (!health) {
+      return c.json({ error: "Source not found" }, 404);
+    }
+
+    return c.json({
+      success: true,
+      source: health,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[API] Error getting source health:', error);
+    return c.json({ error: "Failed to get source health", message: error.message }, 500);
+  }
+});
+
+// Reset health tracking for a source (after manual fix)
+app.post("/api/admin/sources/health/:sourceId/reset", async (c) => {
+  try {
+    const sourceId = c.req.param('sourceId');
+    const services = initializeServices(c.env);
+
+    await services.sourceHealthService.resetSourceHealth(sourceId);
+
+    return c.json({
+      success: true,
+      message: `Health tracking reset for source ${sourceId}`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[API] Error resetting source health:', error);
+    return c.json({ error: "Failed to reset source health", message: error.message }, 500);
+  }
+});
+
 // ===== USER SERVICE ENDPOINTS (Using D1UserService) =====
 
 // Get user bookmarks
@@ -6468,11 +6567,19 @@ const scheduledHandler = async (
     // 1. Refresh RSS feeds to collect new articles (with batching)
     console.log(`[CRON] Starting RSS feed refresh (batch ${batchIndex})...`);
     const rssService = new SimpleRSSService(env.DB);
+    const sourceHealthService = new SourceHealthService(env.DB);
     const rssStartTime = Date.now();
 
     // Process 40 sources per batch to stay under 50 subrequest limit
     const rssResult = await rssService.refreshAllFeeds({ batch: batchIndex, batchSize: 40 });
     const rssDuration = Date.now() - rssStartTime;
+
+    // Record per-source health results for monitoring and alerting
+    for (const sr of rssResult.sourceResults) {
+      await sourceHealthService.recordFetchResult(sr.sourceId, sr.success, sr.error).catch((err: any) => {
+        console.error(`[CRON] Failed to record health for ${sr.sourceId}:`, err.message);
+      });
+    }
 
     console.log(`[CRON] RSS batch ${rssResult.batch + 1}/${rssResult.totalBatches} complete: ${rssResult.newArticles} new articles, ${rssResult.errors} errors in ${rssDuration}ms`);
 
