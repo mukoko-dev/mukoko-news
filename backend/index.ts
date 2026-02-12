@@ -103,13 +103,14 @@ app.use("*", logger());
 // Protect all /api/* routes with API key (except /health and /api/admin/*)
 // Public API requires bearer token from authorized clients (Vercel frontend)
 app.use("/api/*", async (c, next) => {
-  // Bypass API key auth for health check and admin routes (admin has its own auth)
+  // Bypass API key auth for health check, admin routes, and auth routes
+  // Admin has its own auth; auth routes must be accessible to unauthenticated users
   const bypassPaths = [
     '/api/health',
   ];
 
-  // Check if this is an admin route or bypass path
-  if (c.req.path.startsWith('/api/admin/') || bypassPaths.includes(c.req.path)) {
+  // Check if this is an admin route, auth route, or bypass path
+  if (c.req.path.startsWith('/api/admin/') || c.req.path.startsWith('/api/auth/') || bypassPaths.includes(c.req.path)) {
     return await next();
   }
 
