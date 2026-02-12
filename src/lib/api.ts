@@ -13,7 +13,13 @@ interface Article {
   country?: string;
   country_id?: string;   // API returns country_id
   image_url?: string;
+  original_url?: string;
   published_at: string;
+  updated_at?: string;
+  author?: string;
+  keywords?: Array<{ id: string; name: string; slug: string }>;
+  word_count?: number;
+  reading_time?: number;
   likesCount?: number;
   commentsCount?: number;
   isLiked?: boolean;
