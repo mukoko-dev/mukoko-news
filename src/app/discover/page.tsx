@@ -13,8 +13,11 @@ import { COUNTRIES, CATEGORY_META } from "@/lib/constants";
 interface Source {
   id: string;
   name: string;
-  country_code?: string;
+  url?: string;
+  category?: string;
+  country_id?: string;
   article_count?: number;
+  latest_article_at?: string;
 }
 
 interface Keyword {
@@ -269,38 +272,39 @@ export default function DiscoverPage() {
 
           {/* Browse by Source */}
           <section className="mb-12">
-            <h2 className="text-xl font-bold text-foreground mb-6">Browse by Source</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {sources.slice(0, 12).map((source) => (
-                <Link
-                  key={source.id}
-                  href={`/discover?source=${encodeURIComponent(source.name)}`}
-                  className="flex items-center gap-3 p-4 bg-surface rounded-xl border border-elevated hover:border-primary/30 hover:bg-elevated transition-all group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Newspaper className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                      {source.name}
-                    </p>
-                    <p className="text-xs text-text-tertiary">
-                      {source.article_count || 0} Articles
-                    </p>
-                  </div>
-                </Link>
-              ))}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-foreground">Browse by Source</h2>
+              <Link
+                href="/sources"
+                className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-foreground transition-colors"
+              >
+                View All <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
-            {sources.length > 12 && (
-              <div className="mt-4 text-center">
-                <Link
-                  href="/sources"
-                  className="text-sm text-primary font-medium hover:underline"
-                >
-                  View all {sources.length} sources
-                </Link>
-              </div>
-            )}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {sources.slice(0, 12).map((source) => {
+                const country = COUNTRIES.find(c => c.code === source.country_id);
+                return (
+                  <Link
+                    key={source.id}
+                    href={`/discover?source=${encodeURIComponent(source.name)}`}
+                    className="flex items-center gap-3 p-4 bg-surface rounded-xl border border-elevated hover:border-primary/30 hover:bg-elevated transition-all group"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <Newspaper className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                        {source.name}
+                      </p>
+                      <p className="text-xs text-text-tertiary">
+                        {country ? `${country.flag} ` : ""}{source.article_count || 0} Articles
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </section>
         </>
       )}
@@ -321,18 +325,28 @@ function KeywordCloud({ keywords }: { keywords: Keyword[] }) {
   return (
     <section className="mb-12">
       <h2 className="text-xl font-bold text-foreground mb-6">Trending Topics</h2>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2.5">
         {keywords.map((keyword) => {
           const normalized = (keyword.article_count - minCount) / range;
-          const fontSize = 0.75 + normalized * 0.75; // 0.75rem to 1.5rem
-          const fontWeight = normalized > 0.5 ? 600 : 400;
+          // Wider range: 0.8rem (13px) to 2rem (32px) for better visual hierarchy
+          const fontSize = 0.8 + normalized * 1.2;
+          // Scale padding proportionally with font size so each badge wraps its text
+          const hPad = 0.6 + normalized * 0.4; // 0.6em to 1em horizontal
+          const vPad = 0.25 + normalized * 0.2; // 0.25em to 0.45em vertical
+          const fontWeight = normalized > 0.6 ? 700 : normalized > 0.3 ? 500 : 400;
+          const opacity = 0.7 + normalized * 0.3; // 0.7 to 1.0
 
           return (
             <Link
               key={keyword.id}
               href={`/search?q=${encodeURIComponent(keyword.name)}`}
-              className="px-3 py-1.5 bg-surface rounded-full border border-elevated hover:border-primary/30 hover:bg-elevated transition-all text-foreground hover:text-primary"
-              style={{ fontSize: `${fontSize}rem`, fontWeight }}
+              className="inline-block bg-surface rounded-full border border-elevated hover:border-primary/30 hover:bg-elevated transition-all text-foreground hover:text-primary whitespace-nowrap leading-tight"
+              style={{
+                fontSize: `${fontSize}rem`,
+                fontWeight,
+                padding: `${vPad}em ${hPad}em`,
+                opacity,
+              }}
             >
               {keyword.name}
             </Link>
