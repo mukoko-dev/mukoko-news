@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useDeferredValue } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -38,6 +38,7 @@ export default function SourcesPage() {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const deferredSearch = useDeferredValue(search);
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<SortKey>("articles");
 
@@ -66,9 +67,12 @@ export default function SourcesPage() {
     const total = sources.length;
     const withArticles = sources.filter((s) => (s.article_count || 0) > 0).length;
     const totalArticles = sources.reduce((sum, s) => sum + (s.article_count || 0), 0);
-    const withErrors = sources.filter(
-      (s) => (s.error_count || 0) > 0 && (s.error_count || 0) > (s.fetch_count || 1) * 0.3
-    ).length;
+    const withErrors = sources.filter((s) => {
+      const fetchCount = s.fetch_count || 0;
+      const errorCount = s.error_count || 0;
+      const errorRate = fetchCount > 0 ? errorCount / fetchCount : 0;
+      return errorRate > 0.3;
+    }).length;
     return { total, withArticles, totalArticles, withErrors };
   }, [sources]);
 
@@ -80,8 +84,8 @@ export default function SourcesPage() {
       list = list.filter((s) => s.country_id === countryFilter);
     }
 
-    if (search) {
-      const q = search.toLowerCase();
+    if (deferredSearch) {
+      const q = deferredSearch.toLowerCase();
       list = list.filter(
         (s) =>
           s.name.toLowerCase().includes(q) ||
@@ -109,7 +113,7 @@ export default function SourcesPage() {
     });
 
     return list;
-  }, [sources, countryFilter, search, sortBy]);
+  }, [sources, countryFilter, deferredSearch, sortBy]);
 
   if (loading) {
     return <SourcesPageSkeleton />;
