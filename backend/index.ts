@@ -7,13 +7,12 @@ import { D1Service } from "../database/D1Service.js";
 import { D1CacheService } from "./services/D1CacheService.js";
 import { AnalyticsEngineService } from "./services/AnalyticsEngineService.js";
 import { ArticleService } from "./services/ArticleService.js";
-import { ArticleAIService } from "./services/ArticleAIService.js";
+import { ProcessingClient } from "./services/ProcessingClient.js";
 import { AuthorProfileService } from "./services/AuthorProfileService.js";
 import { NewsSourceManager } from "./services/NewsSourceManager.js";
-import { SimpleRSSService } from "./services/SimpleRSSService.js";
+// SimpleRSSService removed — RSS collection delegated to Python Worker via ProcessingClient
 import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
-// AI and Search services
-import { AISearchService } from "./services/AISearchService.js";
+// AISearchService removed — search delegated to Python Worker via ProcessingClient
 // Security services
 import { RateLimitService } from "./services/RateLimitService.js";
 import { CSRFService } from "./services/CSRFService.js";
@@ -75,6 +74,7 @@ type Bindings = {
   AUTH_ISSUER_URL: string; // OIDC issuer URL (id.mukoko.com)
   RESEND_API_KEY?: string; // Set via wrangler secret for email
   EMAIL_FROM?: string; // Default sender email address
+  DATA_PROCESSOR: Fetcher; // Service Binding to mukoko-news-api Python Worker
 };
 
 // Export Durable Object classes for Cloudflare
@@ -144,18 +144,9 @@ function initializeServices(env: Bindings) {
     USER_ANALYTICS: env.USER_ANALYTICS,
     PERFORMANCE_ANALYTICS: env.PERFORMANCE_ANALYTICS
   });
-  const articleAIService = new ArticleAIService(env.AI, null, d1Service); // Vectorize disabled for now
   const authorProfileService = new AuthorProfileService(d1Service);
   const articleService = new ArticleService(env.DB);
   const newsSourceManager = new NewsSourceManager(env.DB);
-
-  // Initialize AI Search Service for semantic search
-  const aiSearchService = new AISearchService(
-    env.AI,
-    env.VECTORIZE_INDEX,
-    env.DB,
-    env.SEARCH_ANALYTICS
-  );
 
   // Initialize Security Services
   const rateLimitService = new RateLimitService(env.CACHE_STORAGE);
@@ -170,35 +161,33 @@ function initializeServices(env: Bindings) {
     console.warn('[INIT] CloudflareImagesService not initialized - IMAGES binding or CLOUDFLARE_ACCOUNT_ID not configured. RSS images will not be optimized.');
   }
 
-  // Initialize enhancement services for SimpleRSSService
   const categoryManager = new CategoryManager(env.DB);
   const observabilityService = new ObservabilityService(env.DB, env.LOG_LEVEL || 'info');
   const userService = new D1UserService(env.DB);
 
-  // Initialize SimpleRSSService for RSS feed processing
-  const rssService = new SimpleRSSService(env.DB);
-
-  // Initialize SourceHealthService for monitoring and alerting
+  // Initialize SourceHealthService for D1-based health reads (fallback for admin)
+  // RSS collection + health recording delegated to Python Worker
   const sourceHealthService = new SourceHealthService(env.DB);
 
-  console.log('[INIT] All services initialized - using SimpleRSSService for RSS processing');
+  // Initialize ProcessingClient — delegates data processing to Python Worker via Service Binding
+  const processingClient = new ProcessingClient(env.DATA_PROCESSOR);
+
+  console.log('[INIT] All services initialized - processing delegated to Python Worker via Service Binding');
 
   return {
     d1Service,
     cacheService,
     analyticsService,
-    articleAIService,
     authorProfileService,
     articleService,
     newsSourceManager,
     categoryManager,
     observabilityService,
     userService,
-    rssService,
-    aiSearchService,
     rateLimitService,
     csrfService,
-    sourceHealthService
+    sourceHealthService,
+    processingClient
   };
 }
 
@@ -1355,24 +1344,16 @@ app.get("/api/test-store", async (c) => {
   }
 });
 
-// Simple RSS refresh endpoint - rebuild from scratch for reliability
-// No complex AI pipeline, just fetch, parse, categorize, store
+// RSS refresh endpoint — delegates to Python Worker for feed collection
 app.post("/api/refresh-rss", async (c) => {
   try {
-    console.log("[API] Starting simple RSS refresh...");
+    console.log("[API] Starting RSS refresh via Python Worker...");
     const startTime = Date.now();
 
-    // Initialize simple RSS service
-    const rssService = new SimpleRSSService(c.env.DB);
-    const sourceHealthService = new SourceHealthService(c.env.DB);
-
-    // Fetch and process all feeds
-    const results = await rssService.refreshAllFeeds();
+    const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+    const results = await processingClient.collectFeeds();
 
     const processingTime = Date.now() - startTime;
-
-    // Record per-source health results in a single batch for efficiency
-    await sourceHealthService.recordHealthBatch(results.sourceResults);
 
     console.log(`[API] RSS refresh completed in ${processingTime}ms:`, results);
 
@@ -1475,15 +1456,9 @@ app.post("/api/feed/collect", async (c) => {
     }
 
     const startTime = Date.now();
-    const rssService = new SimpleRSSService(c.env.DB);
-    const sourceHealthService = new SourceHealthService(c.env.DB);
-
-    // Fetch and process all feeds
-    const results = await rssService.refreshAllFeeds();
+    const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+    const results = await processingClient.collectFeeds();
     const processingTime = Date.now() - startTime;
-
-    // Record per-source health results in a single batch for efficiency
-    await sourceHealthService.recordHealthBatch(results.sourceResults);
 
     // Update last collection time
     if (c.env.CACHE_STORAGE) {
@@ -1513,14 +1488,13 @@ app.post("/api/feed/collect", async (c) => {
   }
 });
 
-// Backfill keywords for existing articles
+// Backfill keywords for existing articles — delegates to Python Worker
 app.post("/api/admin/backfill-keywords", async (c) => {
   try {
-    console.log("[API] Starting keyword backfill...");
+    console.log("[API] Starting keyword backfill via Python Worker...");
     const startTime = Date.now();
 
-    // Initialize simple RSS service
-    const rssService = new SimpleRSSService(c.env.DB);
+    const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
 
     // Get all articles that don't have keywords
     const articlesWithoutKeywords = await c.env.DB
@@ -1547,28 +1521,23 @@ app.post("/api/admin/backfill-keywords", async (c) => {
 
     for (const article of articlesWithoutKeywords.results) {
       try {
-        // Extract keywords
-        const keywords = rssService.extractKeywords(
+        const result = await processingClient.extractKeywords(
           article.title as string,
           (article.description as string) || ''
         );
 
-        if (keywords.length > 0) {
-          // Store keywords (this method is private, so we need to make it public or create a new method)
-          // For now, let's manually implement the storage logic
-          for (const keyword of keywords) {
-            const keywordId = keyword.toLowerCase().replace(/\s+/g, '-');
+        if (result.keywords && result.keywords.length > 0) {
+          for (const kw of result.keywords) {
+            const keywordId = kw.keyword.toLowerCase().replace(/\s+/g, '-');
             const keywordSlug = keywordId;
-            const keywordName = keyword.charAt(0).toUpperCase() + keyword.slice(1);
+            const keywordName = kw.keyword.charAt(0).toUpperCase() + kw.keyword.slice(1);
 
-            // Check if keyword exists
             const existingKeyword = await c.env.DB
               .prepare('SELECT id FROM keywords WHERE id = ?')
               .bind(keywordId)
               .first();
 
             if (!existingKeyword) {
-              // Create keyword
               await c.env.DB
                 .prepare(`
                   INSERT INTO keywords (id, name, slug, type, enabled, created_at, updated_at)
@@ -1578,17 +1547,15 @@ app.post("/api/admin/backfill-keywords", async (c) => {
                 .run();
             }
 
-            // Link keyword to article
             await c.env.DB
               .prepare(`
                 INSERT INTO article_keyword_links (article_id, keyword_id, relevance_score, source, created_at)
-                VALUES (?, ?, 1.0, 'auto', datetime('now'))
+                VALUES (?, ?, ?, 'ai', datetime('now'))
                 ON CONFLICT(article_id, keyword_id) DO NOTHING
               `)
-              .bind(article.id, keywordId)
+              .bind(article.id, keywordId, kw.confidence)
               .run();
 
-            // Update keyword article count
             await c.env.DB
               .prepare('UPDATE keywords SET article_count = article_count + 1 WHERE id = ?')
               .bind(keywordId)
@@ -1608,7 +1575,6 @@ app.post("/api/admin/backfill-keywords", async (c) => {
     }
 
     const processingTime = Date.now() - startTime;
-
     console.log(`[API] Keyword backfill completed in ${processingTime}ms`);
 
     return c.json({
@@ -1642,11 +1608,10 @@ app.post("/api/admin/bulk-pull", async (c) => {
     const batch = typeof body.batch === 'number' ? body.batch : 0;
     const batchSize = typeof body.batchSize === 'number' ? body.batchSize : 40;
 
-    console.log(`Starting BULK PULL using SimpleRSSService (batch ${batch}, size ${batchSize})...`);
+    console.log(`Starting BULK PULL via Python Worker (batch ${batch}, size ${batchSize})...`);
 
-    // Use SimpleRSSService for bulk pull with batching
-    const rssService = new SimpleRSSService(c.env.DB);
-    const results = await rssService.refreshAllFeeds({ batch, batchSize });
+    const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+    const results = await processingClient.collectFeeds({ batch, batchSize });
 
     // Track the bulk pull event for analytics
     const services = initializeServices(c.env);
@@ -2614,22 +2579,23 @@ app.get("/api/search", async (c) => {
     let searchResults: any[] = [];
     let searchMethod = "keyword";
 
-    // Try semantic search first if AI is enabled
-    if (useAI && c.env.VECTORIZE_INDEX) {
+    // Try semantic search via Python Worker first
+    if (useAI) {
       try {
-        const aiResults = await services.aiSearchService.semanticSearch(query.trim(), {
+        const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+        const aiResponse = await processingClient.search(query.trim(), {
           limit,
           category: category !== 'all' ? category : undefined,
           includeInsights: true
         });
 
-        if (aiResults && aiResults.length > 0) {
-          searchResults = aiResults;
-          searchMethod = "semantic";
-          console.log(`[SEARCH] Semantic search returned ${aiResults.length} results for "${query}"`);
+        if (aiResponse.results && aiResponse.results.length > 0) {
+          searchResults = aiResponse.results;
+          searchMethod = aiResponse.method || "semantic";
+          console.log(`[SEARCH] Python Worker search returned ${aiResponse.results.length} results for "${query}"`);
         }
       } catch (aiError) {
-        console.warn("[SEARCH] Semantic search failed, falling back to keyword:", aiError);
+        console.warn("[SEARCH] Python Worker search failed, falling back to keyword:", aiError);
       }
     }
 
@@ -2808,12 +2774,11 @@ app.post("/api/refresh", async (c) => {
       }
     }
 
-    // Trigger RSS refresh by calling the admin endpoint internally
-    const services = initializeServices(c.env);
+    // Delegate to Python Worker for RSS collection
+    const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
     console.log('[USER_REFRESH] User-triggered refresh initiated by:', userId);
 
-    // Call RSS service directly instead of HTTP request
-    const result = await services.rssService.refreshAllFeeds();
+    const result = await processingClient.collectFeeds();
 
     // Track refresh in analytics
     if (c.env.NEWS_INTERACTIONS) {
@@ -3784,110 +3749,84 @@ app.post("/api/admin/ai-test", async (c) => {
       });
     }
 
-    // Test 3: Content cleaning test
+    // Test 3: Content cleaning test (via Python Worker)
     const cleaningStart = Date.now();
     try {
-      if (!results.ai_available) {
-        results.tests.push({
-          name: "Content Cleaning",
-          status: 'skipped',
-          duration_ms: 0,
-          error: "Skipped due to AI binding unavailable"
-        });
-      } else {
-        const dirtyContent = `${testText} <img src="test.jpg"/> ~~random~~ chars!!! http://example.com/image.png ADVERTISEMENT`;
-        const cleanResult = await services.articleAIService.cleanContent(dirtyContent, {
-          removeImages: true,
-          removeRandomChars: true,
-          normalizeWhitespace: true,
-          extractImageUrls: true,
-          minContentLength: 50
-        });
+      const dirtyContent = `${testText} <img src="test.jpg"/> ~~random~~ chars!!! http://example.com/image.png ADVERTISEMENT`;
+      const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+      const cleanResult = await processingClient.cleanContent(dirtyContent, {
+        removeImages: true,
+        extractImageUrls: true,
+        minContentLength: 50
+      });
 
-        results.tests.push({
-          name: "Content Cleaning",
-          status: cleanResult.cleanedContent.length > 0 ? 'passed' : 'failed',
-          duration_ms: Date.now() - cleaningStart,
-          result: {
-            original_length: dirtyContent.length,
-            cleaned_length: cleanResult.cleanedContent.length,
-            removed_chars: cleanResult.removedCharCount,
-            extracted_images: cleanResult.extractedImages.length,
-            sample: cleanResult.cleanedContent.substring(0, 200)
-          }
-        });
-      }
+      results.tests.push({
+        name: "Content Cleaning (Python Worker)",
+        status: cleanResult.cleaned_content.length > 0 ? 'passed' : 'failed',
+        duration_ms: Date.now() - cleaningStart,
+        result: {
+          original_length: dirtyContent.length,
+          cleaned_length: cleanResult.cleaned_content.length,
+          removed_chars: cleanResult.removed_char_count,
+          extracted_images: cleanResult.extracted_images.length,
+          sample: cleanResult.cleaned_content.substring(0, 200)
+        }
+      });
     } catch (error) {
       results.tests.push({
-        name: "Content Cleaning",
+        name: "Content Cleaning (Python Worker)",
         status: 'failed',
         duration_ms: Date.now() - cleaningStart,
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
 
-    // Test 4: Keyword extraction test
+    // Test 4: Keyword extraction test (via Python Worker)
     const keywordStart = Date.now();
     try {
-      if (!results.ai_available) {
-        results.tests.push({
-          name: "Keyword Extraction",
-          status: 'skipped',
-          duration_ms: 0,
-          error: "Skipped due to AI binding unavailable"
-        });
-      } else {
-        const keywords = await services.articleAIService.extractKeywords(testTitle, testText, 'politics');
+      const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+      const kwResult = await processingClient.extractKeywords(testTitle, testText, 'politics');
 
-        results.tests.push({
-          name: "Keyword Extraction",
-          status: keywords && keywords.length > 0 ? 'passed' : 'failed',
-          duration_ms: Date.now() - keywordStart,
-          result: {
-            keyword_count: keywords?.length || 0,
-            keywords: keywords?.slice(0, 5).map((k: any) => ({
-              keyword: k.keyword,
-              confidence: k.confidence,
-              category: k.category
-            }))
-          }
-        });
-      }
+      results.tests.push({
+        name: "Keyword Extraction (Python Worker)",
+        status: kwResult.keywords && kwResult.keywords.length > 0 ? 'passed' : 'failed',
+        duration_ms: Date.now() - keywordStart,
+        result: {
+          keyword_count: kwResult.keywords?.length || 0,
+          keywords: kwResult.keywords?.slice(0, 5).map((k: any) => ({
+            keyword: k.keyword,
+            confidence: k.confidence,
+            category: k.category
+          }))
+        }
+      });
     } catch (error) {
       results.tests.push({
-        name: "Keyword Extraction",
+        name: "Keyword Extraction (Python Worker)",
         status: 'failed',
         duration_ms: Date.now() - keywordStart,
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
 
-    // Test 5: Quality scoring test
+    // Test 5: Quality scoring test (via Python Worker)
     const qualityStart = Date.now();
     try {
-      if (!results.ai_available) {
-        results.tests.push({
-          name: "Quality Scoring",
-          status: 'skipped',
-          duration_ms: 0,
-          error: "Skipped due to AI binding unavailable"
-        });
-      } else {
-        const qualityScore = await services.articleAIService.calculateQualityScore(testTitle, testText);
+      const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+      const qualityResult = await processingClient.scoreQuality(testTitle, testText);
 
-        results.tests.push({
-          name: "Quality Scoring",
-          status: typeof qualityScore === 'number' ? 'passed' : 'failed',
-          duration_ms: Date.now() - qualityStart,
-          result: {
-            quality_score: qualityScore,
-            quality_rating: qualityScore > 0.8 ? 'Excellent' : qualityScore > 0.6 ? 'Good' : qualityScore > 0.4 ? 'Fair' : 'Needs Improvement'
-          }
-        });
-      }
+      results.tests.push({
+        name: "Quality Scoring (Python Worker)",
+        status: typeof qualityResult.quality_score === 'number' ? 'passed' : 'failed',
+        duration_ms: Date.now() - qualityStart,
+        result: {
+          quality_score: qualityResult.quality_score,
+          quality_rating: qualityResult.quality_score > 0.8 ? 'Excellent' : qualityResult.quality_score > 0.6 ? 'Good' : qualityResult.quality_score > 0.4 ? 'Fair' : 'Needs Improvement'
+        }
+      });
     } catch (error) {
       results.tests.push({
-        name: "Quality Scoring",
+        name: "Quality Scoring (Python Worker)",
         status: 'failed',
         duration_ms: Date.now() - qualityStart,
         error: error instanceof Error ? error.message : "Unknown error"
@@ -4533,14 +4472,30 @@ app.get("/api/admin/observability/alerts", async (c) => {
 
 // ===== SOURCE HEALTH MONITORING ENDPOINTS =====
 
-// Get full source health summary with alerts
+// Get full source health summary — tries Python Worker (MongoDB), falls back to D1
 app.get("/api/admin/sources/health", async (c) => {
   try {
+    // Try Python Worker first for richer MongoDB-backed health data
+    try {
+      const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+      const healthData = await processingClient.getSourceHealth();
+      return c.json({
+        success: true,
+        source: 'mongodb',
+        ...healthData,
+        timestamp: new Date().toISOString()
+      });
+    } catch (pyError) {
+      console.warn('[API] Python Worker health unavailable, falling back to D1:', pyError);
+    }
+
+    // Fallback to D1-based health
     const services = initializeServices(c.env);
     const summary = await services.sourceHealthService.getHealthSummary();
 
     return c.json({
       success: true,
+      source: 'd1_fallback',
       ...summary,
       timestamp: new Date().toISOString()
     });
@@ -6566,27 +6521,22 @@ const scheduledHandler = async (
     const hour = new Date(controller.scheduledTime).getUTCHours();
     const batchIndex = Math.floor(hour / 6); // 0, 1, 2, or 3
 
-    // 1. Refresh RSS feeds to collect new articles (with batching)
-    console.log(`[CRON] Starting RSS feed refresh (batch ${batchIndex})...`);
-    const rssService = new SimpleRSSService(env.DB);
-    const sourceHealthService = new SourceHealthService(env.DB);
+    // 1. Delegate RSS feed collection to Python Worker
+    console.log(`[CRON] Starting RSS feed refresh via Python Worker (batch ${batchIndex})...`);
+    const processingClient = new ProcessingClient(env.DATA_PROCESSOR);
     const rssStartTime = Date.now();
 
-    // Process 40 sources per batch to stay under 50 subrequest limit
-    const rssResult = await rssService.refreshAllFeeds({ batch: batchIndex, batchSize: 40 });
+    const rssResult = await processingClient.collectFeeds({ batch: batchIndex, batchSize: 40 });
     const rssDuration = Date.now() - rssStartTime;
 
-    // Record per-source health results in a single batch for efficiency
-    await sourceHealthService.recordHealthBatch(rssResult.sourceResults);
-
-    console.log(`[CRON] RSS batch ${rssResult.batch + 1}/${rssResult.totalBatches} complete: ${rssResult.newArticles} new articles, ${rssResult.errors} errors in ${rssDuration}ms`);
+    console.log(`[CRON] RSS batch complete: ${rssResult.newArticles} new articles, ${rssResult.errors} errors in ${rssDuration}ms`);
 
     // Log RSS refresh to database
     await env.DB.prepare(`
       INSERT INTO cron_logs (cron_type, status, articles_processed, errors, execution_time_ms, created_at)
       VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `).bind(
-      `rss_refresh_batch_${rssResult.batch}`,
+      `rss_refresh_batch_${batchIndex}`,
       rssResult.errors === 0 ? 'success' : 'partial',
       rssResult.newArticles,
       rssResult.errors,

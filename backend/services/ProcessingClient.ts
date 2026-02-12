@@ -7,7 +7,7 @@
  * The Python Worker handles: RSS parsing, content cleaning, AI processing,
  * clustering, search, and feed ranking using proper Python libraries
  * (feedparser, beautifulsoup4, numpy, textstat) + Anthropic Claude via AI Gateway.
- * Primary data store: MongoDB Atlas (via Data API in the Python Worker).
+ * Primary data store: MongoDB Atlas (via mongo-proxy Service Binding in the Python Worker).
  *
  * Usage:
  *   const client = new ProcessingClient(env.DATA_PROCESSOR);
@@ -17,8 +17,6 @@
  * On failure, they throw with the error message from the Worker.
  */
 
-// TODO: replace Fetcher with the actual Service Binding type once wrangler
-// generates it (after adding the service binding to wrangler.jsonc)
 type ServiceBinding = { fetch(input: RequestInfo, init?: RequestInit): Promise<Response> };
 
 export class ProcessingClient {
@@ -224,6 +222,63 @@ export class ProcessingClient {
       reading_time_minutes: number;
       error?: string;
     }>('/content/scrape', { url });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Feed collection — triggers batch RSS collection in Python Worker
+  // ---------------------------------------------------------------------------
+
+  async collectFeeds(options?: { batch?: number; batchSize?: number }) {
+    return this._post<{
+      success: boolean;
+      newArticles: number;
+      errors: number;
+      batch: number;
+      totalBatches: number;
+      totalSources: number;
+      details: string[];
+      sourceResults?: Array<{ source_id: number; success: boolean; error?: string }>;
+    }>('/feed/collect', options || {});
+  }
+
+  // ---------------------------------------------------------------------------
+  // Source health — MongoDB-backed health monitoring
+  // ---------------------------------------------------------------------------
+
+  async getSourceHealth() {
+    return this._get<{
+      sources: Array<{
+        source_id: number;
+        name: string;
+        status: string;
+        consecutive_failures: number;
+        last_successful_fetch: string | null;
+        quality_score: number;
+      }>;
+      summary: {
+        healthy: number;
+        degraded: number;
+        failing: number;
+        critical: number;
+      };
+    }>('/sources/health');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Trending — MongoDB aggregation-based trending topics
+  // ---------------------------------------------------------------------------
+
+  async getTrending(countryId?: string) {
+    const path = countryId ? `/trending/${countryId}` : '/trending';
+    return this._get<{
+      topics: Array<{
+        keyword: string;
+        count: number;
+        velocity: number;
+        country_id?: string;
+      }>;
+      cached: boolean;
+    }>(path);
   }
 
   // ---------------------------------------------------------------------------
