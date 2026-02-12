@@ -11,7 +11,6 @@ import { ProcessingClient } from "./services/ProcessingClient.js";
 import { AuthorProfileService } from "./services/AuthorProfileService.js";
 import { NewsSourceManager } from "./services/NewsSourceManager.js";
 // SimpleRSSService removed — RSS collection delegated to Python Worker via ProcessingClient
-import { CloudflareImagesService } from "./services/CloudflareImagesService.js";
 // AISearchService removed — search delegated to Python Worker via ProcessingClient
 // Security services
 import { RateLimitService } from "./services/RateLimitService.js";
@@ -57,7 +56,6 @@ type Bindings = {
   PERFORMANCE_ANALYTICS: AnalyticsEngineDataset;
   AI_INSIGHTS_ANALYTICS: AnalyticsEngineDataset;
   AI: Ai;
-  VECTORIZE_INDEX: VectorizeIndex;
   IMAGES?: ImagesBinding;
   STORAGE?: R2Bucket; // R2 object storage for feeds, backups, uploads
   NODE_ENV: string;
@@ -151,15 +149,6 @@ function initializeServices(env: Bindings) {
   // Initialize Security Services
   const rateLimitService = new RateLimitService(env.CACHE_STORAGE);
   const csrfService = new CSRFService(env.CACHE_STORAGE);
-
-  // Initialize CloudflareImagesService if available
-  let imagesService = null;
-  if (env.IMAGES && env.CLOUDFLARE_ACCOUNT_ID) {
-    imagesService = new CloudflareImagesService(env.IMAGES, env.CLOUDFLARE_ACCOUNT_ID);
-    console.log('[INIT] CloudflareImagesService initialized successfully');
-  } else {
-    console.warn('[INIT] CloudflareImagesService not initialized - IMAGES binding or CLOUDFLARE_ACCOUNT_ID not configured. RSS images will not be optimized.');
-  }
 
   const categoryManager = new CategoryManager(env.DB);
   const observabilityService = new ObservabilityService(env.DB, env.LOG_LEVEL || 'info');
@@ -1234,9 +1223,25 @@ app.get("/api/feeds/sectioned", async (c) => {
 });
 
 // Debug endpoint to test single RSS feed fetch
-app.get("/api/test-feed", async (c) => {
+app.get("/api/admin/test-feed", async (c) => {
   const { XMLParser } = await import('fast-xml-parser');
   const feedUrl = c.req.query('url') || 'https://www.techzim.co.zw/feed/';
+
+  // Validate URL to prevent SSRF
+  try {
+    const parsed = new URL(feedUrl);
+    if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') {
+      return c.json({ error: "Only HTTP/HTTPS URLs allowed" }, 400);
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' ||
+        hostname.startsWith('10.') || hostname.startsWith('192.168.') || hostname.startsWith('172.') ||
+        hostname === '169.254.169.254' || hostname.endsWith('.internal') || hostname.endsWith('.local')) {
+      return c.json({ error: "Internal URLs not allowed" }, 403);
+    }
+  } catch {
+    return c.json({ error: "Invalid URL" }, 400);
+  }
   try {
     const response = await fetch(feedUrl, {
       headers: {
@@ -1302,8 +1307,8 @@ app.get("/api/test-feed", async (c) => {
   }
 });
 
-// Debug endpoint to test storing one article
-app.get("/api/test-store", async (c) => {
+// Debug endpoint to test storing one article (admin-only, moved to /api/admin/)
+app.get("/api/admin/test-store", async (c) => {
   try {
     const slug = `test-article-${Date.now()}`;
     await c.env.DB.prepare(`
@@ -1336,10 +1341,10 @@ app.get("/api/test-store", async (c) => {
       articleCount: count?.count
     });
   } catch (error: any) {
+    console.error('[API] test-store error:', error);
     return c.json({
       success: false,
-      error: error.message,
-      stack: error.stack
+      error: "Failed to store test article"
     }, 500);
   }
 });
@@ -3750,10 +3755,10 @@ app.post("/api/admin/ai-test", async (c) => {
     }
 
     // Test 3: Content cleaning test (via Python Worker)
+    const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
     const cleaningStart = Date.now();
     try {
       const dirtyContent = `${testText} <img src="test.jpg"/> ~~random~~ chars!!! http://example.com/image.png ADVERTISEMENT`;
-      const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
       const cleanResult = await processingClient.cleanContent(dirtyContent, {
         removeImages: true,
         extractImageUrls: true,
@@ -3784,7 +3789,6 @@ app.post("/api/admin/ai-test", async (c) => {
     // Test 4: Keyword extraction test (via Python Worker)
     const keywordStart = Date.now();
     try {
-      const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
       const kwResult = await processingClient.extractKeywords(testTitle, testText, 'politics');
 
       results.tests.push({
@@ -3812,7 +3816,6 @@ app.post("/api/admin/ai-test", async (c) => {
     // Test 5: Quality scoring test (via Python Worker)
     const qualityStart = Date.now();
     try {
-      const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
       const qualityResult = await processingClient.scoreQuality(testTitle, testText);
 
       results.tests.push({

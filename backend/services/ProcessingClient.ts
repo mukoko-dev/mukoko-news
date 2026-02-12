@@ -269,7 +269,10 @@ export class ProcessingClient {
   // ---------------------------------------------------------------------------
 
   async getTrending(countryId?: string) {
-    const path = countryId ? `/trending/${countryId}` : '/trending';
+    if (countryId && !/^[A-Z]{2}$/.test(countryId)) {
+      throw new Error(`Invalid country ID: ${countryId}`);
+    }
+    const path = countryId ? `/trending/${encodeURIComponent(countryId)}` : '/trending';
     return this._get<{
       topics: Array<{
         keyword: string;
@@ -286,30 +289,46 @@ export class ProcessingClient {
   // ---------------------------------------------------------------------------
 
   private async _post<T>(path: string, body: unknown): Promise<T> {
-    const res = await this.binding.fetch(`http://news-api${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await this.binding.fetch(`http://news-api${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
 
-    if (!res.ok) {
-      const error = await res.text();
-      throw new Error(`News API Worker error (${res.status}): ${error}`);
+      if (!res.ok) {
+        const errorBody = await res.text();
+        console.error(`[ProcessingClient] POST ${path} failed (${res.status}):`, errorBody);
+        throw new Error(`Processing service error (${res.status})`);
+      }
+
+      return res.json() as Promise<T>;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    return res.json() as Promise<T>;
   }
 
   private async _get<T>(path: string): Promise<T> {
-    const res = await this.binding.fetch(`http://news-api${path}`, {
-      method: 'GET',
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    try {
+      const res = await this.binding.fetch(`http://news-api${path}`, {
+        method: 'GET',
+        signal: controller.signal,
+      });
 
-    if (!res.ok) {
-      const error = await res.text();
-      throw new Error(`News API Worker error (${res.status}): ${error}`);
+      if (!res.ok) {
+        const errorBody = await res.text();
+        console.error(`[ProcessingClient] GET ${path} failed (${res.status}):`, errorBody);
+        throw new Error(`Processing service error (${res.status})`);
+      }
+
+      return res.json() as Promise<T>;
+    } finally {
+      clearTimeout(timeoutId);
     }
-
-    return res.json() as Promise<T>;
   }
 }
