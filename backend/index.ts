@@ -567,15 +567,26 @@ app.get("/api/health", async (c) => {
     const services = initializeServices(c.env);
     const health = await services.d1Service.healthCheck();
 
+    // Check Python Worker (processing API) health
+    let processingStatus = "unknown";
+    try {
+      const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+      const pyHealth = await processingClient._healthCheck();
+      processingStatus = pyHealth ? "operational" : "error";
+    } catch {
+      processingStatus = "error";
+    }
+
+    const allHealthy = health.healthy && processingStatus === "operational";
+
     return c.json({
-      status: health.healthy ? "healthy" : "unhealthy",
+      status: allHealthy ? "healthy" : "degraded",
       timestamp: new Date().toISOString(),
       services: {
         database: health.healthy ? "operational" : "error",
+        processing_api: processingStatus,
         analytics: !!(c.env.NEWS_ANALYTICS && c.env.SEARCH_ANALYTICS && c.env.CATEGORY_ANALYTICS),
         cache: "operational",
-        articles: "operational",
-        newsSources: "operational"
       },
       environment: c.env.NODE_ENV || "production",
       security: {
@@ -588,10 +599,10 @@ app.get("/api/health", async (c) => {
         publicRoutes: "/api/health, /api/admin/* (separate admin auth)"
       }
     });
-  } catch (error) {
+  } catch (error: any) {
     return c.json({
       status: "unhealthy",
-      error: error.message,
+      error: "Health check failed",
       timestamp: new Date().toISOString()
     }, 500);
   }
