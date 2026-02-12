@@ -161,6 +161,7 @@ export class D1UserService {
     try {
       await this.initialize()
 
+      // Column names below are hardcoded (not from user input), so dynamic SET is safe
       const { email, preferences, stats } = userData
       const updates = []
       const bindings = []
