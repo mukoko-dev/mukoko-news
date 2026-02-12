@@ -4,7 +4,10 @@
  * Provides MongoDB access to the Python Worker via Service Binding.
  * Uses the official MongoDB Node.js driver with TCP socket support.
  *
- * The Python Worker calls this via: env.MONGO.fetch(request)
+ * SECURITY: Public access is disabled (workers_dev = false in wrangler.toml).
+ * Only accessible via Service Binding from the Python Worker (env.MONGO.fetch).
+ * A shared secret (PROXY_SECRET) provides defense-in-depth authentication.
+ *
  * Request body: { action, collection, ...params }
  *
  * Supported actions:
@@ -17,6 +20,33 @@ import { MongoClient } from "mongodb";
 
 /** @type {MongoClient | null} */
 let client = null;
+
+/** Allowed collections — reject requests to any other collection. */
+const ALLOWED_COLLECTIONS = new Set([
+  "articles",
+  "sources",
+  "source_health",
+  "health_records",
+  "trending",
+  "keywords",
+  "clusters",
+  "search_cache",
+  "processing_log",
+  "feed_state",
+]);
+
+/** Dangerous MongoDB operators that must not appear in filters. */
+const BLOCKED_FILTER_OPS = ["$where", "$function", "$accumulator", "$expr"];
+
+/** Aggregation stages that could write data or leak system info. */
+const BLOCKED_AGG_STAGES = new Set([
+  "$out",
+  "$merge",
+  "$collStats",
+  "$currentOp",
+  "$listSessions",
+  "$planCacheStats",
+]);
 
 /**
  * Get or create a MongoDB client.
@@ -40,8 +70,30 @@ function getDb(env) {
   return getClient(env).db(env.MONGODB_DATABASE || "mukoko_news");
 }
 
+/**
+ * Check if a JSON object contains any blocked operators (recursive).
+ * Returns the first blocked key found, or null.
+ */
+function findBlockedOperator(obj) {
+  if (!obj || typeof obj !== "object") return null;
+  for (const key of Object.keys(obj)) {
+    if (BLOCKED_FILTER_OPS.includes(key)) return key;
+    const nested = findBlockedOperator(obj[key]);
+    if (nested) return nested;
+  }
+  return null;
+}
+
 export default {
   async fetch(request, env) {
+    // ── Auth: require shared secret (defense-in-depth) ──
+    if (env.PROXY_SECRET) {
+      const authHeader = request.headers.get("Authorization");
+      if (authHeader !== `Bearer ${env.PROXY_SECRET}`) {
+        return Response.json({ error: "Unauthorized" }, { status: 401 });
+      }
+    }
+
     // Only accept POST with JSON body
     if (request.method !== "POST") {
       return Response.json({ error: "POST required" }, { status: 405 });
@@ -63,6 +115,31 @@ export default {
       );
     }
 
+    // ── Validate collection name ──
+    if (!ALLOWED_COLLECTIONS.has(collection)) {
+      console.warn(
+        `[MONGO-PROXY] Rejected access to disallowed collection: ${collection}`
+      );
+      return Response.json(
+        { error: "Collection not allowed" },
+        { status: 403 }
+      );
+    }
+
+    // ── Validate filter for dangerous operators ──
+    if (params.filter) {
+      const blocked = findBlockedOperator(params.filter);
+      if (blocked) {
+        console.warn(
+          `[MONGO-PROXY] Rejected dangerous operator ${blocked} in ${action} on ${collection}`
+        );
+        return Response.json(
+          { error: "Query operator not allowed" },
+          { status: 403 }
+        );
+      }
+    }
+
     try {
       const db = getDb(env);
       const coll = db.collection(collection);
@@ -75,7 +152,9 @@ export default {
           if (params.projection) cursor.project(params.projection);
           if (params.sort) cursor.sort(params.sort);
           if (params.skip) cursor.skip(params.skip);
-          cursor.limit(params.limit ?? 20);
+          // Clamp limit to prevent abuse
+          const limit = Math.min(Math.max(params.limit ?? 20, 1), 1000);
+          cursor.limit(limit);
           const documents = await cursor.toArray();
           result = { documents };
           break;
@@ -97,7 +176,21 @@ export default {
         }
 
         case "aggregate": {
-          const docs = await coll.aggregate(params.pipeline || []).toArray();
+          const pipeline = params.pipeline || [];
+          // Validate pipeline stages
+          for (const stage of pipeline) {
+            const stageKey = Object.keys(stage)[0];
+            if (BLOCKED_AGG_STAGES.has(stageKey)) {
+              console.warn(
+                `[MONGO-PROXY] Rejected blocked aggregation stage: ${stageKey}`
+              );
+              return Response.json(
+                { error: "Aggregation stage not allowed" },
+                { status: 403 }
+              );
+            }
+          }
+          const docs = await coll.aggregate(pipeline).toArray();
           result = { documents: docs };
           break;
         }
@@ -110,7 +203,14 @@ export default {
         }
 
         case "insertMany": {
-          const insMany = await coll.insertMany(params.documents || []);
+          const docs = params.documents || [];
+          if (docs.length > 500) {
+            return Response.json(
+              { error: "Batch size exceeds limit (500)" },
+              { status: 400 }
+            );
+          }
+          const insMany = await coll.insertMany(docs);
           result = { insertedIds: Object.values(insMany.insertedIds) };
           break;
         }
@@ -164,7 +264,7 @@ export default {
     } catch (err) {
       console.error(`[MONGO-PROXY] ${action} on ${collection} failed:`, err);
       return Response.json(
-        { error: err.message || "MongoDB operation failed" },
+        { error: "Database operation failed" },
         { status: 500 }
       );
     }
