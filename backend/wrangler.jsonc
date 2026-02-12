@@ -158,6 +158,18 @@
   ],
 
   /**
+   * Service Binding - Python Data Processing Worker
+   * Handles: RSS parsing, AI processing, clustering, search, feed ranking
+   * Called via: env.DATA_PROCESSOR.fetch("http://processing/...", {...})
+   */
+  "services": [
+    {
+      "binding": "DATA_PROCESSOR",
+      "service": "mukoko-news-processing"
+    }
+  ],
+
+  /**
    * Observability - Real-time logs and monitoring
    */
   "observability": {

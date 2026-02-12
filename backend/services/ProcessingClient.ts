@@ -1,0 +1,257 @@
+/**
+ * ProcessingClient — thin wrapper for calling the Python Data Processing Worker
+ * via Service Binding.
+ *
+ * The Python Worker handles: RSS parsing, content cleaning, AI processing,
+ * clustering, search, and feed ranking using proper Python libraries
+ * (feedparser, beautifulsoup4, numpy, textstat) + Anthropic Claude via AI Gateway.
+ *
+ * Usage:
+ *   const client = new ProcessingClient(env.DATA_PROCESSOR);
+ *   const result = await client.processArticle({ id: 1, title: "...", content: "..." });
+ *
+ * All methods return the parsed JSON response from the Python Worker.
+ * On failure, they throw with the error message from the Worker.
+ */
+
+// TODO: replace Fetcher with the actual Service Binding type once wrangler
+// generates it (after adding the service binding to wrangler.jsonc)
+type ServiceBinding = { fetch(input: RequestInfo, init?: RequestInit): Promise<Response> };
+
+export class ProcessingClient {
+  private binding: ServiceBinding;
+
+  constructor(dataProcessor: ServiceBinding) {
+    this.binding = dataProcessor;
+  }
+
+  // ---------------------------------------------------------------------------
+  // RSS parsing — replaces SimpleRSSService XML parsing + image extraction
+  // ---------------------------------------------------------------------------
+
+  async parseRSS(feedXml: string, source: { id?: number; name: string; category?: string; country_id?: string }) {
+    return this._post<{
+      articles: Array<{
+        title: string;
+        description: string | null;
+        content: string | null;
+        author: string | null;
+        source: string;
+        source_id: number | undefined;
+        category_id: string | undefined;
+        country_id: string | undefined;
+        published_at: string;
+        image_url: string | null;
+        original_url: string;
+        rss_guid: string;
+        slug: string;
+      }>;
+      feed_title: string;
+      item_count: number;
+      error?: string;
+    }>('/rss/parse', { xml: feedXml, source });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Content cleaning — replaces ArticleAIService.cleanContent()
+  // ---------------------------------------------------------------------------
+
+  async cleanContent(html: string, options?: {
+    removeImages?: boolean;
+    extractImageUrls?: boolean;
+    minContentLength?: number;
+  }) {
+    return this._post<{
+      cleaned_content: string;
+      extracted_images: string[];
+      removed_char_count: number;
+    }>('/content/clean', { html, options });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Full article AI pipeline — replaces ArticleAIService.processArticle()
+  // ---------------------------------------------------------------------------
+
+  async processArticle(article: {
+    id: number;
+    title: string;
+    content: string;
+    description?: string;
+    category?: string;
+  }) {
+    return this._post<{
+      cleaned_content: string;
+      extracted_images: string[];
+      keywords: Array<{ keyword: string; confidence: number; category: string }>;
+      quality_score: number;
+      content_hash: string;
+      embedding_id: string | null;
+      processing_time_ms: number;
+      quality_details: {
+        quality_score: number;
+        word_count: number;
+        reading_ease: number | null;
+        grade_level: number | null;
+      };
+    }>('/content/process', article);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Keyword extraction — replaces ArticleAIService.extractKeywords()
+  // ---------------------------------------------------------------------------
+
+  async extractKeywords(title: string, content: string, category?: string) {
+    return this._post<{
+      keywords: Array<{ keyword: string; confidence: number; category: string }>;
+    }>('/keywords/extract', { title, content, category });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Quality scoring — replaces ArticleAIService.calculateQualityScore()
+  // ---------------------------------------------------------------------------
+
+  async scoreQuality(title: string, content: string) {
+    return this._post<{
+      quality_score: number;
+      word_count: number;
+      reading_ease: number | null;
+      grade_level: number | null;
+      breakdown: {
+        length_score: number;
+        readability_score: number;
+        title_score: number;
+        structure_score: number;
+      };
+    }>('/quality/score', { title, content });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Clustering — replaces StoryClusteringService.clusterArticles()
+  // ---------------------------------------------------------------------------
+
+  async clusterArticles(
+    articles: Array<{ id: string; title: string; source: string; [key: string]: unknown }>,
+    config?: {
+      similarityThreshold?: number;
+      maxRelatedPerCluster?: number;
+      maxClusters?: number;
+    }
+  ) {
+    return this._post<{
+      clusters: Array<{
+        id: string;
+        primary_article: Record<string, unknown>;
+        related_articles: Array<Record<string, unknown>>;
+        article_count: number;
+      }>;
+      method: 'semantic' | 'jaccard' | 'none';
+    }>('/clustering/cluster', { articles, config });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Search — replaces AISearchService.semanticSearch()
+  // ---------------------------------------------------------------------------
+
+  async search(query: string, options?: {
+    limit?: number;
+    category?: string;
+    source?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    includeInsights?: boolean;
+  }) {
+    return this._post<{
+      results: Array<{
+        id: number;
+        slug: string;
+        title: string;
+        description: string;
+        source: string;
+        category: string;
+        published_at: string;
+        score: number;
+      }>;
+      insights: Array<{ type: string; content: string; confidence: number }> | null;
+      method: 'semantic' | 'keyword' | 'none';
+    }>('/search/query', { query, options });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Trending topics — replaces AISearchService.getTrendingTopics()
+  // ---------------------------------------------------------------------------
+
+  async getTrendingTopics() {
+    return this._get<{
+      topics: string[];
+    }>('/search/trending');
+  }
+
+  // ---------------------------------------------------------------------------
+  // Feed ranking — replaces PersonalizedFeedService scoring
+  // ---------------------------------------------------------------------------
+
+  async rankFeed(
+    articles: Array<Record<string, unknown>>,
+    preferences: {
+      followedSources?: string[];
+      followedAuthors?: string[];
+      followedCategories?: string[];
+      preferredCountries?: string[];
+      primaryCountry?: string | null;
+      categoryInterests?: Record<string, number>;
+    }
+  ) {
+    return this._post<{
+      articles: Array<Record<string, unknown> & { score: number; score_breakdown: Record<string, number> }>;
+    }>('/feed/rank', { articles, preferences });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Content scraping — replaces ArticleService web scraping
+  // ---------------------------------------------------------------------------
+
+  async scrapeContent(url: string) {
+    return this._post<{
+      title: string;
+      description: string;
+      content: string;
+      image_url: string | null;
+      author: string | null;
+      word_count: number;
+      reading_time_minutes: number;
+      error?: string;
+    }>('/content/scrape', { url });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Internal helpers
+  // ---------------------------------------------------------------------------
+
+  private async _post<T>(path: string, body: unknown): Promise<T> {
+    const res = await this.binding.fetch(`http://processing${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const error = await res.text();
+      throw new Error(`Processing Worker error (${res.status}): ${error}`);
+    }
+
+    return res.json() as Promise<T>;
+  }
+
+  private async _get<T>(path: string): Promise<T> {
+    const res = await this.binding.fetch(`http://processing${path}`, {
+      method: 'GET',
+    });
+
+    if (!res.ok) {
+      const error = await res.text();
+      throw new Error(`Processing Worker error (${res.status}): ${error}`);
+    }
+
+    return res.json() as Promise<T>;
+  }
+}
