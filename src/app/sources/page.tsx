@@ -34,9 +34,18 @@ interface Source {
 
 type SortKey = "articles" | "name" | "recent" | "errors";
 
+const ERROR_RATE_THRESHOLD = 0.3;
+
+function hasHighErrorRate(source: Source): boolean {
+  const fetchCount = source.fetch_count || 0;
+  const errorCount = source.error_count || 0;
+  return fetchCount > 0 && errorCount / fetchCount > ERROR_RATE_THRESHOLD;
+}
+
 export default function SourcesPage() {
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search);
   const [countryFilter, setCountryFilter] = useState<string>("all");
@@ -47,8 +56,9 @@ export default function SourcesPage() {
       try {
         const res = await api.getSources();
         setSources(res.sources || []);
-      } catch (error) {
-        console.error("Failed to fetch sources:", error);
+      } catch (err) {
+        console.error("Failed to fetch sources:", err);
+        setError("Unable to load sources. Please try again later.");
       } finally {
         setLoading(false);
       }
@@ -67,34 +77,26 @@ export default function SourcesPage() {
     const total = sources.length;
     const withArticles = sources.filter((s) => (s.article_count || 0) > 0).length;
     const totalArticles = sources.reduce((sum, s) => sum + (s.article_count || 0), 0);
-    const withErrors = sources.filter((s) => {
-      const fetchCount = s.fetch_count || 0;
-      const errorCount = s.error_count || 0;
-      const errorRate = fetchCount > 0 ? errorCount / fetchCount : 0;
-      return errorRate > 0.3;
-    }).length;
+    const withErrors = sources.filter(hasHighErrorRate).length;
     return { total, withArticles, totalArticles, withErrors };
   }, [sources]);
 
   // Filter & sort
   const filteredSources = useMemo(() => {
-    let list = sources;
-
-    if (countryFilter !== "all") {
-      list = list.filter((s) => s.country_id === countryFilter);
-    }
-
-    if (deferredSearch) {
-      const q = deferredSearch.toLowerCase();
-      list = list.filter(
-        (s) =>
+    let list = sources.filter((s) => {
+      if (countryFilter !== "all" && s.country_id !== countryFilter) return false;
+      if (deferredSearch) {
+        const q = deferredSearch.toLowerCase();
+        return (
           s.name.toLowerCase().includes(q) ||
           s.url?.toLowerCase().includes(q) ||
           s.category?.toLowerCase().includes(q)
-      );
-    }
+        );
+      }
+      return true;
+    });
 
-    list = [...list].sort((a, b) => {
+    list.sort((a, b) => {
       switch (sortBy) {
         case "articles":
           return (b.article_count || 0) - (a.article_count || 0);
@@ -157,6 +159,13 @@ export default function SourcesPage() {
           />
         </div>
 
+        {/* Error banner */}
+        {error && (
+          <div className="p-4 mb-8 bg-orange-500/10 border border-orange-500/30 rounded-xl text-sm text-orange-400">
+            {error}
+          </div>
+        )}
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 mb-8">
           <div className="relative flex-1">
@@ -166,6 +175,7 @@ export default function SourcesPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search sources..."
+              aria-label="Search sources by name, URL, or category"
               className="w-full pl-10 pr-4 py-2.5 bg-surface rounded-xl border border-elevated text-foreground placeholder:text-text-tertiary outline-none focus:ring-2 focus:ring-primary/50 text-sm"
             />
           </div>
@@ -234,10 +244,7 @@ function StatCard({
 function SourceRow({ source }: { source: Source }) {
   const country = COUNTRIES.find((c) => c.code === source.country_id);
   const articleCount = source.article_count || 0;
-  const errorCount = source.error_count || 0;
-  const fetchCount = source.fetch_count || 0;
-  const errorRate = fetchCount > 0 ? errorCount / fetchCount : 0;
-  const hasIssues = errorRate > 0.3;
+  const hasIssues = hasHighErrorRate(source);
   const isInactive = articleCount === 0;
 
   return (
@@ -320,17 +327,15 @@ function SourceRow({ source }: { source: Source }) {
 }
 
 function statusTitle(source: Source): string {
-  const errorCount = source.error_count || 0;
-  const fetchCount = source.fetch_count || 0;
-  const errorRate = fetchCount > 0 ? errorCount / fetchCount : 0;
-
-  if (errorRate > 0.3) {
+  if (hasHighErrorRate(source)) {
+    const errorCount = source.error_count || 0;
+    const fetchCount = source.fetch_count || 0;
     return `High error rate: ${errorCount} errors in ${fetchCount} fetches${source.last_error ? ` — ${source.last_error}` : ""}`;
   }
   if ((source.article_count || 0) === 0) {
     return "No articles collected yet";
   }
-  return `Healthy — ${source.article_count} articles, ${fetchCount} fetches`;
+  return `Healthy — ${source.article_count} articles, ${source.fetch_count || 0} fetches`;
 }
 
 function SourcesPageSkeleton() {

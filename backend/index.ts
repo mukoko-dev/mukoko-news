@@ -2707,6 +2707,7 @@ app.get("/api/sources", async (c) => {
       FROM rss_sources rs
       LEFT JOIN articles a ON a.source_id = rs.id
       WHERE rs.enabled = 1
+      -- SQLite: non-aggregated rs.* columns are functionally dependent on the grouped PK (rs.id)
       GROUP BY rs.id
       ORDER BY article_count DESC, rs.priority DESC, rs.name ASC
     `).all();
