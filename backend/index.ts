@@ -1361,11 +1361,8 @@ app.post("/api/refresh-rss", async (c) => {
 
     const processingTime = Date.now() - startTime;
 
-    // Record per-source health results for monitoring
-    // recordFetchResult handles errors internally, no outer catch needed
-    for (const sr of results.sourceResults) {
-      await sourceHealthService.recordFetchResult(sr.sourceId, sr.success, sr.error);
-    }
+    // Record per-source health results in a single batch for efficiency
+    await sourceHealthService.recordHealthBatch(results.sourceResults);
 
     console.log(`[API] RSS refresh completed in ${processingTime}ms:`, results);
 
@@ -1475,11 +1472,8 @@ app.post("/api/feed/collect", async (c) => {
     const results = await rssService.refreshAllFeeds();
     const processingTime = Date.now() - startTime;
 
-    // Record per-source health results for monitoring
-    // recordFetchResult handles errors internally, no outer catch needed
-    for (const sr of results.sourceResults) {
-      await sourceHealthService.recordFetchResult(sr.sourceId, sr.success, sr.error);
-    }
+    // Record per-source health results in a single batch for efficiency
+    await sourceHealthService.recordHealthBatch(results.sourceResults);
 
     // Update last collection time
     if (c.env.CACHE_STORAGE) {
@@ -6572,11 +6566,8 @@ const scheduledHandler = async (
     const rssResult = await rssService.refreshAllFeeds({ batch: batchIndex, batchSize: 40 });
     const rssDuration = Date.now() - rssStartTime;
 
-    // Record per-source health results for monitoring and alerting
-    // recordFetchResult handles errors internally, no outer catch needed
-    for (const sr of rssResult.sourceResults) {
-      await sourceHealthService.recordFetchResult(sr.sourceId, sr.success, sr.error);
-    }
+    // Record per-source health results in a single batch for efficiency
+    await sourceHealthService.recordHealthBatch(rssResult.sourceResults);
 
     console.log(`[CRON] RSS batch ${rssResult.batch + 1}/${rssResult.totalBatches} complete: ${rssResult.newArticles} new articles, ${rssResult.errors} errors in ${rssDuration}ms`);
 

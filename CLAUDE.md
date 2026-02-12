@@ -389,7 +389,7 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (540 tests in `backend/services/__tests__/`):
+**Test Files** (548 tests in `backend/services/__tests__/`):
 - `ArticleAIService.test.ts` - AI content processing, keyword extraction, quality scoring, embeddings, JSON edge cases (67 tests)
 - `StoryClusteringService.test.ts` - Title normalization, Jaccard similarity, clustering (41 tests)
 - `CategoryManager.test.ts` - Category operations, batch updates, cleanup (36 tests)
@@ -403,7 +403,7 @@ npm run test:coverage     # With v8 coverage report
 - `RateLimitService.test.ts` - Rate limiting
 - `CSRFService.test.ts` - CSRF protection
 - `OIDCAuthService.test.ts` - OIDC authentication
-- `SourceHealthService.test.ts` - Source health monitoring, classification, alerts, reset (30 tests)
+- `SourceHealthService.test.ts` - Source health monitoring, classification, alerts, batch recording, reset (38 tests)
 
 `backend/middleware/__tests__/`:
 - `apiAuth.test.ts` - API authentication middleware
@@ -413,7 +413,7 @@ npm run test:coverage     # With v8 coverage report
 
 **Pre-commit Hook**: Runs typecheck + build validation via Husky
 
-### Total Test Count: 977 tests (437 frontend + 540 backend)
+### Total Test Count: 985 tests (437 frontend + 548 backend)
 
 ## Cloudflare Bindings
 
