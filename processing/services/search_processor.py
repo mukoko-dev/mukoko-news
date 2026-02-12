@@ -27,7 +27,7 @@ async def semantic_search(query: str, options: dict = None, env=None) -> dict:
             "date_to": str,
             "include_insights": bool,
         }
-        env: Cloudflare bindings (AI, VECTORIZE_INDEX, DB)
+        env: Cloudflare bindings (AI, VECTORIZE_INDEX, EDGE_CACHE_DB)
 
     Returns:
         {
@@ -75,7 +75,7 @@ async def semantic_search(query: str, options: dict = None, env=None) -> dict:
                     for m in matches
                 }
 
-                # Fetch full articles from D1 with filters
+                # Fetch full articles from D1 edge cache with filters
                 results = await _fetch_articles(
                     article_ids, score_map, category, source, date_from, date_to, limit, env
                 )
@@ -110,8 +110,9 @@ async def get_trending_topics(env=None) -> dict:
         return {"topics": []}
 
     try:
-        # Fetch recent article titles and keywords from D1
-        result = await env.DB.prepare("""
+        # Fetch recent article titles from D1 edge cache
+        # TODO: migrate to MongoDB as primary source
+        result = await env.EDGE_CACHE_DB.prepare("""
             SELECT title FROM articles
             WHERE published_at >= datetime('now', '-24 hours')
             ORDER BY published_at DESC
@@ -156,7 +157,8 @@ async def _fetch_articles(
     limit: int,
     env,
 ) -> list[dict]:
-    """Fetch articles from D1 by IDs with optional filters."""
+    """Fetch articles from D1 edge cache by IDs with optional filters.
+    TODO: migrate to MongoDB as primary source."""
     if not article_ids:
         return []
 
@@ -184,7 +186,7 @@ async def _fetch_articles(
 
         sql += f" LIMIT {int(limit)}"
 
-        result = await env.DB.prepare(sql).bind(*params).all()
+        result = await env.EDGE_CACHE_DB.prepare(sql).bind(*params).all()
         rows = result.results if hasattr(result, "results") else []
 
         # Attach vector scores and sort by score descending
@@ -199,7 +201,7 @@ async def _fetch_articles(
         return articles[:limit]
 
     except Exception as e:
-        print(f"[SEARCH] D1 query failed: {e}")
+        print(f"[SEARCH] Edge cache query failed: {e}")
         return []
 
 
@@ -212,7 +214,7 @@ async def _keyword_search(
     limit: int,
     env,
 ) -> list[dict]:
-    """Fallback keyword search using SQL LIKE."""
+    """Fallback keyword search using D1 edge cache SQL LIKE."""
     try:
         sql = """
             SELECT id, slug, title, description, source, category, published_at
@@ -237,7 +239,7 @@ async def _keyword_search(
 
         sql += f" ORDER BY published_at DESC LIMIT {int(limit)}"
 
-        result = await env.DB.prepare(sql).bind(*params).all()
+        result = await env.EDGE_CACHE_DB.prepare(sql).bind(*params).all()
         rows = result.results if hasattr(result, "results") else []
 
         return [

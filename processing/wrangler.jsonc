@@ -1,42 +1,87 @@
 /**
- * Mukoko News Processing Worker — Python Data Processing Service
+ * Mukoko News API — Python Data Processing & API Worker
  *
- * Handles: RSS parsing, content cleaning, AI processing, clustering,
- * quality scoring, semantic search, and feed ranking.
+ * Production: https://news-api.mukoko.com
+ * Dev:        https://mukoko-news-api.<account>.workers.dev
  *
- * Called by the main TypeScript Worker via Service Binding.
+ * Primary data store: MongoDB Atlas (via Data API)
+ * Edge cache: D1 (low-bandwidth optimization for African markets)
+ *
+ * Handles: RSS parsing, content cleaning, AI processing (Anthropic Claude),
+ * article clustering, semantic search, feed ranking, and all data operations.
  */
 {
     "$schema": "node_modules/wrangler/config-schema.json",
-    "name": "mukoko-news-processing",
+    "name": "mukoko-news-api",
     "main": "src/entry.py",
     "compatibility_date": "2025-12-01",
     "compatibility_flags": ["python_workers"],
     "account_id": "125a2dfbc21f76a25c980609609e8218",
 
     /**
+     * Custom Domain & Routes
+     * Production traffic routed through news-api.mukoko.com
+     * DNS: CNAME news-api.mukoko.com -> mukoko-news-api.<account>.workers.dev
+     */
+    "routes": [
+        {
+            "pattern": "news-api.mukoko.com/*",
+            "zone_name": "mukoko.com"
+        }
+    ],
+
+    /**
+     * Workers Dev URL
+     * Enables: https://mukoko-news-api.<account-subdomain>.workers.dev
+     * Used for development, testing, and preview deployments
+     */
+    "workers_dev": true,
+
+    /**
      * Environment Variables
-     * Secrets set via: npx wrangler secret put SECRET_NAME --config processing/wrangler.jsonc
-     * - ANTHROPIC_API_KEY: API key for Claude via AI Gateway
+     *
+     * Secrets (set via: uv run pywrangler secret put SECRET_NAME):
+     * - ANTHROPIC_API_KEY     : Anthropic API key for Claude via AI Gateway
+     * - MONGODB_API_KEY       : MongoDB Atlas Data API key
+     * - MONGODB_APP_ID        : MongoDB Atlas App Services app ID
+     *
+     * Public vars below:
      */
     "vars": {
         "NODE_ENV": "production",
-        "AI_GATEWAY_ID": "mukoko-gateway"
+        "AI_GATEWAY_ID": "mukoko-gateway",
+        "MONGODB_CLUSTER": "mukoko-news",
+        "MONGODB_DATABASE": "mukoko_news",
+        "MONGODB_DATA_API_URL": "https://data.mongodb-api.com/app",
+        "CORS_ORIGINS": "https://news.mukoko.com,https://weather.mukoko.com,https://mukoko.com",
+        "SERVICE_NAME": "mukoko-news-api",
+        "LOG_LEVEL": "info"
     },
 
     /**
-     * D1 Database — same database as the main worker
+     * D1 Database — Edge Cache
+     *
+     * NOT the primary data store. Used for:
+     * - Caching frequently-read articles at the edge
+     * - Offline/low-bandwidth support for African markets
+     * - Fast keyword/category lookups (replicated from MongoDB)
+     * - Vectorize metadata (article IDs for embedding lookups)
+     *
+     * Primary data lives in MongoDB Atlas.
      */
     "d1_databases": [
         {
-            "binding": "DB",
+            "binding": "EDGE_CACHE_DB",
             "database_name": "mukoko-news-db",
             "database_id": "2f2222f5-7122-4de1-8597-b12c73a9e3f9"
         }
     ],
 
     /**
-     * Workers AI — for embeddings (baai/bge) and AI Gateway (Anthropic)
+     * Workers AI — embeddings + AI Gateway (Anthropic Claude)
+     *
+     * - Embeddings: @cf/baai/bge-base-en-v1.5 (for Vectorize)
+     * - AI Gateway: routes to Anthropic Claude Sonnet for NLP tasks
      */
     "ai": {
         "binding": "AI"
@@ -53,7 +98,7 @@
     ],
 
     /**
-     * KV — caching layer
+     * KV Namespaces — edge caching and session storage
      */
     "kv_namespaces": [
         {
@@ -63,7 +108,7 @@
     ],
 
     /**
-     * R2 — file storage for feeds and backups
+     * R2 — file storage for RSS feed snapshots, backups, media
      */
     "r2_buckets": [
         {
@@ -72,11 +117,98 @@
         }
     ],
 
+    /**
+     * Analytics Engine — tracking for this worker's operations
+     */
+    "analytics_engine_datasets": [
+        {
+            "binding": "API_ANALYTICS",
+            "dataset": "news_api_analytics"
+        },
+        {
+            "binding": "SEARCH_ANALYTICS",
+            "dataset": "search_analytics"
+        },
+        {
+            "binding": "AI_ANALYTICS",
+            "dataset": "ai_insights"
+        }
+    ],
+
+    /**
+     * Observability — real-time logs and monitoring
+     * Enables: tail, logpush, Workers Trace Events
+     */
     "observability": {
-        "enabled": true
+        "enabled": true,
+        "head_sampling_rate": 1
     },
 
+    /**
+     * Smart Placement — co-locate with MongoDB Atlas region
+     * (or D1 database for edge cache operations)
+     */
     "placement": {
         "mode": "smart"
+    },
+
+    /**
+     * Scheduled Triggers (Cron Jobs)
+     * - RSS feed collection: every 15 minutes
+     * - Edge cache sync from MongoDB: every hour
+     * - Trending topics refresh: every 30 minutes
+     * - Source health check: every 6 hours
+     */
+    "triggers": {
+        "crons": [
+            "*/15 * * * *",
+            "0 * * * *",
+            "*/30 * * * *",
+            "0 */6 * * *"
+        ]
+    },
+
+    /**
+     * Deployment settings
+     */
+    "logpush": true,
+    "upload_source_maps": true,
+    "keep_vars": true,
+
+    /**
+     * Preview & Staging Environments
+     *
+     * Preview deploys get their own URL:
+     *   https://<branch>.mukoko-news-api.<account>.workers.dev
+     *
+     * Staging overrides point to staging MongoDB database.
+     */
+    "env": {
+        "staging": {
+            "name": "mukoko-news-api-staging",
+            "vars": {
+                "NODE_ENV": "staging",
+                "MONGODB_DATABASE": "mukoko_news_staging",
+                "CORS_ORIGINS": "https://staging.news.mukoko.com,http://localhost:3000",
+                "LOG_LEVEL": "debug"
+            },
+            "routes": [
+                {
+                    "pattern": "staging-news-api.mukoko.com/*",
+                    "zone_name": "mukoko.com"
+                }
+            ],
+            "workers_dev": true
+        },
+        "dev": {
+            "name": "mukoko-news-api-dev",
+            "vars": {
+                "NODE_ENV": "development",
+                "MONGODB_DATABASE": "mukoko_news_dev",
+                "CORS_ORIGINS": "http://localhost:3000,http://localhost:8787",
+                "LOG_LEVEL": "debug"
+            },
+            "workers_dev": true
+        }
     }
 }

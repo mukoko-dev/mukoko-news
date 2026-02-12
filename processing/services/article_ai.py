@@ -5,7 +5,7 @@ Orchestrates: content cleaning → keyword extraction → quality scoring →
 content hashing → embedding generation.
 
 This is the main entry point called by the TS Worker via:
-  env.DATA_PROCESSOR.fetch("http://processing/content/process", {...})
+  env.DATA_PROCESSOR.fetch("http://news-api/content/process", {...})
 
 TS counterpart: ArticleAIService.processArticle() lines 50-123
 """
