@@ -27,6 +27,7 @@ import { ObservabilityService } from "./services/ObservabilityService.js";
 import { D1UserService } from "./services/D1UserService.js";
 import { PersonalizedFeedService } from "./services/PersonalizedFeedService.js";
 import { CountryService } from "./services/CountryService.js";
+import { SourceHealthService } from "./services/SourceHealthService.js";
 // Durable Objects for real-time features
 import { RealtimeAnalyticsDO } from "./services/RealtimeAnalyticsDO.js";
 import { ArticleInteractionsDO } from "./services/ArticleInteractionsDO.js";
@@ -118,13 +119,9 @@ app.use("/api/*", async (c, next) => {
 
 // Protect all admin API routes (except login and backfill)
 app.use("/api/admin/*", async (c, next) => {
-  // Allow login endpoint, keyword backfill, and RSS source setup to bypass auth (temporary for setup)
+  // Only login bypasses admin auth (requires session cookie validation internally)
   const bypassPaths = [
     '/api/admin/login',
-    '/api/admin/backfill-keywords',
-    '/api/admin/add-zimbabwe-sources',
-    '/api/admin/add-panafrican-sources',
-    '/api/admin/bulk-pull'
   ];
 
   if (bypassPaths.includes(c.req.path)) {
@@ -180,6 +177,9 @@ function initializeServices(env: Bindings) {
   // Initialize SimpleRSSService for RSS feed processing
   const rssService = new SimpleRSSService(env.DB);
 
+  // Initialize SourceHealthService for monitoring and alerting
+  const sourceHealthService = new SourceHealthService(env.DB);
+
   console.log('[INIT] All services initialized - using SimpleRSSService for RSS processing');
 
   return {
@@ -196,7 +196,8 @@ function initializeServices(env: Bindings) {
     rssService,
     aiSearchService,
     rateLimitService,
-    csrfService
+    csrfService,
+    sourceHealthService
   };
 }
 
@@ -354,6 +355,19 @@ app.get("/login", (c) => {
 // This endpoint validates the existing session has admin privileges
 app.post("/api/admin/login", async (c) => {
   try {
+    // Rate limit login attempts by IP
+    if (c.env.AUTH_STORAGE) {
+      const rateLimiter = new RateLimitService(c.env.AUTH_STORAGE);
+      const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+      const rateCheck = await rateLimiter.checkRateLimit(`login:${clientIp}`, RateLimitService.getLoginConfig());
+      if (!rateCheck.allowed) {
+        return c.json({
+          error: 'Too many login attempts. Please try again later.',
+          retryAfter: rateCheck.retryAfter,
+        }, 429);
+      }
+    }
+
     // Check for existing session token
     const cookieHeader = c.req.header('cookie');
     const sessionToken = getCookie(cookieHeader, 'auth_token');
@@ -1349,11 +1363,15 @@ app.post("/api/refresh-rss", async (c) => {
 
     // Initialize simple RSS service
     const rssService = new SimpleRSSService(c.env.DB);
+    const sourceHealthService = new SourceHealthService(c.env.DB);
 
     // Fetch and process all feeds
     const results = await rssService.refreshAllFeeds();
 
     const processingTime = Date.now() - startTime;
+
+    // Record per-source health results in a single batch for efficiency
+    await sourceHealthService.recordHealthBatch(results.sourceResults);
 
     console.log(`[API] RSS refresh completed in ${processingTime}ms:`, results);
 
@@ -1457,10 +1475,14 @@ app.post("/api/feed/collect", async (c) => {
 
     const startTime = Date.now();
     const rssService = new SimpleRSSService(c.env.DB);
+    const sourceHealthService = new SourceHealthService(c.env.DB);
 
     // Fetch and process all feeds
     const results = await rssService.refreshAllFeeds();
     const processingTime = Date.now() - startTime;
+
+    // Record per-source health results in a single batch for efficiency
+    await sourceHealthService.recordHealthBatch(results.sourceResults);
 
     // Update last collection time
     if (c.env.CACHE_STORAGE) {
@@ -2247,8 +2269,8 @@ app.get("/api/article/:id", async (c) => {
     // Fetch article by ID
     const article = await c.env.DB.prepare(`
       SELECT id, title, slug, description, content, content_snippet, author, source, source_id,
-             published_at, image_url, original_url, category_id, view_count,
-             like_count, bookmark_count
+             published_at, updated_at, image_url, original_url, category_id, view_count,
+             like_count, bookmark_count, word_count, reading_time
       FROM articles
       WHERE id = ? AND status = 'published'
     `).bind(articleId).first();
@@ -2696,19 +2718,23 @@ app.get("/api/authors", async (c) => {
 // Public Sources endpoint (for following and /sources page)
 app.get("/api/sources", async (c) => {
   try {
-    // Get active sources with article counts in a single query
+    // Get active sources with article counts using a subquery for SQL portability
     const sources = await c.env.DB.prepare(`
       SELECT
         rs.id, rs.name, rs.url, rs.category, rs.country_id,
         rs.priority, rs.last_fetched_at, rs.fetch_count, rs.error_count,
         rs.last_error,
-        COUNT(a.id) as article_count,
-        MAX(a.published_at) as latest_article_at
+        COALESCE(counts.article_count, 0) as article_count,
+        counts.latest_article_at
       FROM rss_sources rs
-      LEFT JOIN articles a ON a.source_id = rs.id
+      LEFT JOIN (
+        SELECT source_id,
+               COUNT(*) as article_count,
+               MAX(published_at) as latest_article_at
+        FROM articles
+        GROUP BY source_id
+      ) counts ON counts.source_id = rs.id
       WHERE rs.enabled = 1
-      -- SQLite: non-aggregated rs.* columns are functionally dependent on the grouped PK (rs.id)
-      GROUP BY rs.id
       ORDER BY article_count DESC, rs.priority DESC, rs.name ASC
     `).all();
 
@@ -4501,6 +4527,84 @@ app.get("/api/admin/observability/alerts", async (c) => {
   } catch (error: any) {
     console.error('[API] Error checking alerts:', error);
     return c.json({ error: error.message }, 500);
+  }
+});
+
+// ===== SOURCE HEALTH MONITORING ENDPOINTS =====
+
+// Get full source health summary with alerts
+app.get("/api/admin/sources/health", async (c) => {
+  try {
+    const services = initializeServices(c.env);
+    const summary = await services.sourceHealthService.getHealthSummary();
+
+    return c.json({
+      success: true,
+      ...summary,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[API] Error getting source health:', error);
+    return c.json({ error: "Failed to get source health", message: error.message }, 500);
+  }
+});
+
+// Get only failing sources (quick admin view)
+app.get("/api/admin/sources/failing", async (c) => {
+  try {
+    const services = initializeServices(c.env);
+    const failing = await services.sourceHealthService.getFailingSources();
+
+    return c.json({
+      success: true,
+      sources: failing,
+      count: failing.length,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[API] Error getting failing sources:', error);
+    return c.json({ error: "Failed to get failing sources", message: error.message }, 500);
+  }
+});
+
+// Get health for a single source
+app.get("/api/admin/sources/health/:sourceId", async (c) => {
+  try {
+    const sourceId = c.req.param('sourceId');
+    const services = initializeServices(c.env);
+    const health = await services.sourceHealthService.getSourceHealth(sourceId);
+
+    if (!health) {
+      return c.json({ error: "Source not found" }, 404);
+    }
+
+    return c.json({
+      success: true,
+      source: health,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[API] Error getting source health:', error);
+    return c.json({ error: "Failed to get source health", message: error.message }, 500);
+  }
+});
+
+// Reset health tracking for a source (after manual fix)
+app.post("/api/admin/sources/health/:sourceId/reset", async (c) => {
+  try {
+    const sourceId = c.req.param('sourceId');
+    const services = initializeServices(c.env);
+
+    await services.sourceHealthService.resetSourceHealth(sourceId);
+
+    return c.json({
+      success: true,
+      message: `Health tracking reset for source ${sourceId}`,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error: any) {
+    console.error('[API] Error resetting source health:', error);
+    return c.json({ error: "Failed to reset source health", message: error.message }, 500);
   }
 });
 
@@ -6464,11 +6568,15 @@ const scheduledHandler = async (
     // 1. Refresh RSS feeds to collect new articles (with batching)
     console.log(`[CRON] Starting RSS feed refresh (batch ${batchIndex})...`);
     const rssService = new SimpleRSSService(env.DB);
+    const sourceHealthService = new SourceHealthService(env.DB);
     const rssStartTime = Date.now();
 
     // Process 40 sources per batch to stay under 50 subrequest limit
     const rssResult = await rssService.refreshAllFeeds({ batch: batchIndex, batchSize: 40 });
     const rssDuration = Date.now() - rssStartTime;
+
+    // Record per-source health results in a single batch for efficiency
+    await sourceHealthService.recordHealthBatch(rssResult.sourceResults);
 
     console.log(`[CRON] RSS batch ${rssResult.batch + 1}/${rssResult.totalBatches} complete: ${rssResult.newArticles} new articles, ${rssResult.errors} errors in ${rssDuration}ms`);
 

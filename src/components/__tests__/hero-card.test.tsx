@@ -5,7 +5,6 @@ import { HeroCard } from '../hero-card';
 // Mock Next.js Image component
 vi.mock('next/image', () => ({
   default: ({ src, alt, onError, ...props }: { src: string; alt: string; onError?: () => void; [key: string]: unknown }) => (
-    // eslint-disable-next-line @next/next/no-img-element
     <img src={src} alt={alt} data-testid="hero-image" {...props} />
   ),
 }));

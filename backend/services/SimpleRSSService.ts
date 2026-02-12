@@ -211,6 +211,7 @@ export class SimpleRSSService {
     newArticles: number;
     errors: number;
     details: string[];
+    sourceResults: { sourceId: string; success: boolean; error?: string }[];
     batch: number;
     totalBatches: number;
     totalSources: number;
@@ -227,6 +228,7 @@ export class SimpleRSSService {
       newArticles: 0,
       errors: 0,
       details: [] as string[],
+      sourceResults: [] as { sourceId: string; success: boolean; error?: string }[],
       batch,
       totalBatches: 1,
       totalSources: 0
@@ -272,10 +274,12 @@ export class SimpleRSSService {
           results.newArticles += stored;
 
           results.details.push(`${source.name}: ${stored} new articles`);
+          results.sourceResults.push({ sourceId: source.id, success: true });
         } catch (error: any) {
           console.error(`[SIMPLE-RSS] Error processing ${source.name}:`, error.message);
           results.errors++;
           results.details.push(`${source.name}: ERROR - ${error.message}`);
+          results.sourceResults.push({ sourceId: source.id, success: false, error: error.message });
         }
       }
 
