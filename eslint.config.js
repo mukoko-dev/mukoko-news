@@ -165,6 +165,10 @@ export default [
       '*.min.js',
       'public/**',
       '.vite/**',
+      '**/__tests__/**',
+      '**/*.test.*',
+      '**/*.spec.*',
+      'src/__tests__/**',
     ],
   },
   
