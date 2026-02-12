@@ -459,6 +459,10 @@ describe('SourceHealthService', () => {
       expect(neverAlerts).toHaveLength(1);
       expect(neverAlerts[0].severity).toBe('critical');
       expect(neverAlerts[0].message).toContain('never successfully fetched');
+
+      // Should NOT also generate a stale_source alert (deduplication)
+      const staleAlerts = summary.alerts.filter(a => a.type === 'stale_source');
+      expect(staleAlerts).toHaveLength(0);
     });
 
     it('should sort alerts by severity (critical first)', async () => {

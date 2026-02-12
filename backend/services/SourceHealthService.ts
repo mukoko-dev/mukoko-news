@@ -313,39 +313,43 @@ export class SourceHealthService {
       }
 
       // Stale source alert: no successful fetch for 48+ hours
-      if (row.last_success_at) {
-        const hoursSinceSuccess = (now - new Date(row.last_success_at).getTime()) / (1000 * 60 * 60);
-        if (hoursSinceSuccess >= THRESHOLDS.STALE_HOURS) {
-          alerts.push({
-            source_id: row.id,
-            source_name: row.name,
-            severity: 'warning',
-            type: 'stale_source',
-            message: `${row.name} has not successfully fetched in ${Math.round(hoursSinceSuccess)} hours`,
-            details: {
-              hours_since_success: Math.round(hoursSinceSuccess),
-              last_success_at: row.last_success_at,
-              last_error: row.last_error,
-            },
-            created_at: new Date().toISOString(),
-          });
-        }
-      } else if (row.last_fetched_at) {
-        // No recorded success, but has been fetched — use last_fetched_at as fallback
-        const hoursSinceFetch = (now - new Date(row.last_fetched_at).getTime()) / (1000 * 60 * 60);
-        if (hoursSinceFetch >= THRESHOLDS.STALE_HOURS) {
-          alerts.push({
-            source_id: row.id,
-            source_name: row.name,
-            severity: 'warning',
-            type: 'stale_source',
-            message: `${row.name} has not been fetched in ${Math.round(hoursSinceFetch)} hours`,
-            details: {
-              hours_since_success: Math.round(hoursSinceFetch),
-              last_error: row.last_error,
-            },
-            created_at: new Date().toISOString(),
-          });
+      // Skip for sources that have never succeeded (covered by never_succeeded alert)
+      const neverSucceeded = healthStatus.fetch_count > 0 && healthStatus.error_count === healthStatus.fetch_count;
+      if (!neverSucceeded) {
+        if (row.last_success_at) {
+          const hoursSinceSuccess = (now - new Date(row.last_success_at).getTime()) / (1000 * 60 * 60);
+          if (hoursSinceSuccess >= THRESHOLDS.STALE_HOURS) {
+            alerts.push({
+              source_id: row.id,
+              source_name: row.name,
+              severity: 'warning',
+              type: 'stale_source',
+              message: `${row.name} has not successfully fetched in ${Math.round(hoursSinceSuccess)} hours`,
+              details: {
+                hours_since_success: Math.round(hoursSinceSuccess),
+                last_success_at: row.last_success_at,
+                last_error: row.last_error,
+              },
+              created_at: new Date().toISOString(),
+            });
+          }
+        } else if (row.last_fetched_at) {
+          // No recorded success, but has been fetched — use last_fetched_at as fallback
+          const hoursSinceFetch = (now - new Date(row.last_fetched_at).getTime()) / (1000 * 60 * 60);
+          if (hoursSinceFetch >= THRESHOLDS.STALE_HOURS) {
+            alerts.push({
+              source_id: row.id,
+              source_name: row.name,
+              severity: 'warning',
+              type: 'stale_source',
+              message: `${row.name} has not been fetched in ${Math.round(hoursSinceFetch)} hours`,
+              details: {
+                hours_since_success: Math.round(hoursSinceFetch),
+                last_error: row.last_error,
+              },
+              created_at: new Date().toISOString(),
+            });
+          }
         }
       }
 
