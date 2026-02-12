@@ -164,17 +164,74 @@ jobs:
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
+  deploy-mongo-proxy:
+    runs-on: ubuntu-latest
+    name: Deploy MongoDB Proxy
+    needs: [test-frontend, test-backend, test-api]
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: 'processing/mongo-proxy/package-lock.json'
+
+    - name: Install mongo-proxy dependencies
+      run: |
+        cd processing/mongo-proxy
+        npm install
+
+    - name: Deploy mongo-proxy to Cloudflare
+      run: |
+        cd processing/mongo-proxy
+        npx wrangler deploy
+      env:
+        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
   test-deployment:
     runs-on: ubuntu-latest
-    name: Test Deployment
-    needs: deploy-backend
+    name: Health Checks
+    needs: [deploy-backend, deploy-api, deploy-mongo-proxy]
     if: github.ref == 'refs/heads/main'
 
     steps:
     - name: Wait for deployment propagation
       run: sleep 30
 
-    - name: Test backend health
+    - name: Test Python Worker health
+      run: |
+        echo "Testing Python Worker health..."
+        max_retries=3
+        retry_count=0
+        while [ $retry_count -lt $max_retries ]; do
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "User-Agent: GitHub-Actions-Health-Check" \
+            -H "Accept: application/json" \
+            https://mukoko-news-api.nyuchi.workers.dev/health)
+
+          if [ $response -eq 200 ]; then
+            echo "Python Worker is healthy!"
+            break
+          fi
+
+          retry_count=$((retry_count + 1))
+          if [ $retry_count -lt $max_retries ]; then
+            echo "Attempt $retry_count failed (HTTP $response), retrying in 10s..."
+            sleep 10
+          fi
+        done
+
+        if [ $retry_count -eq $max_retries ]; then
+          echo "Python Worker health check failed after $max_retries attempts (HTTP $response)"
+          echo "Check Cloudflare dashboard for deployment status."
+        fi
+
+    - name: Test backend health (includes downstream checks)
       run: |
         echo "Testing backend health..."
         max_retries=3
@@ -187,6 +244,11 @@ jobs:
 
           if [ $response -eq 200 ]; then
             echo "Backend is healthy!"
+            # Print full health response for CI visibility
+            curl -s \
+              -H "User-Agent: GitHub-Actions-Health-Check" \
+              -H "Accept: application/json" \
+              https://mukoko-news-backend.nyuchi.workers.dev/api/health | jq .
             exit 0
           fi
 

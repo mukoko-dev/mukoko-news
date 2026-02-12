@@ -345,6 +345,24 @@ export class ProcessingClient {
   // Internal helpers
   // ---------------------------------------------------------------------------
 
+  async _healthCheck(): Promise<boolean> {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      try {
+        const res = await this.binding.fetch('http://news-api/health', {
+          method: 'GET',
+          signal: controller.signal,
+        });
+        return res.ok;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    } catch {
+      return false;
+    }
+  }
+
   private async _post<T>(path: string, body: unknown): Promise<T> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
