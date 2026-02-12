@@ -260,7 +260,9 @@ CREATE TABLE IF NOT EXISTS rss_sources (
     last_fetched_at DATETIME,
     fetch_count INTEGER DEFAULT 0,
     error_count INTEGER DEFAULT 0,
+    consecutive_failures INTEGER DEFAULT 0,
     last_error TEXT,
+    last_error_at DATETIME,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
