@@ -13,8 +13,11 @@ import { COUNTRIES, CATEGORY_META } from "@/lib/constants";
 interface Source {
   id: string;
   name: string;
-  country_code?: string;
+  url?: string;
+  category?: string;
+  country_id?: string;
   article_count?: number;
+  latest_article_at?: string;
 }
 
 interface Keyword {
@@ -66,18 +69,14 @@ export default function DiscoverPage() {
 
         const results = await Promise.all(promises);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const articlesRes = results[0] as any;
+        const articlesRes = results[0] as { articles?: Article[] };
         setArticles(articlesRes.articles || []);
 
         if (!metadataLoaded) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const categoriesRes = results[1] as any;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const sourcesRes = results[2] as any;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const keywordsRes = results[3] as any;
-          setCategories(categoriesRes.categories?.filter((c: Category) => c.id !== "all") || []);
+          const categoriesRes = results[1] as { categories?: Category[] };
+          const sourcesRes = results[2] as { sources?: Source[] };
+          const keywordsRes = results[3] as { keywords?: Keyword[] };
+          setCategories(categoriesRes.categories?.filter((c) => c.id !== "all") || []);
           setSources(sourcesRes.sources || []);
           setKeywords(keywordsRes.keywords || []);
           setMetadataLoaded(true);
@@ -267,41 +266,8 @@ export default function DiscoverPage() {
             </div>
           </section>
 
-          {/* Browse by Source */}
-          <section className="mb-12">
-            <h2 className="text-xl font-bold text-foreground mb-6">Browse by Source</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-              {sources.slice(0, 12).map((source) => (
-                <Link
-                  key={source.id}
-                  href={`/discover?source=${encodeURIComponent(source.name)}`}
-                  className="flex items-center gap-3 p-4 bg-surface rounded-xl border border-elevated hover:border-primary/30 hover:bg-elevated transition-all group"
-                >
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Newspaper className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                      {source.name}
-                    </p>
-                    <p className="text-xs text-text-tertiary">
-                      {source.article_count || 0} Articles
-                    </p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-            {sources.length > 12 && (
-              <div className="mt-4 text-center">
-                <Link
-                  href="/sources"
-                  className="text-sm text-primary font-medium hover:underline"
-                >
-                  View all {sources.length} sources
-                </Link>
-              </div>
-            )}
-          </section>
+          {/* Browse by Source — only show sources with articles, sorted by count */}
+          <SourcesSection sources={sources} />
         </>
       )}
       </div>
@@ -309,30 +275,83 @@ export default function DiscoverPage() {
   );
 }
 
-// Extracted component with memoized min/max calculation (O(n) instead of O(n²))
+function SourcesSection({ sources }: { sources: Source[] }) {
+  const activeSources = useMemo(() => {
+    return sources
+      .filter((s) => (s.article_count || 0) > 0)
+      .sort((a, b) => (b.article_count || 0) - (a.article_count || 0));
+  }, [sources]);
+
+  if (activeSources.length === 0) return null;
+
+  return (
+    <section className="mb-12">
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-xl font-bold text-foreground">Browse by Source</h2>
+        <Link
+          href="/sources"
+          className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-foreground transition-colors"
+        >
+          View All <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+        {activeSources.slice(0, 12).map((source) => {
+          const country = COUNTRIES.find(c => c.code === source.country_id);
+          return (
+            <Link
+              key={source.id}
+              href={`/discover?source=${encodeURIComponent(source.name)}`}
+              className="flex items-center gap-3 p-4 bg-surface rounded-xl border border-elevated hover:border-primary/30 hover:bg-elevated transition-all group"
+            >
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Newspaper className="w-5 h-5 text-primary" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-medium text-foreground truncate group-hover:text-primary transition-colors">
+                  {source.name}
+                </p>
+                <p className="text-xs text-text-tertiary">
+                  {country ? `${country.flag} ` : ""}{(source.article_count || 0).toLocaleString()} articles
+                </p>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// Extracted component — uses logarithmic scaling so outliers don't dominate
 function KeywordCloud({ keywords }: { keywords: Keyword[] }) {
-  const { minCount, range } = useMemo(() => {
+  const { logMin, logRange } = useMemo(() => {
     const counts = keywords.map((k) => k.article_count);
-    const min = Math.min(...counts);
-    const max = Math.max(...counts);
-    return { minCount: min, range: max - min || 1 };
+    const min = Math.log1p(Math.min(...counts));
+    const max = Math.log1p(Math.max(...counts));
+    return { logMin: min, logRange: max - min || 1 };
   }, [keywords]);
 
   return (
     <section className="mb-12">
       <h2 className="text-xl font-bold text-foreground mb-6">Trending Topics</h2>
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {keywords.map((keyword) => {
-          const normalized = (keyword.article_count - minCount) / range;
-          const fontSize = 0.75 + normalized * 0.75; // 0.75rem to 1.5rem
-          const fontWeight = normalized > 0.5 ? 600 : 400;
+          // Logarithmic normalization: prevents high-count outliers from dwarfing everything
+          const normalized = (Math.log1p(keyword.article_count) - logMin) / logRange;
+          const fontSize = 0.8 + normalized * 0.9; // 0.8rem to 1.7rem
+          const fontWeight = normalized > 0.6 ? 600 : normalized > 0.3 ? 500 : 400;
 
           return (
             <Link
               key={keyword.id}
               href={`/search?q=${encodeURIComponent(keyword.name)}`}
-              className="px-3 py-1.5 bg-surface rounded-full border border-elevated hover:border-primary/30 hover:bg-elevated transition-all text-foreground hover:text-primary"
-              style={{ fontSize: `${fontSize}rem`, fontWeight }}
+              className="inline-block bg-surface rounded-full border border-elevated hover:border-primary/30 hover:bg-elevated transition-all text-foreground hover:text-primary whitespace-nowrap"
+              style={{
+                fontSize: `${fontSize}rem`,
+                fontWeight,
+                padding: `${0.25 + normalized * 0.15}em ${0.55 + normalized * 0.25}em`,
+              }}
             >
               {keyword.name}
             </Link>

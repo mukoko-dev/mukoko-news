@@ -148,7 +148,15 @@ src/
 │   │   └── users/           # User management
 │   ├── article/[id]/        # Article detail page
 │   ├── categories/          # Categories page
-│   ├── discover/            # Discover page (country/category filtering)
+│   ├── discover/            # Discover page (country/category filtering, tag cloud, sources)
+│   │   ├── page.tsx         # Discover page with log-scaled tag cloud, source/category/country browsing
+│   │   └── __tests__/
+│   │       └── discover-page.test.tsx  # Discover page, tag cloud, sources section (14 tests)
+│   ├── sources/             # News sources directory page
+│   │   ├── page.tsx         # Sources page with search, country filter, sort, health indicators
+│   │   ├── layout.tsx       # Sources SEO metadata
+│   │   └── __tests__/
+│   │       └── sources-page.test.tsx   # Sources page rendering, filtering, sorting (13 tests)
 │   ├── embed/               # Embeddable news card widgets (promotion framework)
 │   │   ├── page.tsx         # Embed documentation & live preview page
 │   │   ├── layout.tsx       # Embed SEO metadata layout
@@ -281,6 +289,7 @@ Schema in `database/schema.sql`. 18 migrations in `database/migrations/`.
 - `GET /api/article/:id` - Get single article
 - `GET /api/categories` - Get categories
 - `GET /api/keywords` - Get trending topics/keywords
+- `GET /api/sources` - Get all enabled RSS sources with article counts (JOIN query)
 - `GET /api/newsbytes` - Get NewsBytes articles
 - `POST /api/feed/collect` - Trigger RSS collection
 - `GET /api/admin/*` - Admin endpoints
@@ -332,7 +341,7 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (394 tests in 17 files):
+**Test Files** (421 tests in 19 files):
 
 `src/lib/__tests__/`:
 - `api.test.ts` - API client, fetch wrapper, error handling, rate limiting, all endpoints (33 tests)
@@ -354,6 +363,12 @@ npm run test:coverage     # With v8 coverage report
 - `bottom-nav.test.tsx` - Mobile bottom navigation + routing tests (10 tests)
 - `breadcrumb.test.tsx` - Breadcrumb navigation tests (7 tests)
 - `error-boundary.test.tsx` - ErrorBoundary tests (5 tests)
+
+`src/app/discover/__tests__/`:
+- `discover-page.test.tsx` - Discover page rendering, tag cloud logarithmic scaling, sources section filtering/sorting (14 tests)
+
+`src/app/sources/__tests__/`:
+- `sources-page.test.tsx` - Sources page header/stats, search, country filter, sort, skeleton, source links, country flags, error state, accessibility (13 tests)
 
 `src/app/embed/__tests__/`:
 - `embed-iframe.test.tsx` - Embed widget rendering, params, themes, layouts, empty states, refresh (42 tests)
@@ -393,7 +408,7 @@ npm run test:coverage     # With v8 coverage report
 
 **Pre-commit Hook**: Runs typecheck + build validation via Husky
 
-### Total Test Count: 904 tests (394 frontend + 510 backend)
+### Total Test Count: 931 tests (421 frontend + 510 backend)
 
 ## Cloudflare Bindings
 
@@ -710,6 +725,8 @@ Country data is centralized in `src/lib/constants.ts` (single source of truth).
 11. **Mobile Bottom Navigation**: Quick access to Home, Discover, NewsBytes, Search, Profile
 12. **Breadcrumb Navigation**: Clear navigation hierarchy on article pages
 13. **Embed Location Cards**: Embeddable news card widgets for sister apps (5 layouts, 4 feed types, 16 countries)
+14. **News Sources Page**: Browse all sources with search, country filter, sort options, and health indicators
+15. **Tag Cloud**: Logarithmic-scaled trending topics with em-based sizing (prevents outlier dominance)
 
 ## Key Files
 
@@ -734,6 +751,9 @@ Country data is centralized in `src/lib/constants.ts` (single source of truth).
 - `src/app/embed/page.tsx` - Embed documentation page with live previews
 - `src/app/embed/iframe/page.tsx` - Embed iframe widget (5 layouts: cards, compact, hero, ticker, list)
 - `public/embed/widget.js` - Lightweight embed script (~2KB) for sister apps
+- `src/app/discover/page.tsx` - Discover page with log-scaled tag cloud, source/category/country browsing
+- `src/app/sources/page.tsx` - Sources directory with search, filters, sort, and health status indicators
+- `src/app/sources/layout.tsx` - Sources page SEO metadata
 
 ### Backend
 - `backend/index.ts` - API entry point and route definitions
