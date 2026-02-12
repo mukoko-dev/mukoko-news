@@ -2268,8 +2268,8 @@ app.get("/api/article/:id", async (c) => {
     // Fetch article by ID
     const article = await c.env.DB.prepare(`
       SELECT id, title, slug, description, content, content_snippet, author, source, source_id,
-             published_at, image_url, original_url, category_id, view_count,
-             like_count, bookmark_count
+             published_at, updated_at, image_url, original_url, category_id, view_count,
+             like_count, bookmark_count, word_count, reading_time
       FROM articles
       WHERE id = ? AND status = 'published'
     `).bind(articleId).first();

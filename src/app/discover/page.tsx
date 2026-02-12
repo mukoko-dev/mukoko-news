@@ -8,7 +8,8 @@ import { ArticleCard } from "@/components/article-card";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 import { DiscoverPageSkeleton } from "@/components/ui/discover-skeleton";
 import { api, type Article, type Category } from "@/lib/api";
-import { COUNTRIES, CATEGORY_META } from "@/lib/constants";
+import { COUNTRIES, CATEGORY_META, getFullUrl } from "@/lib/constants";
+import { WebPageJsonLd } from "@/components/ui/json-ld";
 
 interface Source {
   id: string;
@@ -125,6 +126,11 @@ export default function DiscoverPage() {
 
   return (
     <ErrorBoundary fallback={<div className="p-8 text-center text-text-secondary">Failed to load discover page</div>}>
+      <WebPageJsonLd
+        name="Discover — Mukoko News"
+        description="Explore African news by category, country, and trending topics. Browse sources and discover stories from 16 African countries."
+        url={getFullUrl("/discover")}
+      />
       <div className="max-w-[1200px] mx-auto px-6 py-8">
       {/* Header */}
       <div className="mb-10">

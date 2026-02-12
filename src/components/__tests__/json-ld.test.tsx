@@ -1,6 +1,21 @@
 import { describe, it, expect } from 'vitest';
 import { render } from '@testing-library/react';
-import { ArticleJsonLd, BreadcrumbJsonLd, OrganizationJsonLd, WebSiteJsonLd } from '../ui/json-ld';
+import { ArticleJsonLd, BreadcrumbJsonLd, OrganizationJsonLd, WebSiteJsonLd, WebPageJsonLd, SoftwareApplicationJsonLd } from '../ui/json-ld';
+
+// Helper to extract JSON-LD script content
+function script(container: HTMLElement): string {
+  return container.querySelector('script[type="application/ld+json"]')?.innerHTML || '';
+}
+
+// Helper to parse JSON-LD from rendered output (unescapes Unicode)
+function parseJsonLd(container: HTMLElement) {
+  const content = script(container);
+  const unescaped = content
+    .replace(/\\u003c/g, '<')
+    .replace(/\\u003e/g, '>')
+    .replace(/\\u0026/g, '&');
+  return JSON.parse(unescaped);
+}
 
 describe('JSON-LD Components', () => {
   describe('ArticleJsonLd', () => {
@@ -74,6 +89,172 @@ describe('JSON-LD Components', () => {
       expect(content).toContain('\\u0026');
       expect(content).not.toMatch(/&(?!#|amp;|lt;|gt;)/); // No raw & except HTML entities
     });
+
+    it('should include isAccessibleForFree and inLanguage fields', () => {
+      const article = {
+        id: '123',
+        title: 'Test Article',
+        source: 'Test Source',
+        slug: 'test-article',
+        published_at: '2024-01-15T12:00:00Z',
+      };
+
+      const { container } = render(
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
+      );
+
+      const content = script(container);
+      expect(content).toContain('isAccessibleForFree');
+      expect(content).toContain('inLanguage');
+      expect(content).toContain('"en"');
+    });
+
+    it('should use updated_at for dateModified when available', () => {
+      const article = {
+        id: '123',
+        title: 'Test Article',
+        source: 'Test Source',
+        slug: 'test-article',
+        published_at: '2024-01-15T12:00:00Z',
+        updated_at: '2024-01-16T08:00:00Z',
+      };
+
+      const { container } = render(
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
+      );
+
+      const content = script(container);
+      expect(content).toContain('2024-01-16T08:00:00Z');
+    });
+
+    it('should fall back to published_at for dateModified when updated_at is missing', () => {
+      const article = {
+        id: '123',
+        title: 'Test Article',
+        source: 'Test Source',
+        slug: 'test-article',
+        published_at: '2024-01-15T12:00:00Z',
+      };
+
+      const { container } = render(
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
+      );
+
+      const parsed = parseJsonLd(container);
+      expect(parsed.dateModified).toBe('2024-01-15T12:00:00Z');
+    });
+
+    it('should render Person author when author differs from source', () => {
+      const article = {
+        id: '123',
+        title: 'Test Article',
+        source: 'Daily News',
+        author: 'John Doe',
+        slug: 'test-article',
+        published_at: '2024-01-15T12:00:00Z',
+      };
+
+      const { container } = render(
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
+      );
+
+      const parsed = parseJsonLd(container);
+      expect(parsed.author['@type']).toBe('Person');
+      expect(parsed.author.name).toBe('John Doe');
+    });
+
+    it('should render Organization author when author matches source', () => {
+      const article = {
+        id: '123',
+        title: 'Test Article',
+        source: 'Daily News',
+        slug: 'test-article',
+        published_at: '2024-01-15T12:00:00Z',
+      };
+
+      const { container } = render(
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
+      );
+
+      const parsed = parseJsonLd(container);
+      expect(parsed.author['@type']).toBe('Organization');
+      expect(parsed.author.name).toBe('Daily News');
+    });
+
+    it('should include keywords when provided', () => {
+      const article = {
+        id: '123',
+        title: 'Test Article',
+        source: 'Test Source',
+        slug: 'test-article',
+        published_at: '2024-01-15T12:00:00Z',
+        keywords: [
+          { id: '1', name: 'politics', slug: 'politics' },
+          { id: '2', name: 'economy', slug: 'economy' },
+        ],
+      };
+
+      const { container } = render(
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
+      );
+
+      const parsed = parseJsonLd(container);
+      expect(parsed.keywords).toBe('politics, economy');
+    });
+
+    it('should include articleSection from category_id', () => {
+      const article = {
+        id: '123',
+        title: 'Test Article',
+        source: 'Test Source',
+        slug: 'test-article',
+        published_at: '2024-01-15T12:00:00Z',
+        category_id: 'politics',
+      };
+
+      const { container } = render(
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
+      );
+
+      const parsed = parseJsonLd(container);
+      expect(parsed.articleSection).toBe('politics');
+    });
+
+    it('should include articleBody from content', () => {
+      const article = {
+        id: '123',
+        title: 'Test Article',
+        source: 'Test Source',
+        slug: 'test-article',
+        published_at: '2024-01-15T12:00:00Z',
+        content: 'Full article body text goes here.',
+      };
+
+      const { container } = render(
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
+      );
+
+      const parsed = parseJsonLd(container);
+      expect(parsed.articleBody).toBe('Full article body text goes here.');
+    });
+
+    it('should include wordCount when provided', () => {
+      const article = {
+        id: '123',
+        title: 'Test Article',
+        source: 'Test Source',
+        slug: 'test-article',
+        published_at: '2024-01-15T12:00:00Z',
+        word_count: 450,
+      };
+
+      const { container } = render(
+        <ArticleJsonLd article={article} url="https://news.mukoko.com/article/123" />
+      );
+
+      const parsed = parseJsonLd(container);
+      expect(parsed.wordCount).toBe(450);
+    });
   });
 
   describe('BreadcrumbJsonLd', () => {
@@ -112,12 +293,83 @@ describe('JSON-LD Components', () => {
     it('should render organization schema', () => {
       const { container } = render(<OrganizationJsonLd />);
 
-      const script = container.querySelector('script[type="application/ld+json"]');
-      expect(script).toBeTruthy();
+      const scriptEl = container.querySelector('script[type="application/ld+json"]');
+      expect(scriptEl).toBeTruthy();
 
-      const content = script?.innerHTML || '';
+      const content = scriptEl?.innerHTML || '';
       expect(content).toContain('Organization');
       expect(content).toContain('Mukoko News');
+    });
+
+    it('should include legalName and parentOrganization', () => {
+      const { container } = render(<OrganizationJsonLd />);
+      const parsed = parseJsonLd(container);
+      expect(parsed.legalName).toBe('Mukoko News by Nyuchi Technology');
+      expect(parsed.parentOrganization).toBeTruthy();
+      expect(parsed.parentOrganization.name).toBe('Nyuchi Technology');
+    });
+
+    it('should include contactPoint', () => {
+      const { container } = render(<OrganizationJsonLd />);
+      const parsed = parseJsonLd(container);
+      expect(parsed.contactPoint).toBeTruthy();
+      expect(parsed.contactPoint['@type']).toBe('ContactPoint');
+      expect(parsed.contactPoint.contactType).toBe('customer support');
+    });
+
+    it('should include news media organization policies', () => {
+      const { container } = render(<OrganizationJsonLd />);
+      const parsed = parseJsonLd(container);
+      expect(parsed.actionableFeedbackPolicy).toBeTruthy();
+      expect(parsed.ethicsPolicy).toBeTruthy();
+    });
+  });
+
+  describe('WebPageJsonLd', () => {
+    it('should render WebPage schema with correct fields', () => {
+      const { container } = render(
+        <WebPageJsonLd
+          name="Test Page"
+          description="A test page description"
+          url="https://news.mukoko.com/test"
+        />
+      );
+
+      const parsed = parseJsonLd(container);
+      expect(parsed['@type']).toBe('WebPage');
+      expect(parsed.name).toBe('Test Page');
+      expect(parsed.description).toBe('A test page description');
+      expect(parsed.url).toBe('https://news.mukoko.com/test');
+      expect(parsed.isPartOf['@type']).toBe('WebSite');
+    });
+  });
+
+  describe('SoftwareApplicationJsonLd', () => {
+    it('should render SoftwareApplication schema', () => {
+      const { container } = render(<SoftwareApplicationJsonLd />);
+
+      const parsed = parseJsonLd(container);
+      expect(parsed['@type']).toBe('SoftwareApplication');
+      expect(parsed.name).toBe('Mukoko News Embed Widget');
+      expect(parsed.applicationCategory).toBe('WebApplication');
+    });
+
+    it('should include free pricing offer', () => {
+      const { container } = render(<SoftwareApplicationJsonLd />);
+
+      const parsed = parseJsonLd(container);
+      expect(parsed.offers).toBeTruthy();
+      expect(parsed.offers.price).toBe('0');
+      expect(parsed.offers.priceCurrency).toBe('USD');
+      expect(parsed.isAccessibleForFree).toBe(true);
+    });
+
+    it('should include feature list', () => {
+      const { container } = render(<SoftwareApplicationJsonLd />);
+
+      const parsed = parseJsonLd(container);
+      expect(parsed.featureList).toContain('layouts');
+      expect(parsed.featureList).toContain('countries');
     });
   });
 

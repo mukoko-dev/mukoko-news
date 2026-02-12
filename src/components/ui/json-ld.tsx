@@ -6,12 +6,14 @@ interface NewsArticleSchema {
   "@type": "NewsArticle";
   headline: string;
   description?: string;
-  image?: string;
+  articleBody?: string;
+  image?: string | { "@type": "ImageObject"; url: string; width?: number; height?: number };
   datePublished: string;
   dateModified?: string;
   author: {
-    "@type": "Organization";
+    "@type": "Person" | "Organization";
     name: string;
+    url?: string;
   };
   publisher: {
     "@type": "Organization";
@@ -25,6 +27,11 @@ interface NewsArticleSchema {
     "@type": "WebPage";
     "@id": string;
   };
+  isAccessibleForFree: boolean;
+  inLanguage: string;
+  keywords?: string;
+  articleSection?: string;
+  wordCount?: number;
 }
 
 interface BreadcrumbSchema {
@@ -101,17 +108,22 @@ function safeJsonLdStringify(obj: unknown): string {
 }
 
 export function ArticleJsonLd({ article, url }: { article: Article; url: string }) {
+  // Determine author type: if author field differs from source, treat as Person
+  const authorName = article.author || article.source;
+  const isPersonAuthor = article.author && article.author !== article.source;
+
   const schema: NewsArticleSchema = {
     "@context": "https://schema.org",
     "@type": "NewsArticle",
     headline: article.title,
     description: article.description,
+    articleBody: article.content || article.description,
     image: article.image_url,
     datePublished: article.published_at,
-    dateModified: article.published_at,
+    dateModified: article.updated_at || article.published_at,
     author: {
-      "@type": "Organization",
-      name: article.source,
+      "@type": isPersonAuthor ? "Person" : "Organization",
+      name: authorName,
     },
     publisher: {
       "@type": "Organization",
@@ -125,6 +137,11 @@ export function ArticleJsonLd({ article, url }: { article: Article; url: string 
       "@type": "WebPage",
       "@id": url,
     },
+    isAccessibleForFree: true,
+    inLanguage: "en",
+    keywords: article.keywords?.map((k) => k.name).join(", ") || undefined,
+    articleSection: article.category_id || article.category || undefined,
+    wordCount: article.word_count || undefined,
   };
 
   // safeJsonLdStringify escapes <, >, & to Unicode to prevent XSS
@@ -166,6 +183,7 @@ export function OrganizationJsonLd() {
     "@context": "https://schema.org",
     "@type": "NewsMediaOrganization",
     name: "Mukoko News",
+    legalName: "Mukoko News by Nyuchi Technology",
     description:
       "Pan-African digital news aggregation platform covering Zimbabwe, South Africa, Kenya, Nigeria, and 12 more African countries.",
     url: BASE_URL,
@@ -186,10 +204,24 @@ export function OrganizationJsonLd() {
       name: "Nyuchi",
       url: "https://nyuchi.com",
     },
+    parentOrganization: {
+      "@type": "Organization",
+      name: "Nyuchi Technology",
+      url: "https://nyuchi.com",
+    },
     areaServed: {
       "@type": "Place",
       name: "Africa",
     },
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      url: `${BASE_URL}/help`,
+      availableLanguage: "English",
+    },
+    actionableFeedbackPolicy: `${BASE_URL}/help`,
+    ethicsPolicy: `${BASE_URL}/terms`,
+    diversityPolicy: `${BASE_URL}/terms`,
   };
 
   // safeJsonLdStringify escapes <, >, & to Unicode to prevent XSS
@@ -388,6 +420,47 @@ export function WebPageJsonLd({
   };
 
   // safeJsonLdStringify escapes <, >, & to Unicode to prevent XSS
+  const safeJson = safeJsonLdStringify(schema);
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: safeJson }}
+    />
+  );
+}
+
+/**
+ * SoftwareApplication JSON-LD for the embed widget page.
+ * Describes the embeddable news widget as a web application.
+ * @see https://schema.org/SoftwareApplication
+ */
+export function SoftwareApplicationJsonLd() {
+  const schema = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Mukoko News Embed Widget",
+    description:
+      "Embeddable news cards for top stories, featured content, and location-based African news. Free widget for any website — no API key required.",
+    url: `${BASE_URL}/embed`,
+    applicationCategory: "WebApplication",
+    operatingSystem: "Any",
+    offers: {
+      "@type": "Offer",
+      price: "0",
+      priceCurrency: "USD",
+    },
+    author: {
+      "@type": "Organization",
+      name: "Mukoko News",
+      url: BASE_URL,
+    },
+    featureList:
+      "5 layouts (cards, compact, hero, ticker, list), 4 feed types, 16 African countries, dark/light theme, responsive design",
+    softwareVersion: "1.0",
+    isAccessibleForFree: true,
+  };
+
   const safeJson = safeJsonLdStringify(schema);
 
   return (
