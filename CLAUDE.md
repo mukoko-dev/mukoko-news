@@ -272,7 +272,7 @@ Schema in `database/schema.sql`. 23 migrations in `database/migrations/`.
 
 1. **API_SECRET** - Bearer token for frontend (Vercel) to backend auth
    - Set via: `npx wrangler secret put API_SECRET`
-   - Environment variable: `NEXT_PUBLIC_API_SECRET`
+   - Environment variable: `EXPO_PUBLIC_API_SECRET`
    - Configured in: `.env.local` (development), Vercel (production)
 
 2. **OIDC JWT** - User authentication tokens from id.mukoko.com
@@ -308,7 +308,7 @@ Schema in `database/schema.sql`. 23 migrations in `database/migrations/`.
 ```bash
 NEXT_PUBLIC_API_URL=https://mukoko-news-backend.nyuchi.workers.dev
 NEXT_PUBLIC_BASE_URL=https://news.mukoko.com  # Base URL for SEO/schema.org (optional, has default)
-NEXT_PUBLIC_API_SECRET=your-api-secret  # Optional: for direct browser auth
+EXPO_PUBLIC_API_SECRET=your-api-secret  # Client-side API authentication (set in Vercel)
 API_SECRET=your-api-secret               # Server-side API authentication
 ```
 

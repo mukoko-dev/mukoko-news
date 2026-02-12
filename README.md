@@ -86,7 +86,7 @@ Create `.env.local` in the root directory:
 ```env
 NEXT_PUBLIC_API_URL=https://mukoko-news-backend.nyuchi.workers.dev
 NEXT_PUBLIC_BASE_URL=https://news.mukoko.com  # Optional: Base URL for SEO/JSON-LD
-NEXT_PUBLIC_API_SECRET=your_api_secret_here
+EXPO_PUBLIC_API_SECRET=your_api_secret_here
 ```
 
 ## Architecture
