@@ -3,11 +3,12 @@ import react from 'eslint-plugin-react'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import prettier from 'eslint-config-prettier'
+import tseslint from '@typescript-eslint/parser'
 
 export default [
   // Base JavaScript config
   js.configs.recommended,
-  
+
   // React specific config
   {
     files: ['**/*.{js,jsx}'],
@@ -66,26 +67,26 @@ export default [
       // React rules
       ...react.configs.recommended.rules,
       ...reactHooks.configs.recommended.rules,
-      
+
       // React Refresh rules
       'react-refresh/only-export-components': [
         'warn',
         { allowConstantExport: true },
       ],
-      
+
       // Custom rules
       'react/react-in-jsx-scope': 'off', // Not needed with React 17+
       'react/prop-types': 'off', // Using TypeScript for prop validation
-      'no-unused-vars': ['error', { 
+      'no-unused-vars': ['error', {
         argsIgnorePattern: '^_',
-        varsIgnorePattern: '^_' 
+        varsIgnorePattern: '^_'
       }],
       'no-console': 'warn',
       'prefer-const': 'error',
       'no-var': 'error',
     },
   },
-  
+
   // Cloudflare Workers specific config
   {
     files: ['workers/**/*.js', 'src/worker/**/*.js'],
@@ -114,7 +115,7 @@ export default [
       },
     },
   },
-  
+
   // Service Worker config
   {
     files: ['**/service-worker.js', '**/sw.js'],
@@ -135,6 +136,58 @@ export default [
     },
   },
 
+  // Test files config - uses TypeScript parser with relaxed rules
+  {
+    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],
+    languageOptions: {
+      parser: tseslint,
+      parserOptions: {
+        ecmaVersion: 2022,
+        sourceType: 'module',
+        ecmaFeatures: { jsx: true },
+      },
+      globals: {
+        console: 'readonly',
+        global: 'readonly',
+        window: 'readonly',
+        document: 'readonly',
+        navigator: 'readonly',
+        localStorage: 'readonly',
+        fetch: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+        URL: 'readonly',
+        URLSearchParams: 'readonly',
+        HTMLElement: 'readonly',
+        HTMLDivElement: 'readonly',
+        HTMLTextAreaElement: 'readonly',
+        Element: 'readonly',
+        Event: 'readonly',
+        MutationObserver: 'readonly',
+        describe: 'readonly',
+        it: 'readonly',
+        test: 'readonly',
+        expect: 'readonly',
+        beforeEach: 'readonly',
+        afterEach: 'readonly',
+        beforeAll: 'readonly',
+        afterAll: 'readonly',
+        vi: 'readonly',
+        vitest: 'readonly',
+      },
+    },
+    rules: {
+      'no-unused-vars': 'off', // TypeScript handles this
+      'no-undef': 'off', // TypeScript handles this
+      'no-console': 'off',
+      'no-constant-binary-expression': 'off', // Tests use intentional constant expressions
+      'prefer-const': 'error',
+      'no-var': 'error',
+    },
+  },
+
   // Ignore patterns
   {
     ignores: [
@@ -146,13 +199,9 @@ export default [
       '*.min.js',
       'public/**',
       '.vite/**',
-      '**/__tests__/**',
-      '**/*.test.*',
-      '**/*.spec.*',
-      'src/__tests__/**',
     ],
   },
-  
+
   // Prettier config (should be last to override other formatting rules)
   prettier,
 ]

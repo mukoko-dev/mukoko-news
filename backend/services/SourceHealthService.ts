@@ -9,6 +9,22 @@
  * - Consecutive failure tracking to distinguish transient vs persistent errors
  */
 
+/** Shape of an rss_sources row returned by health queries */
+interface RSSSourceHealthRow {
+  id: string;
+  name: string;
+  url: string;
+  country_id: string | null;
+  category: string | null;
+  error_count: number;
+  fetch_count: number;
+  consecutive_failures: number;
+  last_error: string | null;
+  last_error_at: string | null;
+  last_success_at: string | null;
+  last_fetched_at: string | null;
+}
+
 export interface SourceHealthStatus {
   source_id: string;
   source_name: string;
@@ -88,6 +104,7 @@ export class SourceHealthService {
             UPDATE rss_sources
             SET fetch_count = fetch_count + 1,
                 last_fetched_at = datetime('now'),
+                last_success_at = datetime('now'),
                 consecutive_failures = 0,
                 last_error = NULL,
                 updated_at = datetime('now')
@@ -117,6 +134,53 @@ export class SourceHealthService {
   }
 
   /**
+   * Record health results for multiple sources in a single batch.
+   * More efficient than sequential recordFetchResult calls.
+   */
+  async recordHealthBatch(
+    results: { sourceId: string; success: boolean; error?: string }[]
+  ): Promise<void> {
+    if (results.length === 0) return;
+
+    try {
+      const statements = results.map((r) => {
+        if (r.success) {
+          return this.db
+            .prepare(`
+              UPDATE rss_sources
+              SET fetch_count = fetch_count + 1,
+                  last_fetched_at = datetime('now'),
+                  last_success_at = datetime('now'),
+                  consecutive_failures = 0,
+                  last_error = NULL,
+                  updated_at = datetime('now')
+              WHERE id = ?
+            `)
+            .bind(r.sourceId);
+        } else {
+          return this.db
+            .prepare(`
+              UPDATE rss_sources
+              SET fetch_count = fetch_count + 1,
+                  error_count = error_count + 1,
+                  consecutive_failures = COALESCE(consecutive_failures, 0) + 1,
+                  last_fetched_at = datetime('now'),
+                  last_error = ?,
+                  last_error_at = datetime('now'),
+                  updated_at = datetime('now')
+              WHERE id = ?
+            `)
+            .bind(r.error || 'Unknown error', r.sourceId);
+        }
+      });
+
+      await this.db.batch(statements);
+    } catch (error) {
+      console.error('[SourceHealth] Error recording batch health results:', error);
+    }
+  }
+
+  /**
    * Classify a source's health status based on its metrics.
    */
   classifyHealth(source: {
@@ -136,6 +200,35 @@ export class SourceHealthService {
     return 'healthy';
   }
 
+  /** Convert an RSSSourceHealthRow to a SourceHealthStatus */
+  private rowToHealthStatus(row: RSSSourceHealthRow): SourceHealthStatus {
+    const errorCount = row.error_count || 0;
+    const fetchCount = row.fetch_count || 0;
+    const consecutiveFailures = row.consecutive_failures || 0;
+    const errorRate = fetchCount > 0 ? errorCount / fetchCount : 0;
+
+    return {
+      source_id: row.id,
+      source_name: row.name,
+      url: row.url,
+      country_id: row.country_id || 'ZW',
+      category: row.category || 'general',
+      status: this.classifyHealth({
+        error_count: errorCount,
+        fetch_count: fetchCount,
+        consecutive_failures: consecutiveFailures,
+      }),
+      error_count: errorCount,
+      fetch_count: fetchCount,
+      consecutive_failures: consecutiveFailures,
+      error_rate: Math.round(errorRate * 100) / 100,
+      last_error: row.last_error,
+      last_error_at: row.last_error_at,
+      last_success_at: row.last_success_at,
+      last_fetched_at: row.last_fetched_at,
+    };
+  }
+
   /**
    * Get health status for all enabled sources with alerts.
    */
@@ -149,6 +242,7 @@ export class SourceHealthService {
           COALESCE(consecutive_failures, 0) as consecutive_failures,
           last_error,
           last_error_at,
+          last_success_at,
           last_fetched_at
         FROM rss_sources
         WHERE enabled = 1
@@ -161,46 +255,12 @@ export class SourceHealthService {
     let healthy = 0, degraded = 0, failing = 0, critical = 0;
     const now = Date.now();
 
-    for (const row of (result.results || []) as any[]) {
-      const errorCount = row.error_count || 0;
-      const fetchCount = row.fetch_count || 0;
-      const consecutiveFailures = row.consecutive_failures || 0;
-      const errorRate = fetchCount > 0 ? errorCount / fetchCount : 0;
-
-      const status = this.classifyHealth({
-        error_count: errorCount,
-        fetch_count: fetchCount,
-        consecutive_failures: consecutiveFailures,
-      });
-
-      // Determine last successful fetch time
-      // If there are errors and a last_fetched_at but consecutive_failures > 0,
-      // the last success was before the failure streak
-      const lastSuccessAt = consecutiveFailures === 0 && row.last_fetched_at
-        ? row.last_fetched_at
-        : null;
-
-      const healthStatus: SourceHealthStatus = {
-        source_id: row.id,
-        source_name: row.name,
-        url: row.url,
-        country_id: row.country_id || 'ZW',
-        category: row.category || 'general',
-        status,
-        error_count: errorCount,
-        fetch_count: fetchCount,
-        consecutive_failures: consecutiveFailures,
-        error_rate: Math.round(errorRate * 100) / 100,
-        last_error: row.last_error,
-        last_error_at: row.last_error_at,
-        last_success_at: lastSuccessAt,
-        last_fetched_at: row.last_fetched_at,
-      };
-
+    for (const row of (result.results || []) as unknown as RSSSourceHealthRow[]) {
+      const healthStatus = this.rowToHealthStatus(row);
       sources.push(healthStatus);
 
       // Count by status
-      switch (status) {
+      switch (healthStatus.status) {
         case 'healthy': healthy++; break;
         case 'degraded': degraded++; break;
         case 'failing': failing++; break;
@@ -208,6 +268,7 @@ export class SourceHealthService {
       }
 
       // Generate alerts for non-healthy sources
+      const consecutiveFailures = healthStatus.consecutive_failures;
       if (consecutiveFailures >= THRESHOLDS.CRITICAL_CONSECUTIVE) {
         alerts.push({
           source_id: row.id,
@@ -218,7 +279,7 @@ export class SourceHealthService {
           details: {
             consecutive_failures: consecutiveFailures,
             last_error: row.last_error,
-            error_count: errorCount,
+            error_count: healthStatus.error_count,
           },
           created_at: new Date().toISOString(),
         });
@@ -232,7 +293,7 @@ export class SourceHealthService {
           details: {
             consecutive_failures: consecutiveFailures,
             last_error: row.last_error,
-            error_count: errorCount,
+            error_count: healthStatus.error_count,
           },
           created_at: new Date().toISOString(),
         });
@@ -251,8 +312,26 @@ export class SourceHealthService {
         });
       }
 
-      // Stale source alert: no fetch for 48+ hours
-      if (row.last_fetched_at) {
+      // Stale source alert: no successful fetch for 48+ hours
+      if (row.last_success_at) {
+        const hoursSinceSuccess = (now - new Date(row.last_success_at).getTime()) / (1000 * 60 * 60);
+        if (hoursSinceSuccess >= THRESHOLDS.STALE_HOURS) {
+          alerts.push({
+            source_id: row.id,
+            source_name: row.name,
+            severity: 'warning',
+            type: 'stale_source',
+            message: `${row.name} has not successfully fetched in ${Math.round(hoursSinceSuccess)} hours`,
+            details: {
+              hours_since_success: Math.round(hoursSinceSuccess),
+              last_success_at: row.last_success_at,
+              last_error: row.last_error,
+            },
+            created_at: new Date().toISOString(),
+          });
+        }
+      } else if (row.last_fetched_at) {
+        // No recorded success, but has been fetched — use last_fetched_at as fallback
         const hoursSinceFetch = (now - new Date(row.last_fetched_at).getTime()) / (1000 * 60 * 60);
         if (hoursSinceFetch >= THRESHOLDS.STALE_HOURS) {
           alerts.push({
@@ -271,16 +350,16 @@ export class SourceHealthService {
       }
 
       // High error rate alert
-      if (fetchCount >= 10 && errorRate >= THRESHOLDS.FAILING_ERROR_RATE) {
+      if (healthStatus.fetch_count >= 10 && healthStatus.error_rate >= THRESHOLDS.FAILING_ERROR_RATE) {
         alerts.push({
           source_id: row.id,
           source_name: row.name,
           severity: 'error',
           type: 'high_error_rate',
-          message: `${row.name} has a ${Math.round(errorRate * 100)}% error rate (${errorCount}/${fetchCount} fetches failed)`,
+          message: `${row.name} has a ${Math.round(healthStatus.error_rate * 100)}% error rate (${healthStatus.error_count}/${healthStatus.fetch_count} fetches failed)`,
           details: {
-            error_rate: Math.round(errorRate * 100) / 100,
-            error_count: errorCount,
+            error_rate: healthStatus.error_rate,
+            error_count: healthStatus.error_count,
             last_error: row.last_error,
           },
           created_at: new Date().toISOString(),
@@ -288,15 +367,15 @@ export class SourceHealthService {
       }
 
       // Never succeeded alert
-      if (fetchCount > 0 && errorCount === fetchCount) {
+      if (healthStatus.fetch_count > 0 && healthStatus.error_count === healthStatus.fetch_count) {
         alerts.push({
           source_id: row.id,
           source_name: row.name,
           severity: 'critical',
           type: 'never_succeeded',
-          message: `${row.name} has never successfully fetched (${fetchCount} attempts, all failed)`,
+          message: `${row.name} has never successfully fetched (${healthStatus.fetch_count} attempts, all failed)`,
           details: {
-            error_count: errorCount,
+            error_count: healthStatus.error_count,
             last_error: row.last_error,
           },
           created_at: new Date().toISOString(),
@@ -332,36 +411,17 @@ export class SourceHealthService {
           COALESCE(consecutive_failures, 0) as consecutive_failures,
           last_error,
           last_error_at,
+          last_success_at,
           last_fetched_at
         FROM rss_sources
         WHERE id = ?
       `)
       .bind(sourceId)
-      .first<any>();
+      .first<RSSSourceHealthRow>();
 
     if (!row) return null;
 
-    const errorCount = row.error_count || 0;
-    const fetchCount = row.fetch_count || 0;
-    const consecutiveFailures = row.consecutive_failures || 0;
-    const errorRate = fetchCount > 0 ? errorCount / fetchCount : 0;
-
-    return {
-      source_id: row.id,
-      source_name: row.name,
-      url: row.url,
-      country_id: row.country_id || 'ZW',
-      category: row.category || 'general',
-      status: this.classifyHealth({ error_count: errorCount, fetch_count: fetchCount, consecutive_failures: consecutiveFailures }),
-      error_count: errorCount,
-      fetch_count: fetchCount,
-      consecutive_failures: consecutiveFailures,
-      error_rate: Math.round(errorRate * 100) / 100,
-      last_error: row.last_error,
-      last_error_at: row.last_error_at,
-      last_success_at: consecutiveFailures === 0 && row.last_fetched_at ? row.last_fetched_at : null,
-      last_fetched_at: row.last_fetched_at,
-    };
+    return this.rowToHealthStatus(row);
   }
 
   /**
@@ -377,6 +437,7 @@ export class SourceHealthService {
           COALESCE(consecutive_failures, 0) as consecutive_failures,
           last_error,
           last_error_at,
+          last_success_at,
           last_fetched_at
         FROM rss_sources
         WHERE enabled = 1
@@ -389,29 +450,9 @@ export class SourceHealthService {
       .bind(THRESHOLDS.FAILING_CONSECUTIVE, THRESHOLDS.FAILING_ERROR_RATE)
       .all();
 
-    return ((result.results || []) as any[]).map((row) => {
-      const errorCount = row.error_count || 0;
-      const fetchCount = row.fetch_count || 0;
-      const consecutiveFailures = row.consecutive_failures || 0;
-      const errorRate = fetchCount > 0 ? errorCount / fetchCount : 0;
-
-      return {
-        source_id: row.id,
-        source_name: row.name,
-        url: row.url,
-        country_id: row.country_id || 'ZW',
-        category: row.category || 'general',
-        status: this.classifyHealth({ error_count: errorCount, fetch_count: fetchCount, consecutive_failures: consecutiveFailures }),
-        error_count: errorCount,
-        fetch_count: fetchCount,
-        consecutive_failures: consecutiveFailures,
-        error_rate: Math.round(errorRate * 100) / 100,
-        last_error: row.last_error,
-        last_error_at: row.last_error_at,
-        last_success_at: consecutiveFailures === 0 && row.last_fetched_at ? row.last_fetched_at : null,
-        last_fetched_at: row.last_fetched_at,
-      };
-    });
+    return ((result.results || []) as unknown as RSSSourceHealthRow[]).map((row) =>
+      this.rowToHealthStatus(row)
+    );
   }
 
   /**
