@@ -2693,37 +2693,28 @@ app.get("/api/authors", async (c) => {
   }
 });
 
-// Public Sources endpoint (for following)
+// Public Sources endpoint (for following and /sources page)
 app.get("/api/sources", async (c) => {
   try {
-    const services = initializeServices(c.env);
-
-    // Get active news sources
+    // Get active sources with article counts in a single query
     const sources = await c.env.DB.prepare(`
-      SELECT id, name, url, category, priority, metadata,
-             last_fetched_at, fetch_count, error_count
-      FROM rss_sources
-      WHERE enabled = 1
-      ORDER BY priority DESC, name ASC
+      SELECT
+        rs.id, rs.name, rs.url, rs.category, rs.country_id,
+        rs.priority, rs.last_fetched_at, rs.fetch_count, rs.error_count,
+        rs.last_error,
+        COUNT(a.id) as article_count,
+        MAX(a.published_at) as latest_article_at
+      FROM rss_sources rs
+      LEFT JOIN articles a ON a.source_id = rs.id
+      WHERE rs.enabled = 1
+      -- SQLite: non-aggregated rs.* columns are functionally dependent on the grouped PK (rs.id)
+      GROUP BY rs.id
+      ORDER BY article_count DESC, rs.priority DESC, rs.name ASC
     `).all();
 
-    // Get article counts for each source
-    const sourcesWithCounts = await Promise.all(
-      sources.results.map(async (source) => {
-        const countResult = await c.env.DB.prepare(`
-          SELECT COUNT(*) as count FROM articles WHERE source_id = ?
-        `).bind(source.id).first();
-
-        return {
-          ...source,
-          article_count: countResult.count || 0
-        };
-      })
-    );
-
     return c.json({
-      sources: sourcesWithCounts,
-      total: sourcesWithCounts.length
+      sources: sources.results || [],
+      total: (sources.results || []).length
     });
   } catch (error) {
     console.error("Error fetching sources:", error);

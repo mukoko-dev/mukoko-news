@@ -228,9 +228,18 @@ export const api = {
       sources: Array<{
         id: string;
         name: string;
-        country_code?: string;
+        url?: string;
+        category?: string;
+        country_id?: string;
+        priority?: number;
+        last_fetched_at?: string;
+        fetch_count?: number;
+        error_count?: number;
+        last_error?: string;
         article_count?: number;
+        latest_article_at?: string;
       }>;
+      total: number;
     }>('/api/sources');
   },
 
