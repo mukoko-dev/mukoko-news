@@ -35,6 +35,13 @@ lerna-debug.log*
 *.tsbuildinfo
 *.d.ts.map
 
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+
 # Cache directories
 .npm
 .yarn
