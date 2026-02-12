@@ -156,7 +156,7 @@ src/
 │   │   ├── page.tsx         # Sources page with search, country filter, sort, health indicators
 │   │   ├── layout.tsx       # Sources SEO metadata
 │   │   └── __tests__/
-│   │       └── sources-page.test.tsx   # Sources page rendering, filtering, sorting (12 tests)
+│   │       └── sources-page.test.tsx   # Sources page rendering, filtering, sorting (13 tests)
 │   ├── embed/               # Embeddable news card widgets (promotion framework)
 │   │   ├── page.tsx         # Embed documentation & live preview page
 │   │   ├── layout.tsx       # Embed SEO metadata layout
@@ -341,7 +341,7 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (420 tests in 19 files):
+**Test Files** (421 tests in 19 files):
 
 `src/lib/__tests__/`:
 - `api.test.ts` - API client, fetch wrapper, error handling, rate limiting, all endpoints (33 tests)
@@ -368,7 +368,7 @@ npm run test:coverage     # With v8 coverage report
 - `discover-page.test.tsx` - Discover page rendering, tag cloud logarithmic scaling, sources section filtering/sorting (14 tests)
 
 `src/app/sources/__tests__/`:
-- `sources-page.test.tsx` - Sources page header/stats, search, country filter, sort, skeleton, source links, country flags, error state (12 tests)
+- `sources-page.test.tsx` - Sources page header/stats, search, country filter, sort, skeleton, source links, country flags, error state, accessibility (13 tests)
 
 `src/app/embed/__tests__/`:
 - `embed-iframe.test.tsx` - Embed widget rendering, params, themes, layouts, empty states, refresh (42 tests)
@@ -408,7 +408,7 @@ npm run test:coverage     # With v8 coverage report
 
 **Pre-commit Hook**: Runs typecheck + build validation via Husky
 
-### Total Test Count: 930 tests (420 frontend + 510 backend)
+### Total Test Count: 931 tests (421 frontend + 510 backend)
 
 ## Cloudflare Bindings
 

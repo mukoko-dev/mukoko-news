@@ -69,18 +69,14 @@ export default function DiscoverPage() {
 
         const results = await Promise.all(promises);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const articlesRes = results[0] as any;
+        const articlesRes = results[0] as { articles?: Article[] };
         setArticles(articlesRes.articles || []);
 
         if (!metadataLoaded) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const categoriesRes = results[1] as any;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const sourcesRes = results[2] as any;
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const keywordsRes = results[3] as any;
-          setCategories(categoriesRes.categories?.filter((c: Category) => c.id !== "all") || []);
+          const categoriesRes = results[1] as { categories?: Category[] };
+          const sourcesRes = results[2] as { sources?: Source[] };
+          const keywordsRes = results[3] as { keywords?: Keyword[] };
+          setCategories(categoriesRes.categories?.filter((c) => c.id !== "all") || []);
           setSources(sourcesRes.sources || []);
           setKeywords(keywordsRes.keywords || []);
           setMetadataLoaded(true);
