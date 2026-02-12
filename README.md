@@ -300,6 +300,17 @@ MIT License - see [LICENSE](LICENSE) for details
 
 Mukoko ("Beehive" in Shona) represents the collective knowledge and community of Africa. Just as bees work together to create something greater than themselves, Mukoko News brings together voices from across the continent to inform and empower African communities.
 
+## Codebase Stats
+
+| Area | Lines of Code |
+|------|--------------|
+| Frontend (`src/`) | ~15,000 |
+| Backend (`backend/`) | ~38,200 |
+| Database (`database/`) | ~6,900 |
+| **Total** | **~61,300** |
+
+Tests: 985 total (437 frontend + 548 backend)
+
 ---
 
 Built with love by [Nyuchi Technologies](https://brand.nyuchi.com)
