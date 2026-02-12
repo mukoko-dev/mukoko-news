@@ -2696,19 +2696,23 @@ app.get("/api/authors", async (c) => {
 // Public Sources endpoint (for following and /sources page)
 app.get("/api/sources", async (c) => {
   try {
-    // Get active sources with article counts in a single query
+    // Get active sources with article counts using a subquery for SQL portability
     const sources = await c.env.DB.prepare(`
       SELECT
         rs.id, rs.name, rs.url, rs.category, rs.country_id,
         rs.priority, rs.last_fetched_at, rs.fetch_count, rs.error_count,
         rs.last_error,
-        COUNT(a.id) as article_count,
-        MAX(a.published_at) as latest_article_at
+        COALESCE(counts.article_count, 0) as article_count,
+        counts.latest_article_at
       FROM rss_sources rs
-      LEFT JOIN articles a ON a.source_id = rs.id
+      LEFT JOIN (
+        SELECT source_id,
+               COUNT(*) as article_count,
+               MAX(published_at) as latest_article_at
+        FROM articles
+        GROUP BY source_id
+      ) counts ON counts.source_id = rs.id
       WHERE rs.enabled = 1
-      -- SQLite: non-aggregated rs.* columns are functionally dependent on the grouped PK (rs.id)
-      GROUP BY rs.id
       ORDER BY article_count DESC, rs.priority DESC, rs.name ASC
     `).all();
 
