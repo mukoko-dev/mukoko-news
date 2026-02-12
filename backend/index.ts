@@ -119,13 +119,9 @@ app.use("/api/*", async (c, next) => {
 
 // Protect all admin API routes (except login and backfill)
 app.use("/api/admin/*", async (c, next) => {
-  // Allow login endpoint, keyword backfill, and RSS source setup to bypass auth (temporary for setup)
+  // Only login bypasses admin auth (requires session cookie validation internally)
   const bypassPaths = [
     '/api/admin/login',
-    '/api/admin/backfill-keywords',
-    '/api/admin/add-zimbabwe-sources',
-    '/api/admin/add-panafrican-sources',
-    '/api/admin/bulk-pull'
   ];
 
   if (bypassPaths.includes(c.req.path)) {
@@ -359,6 +355,19 @@ app.get("/login", (c) => {
 // This endpoint validates the existing session has admin privileges
 app.post("/api/admin/login", async (c) => {
   try {
+    // Rate limit login attempts by IP
+    if (c.env.AUTH_STORAGE) {
+      const rateLimiter = new RateLimitService(c.env.AUTH_STORAGE);
+      const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown';
+      const rateCheck = await rateLimiter.checkRateLimit(`login:${clientIp}`, RateLimitService.getLoginConfig());
+      if (!rateCheck.allowed) {
+        return c.json({
+          error: 'Too many login attempts. Please try again later.',
+          retryAfter: rateCheck.retryAfter,
+        }, 429);
+      }
+    }
+
     // Check for existing session token
     const cookieHeader = c.req.header('cookie');
     const sessionToken = getCookie(cookieHeader, 'auth_token');
