@@ -218,4 +218,16 @@ describe("SourcesPage", () => {
     expect(screen.getByTitle("Zimbabwe")).toBeInTheDocument();
     expect(screen.getByTitle("Egypt")).toBeInTheDocument();
   });
+
+  it("should show empty page with zero stats when API fails", async () => {
+    const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    mockGetSources.mockRejectedValue(new Error("Network error"));
+    render(<SourcesPage />);
+    await waitFor(() => {
+      expect(screen.getByText("News Sources")).toBeInTheDocument();
+    });
+    // Stats should show 0 when fetch fails
+    expect(screen.getByText("0 sources aggregating 0 articles across Africa.")).toBeInTheDocument();
+    consoleSpy.mockRestore();
+  });
 });
