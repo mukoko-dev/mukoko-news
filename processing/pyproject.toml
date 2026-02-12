@@ -1,0 +1,29 @@
+[project]
+name = "mukoko-news-processing"
+version = "0.1.0"
+description = "Python Data Processing Worker for Mukoko News — RSS parsing, NLP, AI, clustering"
+requires-python = ">=3.12"
+dependencies = [
+    "workers-py",
+    "fastapi",
+    "feedparser",
+    "beautifulsoup4",
+    "bleach",
+    "numpy",
+    "textstat",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-asyncio",
+    "pyright",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "basic"
