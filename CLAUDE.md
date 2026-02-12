@@ -84,6 +84,7 @@ Services are in `backend/services/`. Key services include:
 - `CategoryManager` - Category operations (single source of truth)
 - `CountryService` - Pan-African country management
 - `StoryClusteringService` - Groups similar articles using Jaccard similarity
+- `SourceHealthService` - RSS source health monitoring (healthy/degraded/failing/critical)
 
 **Auth Services**:
 - `AuthProviderService` - Unified auth service with RBAC
@@ -249,9 +250,9 @@ backend/
 
 ## Database
 
-Schema in `database/schema.sql`. 18 migrations in `database/migrations/`.
+Schema in `database/schema.sql`. 23 migrations in `database/migrations/`.
 
-**Key Tables**: users, articles, categories, keywords, news_sources, rss_sources, user_interactions, countries, author_profiles
+**Key Tables**: users, articles, categories, keywords, news_sources, rss_sources (with health columns: consecutive_failures, last_error_at), user_interactions, countries, author_profiles
 
 **Roles (RBAC)**: admin (active), moderator, support, author, user (disabled)
 
@@ -293,6 +294,9 @@ Schema in `database/schema.sql`. 18 migrations in `database/migrations/`.
 - `GET /api/newsbytes` - Get NewsBytes articles
 - `POST /api/feed/collect` - Trigger RSS collection
 - `GET /api/admin/*` - Admin endpoints
+- `GET /api/admin/sources/health` - Source health summary with alerts
+- `GET /api/admin/sources/health/:sourceId` - Single source health
+- `POST /api/admin/sources/health/:sourceId/reset` - Reset source error tracking
 
 **API Auth Middleware**: `backend/middleware/apiAuth.ts`
 **OpenAPI Schema**: `api-schema.yml`
@@ -385,7 +389,7 @@ npm run test:watch        # Watch mode
 npm run test:coverage     # With v8 coverage report
 ```
 
-**Test Files** (501 tests in `backend/services/__tests__/`):
+**Test Files** (540 tests in `backend/services/__tests__/`):
 - `ArticleAIService.test.ts` - AI content processing, keyword extraction, quality scoring, embeddings, JSON edge cases (67 tests)
 - `StoryClusteringService.test.ts` - Title normalization, Jaccard similarity, clustering (41 tests)
 - `CategoryManager.test.ts` - Category operations, batch updates, cleanup (36 tests)
@@ -399,6 +403,7 @@ npm run test:coverage     # With v8 coverage report
 - `RateLimitService.test.ts` - Rate limiting
 - `CSRFService.test.ts` - CSRF protection
 - `OIDCAuthService.test.ts` - OIDC authentication
+- `SourceHealthService.test.ts` - Source health monitoring, classification, alerts, reset (30 tests)
 
 `backend/middleware/__tests__/`:
 - `apiAuth.test.ts` - API authentication middleware
@@ -408,7 +413,7 @@ npm run test:coverage     # With v8 coverage report
 
 **Pre-commit Hook**: Runs typecheck + build validation via Husky
 
-### Total Test Count: 931 tests (421 frontend + 510 backend)
+### Total Test Count: 977 tests (437 frontend + 540 backend)
 
 ## Cloudflare Bindings
 
@@ -741,7 +746,7 @@ Country data is centralized in `src/lib/constants.ts` (single source of truth).
 - `src/components/article-card.tsx` - Main article display component
 - `src/components/share-modal.tsx` - Share/engagement modal with social sharing
 - `src/components/onboarding-modal.tsx` - Country/category selection onboarding
-- `src/components/ui/json-ld.tsx` - Schema.org JSON-LD with XSS prevention
+- `src/components/ui/json-ld.tsx` - Schema.org JSON-LD with XSS prevention (ArticleJsonLd, WebPageJsonLd, SoftwareApplicationJsonLd, OrganizationJsonLd, etc.)
 - `src/components/ui/engagement-bar.tsx` - Article engagement buttons (like, save, share)
 - `src/components/ui/breadcrumb.tsx` - Breadcrumb navigation component
 - `src/components/layout/bottom-nav.tsx` - Mobile bottom navigation
@@ -763,6 +768,7 @@ Country data is centralized in `src/lib/constants.ts` (single source of truth).
 - `backend/services/AISearchService.ts` - Semantic search with Vectorize
 - `backend/services/PersonalizedFeedService.ts` - User-specific feed generation
 - `backend/services/StoryClusteringService.ts` - Article clustering with Jaccard similarity
+- `backend/services/SourceHealthService.ts` - RSS source health monitoring (healthy/degraded/failing/critical)
 - `backend/services/CategoryManager.ts` - Category operations (single source of truth)
 - `backend/vitest.config.ts` - Backend test configuration
 
