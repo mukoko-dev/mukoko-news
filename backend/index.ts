@@ -113,7 +113,8 @@ app.use("/api/*", async (c, next) => {
     return await next();
   }
 
-  // Require API key for all other /api/* routes
+  // Require API key for all other /api/* routes (including /api/auth/*)
+  // Auth routes are called by trusted clients (Vercel, Expo) that have the API_SECRET
   return await requireApiKey()(c, next);
 });
 
