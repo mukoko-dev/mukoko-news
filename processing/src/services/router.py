@@ -165,6 +165,28 @@ async def handle_request(request, env):
             return _json(result)
 
         # ---------------------------------------------------------------
+        # Analytics & insights (MongoDB aggregation)
+        # ---------------------------------------------------------------
+        if path == "/analytics/stats" and method == "GET":
+            from services.analytics import get_enhanced_stats
+            result = await get_enhanced_stats(env)
+            return _json(result)
+
+        if path == "/analytics/trending-categories" and method == "GET":
+            from services.analytics import get_trending_categories
+            result = await get_trending_categories(env)
+            return _json(result)
+
+        if path == "/analytics/insights" and method == "POST":
+            from services.analytics import get_content_insights
+            body = await _body(request)
+            result = await get_content_insights(
+                env,
+                country_id=body.get("country_id"),
+            )
+            return _json(result)
+
+        # ---------------------------------------------------------------
         # Source health
         # ---------------------------------------------------------------
         if path == "/sources/health" and method == "GET":

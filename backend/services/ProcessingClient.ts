@@ -285,6 +285,63 @@ export class ProcessingClient {
   }
 
   // ---------------------------------------------------------------------------
+  // Analytics & insights — MongoDB aggregation-powered
+  // ---------------------------------------------------------------------------
+
+  async getEnhancedStats() {
+    return this._get<{
+      database: {
+        total_articles: number;
+        active_sources: number;
+        categories: number;
+        today_articles: number;
+        week_articles: number;
+      };
+      source: string;
+      timestamp: string;
+    }>('/analytics/stats');
+  }
+
+  async getTrendingCategories(limit = 8) {
+    return this._get<{
+      success: boolean;
+      trending: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        article_count: number;
+        growth_rate: number;
+        engagement: number;
+      }>;
+      source: string;
+      timestamp: string;
+    }>('/analytics/trending-categories');
+  }
+
+  async getContentInsights(countryId?: string) {
+    return this._post<{
+      top_articles: Array<{
+        title: string;
+        source: string;
+        category_id: string;
+        country_id: string;
+        engagement_score: number;
+        view_count: number;
+        like_count: number;
+        published_at: string;
+      }>;
+      source_productivity: Array<{
+        _id: string;
+        article_count: number;
+        avg_engagement: number;
+      }>;
+      country_id: string | null;
+      source: string;
+      timestamp: string;
+    }>('/analytics/insights', { country_id: countryId || null });
+  }
+
+  // ---------------------------------------------------------------------------
   // Internal helpers
   // ---------------------------------------------------------------------------
 

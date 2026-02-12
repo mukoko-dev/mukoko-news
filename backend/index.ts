@@ -754,24 +754,26 @@ app.get("/api/categories", async (c) => {
 // This is separate from /api/admin/stats which may contain sensitive data
 app.get("/api/stats", async (c) => {
   try {
+    // Try Python Worker (MongoDB) first for enhanced stats
+    try {
+      const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+      const stats = await processingClient.getEnhancedStats();
+      return c.json(stats);
+    } catch (pyError) {
+      console.warn('[API] Python Worker stats unavailable, falling back to D1:', pyError);
+    }
+
+    // D1 fallback
     const services = initializeServices(c.env);
-
-    // Get basic database statistics - all public, aggregate data
     const totalArticles = await services.d1Service.getArticleCount();
-
-    // Get RSS source count
     const sourcesResult = await c.env.DB.prepare(
       'SELECT COUNT(*) as count FROM rss_sources WHERE enabled = 1'
     ).first();
     const activeSources = sourcesResult?.count || 0;
-
-    // Get categories count
     const categoriesResult = await c.env.DB.prepare(
       'SELECT COUNT(*) as count FROM categories WHERE enabled = 1'
     ).first();
     const categoriesCount = categoriesResult?.count || 0;
-
-    // Get today's article count
     const todayArticles = await services.d1Service.getArticleCount({ today: true });
 
     return c.json({
@@ -781,6 +783,7 @@ app.get("/api/stats", async (c) => {
         categories: categoriesCount,
         today_articles: todayArticles
       },
+      source: 'd1_fallback',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -2139,6 +2142,19 @@ app.get("/api/admin/analytics", async (c) => {
   }
 });
 
+// Content insights — MongoDB-powered engagement analytics
+app.get("/api/admin/content-insights", async (c) => {
+  try {
+    const countryId = c.req.query("country_id");
+    const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+    const insights = await processingClient.getContentInsights(countryId || undefined);
+    return c.json({ success: true, ...insights });
+  } catch (error: any) {
+    console.error('[API] Error fetching content insights:', error);
+    return c.json({ error: "Failed to fetch content insights" }, 500);
+  }
+});
+
 // Cron job logs endpoint - view recent cron executions
 app.get("/api/admin/cron-logs", async (c) => {
   try {
@@ -2583,6 +2599,7 @@ app.get("/api/search", async (c) => {
     const services = initializeServices(c.env);
     let searchResults: any[] = [];
     let searchMethod = "keyword";
+    let searchInsights: any[] | null = null;
 
     // Try semantic search via Python Worker first
     if (useAI) {
@@ -2597,6 +2614,7 @@ app.get("/api/search", async (c) => {
         if (aiResponse.results && aiResponse.results.length > 0) {
           searchResults = aiResponse.results;
           searchMethod = aiResponse.method || "semantic";
+          searchInsights = aiResponse.insights || null;
           console.log(`[SEARCH] Python Worker search returned ${aiResponse.results.length} results for "${query}"`);
         }
       } catch (aiError) {
@@ -2655,7 +2673,8 @@ app.get("/api/search", async (c) => {
       query: query.trim(),
       count: searchResults.length,
       category: category || 'all',
-      searchMethod
+      searchMethod,
+      ...(searchInsights ? { insights: searchInsights } : {})
     });
   } catch (error) {
     console.error("Error searching articles:", error);
@@ -4334,19 +4353,29 @@ app.get("/api/admin/category-insights", async (c) => {
 // Get trending categories
 app.get("/api/trending-categories", async (c) => {
   try {
+    const limit = parseInt(c.req.query('limit') || '8');
+
+    // Try Python Worker (MongoDB aggregation with growth rates)
+    try {
+      const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
+      const result = await processingClient.getTrendingCategories(limit);
+      return c.json(result);
+    } catch (pyError) {
+      console.warn('[API] Python Worker trending-categories unavailable, falling back to D1:', pyError);
+    }
+
+    // D1 fallback
     const services = initializeServices(c.env);
-    const limit = parseInt(c.req.query('limit') || '5');
-
     const trending = await services.categoryManager.getTrendingCategories(limit);
-
     return c.json({
       success: true,
       trending,
+      source: 'd1_fallback',
       timestamp: new Date().toISOString()
     });
   } catch (error: any) {
     console.error('[API] Error getting trending categories:', error);
-    return c.json({ error: error.message }, 500);
+    return c.json({ error: "Failed to fetch trending categories" }, 500);
   }
 });
 
