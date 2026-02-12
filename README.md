@@ -86,7 +86,7 @@ Create `.env.local` in the root directory:
 ```env
 NEXT_PUBLIC_API_URL=https://mukoko-news-backend.nyuchi.workers.dev
 NEXT_PUBLIC_BASE_URL=https://news.mukoko.com  # Optional: Base URL for SEO/JSON-LD
-NEXT_PUBLIC_API_SECRET=your_api_secret_here
+EXPO_PUBLIC_API_SECRET=your_api_secret_here
 ```
 
 ## Architecture
@@ -299,6 +299,17 @@ MIT License - see [LICENSE](LICENSE) for details
 "Ndiri nekuti tiri" — I am because we are
 
 Mukoko ("Beehive" in Shona) represents the collective knowledge and community of Africa. Just as bees work together to create something greater than themselves, Mukoko News brings together voices from across the continent to inform and empower African communities.
+
+## Codebase Stats
+
+| Area | Lines of Code |
+|------|--------------|
+| Frontend (`src/`) | ~15,000 |
+| Backend (`backend/`) | ~38,200 |
+| Database (`database/`) | ~6,900 |
+| **Total** | **~61,300** |
+
+Tests: 985 total (437 frontend + 548 backend)
 
 ---
 

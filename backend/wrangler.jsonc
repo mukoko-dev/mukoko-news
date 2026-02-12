@@ -158,6 +158,19 @@
   ],
 
   /**
+   * Service Binding - Python News API Worker
+   * Handles: RSS parsing, AI processing, clustering, search, feed ranking
+   * Primary data store: MongoDB Atlas (via Data API in Python Worker)
+   * Called via: env.DATA_PROCESSOR.fetch("http://news-api/...", {...})
+   */
+  "services": [
+    {
+      "binding": "DATA_PROCESSOR",
+      "service": "mukoko-news-api"
+    }
+  ],
+
+  /**
    * Observability - Real-time logs and monitoring
    */
   "observability": {
