@@ -218,6 +218,16 @@ export default {
         }
 
         case "updateOne": {
+          const blockedUpd = findBlockedOperator(params.update);
+          if (blockedUpd) {
+            console.warn(
+              `[MONGO-PROXY] Rejected dangerous operator ${blockedUpd} in update on ${collection}`
+            );
+            return Response.json(
+              { error: "Update operator not allowed" },
+              { status: 403 }
+            );
+          }
           const upd = await coll.updateOne(
             params.filter || {},
             params.update || {},
@@ -232,6 +242,16 @@ export default {
         }
 
         case "updateMany": {
+          const blockedUpdMany = findBlockedOperator(params.update);
+          if (blockedUpdMany) {
+            console.warn(
+              `[MONGO-PROXY] Rejected dangerous operator ${blockedUpdMany} in update on ${collection}`
+            );
+            return Response.json(
+              { error: "Update operator not allowed" },
+              { status: 403 }
+            );
+          }
           const updMany = await coll.updateMany(
             params.filter || {},
             params.update || {}
