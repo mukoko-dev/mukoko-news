@@ -376,8 +376,8 @@ export class ProcessingClient {
 
       if (!res.ok) {
         const errorBody = await res.text();
-        console.error(`[ProcessingClient] POST ${path} failed (${res.status}):`, errorBody);
-        throw new Error(`Processing service error (${res.status})`);
+        console.error(`[ProcessingClient] POST ${path} failed (${res.status}):`, errorBody.slice(0, 200));
+        throw new Error(`Processing service error (${res.status}) at POST ${path}`);
       }
 
       return res.json() as Promise<T>;
@@ -397,8 +397,8 @@ export class ProcessingClient {
 
       if (!res.ok) {
         const errorBody = await res.text();
-        console.error(`[ProcessingClient] GET ${path} failed (${res.status}):`, errorBody);
-        throw new Error(`Processing service error (${res.status})`);
+        console.error(`[ProcessingClient] GET ${path} failed (${res.status}):`, errorBody.slice(0, 200));
+        throw new Error(`Processing service error (${res.status}) at GET ${path}`);
       }
 
       return res.json() as Promise<T>;

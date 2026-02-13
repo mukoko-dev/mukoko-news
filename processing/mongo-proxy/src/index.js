@@ -60,6 +60,7 @@ function getClient(env) {
       minPoolSize: 0,
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 5000,
+      socketTimeoutMS: 10000,
     });
   }
   return client;
@@ -86,12 +87,13 @@ function findBlockedOperator(obj) {
 
 export default {
   async fetch(request, env) {
-    // ── Auth: require shared secret (defense-in-depth) ──
-    if (env.PROXY_SECRET) {
-      const authHeader = request.headers.get("Authorization");
-      if (authHeader !== `Bearer ${env.PROXY_SECRET}`) {
-        return Response.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    // ── Auth: require shared secret (mandatory, defense-in-depth) ──
+    if (!env.PROXY_SECRET) {
+      return Response.json({ error: "Server misconfigured" }, { status: 500 });
+    }
+    const authHeader = request.headers.get("Authorization");
+    if (authHeader !== `Bearer ${env.PROXY_SECRET}`) {
+      return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     // Only accept POST with JSON body

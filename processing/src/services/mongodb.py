@@ -166,6 +166,10 @@ class MongoDBClient:
 
             js_headers = Headers.new()
             js_headers.set("Content-Type", "application/json")
+            # Auth: send PROXY_SECRET to mongo-proxy (mandatory)
+            proxy_secret = getattr(self.env, "PROXY_SECRET", None) if self.env else None
+            if proxy_secret:
+                js_headers.set("Authorization", f"Bearer {proxy_secret}")
 
             request = Request.new(
                 "https://mongo-proxy.internal/",
