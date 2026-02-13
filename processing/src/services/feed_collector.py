@@ -69,16 +69,17 @@ async def collect_feeds(env) -> dict:
 
         for source, result in zip(batch, results):
             source_id = source.get("_id") or source.get("id")
-            if isinstance(result, Exception):
+            if isinstance(result, BaseException):
                 print(f"[COLLECTOR] Source {source.get('name')} failed: {result}")
                 health_records.append({"source_id": source_id, "success": False, "error": str(result)})
                 total_errors += 1
             else:
-                total_new += result.get("new_articles", 0)
+                res: dict = result  # type: ignore[assignment]
+                total_new += res.get("new_articles", 0)
                 health_records.append({
                     "source_id": source_id,
                     "success": True,
-                    "articles": result.get("new_articles", 0),
+                    "articles": res.get("new_articles", 0),
                 })
 
     # Step 4: Update source health in MongoDB
@@ -168,7 +169,7 @@ async def _fetch_and_process(source: dict, db: MongoDBClient, env) -> dict:
 async def _fetch_feed(url: str, env) -> str:
     """Fetch RSS feed XML using JS fetch FFI."""
     try:
-        from js import fetch
+        from js import fetch  # type: ignore[import-not-found]
         response = await fetch(url, {"method": "GET", "redirect": "follow"})
         if not response.ok:
             return ""

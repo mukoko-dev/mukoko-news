@@ -10,7 +10,7 @@ from services.ai_client import AnthropicClient, get_embedding
 from services.mongodb import MongoDBClient
 
 
-async def semantic_search(query: str, options: dict = None, env=None) -> dict:
+async def semantic_search(query: str, options: dict | None = None, env=None) -> dict:
     """
     Perform semantic search using Vectorize + D1.
 

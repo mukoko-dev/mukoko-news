@@ -161,8 +161,8 @@ class MongoDBClient:
             return {}
 
         try:
-            from js import Request, Headers
-            from pyodide.ffi import to_js
+            from js import Request, Headers  # type: ignore[import-not-found]
+            from pyodide.ffi import to_js  # type: ignore[import-not-found]
 
             js_headers = Headers.new()
             js_headers.set("Content-Type", "application/json")
@@ -173,7 +173,7 @@ class MongoDBClient:
                     "method": "POST",
                     "headers": js_headers,
                     "body": json.dumps(body, default=str),
-                }, dict_converter=lambda x: x),
+                }, dict_converter=lambda x: x),  # type: ignore[arg-type]
             )
 
             response = await self.binding.fetch(request)

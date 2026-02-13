@@ -28,3 +28,5 @@ asyncio_mode = "auto"
 pythonVersion = "3.12"
 typeCheckingMode = "basic"
 extraPaths = ["src"]
+# Pyodide-only modules unavailable outside Cloudflare Workers runtime
+reportMissingImports = "warning"

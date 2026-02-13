@@ -15,7 +15,7 @@ TS counterpart: SimpleRSSService.parseItem() + extractImage()
 """
 
 import re
-from lxml import etree
+from lxml import etree  # type: ignore[attr-defined]
 from bs4 import BeautifulSoup
 
 
@@ -245,7 +245,7 @@ def _extract_image_rss(item) -> str | None:
             soup = BeautifulSoup(el.text, "html.parser")
             img_tag = soup.find("img", src=True)
             if img_tag:
-                url = img_tag["src"]
+                url = str(img_tag["src"])
                 if url.startswith("//"):
                     url = f"https:{url}"
                 if _is_valid_image_url(url):
