@@ -105,7 +105,7 @@ jobs:
   deploy-api:
     runs-on: ubuntu-latest
     name: Deploy Python API Worker
-    needs: [test-frontend, test-backend, test-api]
+    needs: [test-frontend, test-backend, test-api, deploy-mongo-proxy]
     if: github.ref == 'refs/heads/main'
 
     steps:

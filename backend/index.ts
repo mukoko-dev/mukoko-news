@@ -1249,7 +1249,10 @@ app.get("/api/admin/test-feed", async (c) => {
     }
     const hostname = parsed.hostname.toLowerCase();
     if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '0.0.0.0' ||
-        hostname.startsWith('10.') || hostname.startsWith('192.168.') || hostname.startsWith('172.') ||
+        hostname === '::1' || hostname === '[::1]' ||
+        hostname.startsWith('10.') || hostname.startsWith('192.168.') ||
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
+        hostname.startsWith('fe80:') || hostname.startsWith('fc00:') || hostname.startsWith('fd') ||
         hostname === '169.254.169.254' || hostname.endsWith('.internal') || hostname.endsWith('.local')) {
       return c.json({ error: "Internal URLs not allowed" }, 403);
     }
@@ -6158,88 +6161,8 @@ app.get("/api/user/:username/stats", async (c) => {
   }
 });
 
-// ===== COMPREHENSIVE SEARCH =====
-
-// Unified search across articles, keywords, categories, authors
-app.get("/api/search", async (c) => {
-  try {
-    const query = c.req.query("q") || "";
-    const type = c.req.query("type") || "all"; // all, articles, keywords, categories, authors
-    const limit = parseInt(c.req.query("limit") || "20");
-    const offset = parseInt(c.req.query("offset") || "0");
-
-    if (!query || query.length < 2) {
-      return c.json({ error: "Search query must be at least 2 characters" }, 400);
-    }
-
-    const searchPattern = `%${query}%`;
-    const results: any = {};
-
-    // Search articles
-    if (type === 'all' || type === 'articles') {
-      const articlesResult = await c.env.DB.prepare(`
-        SELECT a.id, a.title, a.slug, a.description, a.author, a.source,
-               a.source_id, a.category_id, a.published_at, a.image_url
-        FROM articles a
-        WHERE a.status = 'published'
-          AND (a.title LIKE ? OR a.description LIKE ? OR a.author LIKE ?)
-        ORDER BY a.published_at DESC
-        LIMIT ? OFFSET ?
-      `).bind(searchPattern, searchPattern, searchPattern, limit, offset).all();
-
-      results.articles = articlesResult.results || [];
-    }
-
-    // Search keywords
-    if (type === 'all' || type === 'keywords') {
-      const keywordsResult = await c.env.DB.prepare(`
-        SELECT k.id, k.name, k.slug, COUNT(akl.article_id) as article_count
-        FROM keywords k
-        LEFT JOIN article_keyword_links akl ON k.id = akl.keyword_id
-        WHERE k.name LIKE ?
-        GROUP BY k.id
-        ORDER BY article_count DESC
-        LIMIT ?
-      `).bind(searchPattern, limit).all();
-
-      results.keywords = keywordsResult.results || [];
-    }
-
-    // Search categories
-    if (type === 'all' || type === 'categories') {
-      const categoriesResult = await c.env.DB.prepare(`
-        SELECT id, name, emoji, color, description
-        FROM categories
-        WHERE enabled = TRUE AND (name LIKE ? OR description LIKE ?)
-        ORDER BY name ASC
-      `).bind(searchPattern, searchPattern).all();
-
-      results.categories = categoriesResult.results || [];
-    }
-
-    // Search authors
-    if (type === 'all' || type === 'authors') {
-      const authorsResult = await c.env.DB.prepare(`
-        SELECT DISTINCT author FROM articles
-        WHERE author IS NOT NULL AND author != '' AND author LIKE ?
-        ORDER BY author ASC
-        LIMIT ?
-      `).bind(searchPattern, limit).all();
-
-      results.authors = authorsResult.results || [];
-    }
-
-    return c.json({
-      query,
-      type,
-      results,
-      timestamp: new Date().toISOString()
-    });
-  } catch (error: any) {
-    console.error("[SEARCH] Search error:", error);
-    return c.json({ error: "Search failed" }, 500);
-  }
-});
+// NOTE: /api/search is defined above (line ~2599) with Python Worker semantic search + D1 fallback.
+// The old unified search was removed as it was unreachable (duplicate route).
 
 // Search articles by keyword
 app.get("/api/search/by-keyword/:keyword", async (c) => {
