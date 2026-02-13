@@ -1253,6 +1253,7 @@ app.get("/api/admin/test-feed", async (c) => {
         hostname.startsWith('10.') || hostname.startsWith('192.168.') ||
         /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname) ||
         hostname.startsWith('fe80:') || hostname.startsWith('fc00:') || hostname.startsWith('fd') ||
+        /^::ffff:(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.|127\.)/.test(hostname) ||
         hostname === '169.254.169.254' || hostname.endsWith('.internal') || hostname.endsWith('.local')) {
       return c.json({ error: "Internal URLs not allowed" }, 403);
     }
@@ -1266,8 +1267,14 @@ app.get("/api/admin/test-feed", async (c) => {
         'Accept': 'application/rss+xml, application/xml, text/xml, */*',
         'Accept-Language': 'en-US,en;q=0.9'
       },
-      redirect: 'follow'
+      redirect: 'manual'
     });
+
+    // Reject redirects to prevent SSRF bypass via redirect-to-internal-IP
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get('Location');
+      return c.json({ error: "Feed URL redirected", redirect_url: location }, 400);
+    }
 
     const text = await response.text();
     const contentType = response.headers.get('content-type');
@@ -2160,6 +2167,9 @@ app.get("/api/admin/analytics", async (c) => {
 app.get("/api/admin/content-insights", async (c) => {
   try {
     const countryId = c.req.query("country_id");
+    if (countryId && !/^[A-Z]{2}$/.test(countryId)) {
+      return c.json({ error: "Invalid country_id format (expected 2-letter ISO code)" }, 400);
+    }
     const processingClient = new ProcessingClient(c.env.DATA_PROCESSOR);
     const insights = await processingClient.getContentInsights(countryId || undefined);
     return c.json({ success: true, ...insights });

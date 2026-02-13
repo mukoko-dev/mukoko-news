@@ -138,7 +138,7 @@ async def get_content_insights(env, country_id: str | None = None) -> dict:
     db = MongoDBClient(env)
 
     match_stage: dict = {"published_at": {"$gte": _hours_ago_iso(24)}}
-    if country_id and re.match(r"^[A-Z]{2}$", country_id):
+    if country_id and re.fullmatch(r"[A-Z]{2}", country_id):
         match_stage["country_id"] = country_id
 
     # Top articles by engagement

@@ -159,8 +159,11 @@ async def handle_request(request, env):
             return _json(result)
 
         if path.startswith("/trending/") and method == "GET":
+            import re
             from services.trending import get_trending
             country = path.split("/")[-1].upper()
+            if not re.fullmatch(r"[A-Z]{2}", country):
+                return _json({"error": "Invalid country code"}, status=400)
             result = await get_trending(env, country_id=country)
             return _json(result)
 

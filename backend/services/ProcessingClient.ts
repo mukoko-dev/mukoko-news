@@ -319,6 +319,9 @@ export class ProcessingClient {
   }
 
   async getContentInsights(countryId?: string) {
+    if (countryId && !/^[A-Z]{2}$/.test(countryId)) {
+      throw new Error(`Invalid country ID: ${countryId}`);
+    }
     return this._post<{
       top_articles: Array<{
         title: string;
@@ -381,6 +384,11 @@ export class ProcessingClient {
       }
 
       return res.json() as Promise<T>;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Processing service timeout (15s) at POST ${path}`);
+      }
+      throw error;
     } finally {
       clearTimeout(timeoutId);
     }
@@ -402,6 +410,11 @@ export class ProcessingClient {
       }
 
       return res.json() as Promise<T>;
+    } catch (error) {
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error(`Processing service timeout (15s) at GET ${path}`);
+      }
+      throw error;
     } finally {
       clearTimeout(timeoutId);
     }
