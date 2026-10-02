@@ -21,6 +21,7 @@ import { getSources, getSourceAuthors, getStats, getTrendingAuthors } from '@/li
 import { getTopCountriesByRecentVolume } from '@/lib/mongodb/coverage'
 import { viaGateway } from '@/lib/nyuchi-api/client'
 import { fetchWindowCountries } from '@/lib/nyuchi-api/news-analytics'
+import { fetchTopicTimeline } from '@/lib/nyuchi-api/news-topics'
 import {
   clampInt,
   countryCodeSchema,
@@ -342,13 +343,42 @@ export async function getSavedArticlesAction() {
 /** Topic slugs are enrichment-generated: lowercase words joined by hyphens. */
 const topicSlugRe = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-export async function getTopicTimelineAction(slug: string, days = 30) {
+export interface TopicTimeline {
+  topic: string
+  articles: Article[]
+  total: number
+  /**
+   * False when the read did not complete — NOT when nothing matched.
+   *
+   * This action used to be the one feed read without `safeRead`, so a timeout
+   * threw straight through the page as an HTTP 500: ~21.6k of them on
+   * 2026-10-02, mostly to crawlers, and ISR never caches a thrown render, so
+   * every retry paid the full scan again. It now never throws, and this flag
+   * lets the page say "temporarily unavailable" (and tell crawlers not to index
+   * it) instead of claiming nothing was published.
+   */
+  ok: boolean
+}
+
+export async function getTopicTimelineAction(slug: string, days = 30): Promise<TopicTimeline> {
   const trimmed = typeof slug === 'string' ? slug.trim().toLowerCase().slice(0, 64) : ''
   if (!topicSlugRe.test(trimmed)) {
-    return { topic: trimmed, articles: [] as Article[], total: 0 }
+    return { topic: trimmed, articles: [] as Article[], total: 0, ok: true }
   }
-  const result = await getTopicTimeline(trimmed, { days: clampInt(days, 1, 90, 30) })
-  return { topic: trimmed, ...result }
+  const window = clampInt(days, 1, 90, 30)
+  try {
+    // The API matches in Doris and hydrates by `_id`; the direct read is the
+    // fallback while the API path proves itself (see `@/lib/nyuchi-api/client`).
+    const result = await viaGateway(
+      'topic.timeline',
+      () => fetchTopicTimeline(trimmed, window),
+      () => getTopicTimeline(trimmed, { days: window })
+    )
+    return { topic: trimmed, ...result, ok: true }
+  } catch (error) {
+    console.error('[feed:topic]', error)
+    return { topic: trimmed, articles: [] as Article[], total: 0, ok: false }
+  }
 }
 
 /**
