@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Vite+ tooling** (tooling only, no app change). `vite-plus` ^1.0.0 is a dev dependency and `vite.config.ts` carries the org format settings with type-aware linting and type checking on; `check` / `lint` / `fmt` scripts run `vp`. CI's org-required `vite-plus / check` runs the transitional `ci:check` (`tsc --noEmit`) until the sources are formatted.
 - **Sign-in is the WorkOS-HOSTED AuthKit page (owner correction 2026-07-09 — supersedes the 2026-07-02 inline-form doctrine).** Every sign-in entry point (`/sign-in`, `/admin`, `/dashboard`, `/profile`, the publisher claim form) now funnels through `/sign-in` → `/auth/login` → the hosted page. The hosted page owns the whole flow — Magic Auth, passwords, passkeys, and the environment-required **MFA step-up** — and maintains the shared AuthKit session on the auth domain, giving **continuous sign-in across the Mukoko/Nyuchi apps** (all AuthKit applications in one WorkOS environment). See `auth.md`.
 - `/sign-in` renders a manual-retry error card when the OAuth callback fails (no auto-redirect loop); already-signed-in users still skip straight to `returnTo`.
 
