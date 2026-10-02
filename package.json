@@ -16,7 +16,10 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "clean": "rm -rf .next out",
-    "prepare": "husky"
+    "prepare": "husky",
+    "check": "vp check",
+    "fmt": "vp fmt",
+    "ci:check": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.2",
@@ -65,6 +68,7 @@
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
     "vite": "^7.3.6",
+    "vite-plus": "^1.0.0",
     "vitest": "^4.1.11",
     "wrangler": "^4.130.0"
   }
