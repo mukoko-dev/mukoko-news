@@ -163,6 +163,80 @@ describe('runCorpusQuery — fail-soft contract', () => {
     useDb({ articles: collectionStub({ aggregate: [[], []] }) });
     expect((await runCorpusQuery({})).total).toBe(0);
   });
+
+  it('says a failure is a failure — ok:false — so it cannot render as "Nothing matched"', async () => {
+    // Regression, 2026-10-02: MaxTimeMSExpired on every signed-in query, and
+    // the failure shape was indistinguishable from a genuinely empty match.
+    const timeout = Object.assign(new Error('operation exceeded time limit'), { code: 50 });
+    useDb({ articles: collectionStub({ aggregate: [timeout] }) });
+    const result = await runCorpusQuery({ q: 'health' });
+    expect(result.ok).toBe(false);
+    expect(result.total).toBe(0);
+  });
+
+  it('reports a genuinely empty match as ok:true', async () => {
+    const empty = { ...metaRow(), count: { total: 0 } };
+    useDb({ articles: collectionStub({ aggregate: [[empty], [deepRow({ read: [] })]] }) });
+    const result = await runCorpusQuery({});
+    expect(result.ok).toBe(true);
+    expect(result.deepFailed).toBe(false);
+  });
+
+  it('never reports a substring fallback — a text term always ran through Search', async () => {
+    // `usedSearchIndex: false` on the failure path is what drew the false
+    // "full-text index unavailable" caption on every timed-out query.
+    useDb({ articles: collectionStub({ aggregate: [new Error('boom')] }) });
+    expect((await runCorpusQuery({ q: 'health' })).usedSearchIndex).toBe(true);
+  });
+});
+
+describe('runCorpusQuery — the two passes fail independently', () => {
+  const timeout = () => Object.assign(new Error('operation exceeded time limit'), { code: 50 });
+
+  it('keeps the exact counts when only the document pass times out', async () => {
+    // The facet pass is milliseconds; the deep pass reads up to
+    // ENRICHMENT_SCAN_LIMIT documents and is the one that hits maxTimeMS. Under
+    // Promise.all its timeout discarded a good count.
+    const meta = {
+      ...metaRow({
+        source: { buckets: [{ _id: 'src-1', count: 150 }] },
+        country: { buckets: [{ _id: 'ZW', count: 150 }] },
+      }),
+      count: { total: 150 },
+    };
+    useDb({
+      articles: collectionStub({ aggregate: [[meta], timeout()] }),
+      feedSources: collectionStub({ find: [[{ _id: 'src-1', name: 'The Herald', countryCode: 'ZW' }]] }),
+    });
+
+    const result = await runCorpusQuery({ from: '2026-08-01', to: '2026-08-03' });
+
+    expect(result.ok).toBe(true);
+    expect(result.deepFailed).toBe(true);
+    expect(result.exact).toBe(true);
+    expect(result.total).toBe(150);
+    expect(result.bySource[0]).toMatchObject({ name: 'The Herald', count: 150 });
+    expect(result.byCountry[0]).toMatchObject({ code: 'ZW', count: 150 });
+    expect(result.byEntity).toEqual([]);
+    expect(result.sample).toEqual([]);
+    expect(result.deepScanned).toBe(0);
+  });
+
+  it('fails the whole query when the count pass times out, even if the deep pass returned', async () => {
+    // The deep pass is capped; presenting its read as the match total would be
+    // a sampled count shown as a corpus count.
+    useDb({ articles: collectionStub({ aggregate: [timeout(), [deepRow()]] }) });
+    const result = await runCorpusQuery({});
+    expect(result.ok).toBe(false);
+    expect(result.total).toBe(0);
+  });
+
+  it('fails the whole query when there is no facet pass and the deep pass times out', async () => {
+    // A term plus a category has no exact index, so the deep pass IS the query.
+    useDb({ articles: collectionStub({ aggregate: [timeout()] }) });
+    const result = await runCorpusQuery({ q: 'cyclone', categories: ['health'] });
+    expect(result.ok).toBe(false);
+  });
 });
 
 describe('runCorpusQuery — where the filters go', () => {
