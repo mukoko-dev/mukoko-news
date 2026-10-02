@@ -59,19 +59,35 @@ describe('MCP server card (/.well-known/mcp/server-card.json)', () => {
   });
 });
 
+// Test fixture — the AuthKit domain is configuration, never a code default.
+process.env.WORKOS_AUTHKIT_DOMAIN = 'https://identity.example.test/';
+
 describe('OAuth discovery metadata', () => {
+  it('answers 503 when WORKOS_AUTHKIT_DOMAIN is not configured — no default host', async () => {
+    const saved = process.env.WORKOS_AUTHKIT_DOMAIN;
+    delete process.env.WORKOS_AUTHKIT_DOMAIN;
+    try {
+      for (const res of [protectedResource(), authServer(), authMd()]) {
+        expect(res.status).toBe(503);
+        expect((await res.json()).error).toBe('WORKOS_AUTHKIT_DOMAIN is not configured');
+      }
+    } finally {
+      process.env.WORKOS_AUTHKIT_DOMAIN = saved;
+    }
+  });
+
   it('protected-resource lists a resource + authorization server', async () => {
     const body = await protectedResource().json();
     expect(body.resource).toBe('https://news.mukoko.com');
-    expect(body.authorization_servers).toContain('https://identity.nyuchi.com');
+    expect(body.authorization_servers).toContain('https://identity.example.test');
     expect(Array.isArray(body.scopes_supported)).toBe(true);
   });
 
   it('authorization-server mirrors the WorkOS issuer + endpoints', async () => {
     const body = await authServer().json();
-    expect(body.issuer).toBe('https://identity.nyuchi.com');
-    expect(body.authorization_endpoint).toBe('https://identity.nyuchi.com/oauth/authorize');
-    expect(body.token_endpoint).toBe('https://identity.nyuchi.com/oauth/token');
+    expect(body.issuer).toBe('https://identity.example.test');
+    expect(body.authorization_endpoint).toBe('https://identity.example.test/oauth2/authorize');
+    expect(body.token_endpoint).toBe('https://identity.example.test/oauth2/token');
     expect(body.code_challenge_methods_supported).toContain('S256');
   });
 });
@@ -82,7 +98,7 @@ describe('auth.md', () => {
     expect(res.headers.get('content-type')).toContain('text/markdown');
     const text = await res.text();
     expect(text).toMatch(/^# auth\.md/m);
-    expect(text).toContain('identity.nyuchi.com');
+    expect(text).toContain('identity.example.test');
   });
 });
 
