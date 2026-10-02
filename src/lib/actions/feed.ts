@@ -19,6 +19,8 @@ import { getArticles, getArticleById, getRelatedArticles, getNewsByteArticles, s
 import { getCategories, getTrendingCategories } from '@/lib/mongodb/categories'
 import { getSources, getSourceAuthors, getStats, getTrendingAuthors } from '@/lib/mongodb/sources'
 import { getTopCountriesByRecentVolume } from '@/lib/mongodb/coverage'
+import { viaGateway } from '@/lib/nyuchi-api/client'
+import { fetchWindowCountries } from '@/lib/nyuchi-api/news-analytics'
 import {
   clampInt,
   countryCodeSchema,
@@ -358,7 +360,12 @@ export async function getTopicTimelineAction(slug: string, days = 30) {
  * the same aggregation. An hour is well inside the rate at which coverage moves.
  */
 const cachedTopCountries = unstable_cache(
-  (limit: number) => getTopCountriesByRecentVolume(limit),
+  (limit: number) =>
+    viaGateway(
+      'coverage.top',
+      async () => (await fetchWindowCountries(30)).slice(0, limit),
+      () => getTopCountriesByRecentVolume(limit)
+    ),
   ['onboarding-top-countries'],
   { revalidate: 3600, tags: ['coverage'] }
 )
