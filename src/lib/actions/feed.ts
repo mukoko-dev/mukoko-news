@@ -15,7 +15,7 @@ import { unstable_cache } from 'next/cache'
 import { getCountries } from '@/lib/mongodb/places'
 import { getDb } from '@/lib/mongodb/client'
 import { resolveEngagementSubject, claimSessionEngagement } from '@/lib/engagement'
-import { getArticles, getArticleById, getRelatedArticles, getNewsByteArticles, searchArticles, getSavedArticles, getTopicTimeline } from '@/lib/mongodb/articles'
+import { getArticles, getRelatedArticles, getNewsByteArticles, searchArticles, getSavedArticles, getTopicTimeline } from '@/lib/mongodb/articles'
 import { getCategories, getTrendingCategories } from '@/lib/mongodb/categories'
 import { getSources, getSourceAuthors, getStats, getTrendingAuthors } from '@/lib/mongodb/sources'
 import { getTopCountriesByRecentVolume } from '@/lib/mongodb/coverage'
@@ -23,6 +23,7 @@ import { viaGateway } from '@/lib/nyuchi-api/client'
 import { fetchWindowCountries } from '@/lib/nyuchi-api/news-analytics'
 import { fetchTopicTimeline } from '@/lib/nyuchi-api/news-topics'
 import { fetchRelatedArticles } from '@/lib/nyuchi-api/news-articles'
+import { getArticleDetail } from '@/lib/article-read'
 import {
   clampInt,
   countryCodeSchema,
@@ -188,7 +189,7 @@ export async function getArticlesAction(params: {
 export async function getArticleAction(id: string) {
   const safeId = parseOrDefault(idSchema, id, null)
   if (!safeId) return null
-  return safeRead('article', () => getArticleById(safeId), null)
+  return safeRead('article', () => getArticleDetail(safeId), null)
 }
 
 /**
