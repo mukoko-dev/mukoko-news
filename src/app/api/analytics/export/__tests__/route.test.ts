@@ -41,6 +41,8 @@ function result(overrides: Partial<CorpusQueryResult> = {}): CorpusQueryResult {
       minQuality: null,
       days: 30,
     },
+    ok: true,
+    deepFailed: false,
     total: 2,
     usedSearchIndex: true,
   exact: true,
@@ -165,6 +167,24 @@ describe('/api/analytics/export', () => {
       expect(mockRunCorpusQuery).toHaveBeenCalledWith(
         expect.objectContaining({ minQuality: undefined })
       )
+    })
+  })
+
+  describe('a query that did not finish', () => {
+    it('503s with Retry-After instead of downloading a file of zeros', async () => {
+      // A CSV reading `total_articles,0` is a claim about the corpus; a timed
+      // out query has made no such claim.
+      mockRunCorpusQuery.mockResolvedValue(result({ ok: false, total: 0 }))
+      const res = await GET(new NextRequest('http://x/api/analytics/export?format=csv'))
+      expect(res.status).toBe(503)
+      expect(res.headers.get('Retry-After')).toBe('30')
+      expect(res.headers.get('Content-Type')).not.toContain('text/csv')
+    })
+
+    it('marks the document sections unavailable when only that pass timed out', async () => {
+      mockRunCorpusQuery.mockResolvedValue(result({ deepFailed: true }))
+      const body = await csv('http://x/api/analytics/export?format=csv')
+      expect(body).toContain('# document_sections,unavailable (timed out)')
     })
   })
 

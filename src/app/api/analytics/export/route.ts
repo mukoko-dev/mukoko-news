@@ -88,7 +88,7 @@ function toCsv(data: Result): string {
   lines.push(`# from,${q.from}`)
   lines.push(`# to,${q.to}`)
   lines.push(`# total_articles,${data.total}`)
-  lines.push(`# text_match,${data.usedSearchIndex ? 'atlas_search' : 'substring_fallback'}`)
+  lines.push(`# text_match,${q.q ? 'atlas_search' : '(none)'}`)
   // A downloaded file outlives the page that explains it, so the two figures
   // that qualify every number below travel with it. `counted_over` is `exact`
   // when the totals were counted across the whole match in the Search index,
@@ -98,6 +98,9 @@ function toCsv(data: Result): string {
   // facet — dividing those by total_articles gives a wrong coverage figure.
   lines.push(`# counted_over,${data.exact ? 'exact' : 'sampled'}`)
   lines.push(`# documents_read,${data.deepScanned}`)
+  // The document-backed sections below are empty because their read timed
+  // out, not because the match has none — the file says which.
+  if (data.deepFailed) lines.push('# document_sections,unavailable (timed out)')
   lines.push('')
 
   lines.push('## daily_volume')
@@ -211,6 +214,16 @@ export async function GET(request: NextRequest) {
       minQuality: sp.has('minQuality') ? Number(sp.get('minQuality')) : undefined,
       sampleLimit: 100,
     })
+
+    // A query that could not be answered must not download as a valid file of
+    // zeros: a CSV saying `total_articles,0` is a claim about the corpus. Say
+    // it failed, with a status a script can retry on.
+    if (!data.ok) {
+      return NextResponse.json(
+        { error: 'The query did not finish in time. Try again, or narrow the window.' },
+        { status: 503, headers: { 'Retry-After': '30' } }
+      )
+    }
 
     if (format === 'csv') {
       return new NextResponse(toCsv(data), {
