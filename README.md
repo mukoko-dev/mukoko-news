@@ -29,7 +29,7 @@ app measures rather than asserts — see [Coverage](#coverage).
 
 [![Discord](https://img.shields.io/badge/Discord-join_the_hive-5865F2?logo=discord&logoColor=white)](https://discord.gg/Ga2XusN6Ty)
 [![Live site](https://img.shields.io/badge/live-news.mukoko.com-brightgreen)](https://news.mukoko.com)
-[![CI](https://github.com/nyuchi/mukoko-news/actions/workflows/deploy.yml/badge.svg)](https://github.com/nyuchi/mukoko-news/actions/workflows/deploy.yml)
+[![CI](https://github.com/mukoko-dev/mukoko-news/actions/workflows/deploy.yml/badge.svg)](https://github.com/mukoko-dev/mukoko-news/actions/workflows/deploy.yml)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
 </div>
@@ -37,8 +37,8 @@ app measures rather than asserts — see [Coverage](#coverage).
 ---
 
 > **The sibling repos.** This one is the reader-facing web app. The
-> [gateway](https://github.com/nyuchi/mukoko-news-gateway) is the public API and MCP server;
-> the [pipeline](https://github.com/nyuchi/mukoko-ingestion-pipeline) does the ingestion and
+> [gateway](https://github.com/mukoko-dev/mukoko-news-gateway) is the public API and MCP server;
+> the [pipeline](https://github.com/mukoko-dev/mukoko-ingestion-pipeline) does the ingestion and
 > enrichment. Issues land in whichever repo owns the code.
 
 ---
@@ -47,11 +47,11 @@ app measures rather than asserts — see [Coverage](#coverage).
 
 This repository is the **Next.js 15 frontend** for Mukoko News, deployed on Vercel. It is one part of a three-repo platform:
 
-| Repo                                 | Role                                         |
-| ------------------------------------ | -------------------------------------------- |
-| **`nyuchi/mukoko-news`** (this repo) | Web frontend — Next.js 15, Vercel            |
-| `nyuchi/mukoko-news-gateway`         | Public API + MCP server — Cloudflare Workers |
-| `nyuchi/mukoko-ingestion-pipeline`   | Data pipeline — Fly.io + Cloudflare          |
+| Repo                                     | Role                                         |
+| ---------------------------------------- | -------------------------------------------- |
+| **`mukoko-dev/mukoko-news`** (this repo) | Web frontend — Next.js 15, Vercel            |
+| `mukoko-dev/mukoko-news-gateway`         | Public API + MCP server — Cloudflare Workers |
+| `mukoko-dev/mukoko-ingestion-pipeline`   | Data pipeline — Fly.io + Cloudflare          |
 
 The frontend reads news data directly from MongoDB Atlas via Next.js Server Actions.
 
@@ -97,7 +97,7 @@ answered or to find out whether someone is already on the issue you picked.
 
 ```bash
 # Prerequisites: Node.js 20+, pnpm 10+
-git clone https://github.com/nyuchi/mukoko-news.git
+git clone https://github.com/mukoko-dev/mukoko-news.git
 cd mukoko-news
 pnpm install
 
@@ -211,7 +211,7 @@ AI assistants and agents can query Pan-African news via the [Model Context Proto
 ```
 
 The read tools answer anonymously. The server itself lives in
-[`nyuchi/mukoko-news-gateway`](https://github.com/nyuchi/mukoko-news-gateway) and is
+[`mukoko-dev/mukoko-news-gateway`](https://github.com/mukoko-dev/mukoko-news-gateway) and is
 deployed to `news.mukoko.dev`, not to this app — `news.mukoko.com` serves no `/mcp`
 route.
 

@@ -1,6 +1,6 @@
 # Contributing to Mukoko News
 
-Thank you for considering a contribution to Mukoko News! This guide covers the **Next.js frontend** in `nyuchi/mukoko-news`. For the gateway API or data pipeline, see those repos.
+Thank you for considering a contribution to Mukoko News! This guide covers the **Next.js frontend** in `mukoko-dev/mukoko-news`. For the gateway API or data pipeline, see those repos.
 
 ## Table of Contents
 
@@ -43,7 +43,7 @@ This repo is the Next.js frontend only. It reads data from MongoDB Atlas via Ser
 
 ```bash
 # Clone
-git clone https://github.com/nyuchi/mukoko-news.git
+git clone https://github.com/mukoko-dev/mukoko-news.git
 cd mukoko-news
 
 # Install dependencies
@@ -212,7 +212,7 @@ vi.mock("@/lib/actions/feed", () => ({
 
 ## Getting Help
 
-- **Issues**: [github.com/nyuchi/mukoko-news/issues](https://github.com/nyuchi/mukoko-news/issues)
+- **Issues**: [github.com/mukoko-dev/mukoko-news/issues](https://github.com/mukoko-dev/mukoko-news/issues)
 - **General**: <support@nyuchi.com>
 - **Security**: <security@nyuchi.com>
 
