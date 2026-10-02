@@ -282,9 +282,34 @@ export interface QualitySummary extends CoveredMetric {
 
 export interface CorpusQueryResult {
   query: NormalizedQuery
-  /** Total articles matching the query. */
+  /**
+   * False when the query could not be answered at all — the count pass timed
+   * out or the cluster was unreachable.
+   *
+   * This is the field the console reads BEFORE it reads `total`. Without it a
+   * failure and a genuinely empty match were the same value (`total: 0`), so
+   * every timed-out query rendered as "0 articles — Nothing matched", which is
+   * a false statement about the corpus rather than an error. Measured
+   * 2026-10-02: every signed-in query hit `MaxTimeMSExpired` and the console
+   * reported an empty corpus of 150,935 articles.
+   */
+  ok: boolean
+  /**
+   * True when the exact facet counts arrived but the bounded document pass
+   * (named entities, bylines, the quality average, sample articles) did not.
+   *
+   * The two passes are independent, so one timing out must not discard the
+   * other: the counted panels render, and the document-backed ones say they
+   * timed out instead of claiming "no named entities for this query".
+   */
+  deepFailed: boolean
+  /** Total articles matching the query. Meaningful only when `ok`. */
   total: number
-  /** True when the text term ran through Atlas Search. */
+  /**
+   * True when the text term ran through Atlas Search. Every text term does —
+   * this module has no substring fallback — so on an answered query this is
+   * simply `Boolean(query.q)`.
+   */
   usedSearchIndex: boolean
   /**
    * Whether `total` and the breakdowns were counted over the WHOLE match.
@@ -317,11 +342,18 @@ export interface CorpusQueryResult {
   generatedAt: string
 }
 
-function emptyResult(query: NormalizedQuery): CorpusQueryResult {
+/**
+ * The all-zero result. `ok: false` is the failure shape (nothing is known);
+ * `ok: true` is a genuinely empty match. They render differently, so the caller
+ * must say which one it means.
+ */
+function emptyResult(query: NormalizedQuery, ok: boolean): CorpusQueryResult {
   return {
     query,
+    ok,
+    deepFailed: false,
     total: 0,
-    usedSearchIndex: false,
+    usedSearchIndex: Boolean(query.q),
     exact: true,
     deepScanned: 0,
     series: [],
@@ -793,7 +825,12 @@ export async function runCorpusQuery(params: CorpusQueryParams): Promise<CorpusQ
     const searchIndex: SearchIndexName = facetIndex ?? 'articles_text_search'
     const compound = buildCompound(query, searchIndex)
 
-    const [meta, deep] = await Promise.all([
+    // `allSettled`, not `all`. The facet pass is milliseconds and exact; the
+    // deep pass reads up to ENRICHMENT_SCAN_LIMIT whole documents and is the
+    // one that runs into `maxTimeMS` when the cluster is under load. With
+    // `Promise.all` its timeout threw away a perfectly good count and the
+    // console reported an empty corpus.
+    const [metaSettled, deepSettled] = await Promise.allSettled([
       facetIndex
         ? col
             .aggregate<SearchMetaResult>(
@@ -834,12 +871,33 @@ export async function runCorpusQuery(params: CorpusQueryParams): Promise<CorpusQ
         .then((rows) => rows[0] ?? {}),
     ])
 
+    if (metaSettled.status === 'rejected') {
+      // No count, so nothing is known. A deep pass that happened to finish is
+      // not a substitute: it is capped, and presenting its read as the match
+      // total would be the sampled-as-corpus error this module exists to avoid.
+      console.error('[analytics.runCorpusQuery] facet pass', metaSettled.reason)
+      return emptyResult(query, false)
+    }
+    const meta = metaSettled.value
+
+    let deep: DeepOutput = {}
+    let deepFailed = false
+    if (deepSettled.status === 'rejected') {
+      console.error('[analytics.runCorpusQuery] deep pass', deepSettled.reason)
+      // With no exact index the deep pass IS the query, so its failure is the
+      // query's failure.
+      if (!meta) return emptyResult(query, false)
+      deepFailed = true
+    } else {
+      deep = deepSettled.value
+    }
+
     const deepScanned = deep.read?.[0]?.n ?? 0
     const exact = Boolean(meta)
     const total = exact ? Number(meta?.count?.total ?? 0) : deepScanned
 
     if (total === 0) {
-      return { ...emptyResult(query), usedSearchIndex: Boolean(query.q), exact, deepScanned }
+      return { ...emptyResult(query, true), exact, deepScanned }
     }
 
     // Which denominator each panel is honestly a share OF. The facets counted
@@ -891,6 +949,8 @@ export async function runCorpusQuery(params: CorpusQueryParams): Promise<CorpusQ
 
     return {
       query,
+      ok: true,
+      deepFailed,
       total,
       exact,
       deepScanned,
@@ -960,7 +1020,7 @@ export async function runCorpusQuery(params: CorpusQueryParams): Promise<CorpusQ
     }
   } catch (error) {
     console.error('[analytics.runCorpusQuery]', error)
-    return emptyResult(query)
+    return emptyResult(query, false)
   }
 }
 
