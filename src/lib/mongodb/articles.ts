@@ -8,7 +8,7 @@ import type { Collection, Filter, FindCursor } from 'mongodb'
 import { getDb, QUERY_MAX_TIME_MS } from './client'
 import { stripHtml } from '@/lib/utils'
 import { clampInt, MAX_LIMIT, MAX_PAGE } from '@/lib/safety'
-import { getPublisherOrganization, type PublisherOrganization } from './organizations'
+import { getPublisherOrganization, publisherFromApi, type PublisherOrganization } from './organizations'
 import type { Article, SourceSignals } from '@/lib/api'
 
 interface MongoArticle {
@@ -945,32 +945,54 @@ function reviveDate(value: unknown): Date | undefined {
  * `updatedAt` fall back to `datePublished`, because `toArticle` treats both as
  * present and a document without them must not throw a whole list away.
  */
+function sourceFromApi(raw: unknown): MongoFeedSource | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const s = raw as Record<string, unknown>
+  if (typeof s._id !== 'string') return undefined
+  return {
+    ...(s as unknown as MongoFeedSource),
+    lastSuccessfulFetchAt: reviveDate(s.lastSuccessfulFetchAt),
+    createdAt: reviveDate(s.createdAt),
+  } as MongoFeedSource
+}
+
+function articleDocFromApi(raw: unknown): MongoArticle | null {
+  if (!raw || typeof raw !== 'object') return null
+  const d = raw as Record<string, unknown>
+  if (typeof d._id !== 'string') return null
+  const published = reviveDate(d.datePublished)
+  const created = reviveDate(d.createdAt) ?? published
+  const updated = reviveDate(d.updatedAt) ?? created
+  if (!created || !updated) return null
+  return { ...d, datePublished: published, createdAt: created, updatedAt: updated } as unknown as MongoArticle
+}
+
 export function articlesFromApi(docs: unknown[], sources: unknown[]): Article[] {
   const sourceMap = new Map<string, MongoFeedSource>()
   for (const raw of sources) {
-    if (!raw || typeof raw !== 'object') continue
-    const s = raw as Record<string, unknown>
-    if (typeof s._id !== 'string') continue
-    sourceMap.set(s._id, {
-      ...(s as unknown as MongoFeedSource),
-      lastSuccessfulFetchAt: reviveDate(s.lastSuccessfulFetchAt),
-      createdAt: reviveDate(s.createdAt),
-    } as MongoFeedSource)
+    const source = sourceFromApi(raw)
+    if (source) sourceMap.set(source._id, source)
   }
 
   const out: Article[] = []
   for (const raw of docs) {
-    if (!raw || typeof raw !== 'object') continue
-    const d = raw as Record<string, unknown>
-    if (typeof d._id !== 'string') continue
-    const published = reviveDate(d.datePublished)
-    const created = reviveDate(d.createdAt) ?? published
-    const updated = reviveDate(d.updatedAt) ?? created
-    if (!created || !updated) continue
-    const doc = { ...d, datePublished: published, createdAt: created, updatedAt: updated } as unknown as MongoArticle
-    out.push(toArticle(doc, sourceMap.get(doc.feedSourceId)))
+    const doc = articleDocFromApi(raw)
+    if (doc) out.push(toArticle(doc, sourceMap.get(doc.feedSourceId)))
   }
   return out
+}
+
+/**
+ * One article page's worth of API data — `{article, source, publisher}` from
+ * `/v1/news/articles/{id}/detail` — as the same `Article` `getArticleById`
+ * returns: full content, the feed source, and the resolved newsroom. `null`
+ * when the document is not usable as an article.
+ */
+export function articleDetailFromApi(data: { article?: unknown; source?: unknown; publisher?: unknown }): Article | null {
+  const doc = articleDocFromApi(data.article)
+  if (!doc) return null
+  const organization = publisherFromApi(data.publisher) ?? undefined
+  return toArticle(doc, sourceFromApi(data.source), { fullContent: true, organization })
 }
 
 // ── Topic timeline (developing-story surface) ────────────────────────────────
