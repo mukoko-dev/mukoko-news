@@ -19,7 +19,7 @@ for whoever manages the `mukoko.com` zone.
 
 Shared values (MCP endpoint, WorkOS issuer, client id) live in
 `src/lib/agent-discovery.ts` and mirror what the **gateway**
-(`nyuchi/mukoko-news-gateway`) already publishes — keep them in sync if the
+(`mukoko-dev/mukoko-news-gateway`) already publishes — keep them in sync if the
 gateway's OAuth/MCP config changes.
 
 ### Notes on choices
