@@ -13,8 +13,10 @@
  *
  * These expose the read-only aggregations in `@/lib/mongodb/insights` to the
  * `/insights` page (server component) and, indirectly, to the open-data export
- * route. Per the repo's data-flow rule, reads go straight to the `news` DB via
- * Server Actions — never through the gateway Worker.
+ * route. The bundle comes from the Nyuchi API (`/v1/news/analytics/insights`,
+ * answered from Doris) when it is configured, and from the direct `news` DB
+ * reads below when it is not or when the call fails — see
+ * `@/lib/nyuchi-api/client`. Never through the news gateway Worker.
  *
  * Inputs are clamped in the MongoDB layer (clampInt); the read functions never
  * throw (each returns an empty-but-typed result on failure), so these thin
@@ -38,6 +40,8 @@ import {
   type CorpusSummary,
   type TopTopic,
 } from '@/lib/mongodb/insights'
+import { viaGateway } from '@/lib/nyuchi-api/client'
+import { fetchInsightsPanels } from '@/lib/nyuchi-api/news-analytics'
 
 /**
  * The per-panel reads. All PUBLIC, as of the owner's 2026-09-11 reversal —
@@ -111,6 +115,18 @@ const cachedDetail = unstable_cache(
   { revalidate: 600, tags: ['insights'] }
 )
 
+/**
+ * The same bundle from the Nyuchi API gateway (`/v1/news/analytics/insights`,
+ * answered from Doris), in one round trip instead of fourteen Atlas reads.
+ * Cached for the same ten minutes as the direct path. The two direct entries
+ * above stay as the fallback (`viaGateway`) until the gateway path has run
+ * clean; see `@/lib/nyuchi-api/client`.
+ */
+const cachedGatewayPanels = unstable_cache(() => fetchInsightsPanels(), ['insights-gateway'], {
+  revalidate: 600,
+  tags: ['insights'],
+})
+
 
 export interface InsightsBundle {
   summary: CorpusSummary
@@ -138,16 +154,14 @@ export interface InsightsBundle {
  * is rate-limited per IP. See `app/api/insights/export/route.ts`.
  */
 export async function getInsightsBundleAction(): Promise<InsightsBundle> {
-  const [summary, [volume, leaderboard, categories, countries, sentiment, topics]] =
-    await Promise.all([cachedSummary(), cachedDetail()])
-  return {
-    summary,
-    volume,
-    leaderboard,
-    categories,
-    countries,
-    sentiment,
-    topics,
-    generatedAt: new Date().toISOString(),
-  }
+  const panels = await viaGateway(
+    'insights.bundle',
+    () => cachedGatewayPanels(),
+    async () => {
+      const [summary, [volume, leaderboard, categories, countries, sentiment, topics]] =
+        await Promise.all([cachedSummary(), cachedDetail()])
+      return { summary, volume, leaderboard, categories, countries, sentiment, topics }
+    }
+  )
+  return { ...panels, generatedAt: new Date().toISOString() }
 }
