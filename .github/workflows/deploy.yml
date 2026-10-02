@@ -47,7 +47,7 @@ jobs:
   # ── Repo hygiene linters ───────────────────────────────────────────────────
   # REMOVED. The five `lint / *` required checks were hand-rolled here as a
   # matrix whose job name was forced to `lint / ${{ matrix.check }}`. They now
-  # come from .github/workflows/lint.yml, which calls the org reusable
+  # come from nyuchi/.github's org-required org-lint.yml, which calls the org reusable
   # nyuchi/.github/.github/workflows/reusable-lint.yml — one definition for the
   # whole org, with pinned tool versions. The context names are identical, so
   # the org ruleset keeps matching; the checks behind them are strictly
