@@ -609,6 +609,36 @@ describe('getRelatedArticles', () => {
     expect(related.map((a) => a.id)).toEqual(['a2']);
   });
 
+  it('never filters inside $vectorSearch, and gates after it (the ~2k failures of 2026-10-02)', async () => {
+    // `moderationStatus` is not a filter field of `articles_vector_search`, so a
+    // filter naming it rejects the whole stage and the rail comes back empty.
+    const articles = collectionStub({
+      findOne: [articleDoc({ embedding: [0.1, 0.2] })],
+      aggregate: [[]],
+    });
+    useDb({ articles, feedSources: collectionStub({ find: [[]] }) });
+
+    await getRelatedArticles('a1', 3);
+
+    const { pipeline, options } = articles.aggregateCalls[0] as {
+      pipeline: Array<Record<string, Record<string, unknown>>>
+      options: { maxTimeMS?: number }
+    };
+    expect(pipeline[0].$vectorSearch).not.toHaveProperty('filter');
+    expect(pipeline[0].$vectorSearch.limit).toBe(13);
+    expect(pipeline).toContainEqual({
+      $match: { status: { $ne: 'rejected' }, moderationStatus: { $ne: 'removed' } },
+    });
+    expect(options.maxTimeMS).toBeGreaterThan(0);
+  });
+
+  it('reads only the three seed fields it needs, not the whole ~25 KB document', async () => {
+    const articles = collectionStub({ findOne: [null] });
+    useDb({ articles });
+    await getRelatedArticles('a1');
+    expect(articles.findCalls[0].projection).toEqual({ embedding: 1, feedSourceId: 1, articleSection: 1 });
+  });
+
   it('falls back to same-source, same-section recency when there is no embedding', async () => {
     // An un-enriched article has no embedding, and un-enriched is the common
     // case for anything published in the last few minutes.
