@@ -5,8 +5,11 @@ import { unstable_cache } from 'next/cache'
 import {
   getWindowCountries,
   LIVE_COUNTRY_MIN_RECENT_ARTICLES,
+  LIVE_COUNTRY_WINDOW_DAYS,
   type CoveredCountry,
 } from '@/lib/mongodb/coverage'
+import { viaGateway } from '@/lib/nyuchi-api/client'
+import { fetchWindowCountries } from '@/lib/nyuchi-api/news-analytics'
 import {
   FALLBACK_LIVE_COUNTRY_CODES,
   COUNTRY_SCOPE_TOTAL,
@@ -78,8 +81,14 @@ const COVERAGE_TTL_SECONDS = 3600
 
 const loadCoverage = unstable_cache(
   async (): Promise<LiveCoverage> => {
-    // One read, two answers: the claim filters it, the grid does not.
-    const all = await getWindowCountries()
+    // One read, two answers: the claim filters it, the grid does not. The read
+    // goes to the Nyuchi API (Doris) when configured, else to Atlas — this is
+    // behind EVERY page's metadata, so it is the widest read the app makes.
+    const all = await viaGateway(
+      'coverage.window',
+      () => fetchWindowCountries(LIVE_COUNTRY_WINDOW_DAYS),
+      () => getWindowCountries()
+    )
     const live = all.filter((c) => c.recent >= LIVE_COUNTRY_MIN_RECENT_ARTICLES)
 
     // An empty result means the read failed or the corpus is unreachable — NOT
