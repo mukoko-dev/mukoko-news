@@ -22,6 +22,7 @@ import { getTopCountriesByRecentVolume } from '@/lib/mongodb/coverage'
 import { viaGateway } from '@/lib/nyuchi-api/client'
 import { fetchWindowCountries } from '@/lib/nyuchi-api/news-analytics'
 import { fetchTopicTimeline } from '@/lib/nyuchi-api/news-topics'
+import { fetchRelatedArticles } from '@/lib/nyuchi-api/news-articles'
 import {
   clampInt,
   countryCodeSchema,
@@ -207,9 +208,17 @@ export async function getArticleAction(id: string) {
 export async function getRelatedArticlesAction(articleId: string, limit = 3) {
   const safeId = parseOrDefault(idSchema, articleId, null)
   if (!safeId) return [] as Article[]
+  const max = clampInt(limit, 1, 12, 3)
   return safeRead(
     'related',
-    () => getRelatedArticles(safeId, clampInt(limit, 1, 12, 3)),
+    // Called from the reader's browser on every article view, uncached on this
+    // side — so the API's per-article hour of cache is most of the win.
+    () =>
+      viaGateway(
+        'articles.related',
+        () => fetchRelatedArticles(safeId, max),
+        () => getRelatedArticles(safeId, max)
+      ),
     [] as Article[]
   )
 }

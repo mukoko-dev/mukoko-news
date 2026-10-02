@@ -702,32 +702,55 @@ export async function getArticleById(id: string): Promise<Article | null> {
   return resolveArticleDetail(doc)
 }
 
+/**
+ * The fields the related-articles read needs from its seed — and nothing else.
+ * The seed used to be read whole: ~25 KB of three bodies and the embedding, on
+ * every article view, to use the embedding alone.
+ */
+const RELATED_SEED_PROJECTION = { embedding: 1, feedSourceId: 1, articleSection: 1 } as const
+
+/**
+ * Who may appear in a related rail. A `$match` AFTER the vector search, never a
+ * `$vectorSearch.filter`: a filter on a path the index does not declare as a
+ * filter field rejects the whole stage, and `moderationStatus` is not declared
+ * on `articles_vector_search` — which is how this read failed ~2k times on
+ * 2026-10-02, each one an empty "Related" section. Post-filtering a dozen
+ * candidates costs nothing, so `$ne` is harmless here.
+ */
+const RELATED_VISIBLE = { status: { $ne: 'rejected' }, moderationStatus: { $ne: 'removed' } } as const
+
 export async function getRelatedArticles(articleId: string, limit = 5): Promise<Article[]> {
   limit = clampInt(limit, 1, MAX_LIMIT, 5)
   const db = await getDb()
-  const article = await db.collection<MongoArticle>('articles').findOne({ _id: articleId })
+  const article = await db
+    .collection<MongoArticle>('articles')
+    .findOne({ _id: articleId }, { projection: RELATED_SEED_PROJECTION, maxTimeMS: QUERY_MAX_TIME_MS })
   if (!article) return []
 
   let docs: MongoArticle[]
 
   if (article.embedding?.length) {
-    // Semantic similarity via Atlas Vector Search
+    // Semantic similarity via Atlas Vector Search. Over-fetched, because the
+    // visibility gate and the self-exclusion run after the search.
     const pipeline = [
       {
         $vectorSearch: {
           index: 'articles_vector_search',
           path: 'embedding',
           queryVector: article.embedding,
-          numCandidates: limit * 15,
-          limit: limit + 1,
-          filter: { status: { $ne: 'rejected' }, moderationStatus: { $ne: 'removed' } },
+          numCandidates: Math.max(100, limit * 20),
+          limit: limit * 4 + 1,
         },
       },
       { $match: { _id: { $ne: articleId } } },
+      { $match: RELATED_VISIBLE },
       { $limit: limit },
       { $project: LIST_PROJECTION },
     ]
-    docs = await db.collection<MongoArticle>('articles').aggregate<MongoArticle>(pipeline).toArray()
+    docs = await db
+      .collection<MongoArticle>('articles')
+      .aggregate<MongoArticle>(pipeline, { maxTimeMS: QUERY_MAX_TIME_MS })
+      .toArray()
   } else {
     // Fallback: same section, same source, recent
     const filter: Filter<MongoArticle> = {
@@ -748,6 +771,7 @@ export async function getRelatedArticles(articleId: string, limit = 5): Promise<
   const sourceIds = [...new Set(docs.map(d => d.feedSourceId))]
   const sources = await db.collection<MongoFeedSource>('feedSources')
     .find({ _id: { $in: sourceIds } })
+    .maxTimeMS(QUERY_MAX_TIME_MS)
     .toArray()
   const sourceMap = new Map(sources.map(s => [s._id, s]))
 
