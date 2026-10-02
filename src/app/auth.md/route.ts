@@ -33,9 +33,9 @@ Authentication is handled by **WorkOS AuthKit**. Discovery metadata:
 | Field | Value |
 | --- | --- |
 | \`issuer\` | \`${OAUTH_ISSUER}\` |
-| \`authorization_endpoint\` | \`${OAUTH_ISSUER}/oauth2/authorize\` |
-| \`token_endpoint\` | \`${OAUTH_ISSUER}/oauth2/token\` |
-| \`jwks_uri\` | \`${OAUTH_ISSUER}/oauth2/jwks\` |
+| \`authorization_endpoint\` | \`${new URL('/oauth2/authorize', OAUTH_ISSUER).href}\` |
+| \`token_endpoint\` | \`${new URL('/oauth2/token', OAUTH_ISSUER).href}\` |
+| \`jwks_uri\` | \`${new URL('/oauth2/jwks', OAUTH_ISSUER).href}\` |
 | \`grant_types_supported\` | \`authorization_code\`, \`refresh_token\` |
 | \`code_challenge_methods_supported\` | \`S256\` (PKCE required) |
 | \`token_endpoint_auth_methods_supported\` | \`none\` (public client) |

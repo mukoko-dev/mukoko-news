@@ -14,6 +14,7 @@ const LIVE_COUNT = 23;
 import { GET as protectedResource } from '../.well-known/oauth-protected-resource/route';
 import { GET as authServer } from '../.well-known/oauth-authorization-server/route';
 import { GET as authMd } from '../auth.md/route';
+import { normaliseAuthkitDomain, oauthIssuer } from '@/lib/agent-discovery';
 
 const { mockGetArticle, mockGetArticles } = vi.hoisted(() => ({
   mockGetArticle: vi.fn(),
@@ -70,6 +71,20 @@ describe('OAuth discovery metadata', () => {
       for (const res of [protectedResource(), authServer(), authMd()]) {
         expect(res.status).toBe(503);
         expect((await res.json()).error).toBe('WORKOS_AUTHKIT_DOMAIN is not configured');
+      }
+    } finally {
+      process.env.WORKOS_AUTHKIT_DOMAIN = saved;
+    }
+  });
+
+  it('answers 503 when WORKOS_AUTHKIT_DOMAIN is not an https origin', async () => {
+    const saved = process.env.WORKOS_AUTHKIT_DOMAIN;
+    try {
+      for (const bad of ['http://identity.example.test', 'https://user:pass@identity.example.test']) {
+        process.env.WORKOS_AUTHKIT_DOMAIN = bad;
+        for (const res of [protectedResource(), authServer(), authMd()]) {
+          expect(res.status, bad).toBe(503);
+        }
       }
     } finally {
       process.env.WORKOS_AUTHKIT_DOMAIN = saved;
@@ -217,5 +232,48 @@ describe('Markdown for Agents (/api/agent-md)', () => {
     expect(text).toContain(String(LIVE_COUNT));
     expect(text).toContain(String(COUNTRY_SCOPE_TOTAL));
     expect(text.toLowerCase()).toContain('coming soon');
+  });
+});
+
+describe('oauthIssuer parses WORKOS_AUTHKIT_DOMAIN into an https origin', () => {
+  const at = (value: string | undefined) => {
+    const saved = process.env.WORKOS_AUTHKIT_DOMAIN;
+    if (value === undefined) delete process.env.WORKOS_AUTHKIT_DOMAIN;
+    else process.env.WORKOS_AUTHKIT_DOMAIN = value;
+    try {
+      return oauthIssuer();
+    } finally {
+      process.env.WORKOS_AUTHKIT_DOMAIN = saved;
+    }
+  };
+
+  it('is null when unset or blank', () => {
+    expect(at(undefined)).toBeNull();
+    expect(at('   ')).toBeNull();
+    expect(() => normaliseAuthkitDomain(undefined)).toThrow('WORKOS_AUTHKIT_DOMAIN is not configured');
+  });
+
+  it('accepts a bare host or an https origin in any case, and returns the origin', () => {
+    expect(at('https://identity.example.test')).toBe('https://identity.example.test');
+    expect(at('identity.example.test')).toBe('https://identity.example.test');
+    expect(at('https://identity.example.test/')).toBe('https://identity.example.test');
+    expect(at('HTTPS://Identity.Example.Test')).toBe('https://identity.example.test');
+  });
+
+  it('drops any path, query or fragment', () => {
+    expect(at('https://identity.example.test/x/y?z=1#f')).toBe('https://identity.example.test');
+  });
+
+  it('treats anything that is not an https origin as unconfigured', () => {
+    for (const bad of [
+      'http://identity.example.test',
+      'javascript://identity.example.test',
+      'https://user:pass@identity.example.test',
+      'user@identity.example.test',
+      'https://',
+    ]) {
+      expect(at(bad), bad).toBeNull();
+      expect(() => normaliseAuthkitDomain(bad), bad).toThrow('WORKOS_AUTHKIT_DOMAIN is not configured');
+    }
   });
 });
