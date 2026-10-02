@@ -7,7 +7,7 @@
  */
 
 import type { Article } from '@/lib/api'
-import { articlesFromApi } from '@/lib/mongodb/articles'
+import { articleDetailFromApi, articlesFromApi } from '@/lib/mongodb/articles'
 import { GatewayError, gatewayGet } from './client'
 
 interface RelatedWire {
@@ -30,6 +30,31 @@ export async function fetchRelatedArticles(articleId: string, limit: number): Pr
     // related rail — not a failure to fall back from. The direct read answers
     // the same question the same way (`[]`).
     if (error instanceof GatewayError && error.status === 404) return []
+    throw error
+  }
+}
+
+/**
+ * One public article for its page, with its source and newsroom, cached five
+ * minutes per article at the API and here.
+ *
+ * `null` is the API's 404: missing, or not public (moderated out). Anything
+ * else that goes wrong throws, so the caller can tell "absent" from "could not
+ * look" — the article page must never answer 404 for an outage, which would be
+ * a deindex signal for a live article.
+ */
+export async function fetchArticleDetail(articleId: string): Promise<Article | null> {
+  try {
+    const { data } = await gatewayGet<{ article: unknown; source: unknown; publisher: unknown }>(
+      `/v1/news/articles/${encodeURIComponent(articleId)}/detail`,
+      {},
+      { revalidate: 300, tags: ['article', `article:${articleId}`], timeoutMs: 6000 },
+    )
+    const article = articleDetailFromApi(data)
+    if (!article) throw new GatewayError('article detail had no usable article document', 200)
+    return article
+  } catch (error) {
+    if (error instanceof GatewayError && error.status === 404) return null
     throw error
   }
 }

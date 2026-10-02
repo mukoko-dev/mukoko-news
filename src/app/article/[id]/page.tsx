@@ -1,7 +1,7 @@
 import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { articleExists, getArticleById } from "@/lib/mongodb/articles";
+import { getArticleDetail, getArticleExists } from "@/lib/article-read";
 import { getArticleUrl, BASE_URL } from "@/lib/constants";
 import { isValidImageUrl } from "@/lib/utils";
 import ArticleDetailClient from "./article-detail-client";
@@ -21,13 +21,13 @@ export const revalidate = 300;
 // should 404, but a MongoDB outage must not — answering 404 for a transient
 // read failure would hand Google a deindex signal for every live article.
 type ArticleFetch =
-  | { status: "ok"; article: NonNullable<Awaited<ReturnType<typeof getArticleById>>> }
+  | { status: "ok"; article: NonNullable<Awaited<ReturnType<typeof getArticleDetail>>> }
   | { status: "missing" }
   | { status: "unavailable" };
 
 const fetchArticle = cache(async (id: string): Promise<ArticleFetch> => {
   try {
-    const article = await getArticleById(id);
+    const article = await getArticleDetail(id);
     return article ? { status: "ok", article } : { status: "missing" };
   } catch (error) {
     console.error("[ArticlePage] Failed to fetch article:", id, error);
@@ -135,7 +135,7 @@ export default async function ArticleDetailPage({ params }: Props) {
   // `route-status-codes.test.ts` keeps a `loading.tsx` from coming back.
   //
   // `null` is "we could not look", and is NOT a 404 — see `articleExists`.
-  if ((await articleExists(id)) === false) notFound();
+  if ((await getArticleExists(id)) === false) notFound();
 
   return (
     <Suspense fallback={<ArticlePageSkeleton />}>
