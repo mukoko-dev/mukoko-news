@@ -28,7 +28,7 @@
     "@radix-ui/react-scroll-area": "^1.2.2",
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-tabs": "^1.1.21",
-    "@radix-ui/react-toast": "^1.2.4",
+    "@radix-ui/react-toast": "^1.2.23",
     "@workos-inc/authkit-js": "^0.20.1",
     "@workos-inc/authkit-nextjs": "^4.1.1",
     "@workos-inc/node": "^10.2.0",
