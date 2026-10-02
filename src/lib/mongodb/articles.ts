@@ -901,6 +901,54 @@ export async function getSavedArticles(sessionId: string): Promise<{ articles: A
   return { articles: await getArticlesByIds(saves.map(s => s.articleId as string)) }
 }
 
+// ── Documents from the Nyuchi API ────────────────────────────────────────────
+
+/** A JSON date (ISO string) back into a Date; anything unparseable stays absent. */
+function reviveDate(value: unknown): Date | undefined {
+  if (value instanceof Date) return value
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? undefined : d
+}
+
+/**
+ * Article and feed-source documents served by the Nyuchi API, as `Article`s.
+ *
+ * The API returns the same documents this module reads (projected the same
+ * way), but as JSON, so their dates arrive as ISO strings. They are revived
+ * here and then go through the one `toArticle` every other read uses — so a
+ * card is built identically whichever path fetched it. `createdAt` and
+ * `updatedAt` fall back to `datePublished`, because `toArticle` treats both as
+ * present and a document without them must not throw a whole list away.
+ */
+export function articlesFromApi(docs: unknown[], sources: unknown[]): Article[] {
+  const sourceMap = new Map<string, MongoFeedSource>()
+  for (const raw of sources) {
+    if (!raw || typeof raw !== 'object') continue
+    const s = raw as Record<string, unknown>
+    if (typeof s._id !== 'string') continue
+    sourceMap.set(s._id, {
+      ...(s as unknown as MongoFeedSource),
+      lastSuccessfulFetchAt: reviveDate(s.lastSuccessfulFetchAt),
+      createdAt: reviveDate(s.createdAt),
+    } as MongoFeedSource)
+  }
+
+  const out: Article[] = []
+  for (const raw of docs) {
+    if (!raw || typeof raw !== 'object') continue
+    const d = raw as Record<string, unknown>
+    if (typeof d._id !== 'string') continue
+    const published = reviveDate(d.datePublished)
+    const created = reviveDate(d.createdAt) ?? published
+    const updated = reviveDate(d.updatedAt) ?? created
+    if (!created || !updated) continue
+    const doc = { ...d, datePublished: published, createdAt: created, updatedAt: updated } as unknown as MongoArticle
+    out.push(toArticle(doc, sourceMap.get(doc.feedSourceId)))
+  }
+  return out
+}
+
 // ── Topic timeline (developing-story surface) ────────────────────────────────
 
 /**

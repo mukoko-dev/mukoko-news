@@ -22,7 +22,9 @@ vi.mock('@/components/publisher/publisher-claim-form', () => ({
   PublisherClaimForm: () => null,
 }));
 vi.mock('@/lib/actions/feed', () => ({
-  getTopicTimelineAction: vi.fn(),
+  // The topic page's metadata now reads the timeline (to mark an empty or
+  // degraded page noindex), so the mock has to answer like the real action.
+  getTopicTimelineAction: vi.fn(async (slug: string) => ({ topic: slug, articles: [], total: 3, ok: true })),
   getSectionedFeedAction: vi.fn(),
   getCategoriesAction: vi.fn(),
 }));
