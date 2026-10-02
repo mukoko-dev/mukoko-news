@@ -22,7 +22,7 @@
     "ci:check": "tsc --noEmit"
   },
   "dependencies": {
-    "@radix-ui/react-avatar": "^1.1.2",
+    "@radix-ui/react-avatar": "^1.2.6",
     "@radix-ui/react-dialog": "^1.1.4",
     "@radix-ui/react-dropdown-menu": "^2.1.4",
     "@radix-ui/react-scroll-area": "^1.2.2",
