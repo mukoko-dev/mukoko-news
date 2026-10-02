@@ -11,6 +11,7 @@ The **Next.js 15 frontend only** for Mukoko News, deployed to Vercel. It reads M
 The platform runs one MongoDB Atlas cluster with many **domain-separated databases**, each the single source of truth for its domain. From the frontend:
 
 - **Reads** go through Server Actions (`src/lib/actions/feed.ts` → `src/lib/mongodb/*.ts`) to the **`news`** database. Never read through the gateway Worker.
+- **Reads are migrating to the Nyuchi API** (`api.nyuchi.com/v1`, nyuchi/api-gateway — not the news gateway Worker) through `viaGateway()` in `src/lib/nyuchi-api/client.ts`, behind `NEWS_DATA_SOURCE` with the direct read as the fallback. Do not add a new direct MongoDB read; add the endpoint to the API (see that repo's `docs/architecture/data-access.md`).
 - **Engagement writes** (like/view/save) go through Route Handlers under `src/app/api/articles/[id]/*` — rate-limited.
 - **Admin mutations** are the **only** frontend→gateway calls (`src/lib/admin/gateway.ts`), forwarding the WorkOS token so the Worker re-verifies RBAC.
 - **Never silo another domain's records** into an article or a new collection. Category/tag data the feed reads lives under the article's `engagement.{interest_categories,tags}` (a denormalised cache the pipeline writes); the frontend **reads** it — it does not invent new article sub-objects for places, entities, or other domains.
