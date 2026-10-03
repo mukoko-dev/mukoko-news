@@ -2,7 +2,7 @@
  * Shared constants for the agent-discovery surface (the `/.well-known/*` +
  * `/auth.md` + WebMCP endpoints that make news.mukoko.com discoverable to AI
  * agents). Values mirror the REAL config the gateway already advertises:
- *  - the MCP server lives at news.mukoko.dev/mcp (nyuchi/mukoko-news-gateway),
+ *  - the MCP server lives at news.mukoko.dev/mcp (mukoko-dev/mukoko-news-gateway),
  *  - the OAuth authorization server is WorkOS AuthKit, read from the
  *    WORKOS_AUTHKIT_DOMAIN env var (set per environment, never hardcoded — the
  *    same value the gateway's /.well-known/oauth-authorization-server reads).

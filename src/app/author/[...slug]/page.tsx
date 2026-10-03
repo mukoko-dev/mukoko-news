@@ -288,7 +288,7 @@ export default async function AuthorRoute({ params }: AuthorRouteProps) {
     .filter((c): c is { key: string; count: number; label: string } => Boolean(c.label))
   // `engagement.topics` is the closed set of 12 the pipeline classifies against.
   // Measured 2026-09-10 it is written on NO article in this corpus — the
-  // collection is seeded separately (nyuchi/mukoko-news-gateway#16) and the
+  // collection is seeded separately (mukoko-dev/mukoko-news-gateway#16) and the
   // enrichment worker still runs on its pinned fallback — so this panel renders
   // nothing today and lights up on its own when the pipeline starts writing it.
   const topics: LabelledFacet[] = profile.topics.map((t) => ({ ...t, label: humanise(t.key) }))
