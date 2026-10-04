@@ -72,7 +72,10 @@ jobs:
         run: |
           set -euo pipefail
           # Query the REMOTE for tags (robust regardless of what checkout fetched).
-          if git ls-remote --tags --refs origin 'v*' | grep -qE 'refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$'; then
+          # Captured first: `ls-remote | grep -q` under pipefail fails on the
+          # SIGPIPE when grep exits early, which read as "no tags".
+          tags="$(git ls-remote --tags --refs origin 'v*')"
+          if grep -qE 'refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$' <<< "$tags"; then
             echo "bootstrap=false" >> "$GITHUB_OUTPUT"
           else
             echo "bootstrap=true" >> "$GITHUB_OUTPUT"
