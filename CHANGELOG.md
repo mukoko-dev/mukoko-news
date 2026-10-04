@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Patched transitive dependencies** (tooling and dev server only). The `pnpm-workspace.yaml` overrides now lift `brace-expansion` 1 and 2 to `^1.1.21` / `^2.1.7` and `undici` 7 (pulled in by `miniflare`) to `^7.30.0`, closing the open Dependabot alerts.
+
 ### Added
 
 - **Account-backed saves & likes.** Engagement is now keyed to the signed-in WorkOS user (`user:<id>` subject key) instead of only the anonymous `mukoko_session` cookie, so saved articles and likes follow the account across devices. On the first signed-in interaction (or `/saved` read), anonymous cookie history is claimed for the user — overlaps keep the user's copy (`src/lib/engagement.ts`). `/saved` shows a "sign in to sync" nudge to anonymous readers. The document field stays `sessionId` (an opaque subject key to the gateway/pipeline); counts and aggregation are unchanged.
