@@ -1,113 +1,53 @@
-name: Release (auto version + tag)
+name: Release
 
-# Every merge to main bumps the MINOR version by 0.1.0 and pushes a matching
-# vX.Y.0 annotated tag + GitHub Release. Authors only add a `## [x.y.0]` section
-# to CHANGELOG.md in their PR; CI owns the VERSION file and the tag.
-# GATED ON CI, not on the push. This used to trigger on `push: branches: [main]`,
-# which cut a version, an annotated tag and a GitHub Release on EVERY merge —
-# whether or not the tests passed. That is not theoretical: v4.28.0 and v4.29.0
-# were both released off a `main` whose latest CI run had failed the coverage
-# gate, and because the bot's own commit carries `[skip ci]` the release commit
-# is never checked either, so `main` was left with no green verdict at all while
-# still shipping tagged releases.
+# Releasing is a merge to main; nobody pushes a tag by hand. When the
+# "Test & Deploy Mukoko News" workflow passes on a push to main, this reads
+# the VERSION file and, if `v<version>` is not tagged yet, tags the
+# CI-validated commit and publishes a GitHub release (generated notes), using
+# the RELEASE_BUMP_TOKEN org secret. A merge that does not change VERSION
+# finds its tag already there and does nothing.
 #
-# `workflow_run` fires only after the test workflow COMPLETES, and the `if` below
-# admits only a successful conclusion. A red `main` now gets no tag and no
-# release — the version numbers go back to meaning "this was verified".
+# Versioning policy (nyuchi/.github#80): a release to main is the next
+# MINOR above the highest tag, and VERSION must say so (the run fails and
+# names the right version otherwise); merges into staging are tagged as
+# patches by staging-version.yml; a MAJOR only by hand, from the Actions tab
+# with bump: major. Each segment holds 0..999.
 #
-# Self-triggering is prevented twice over: the release commit carries `[skip ci]`
-# so the test workflow never runs on it (hence no `workflow_run` to chain from),
-# and the `chore(release):` guard below still holds independently of that.
+# The staging -> main release PR carries the VERSION bump and its
+# `## [x.y.0]` CHANGELOG section. This job no longer commits to main.
+#
+# The logic is nyuchi/.github's reusable-auto-tag.yml.
+
 on:
   workflow_run:
     workflows: ["Test & Deploy Mukoko News"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: >-
+          Versioning policy override. main releases the next minor; a major
+          is only ever made by hand, here.
+        type: choice
+        options: [minor, patch, major]
+        default: minor
 
 permissions:
-  contents: write
-
-concurrency: release-${{ github.ref }}
+  contents: read
 
 jobs:
-  release:
-    # Two conditions, both required.
-    #   1. The test workflow must have SUCCEEDED. `workflow_run` fires on every
-    #      completion — failure, cancelled and timed_out included — so without
-    #      this the gate would be decorative.
-    #   2. The bot's own release commit is skipped so it cannot trigger itself.
-    # `github.event.head_commit` does not exist on a `workflow_run` event; the
-    # triggering commit is under `github.event.workflow_run.head_commit`.
+  tag:
     if: >-
-      ${{ github.event.workflow_run.conclusion == 'success'
-      && !startsWith(github.event.workflow_run.head_commit.message, 'chore(release):') }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          fetch-tags: true # checkout does NOT fetch tags by default even with depth 0
-          ref: main # tip of main (not the trigger SHA) so rapid merges don't tag a stale commit
-          # Org-wide release PAT so the push to a protected `main` and the tag/release
-          # are allowed (the default GITHUB_TOKEN can't bypass branch protection).
-          # Set the org secret name here if it differs from RELEASE_BUMP_TOKEN.
-          token: ${{ secrets.RELEASE_BUMP_TOKEN }}
-
-      - name: Compute next version
-        id: v
-        run: |
-          set -euo pipefail
-          # Query the REMOTE for tags (robust regardless of what checkout fetched).
-          LATEST="$(git ls-remote --tags --refs origin 'v*' \
-            | awk -F/ '{print $NF}' \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-            | sort -V | tail -n1 || true)"
-          if [ -n "$LATEST" ]; then
-            BASE="${LATEST#v}"
-            IFS=. read -r MA MI _ <<< "$BASE"
-            NEW="${MA}.$((MI + 1)).0"
-          else
-            # Bootstrap: the FIRST release tags the current VERSION file as-is (no bump).
-            NEW="$(cat VERSION 2>/dev/null || echo '0.1.0')"
-          fi
-          echo "new=$NEW" >> "$GITHUB_OUTPUT"
-          echo "Next version: v$NEW"
-
-      - name: Tag + bump VERSION + release
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_BUMP_TOKEN }}
-          NEW: ${{ steps.v.outputs.new }}
-        run: |
-          set -euo pipefail
-          # Existence check against the REMOTE (a prior run's tag may not be local).
-          if git ls-remote --tags --refs origin "v$NEW" | grep -q .; then
-            echo "Tag v$NEW already exists on origin — nothing to do."; exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          # Bump VERSION on main (if it changed), with a rebase-retry against a
-          # concurrent release commit from a near-simultaneous merge.
-          if [ "$(cat VERSION 2>/dev/null || true)" != "$NEW" ]; then
-            echo "$NEW" > VERSION
-            git add VERSION
-            git commit -m "chore(release): v$NEW [skip ci]"
-            pushed=false
-            for attempt in 1 2 3; do
-              if git push origin HEAD:main; then pushed=true; break; fi
-              git pull --rebase origin main || true
-              sleep $((attempt * 2))
-            done
-            [ "$pushed" = true ] || { echo "Failed to push VERSION bump to main." >&2; exit 1; }
-          fi
-
-          # ANNOTATED tag pushed EXPLICITLY (a lightweight tag would be skipped by
-          # --follow-tags and never reach the remote — the whole point of this job).
-          git tag -a "v$NEW" -m "v$NEW"
-          git push origin "v$NEW"
-
-          # Create the release only if it doesn't already exist — don't blanket-swallow
-          # real failures (auth/network) into a green run with no release.
-          if ! gh release view "v$NEW" >/dev/null 2>&1; then
-            gh release create "v$NEW" --title "v$NEW" --generate-notes
-          fi
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push')
+    uses: nyuchi/.github/.github/workflows/reusable-auto-tag.yml@924e5b4d0983d31379aedbec02b990793f29c792 # main, 2026-10-04
+    with:
+      version-command: cat VERSION
+      channel: main
+      bump: ${{ inputs.bump || '' }}
+      ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      create-release: true
+    secrets:
+      token: ${{ secrets.RELEASE_BUMP_TOKEN }}
