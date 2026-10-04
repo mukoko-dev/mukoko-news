@@ -1,7 +1,12 @@
 name: Release (auto version + tag)
 
 # Every merge to main bumps the MINOR version by 0.1.0 and pushes a matching
-# vX.Y.0 annotated tag + GitHub Release. Authors only add a `## [x.y.0]` section
+# vX.Y.0 annotated tag + GitHub Release. This is the org versioning policy
+# (nyuchi/.github#80): a release to main is a MINOR, a merge into staging is a
+# PATCH (staging-version.yml), and a MAJOR is only ever made by hand: run this
+# workflow from the Actions tab with bump: major. Each segment holds 0..999;
+# minor 999 stops and asks for that manual major. The next version comes from
+# the shared next-version action, pinned below. Authors only add a `## [x.y.0]` section
 # to CHANGELOG.md in their PR; CI owns the VERSION file and the tag.
 # GATED ON CI, not on the push. This used to trigger on `push: branches: [main]`,
 # which cut a version, an annotated tag and a GitHub Release on EVERY merge —
@@ -23,6 +28,13 @@ on:
     workflows: ["Test & Deploy Mukoko News"]
     types: [completed]
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Bump for this release. major is only ever made by hand, here.
+        type: choice
+        options: [minor, patch, major]
+        default: minor
 
 permissions:
   contents: write
@@ -38,12 +50,14 @@ jobs:
     #   2. The bot's own release commit is skipped so it cannot trigger itself.
     # `github.event.head_commit` does not exist on a `workflow_run` event; the
     # triggering commit is under `github.event.workflow_run.head_commit`.
+    #   A manual run (workflow_dispatch) is a person's release and skips both.
     if: >-
-      ${{ github.event.workflow_run.conclusion == 'success'
-      && !startsWith(github.event.workflow_run.head_commit.message, 'chore(release):') }}
+      ${{ github.event_name == 'workflow_dispatch'
+      || (github.event.workflow_run.conclusion == 'success'
+      && !startsWith(github.event.workflow_run.head_commit.message, 'chore(release):')) }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
         with:
           fetch-depth: 0
           fetch-tags: true # checkout does NOT fetch tags by default even with depth 0
@@ -53,22 +67,38 @@ jobs:
           # Set the org secret name here if it differs from RELEASE_BUMP_TOKEN.
           token: ${{ secrets.RELEASE_BUMP_TOKEN }}
 
-      - name: Compute next version
-        id: v
+      - name: Is this the first release?
+        id: latest
         run: |
           set -euo pipefail
           # Query the REMOTE for tags (robust regardless of what checkout fetched).
-          LATEST="$(git ls-remote --tags --refs origin 'v*' \
-            | awk -F/ '{print $NF}' \
-            | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' \
-            | sort -V | tail -n1 || true)"
-          if [ -n "$LATEST" ]; then
-            BASE="${LATEST#v}"
-            IFS=. read -r MA MI _ <<< "$BASE"
-            NEW="${MA}.$((MI + 1)).0"
+          if git ls-remote --tags --refs origin 'v*' | grep -qE 'refs/tags/v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "bootstrap=false" >> "$GITHUB_OUTPUT"
           else
+            echo "bootstrap=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Compute next version (org versioning policy)
+        id: policy
+        if: steps.latest.outputs.bootstrap != 'true'
+        uses: nyuchi/.github/.github/actions/next-version@de909ab7468d998ba2cf87416ac2042616eba75d  # main, 2026-10-04
+        with:
+          channel: main
+          bump: ${{ inputs.bump || '' }}
+          manual: ${{ github.event_name == 'workflow_dispatch' }}
+
+      - name: Resolve version
+        id: v
+        env:
+          BOOTSTRAP: ${{ steps.latest.outputs.bootstrap }}
+          NEXT: ${{ steps.policy.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$BOOTSTRAP" = "true" ]; then
             # Bootstrap: the FIRST release tags the current VERSION file as-is (no bump).
             NEW="$(cat VERSION 2>/dev/null || echo '0.1.0')"
+          else
+            NEW="$NEXT"
           fi
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
           echo "Next version: v$NEW"
