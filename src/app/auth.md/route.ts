@@ -1,14 +1,14 @@
-import { SITE_URL, GATEWAY_URL, MCP_ENDPOINT, OAUTH_ISSUER, MCP_CLIENT_ID } from '@/lib/agent-discovery'
+import { SITE_URL, GATEWAY_URL, MCP_ENDPOINT, MCP_CLIENT_ID, authkitMissingResponse, oauthIssuer } from '@/lib/agent-discovery'
 
 // /auth.md — human- and agent-readable authentication guide, served as Markdown
 // from the site root (the auth.md convention: https://workos.com/auth-md).
-// Describes the REAL flow: WorkOS AuthKit (identity.nyuchi.com) via OAuth 2.0
+// Describes the REAL flow: WorkOS AuthKit (WORKOS_AUTHKIT_DOMAIN) via OAuth 2.0
 // authorization-code + PKCE, using the published public MCP client. We do NOT
 // advertise a dynamic-registration endpoint because the platform doesn't run
 // open DCR — agents use the fixed public client id below.
 export const runtime = 'edge'
 
-const BODY = `# auth.md
+const body = (OAUTH_ISSUER: string) => `# auth.md
 
 Authentication for agents accessing **Mukoko News** (${SITE_URL}) and its product
 API + Model Context Protocol server at ${GATEWAY_URL}.
@@ -33,9 +33,9 @@ Authentication is handled by **WorkOS AuthKit**. Discovery metadata:
 | Field | Value |
 | --- | --- |
 | \`issuer\` | \`${OAUTH_ISSUER}\` |
-| \`authorization_endpoint\` | \`${OAUTH_ISSUER}/oauth/authorize\` |
-| \`token_endpoint\` | \`${OAUTH_ISSUER}/oauth/token\` |
-| \`jwks_uri\` | \`${OAUTH_ISSUER}/.well-known/jwks.json\` |
+| \`authorization_endpoint\` | \`${new URL('/oauth2/authorize', OAUTH_ISSUER).href}\` |
+| \`token_endpoint\` | \`${new URL('/oauth2/token', OAUTH_ISSUER).href}\` |
+| \`jwks_uri\` | \`${new URL('/oauth2/jwks', OAUTH_ISSUER).href}\` |
 | \`grant_types_supported\` | \`authorization_code\`, \`refresh_token\` |
 | \`code_challenge_methods_supported\` | \`S256\` (PKCE required) |
 | \`token_endpoint_auth_methods_supported\` | \`none\` (public client) |
@@ -68,7 +68,9 @@ Operated by Nyuchi Africa. See ${SITE_URL}/privacy and ${SITE_URL}/terms.
 `
 
 export function GET() {
-  return new Response(BODY, {
+  const issuer = oauthIssuer()
+  if (!issuer) return authkitMissingResponse()
+  return new Response(body(issuer), {
     headers: {
       'Content-Type': 'text/markdown; charset=utf-8',
       'Access-Control-Allow-Origin': '*',

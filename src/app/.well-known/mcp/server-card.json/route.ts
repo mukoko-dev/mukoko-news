@@ -1,4 +1,5 @@
 import { getLiveCoverageAction } from '@/lib/actions/coverage'
+import { oauthIssuer } from '@/lib/agent-discovery'
 
 /**
  * The MCP server card, generated rather than served from `public/`.
@@ -15,6 +16,9 @@ export const revalidate = 3600
 
 export async function GET(): Promise<Response> {
   const { claim } = await getLiveCoverageAction()
+  // From configuration only (WORKOS_AUTHKIT_DOMAIN); when unset, advertise no
+  // authorization server rather than a guessed one (auth is optional here).
+  const issuer = oauthIssuer()
 
   const card = {
     "serverInfo": {
@@ -33,9 +37,7 @@ export async function GET(): Promise<Response> {
     },
     "authorization": {
       "type": "oauth2",
-      "authorization_servers": [
-        "https://identity.nyuchi.com"
-      ],
+      "authorization_servers": issuer ? [issuer] : [],
       "required": false
     },
     "documentation": "https://news.mukoko.com/auth.md",
