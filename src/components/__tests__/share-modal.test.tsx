@@ -81,7 +81,7 @@ describe('ShareModal', () => {
     it('should render all share options', () => {
       render(<ShareModal article={mockArticle} isOpen={true} onClose={() => {}} />);
 
-      expect(screen.getByText('Twitter')).toBeInTheDocument();
+      expect(screen.getByText('X')).toBeInTheDocument();
       expect(screen.getByText('Facebook')).toBeInTheDocument();
       expect(screen.getByText('WhatsApp')).toBeInTheDocument();
       expect(screen.getByText('LinkedIn')).toBeInTheDocument();
@@ -186,14 +186,14 @@ describe('ShareModal', () => {
   });
 
   describe('social share buttons', () => {
-    it('should open Twitter share URL', () => {
+    it('should open X share URL', () => {
       const onClose = vi.fn();
       render(<ShareModal article={mockArticle} isOpen={true} onClose={onClose} />);
 
-      fireEvent.click(screen.getByText('Twitter'));
+      fireEvent.click(screen.getByText('X'));
 
       expect(mockOpen).toHaveBeenCalledWith(
-        expect.stringContaining('twitter.com/intent/tweet'),
+        expect.stringContaining('x.com/intent/tweet'),
         '_blank',
         'width=600,height=400'
       );
