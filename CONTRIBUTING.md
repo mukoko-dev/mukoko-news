@@ -217,16 +217,19 @@ Releases follow the org versioning policy ([nyuchi/.github#80](https://github.co
 
 - A merge into `staging` (the live beta) is a **patch**, tagged by
   [`staging-version.yml`](.github/workflows/staging-version.yml).
-- A merge to `main` is a **minor**: once CI is green,
-  [`release.yml`](.github/workflows/release.yml) writes `VERSION`, tags
-  `vX.Y.0` and publishes a GitHub Release.
-- A **major** is only ever made by hand: run _Release (auto version + tag)_ from the Actions
-  tab with `bump: major`.
+- A release to `main` is a **minor**: the staging -> main release PR sets
+  `VERSION` to the next minor above the highest tag and adds its
+  `## [x.y.0]` CHANGELOG section. Once CI is green on `main`,
+  [`release.yml`](.github/workflows/release.yml) checks `VERSION` against the
+  policy, tags `vX.Y.0` and publishes a GitHub Release. It commits nothing.
+- A **major** is only ever made by hand: merge `VERSION` set to `X.0.0` to
+  `main` (the automatic release run fails the policy check, by design), then
+  run _Release_ from the Actions tab on `main` with `bump: major`. A manual
+  run on any other branch does nothing.
 - Each segment holds 0–999. Patch 999 rolls into the next minor; minor 999
   stops and asks for that manual major.
 
-Add a `## [x.y.0]` section to `CHANGELOG.md` in your PR as before. Versions
-released before 2026-10-04 are not renumbered.
+Versions released before 2026-10-04 are not renumbered.
 
 ## Getting Help
 

@@ -2,7 +2,7 @@ name: Test & Deploy Mukoko News
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
   # No `branches:` filter on pull_request, deliberately. Filtering to `main`
   # meant a PR based on ANOTHER PR never ran test or build — measured on this
   # repo, three stacked PRs sat at two checks each (claude-review and a Vercel
