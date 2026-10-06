@@ -11,14 +11,11 @@ release to `main` is a minor, and a major is only ever made by hand
 
 ---
 
-## [4.82.0]
-
-### Changed
-
-- **Versioning follows the org policy (nyuchi/.github#80).** Merges into `staging` are tagged as patches (`staging-version.yml`); a release to `main` is the next minor, read from `VERSION` and tagged by the org's `reusable-auto-tag.yml` once CI passes. The release workflow no longer commits to `main`.
-- CI (`Test & Deploy Mukoko News`) and Dependency Review now also run for `staging`. Production still deploys only through Vercel's Git integration on `main`.
-
 ## [Unreleased]
+
+## [4.82.0] - 2026-10-06
+
+Everything merged to `main` since v4.81.0, tagged as the first minor under the org versioning policy.
 
 ### Security
 
@@ -35,6 +32,9 @@ release to `main` is a minor, and a major is only ever made by hand
 
 ### Changed
 
+- **Versioning follows the org policy (nyuchi/.github#80).** Merges into `staging` are tagged as patches (`staging-version.yml`); a release to `main` is the next minor, read from `VERSION` and tagged by the org's `reusable-auto-tag.yml` once CI passes. The release workflow no longer commits to `main`.
+- CI (`Test & Deploy Mukoko News`) and Dependency Review now also run for `staging`. Production still deploys only through Vercel's Git integration on `main`.
+- **Share dialog: X, not Twitter.** lucide-react 0.468 -> 1.49 (#234); lucide 1.x has no brand icons, so X, Facebook and LinkedIn are drawn from simple-icons glyphs (`src/components/brand-icons.tsx`) and the share link is `x.com/intent/tweet`.
 - **Vite+ tooling** (tooling only, no app change). `vite-plus` ^1.0.0 is a dev dependency and `vite.config.ts` carries the org format settings with type-aware linting and type checking on; `check` / `lint` / `fmt` scripts run `vp`. CI's org-required `vite-plus / check` runs the transitional `ci:check` (`tsc --noEmit`) until the sources are formatted.
 - **Sign-in is the WorkOS-HOSTED AuthKit page (owner correction 2026-07-09 — supersedes the 2026-07-02 inline-form doctrine).** Every sign-in entry point (`/sign-in`, `/admin`, `/dashboard`, `/profile`, the publisher claim form) now funnels through `/sign-in` → `/auth/login` → the hosted page. The hosted page owns the whole flow — Magic Auth, passwords, passkeys, and the environment-required **MFA step-up** — and maintains the shared AuthKit session on the auth domain, giving **continuous sign-in across the Mukoko/Nyuchi apps** (all AuthKit applications in one WorkOS environment). See `auth.md`.
 - `/sign-in` renders a manual-retry error card when the OAuth callback fails (no auto-redirect loop); already-signed-in users still skip straight to `returnTo`.
