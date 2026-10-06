@@ -10,8 +10,11 @@ name: Release
 # Versioning policy (nyuchi/.github#80): a release to main is the next
 # MINOR above the highest tag, and VERSION must say so (the run fails and
 # names the right version otherwise); merges into staging are tagged as
-# patches by staging-version.yml; a MAJOR only by hand, from the Actions tab
-# with bump: major. Each segment holds 0..999.
+# patches by staging-version.yml. A MAJOR only by hand: merge VERSION=X.0.0
+# to main (the automatic run then fails the policy check), then run this
+# workflow from the Actions tab on `main` with bump: major. Each segment
+# holds 0..999. A manual run on any branch other than main does nothing, so
+# a release can never be tagged on a staging commit.
 #
 # The staging -> main release PR carries the VERSION bump and its
 # `## [x.y.0]` CHANGELOG section. This job no longer commits to main.
@@ -39,7 +42,7 @@ permissions:
 jobs:
   tag:
     if: >-
-      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push')
     uses: nyuchi/.github/.github/workflows/reusable-auto-tag.yml@924e5b4d0983d31379aedbec02b990793f29c792 # main, 2026-10-04
