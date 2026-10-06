@@ -222,8 +222,10 @@ Releases follow the org versioning policy ([nyuchi/.github#80](https://github.co
   `## [x.y.0]` CHANGELOG section. Once CI is green on `main`,
   [`release.yml`](.github/workflows/release.yml) checks `VERSION` against the
   policy, tags `vX.Y.0` and publishes a GitHub Release. It commits nothing.
-- A **major** is only ever made by hand: run _Release_ from the Actions
-  tab with `bump: major`.
+- A **major** is only ever made by hand: merge `VERSION` set to `X.0.0` to
+  `main` (the automatic release run fails the policy check, by design), then
+  run _Release_ from the Actions tab on `main` with `bump: major`. A manual
+  run on any other branch does nothing.
 - Each segment holds 0–999. Patch 999 rolls into the next minor; minor 999
   stops and asks for that manual major.
 
