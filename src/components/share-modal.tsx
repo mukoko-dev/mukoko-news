@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useId } from "react";
-import { X, Link, Check, Twitter, Facebook, Linkedin, MessageCircle, Share2 } from "lucide-react";
+import { X, Link, Check, MessageCircle, Share2 } from "lucide-react";
+import { XIcon, FacebookIcon, LinkedInIcon } from "@/components/brand-icons";
 import type { Article } from "@/lib/api";
 
 interface ShareModalProps {
@@ -107,7 +108,7 @@ export function ShareModal({ article, isOpen, onClose }: ShareModalProps) {
   };
 
   const handleShareTwitter = () => {
-    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    const url = `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
     window.open(url, "_blank", "width=600,height=400");
     onClose();
   };
@@ -131,10 +132,10 @@ export function ShareModal({ article, isOpen, onClose }: ShareModalProps) {
   };
 
   const shareOptions = [
-    { icon: Twitter, label: "Twitter", onClick: handleShareTwitter, color: "hover:bg-[#1DA1F2]/10 hover:text-[#1DA1F2]" },
-    { icon: Facebook, label: "Facebook", onClick: handleShareFacebook, color: "hover:bg-[#1877F2]/10 hover:text-[#1877F2]" },
+    { icon: XIcon, label: "X", onClick: handleShareTwitter, color: "hover:bg-foreground/10 hover:text-foreground" },
+    { icon: FacebookIcon, label: "Facebook", onClick: handleShareFacebook, color: "hover:bg-[#1877F2]/10 hover:text-[#1877F2]" },
     { icon: MessageCircle, label: "WhatsApp", onClick: handleShareWhatsApp, color: "hover:bg-[#25D366]/10 hover:text-[#25D366]" },
-    { icon: Linkedin, label: "LinkedIn", onClick: handleShareLinkedIn, color: "hover:bg-[#0A66C2]/10 hover:text-[#0A66C2]" },
+    { icon: LinkedInIcon, label: "LinkedIn", onClick: handleShareLinkedIn, color: "hover:bg-[#0A66C2]/10 hover:text-[#0A66C2]" },
   ];
 
   return (

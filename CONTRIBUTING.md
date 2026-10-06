@@ -11,6 +11,7 @@ Thank you for considering a contribution to Mukoko News! This guide covers the *
 - [Coding Standards](#coding-standards)
 - [Commit Messages](#commit-messages)
 - [Testing](#testing)
+- [Versioning](#versioning)
 - [Getting Help](#getting-help)
 
 ## Code of Conduct
@@ -209,6 +210,24 @@ vi.mock("@/lib/actions/feed", () => ({
 ```
 
 **Never** mock `@/lib/api` for page tests — that's the client-side helper used only by the embed widget and route handlers.
+
+## Versioning
+
+Releases follow the org versioning policy ([nyuchi/.github#80](https://github.com/nyuchi/.github/issues/80)):
+
+- A merge into `staging` (the live beta) is a **patch**, tagged by
+  [`staging-version.yml`](.github/workflows/staging-version.yml).
+- A release to `main` is a **minor**: the staging -> main release PR sets
+  `VERSION` to the next minor above the highest tag and adds its
+  `## [x.y.0]` CHANGELOG section. Once CI is green on `main`,
+  [`release.yml`](.github/workflows/release.yml) checks `VERSION` against the
+  policy, tags `vX.Y.0` and publishes a GitHub Release. It commits nothing.
+- A **major** is only ever made by hand: run _Release_ from the Actions
+  tab with `bump: major`.
+- Each segment holds 0–999. Patch 999 rolls into the next minor; minor 999
+  stops and asks for that manual major.
+
+Versions released before 2026-10-04 are not renumbered.
 
 ## Getting Help
 
