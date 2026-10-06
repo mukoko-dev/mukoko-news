@@ -13,9 +13,30 @@ release to `main` is a minor, and a major is only ever made by hand
 
 ## [Unreleased]
 
+## [4.82.0] - 2026-10-06
+
+What merged to `main` after v4.81.0. The first minor under the org versioning policy.
+
 ### Security
 
 - **Patched transitive dependencies** (tooling and dev server only). The `pnpm-workspace.yaml` overrides now lift `brace-expansion` 1 and 2 to `^1.1.21` / `^2.1.7` and `undici` 7 (pulled in by `miniflare`) to `^7.30.0`, closing the open Dependabot alerts.
+
+### Changed
+
+- **Versioning follows the org policy (nyuchi/.github#80).** Merges into `staging` are tagged as patches (`staging-version.yml`); a release to `main` is the next minor, read from `VERSION` and tagged by the org's `reusable-auto-tag.yml` once CI passes. The release workflow no longer commits to `main`.
+- CI (`Test & Deploy Mukoko News`) and Dependency Review now also run for `staging`. Production still deploys only through Vercel's Git integration on `main`.
+- **Share dialog: X, not Twitter.** lucide-react 0.468 -> 1.49 (#234); lucide 1.x has no brand icons, so X, Facebook and LinkedIn are drawn from simple-icons glyphs (`src/components/brand-icons.tsx`) and the share link is `x.com/intent/tweet`.
+- Dependency updates: React and `@types/react` (#218), Radix UI dialog, dropdown-menu, scroll-area, avatar and toast, `eslint-config-next` 16, `eslint-plugin-react-hooks` 7, `@testing-library/jest-dom` 7, `@types/node` 26.
+- References point at `mukoko-dev/mukoko-news` (#235).
+
+### Fixed
+
+- **The WorkOS session survives a transient refresh failure** (#237) instead of signing the reader out.
+- **The AuthKit domain is read only from configuration** (#227), never hardcoded.
+
+## [4.81.0] - 2026-10-02
+
+What the `[Unreleased]` section held when v4.81.0 was tagged.
 
 ### Added
 

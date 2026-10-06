@@ -27,6 +27,7 @@ permissions:
 
 jobs:
   version:
+    if: github.ref == 'refs/heads/staging'
     uses: nyuchi/.github/.github/workflows/reusable-staging-release.yml@924e5b4d0983d31379aedbec02b990793f29c792  # main, 2026-10-04
     with:
       bump: ${{ inputs.bump || '' }}
