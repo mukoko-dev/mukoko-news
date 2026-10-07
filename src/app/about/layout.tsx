@@ -6,21 +6,21 @@ import { getFullUrl } from "@/lib/constants";
 export const metadata: Metadata = {
   title: "About",
   description:
-    "Mukoko News is a Pan-African news aggregator built for African readers. “Mukoko” means beehive in Shona — where the community gathers and stores knowledge.",
+    "Mukoko News is a Pan-African news aggregator built for Africa, open to readers everywhere. “Mukoko” means beehive in Shona — where the community gathers and stores knowledge.",
   alternates: {
     canonical: getFullUrl("/about"),
   },
   openGraph: {
     title: "About Mukoko News",
     description:
-      "A Pan-African news aggregator built for African readers, starting in Zimbabwe.",
+      "A Pan-African news aggregator built for Africa, open to readers everywhere. Made in Zimbabwe.",
     url: getFullUrl("/about"),
     type: "website",
   },
   twitter: {
     card: "summary",
     title: "About Mukoko News",
-    description: "A Pan-African news aggregator built for African readers.",
+    description: "A Pan-African news aggregator built for Africa, open to readers everywhere.",
     creator: "@mukokoafrica",
   },
 };

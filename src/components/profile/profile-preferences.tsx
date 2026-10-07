@@ -151,8 +151,8 @@ export function ProfilePreferences({
           <span className="font-medium">Countries</span>
         </div>
         <p id="countries-hint" className="text-xs text-text-secondary mb-3">
-          Which countries your feed draws from. Select a country below; tap one of your chosen
-          countries to make it your primary.
+          Which countries your feed draws from. With none chosen, it draws from every country we
+          cover. Select a country below; tap one of your chosen countries to make it your primary.
         </p>
         <MultiSelect
           options={countryOptions}
