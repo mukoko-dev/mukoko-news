@@ -23,7 +23,7 @@ function buildValues(liveCount: number, scopeTotal: number) {
       icon: Users,
       title: "Community-first",
       description:
-        "“Mukoko” means beehive in Shona — where the community gathers and stores knowledge. The platform is built to serve African readers first.",
+        "“Mukoko” means beehive in Shona — where the community gathers and stores knowledge. The platform is built for Africa, and open to readers everywhere.",
     },
   ];
 }
