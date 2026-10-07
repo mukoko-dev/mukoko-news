@@ -48,11 +48,12 @@ describe('PreferencesContext', () => {
   );
 
   describe('initial state', () => {
-    it('should default to ZW when no localStorage data', async () => {
+    it('defaults to the pan-African feed (no country filter) when no localStorage data', async () => {
       const { result } = renderHook(() => usePreferences(), { wrapper });
 
       await waitFor(() => {
-        expect(result.current.selectedCountries).toContain('ZW');
+        expect(result.current.selectedCountries).toEqual([]);
+        expect(result.current.primaryCountry).toBeNull();
       });
     });
 
@@ -372,7 +373,7 @@ describe('PreferencesContext', () => {
 
       await waitFor(() => {
         // Should fallback to defaults
-        expect(result.current.selectedCountries).toEqual(['ZW']);
+        expect(result.current.selectedCountries).toEqual([]);
       });
 
       consoleSpy.mockRestore();
@@ -385,7 +386,7 @@ describe('PreferencesContext', () => {
 
       await waitFor(() => {
         // Should fallback to default
-        expect(result.current.selectedCountries).toEqual(['ZW']);
+        expect(result.current.selectedCountries).toEqual([]);
       });
     });
   });

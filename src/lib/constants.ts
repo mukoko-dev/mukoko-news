@@ -159,19 +159,27 @@ export const COUNTRY_SCOPE_TOTAL = COUNTRIES.length;
  * static files under `public/`.
  */
 export function coverageFragment(liveCount: number): string {
-  return `live in ${liveCount} African countries, with all ${COUNTRY_SCOPE_TOTAL} in scope`;
+  return `live in ${liveCount} African countries and growing (all ${COUNTRY_SCOPE_TOTAL} in scope), readable anywhere in the world`;
 }
 
 /** The same claim as a standalone sentence, including what "in scope" means. */
 export function coverageClaim(liveCount: number): string {
-  return `Live in ${liveCount} African countries, with all ${COUNTRY_SCOPE_TOTAL} African Union member states in scope — the rest are coming soon.`;
+  return `Live in ${liveCount} African countries and growing, with the rest of Africa's ${COUNTRY_SCOPE_TOTAL} coming soon. Readable anywhere in the world.`;
 }
 
 // Default feed preferences for first-time visitors (and for the server-rendered
 // initial feed). Must stay in sync between PreferencesContext defaults and the
 // server pages that prefetch the feed, so the client can skip its initial
 // refetch when the user's preferences match these defaults.
-export const DEFAULT_FEED_COUNTRIES: string[] = ["ZW"];
+//
+// Empty means no country filter: the pan-African feed, every country in scope.
+// It used to be ["ZW"], which gave a first-time reader in Lagos, Nairobi or
+// London a Zimbabwe-only feed. A per-visitor default (ZW for a Zimbabwean IP,
+// pan-African for everyone else) was considered and left out: the home page is
+// ISR-cached HTML with no request headers, so reading a country signal there
+// would make every home render dynamic. A reader narrows the feed by choosing
+// countries in onboarding or on their profile.
+export const DEFAULT_FEED_COUNTRIES: string[] = [];
 
 /**
  * Category emoji and colour mapping.
