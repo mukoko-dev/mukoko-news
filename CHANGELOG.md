@@ -13,9 +13,13 @@ release to `main` is a minor, and a major is only ever made by hand
 
 ## [Unreleased]
 
-## [4.82.0] - 2026-10-06
+## [4.82.0] - 2026-10-10
 
-What merged to `main` after v4.81.0. The first minor under the org versioning policy.
+What merged to `main` after v4.81.0. The first minor under the org versioning policy. (The 2026-10-06 merge to `main` deployed, but its tag run failed because `RELEASE_BUMP_TOKEN` was denied push access, so `v4.82.0` was never cut. It is cut with this release.)
+
+### Removed
+
+- **`favicon-48.png` and `favicon-180.png`** (#264). Nothing referenced them: `favicon.ico` carries 48px, and `favicon-180.png` was a duplicate of `apple-touch-icon.png`. The remaining 9-file icon set is the source of truth that mukoko-weather and mukoko-events copy byte for byte.
 
 ### Security
 
