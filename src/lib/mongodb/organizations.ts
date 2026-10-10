@@ -145,6 +145,19 @@ function toPublisher(doc: MongoMediaOrganization): PublisherOrganization | null 
   }
 }
 
+/**
+ * A newsroom document served by the Nyuchi API, as a `PublisherOrganization`.
+ * The same `toPublisher` rules as the catalogue read, so attribution is
+ * identical whichever path fetched it. `null` for anything that is not a named
+ * newsroom record.
+ */
+export function publisherFromApi(raw: unknown): PublisherOrganization | null {
+  if (!raw || typeof raw !== 'object') return null
+  const doc = raw as Partial<MongoMediaOrganization>
+  if (typeof doc._id !== 'string') return null
+  return toPublisher(doc as MongoMediaOrganization)
+}
+
 async function loadOrganizationMap(): Promise<OrganizationMap> {
   const db = await getDb()
   const docs = await db
