@@ -67,7 +67,7 @@
     "jsdom": "^27.4.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^5.7.2",
-    "vite": "^7.3.6",
+    "vite": "^8.3.3",
     "vite-plus": "^1.0.0",
     "vitest": "^4.1.11",
     "wrangler": "^4.130.0"
