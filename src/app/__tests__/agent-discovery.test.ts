@@ -26,8 +26,8 @@ vi.mock('@/lib/actions/coverage', () => ({
     codes: [],
     count: LIVE_COUNT,
     scopeTotal: COUNTRY_SCOPE_TOTAL,
-    fragment: `live in ${LIVE_COUNT} African countries, with all ${COUNTRY_SCOPE_TOTAL} in scope`,
-    claim: `Live in ${LIVE_COUNT} African countries, with all ${COUNTRY_SCOPE_TOTAL} African Union member states in scope — the rest are coming soon.`,
+    fragment: `live in ${LIVE_COUNT} African countries and growing (all ${COUNTRY_SCOPE_TOTAL} in scope), readable anywhere in the world`,
+    claim: `Live in ${LIVE_COUNT} African countries and growing, with the rest of Africa's ${COUNTRY_SCOPE_TOTAL} coming soon. Readable anywhere in the world.`,
     stale: false,
   }),
 }));

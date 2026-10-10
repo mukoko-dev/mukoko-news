@@ -16,7 +16,7 @@ Thank you for considering a contribution to Mukoko News! This guide covers the *
 
 ## Code of Conduct
 
-We are building for the Pan-African community. Treat all contributors with respect, be inclusive, and keep discussions constructive.
+We are building for Africa, and for anyone anywhere who reads it. Treat all contributors with respect, be inclusive, and keep discussions constructive.
 
 Security vulnerabilities must be reported to **<security@nyuchi.com>**, not via GitHub issues.
 

@@ -8,8 +8,9 @@
 Mukoko News aggregates hundreds of African newsrooms into one feed, so a reader in Harare
 can follow Lagos, Nairobi and Dakar without opening twenty tabs.
 
-All **54** African Union member states are in scope. How many are _live_ is a number the
-app measures rather than asserts — see [Coverage](#coverage).
+Built for Africa, readable anywhere in the world. All **54** African countries are in
+scope; how many are _live_ is a number the app measures rather than asserts — see
+[Coverage](#coverage).
 
 **Version:** 4.58.0 &nbsp;·&nbsp; **Live:** [news.mukoko.com](https://news.mukoko.com)
 
@@ -72,7 +73,7 @@ The frontend reads news data directly from MongoDB Atlas via Next.js Server Acti
 
 ## Coverage
 
-**All 54 African Union member states are in scope. The number that is _live_ is a query, not a constant.**
+**All 54 African countries are in scope, and the site is open to readers everywhere. The number that is _live_ is a query, not a constant.**
 
 `getLiveCoverageAction()` counts the countries that actually cleared the publishing bar in
 the last 30 days, and `coverageFragment(n)` / `coverageClaim(n)` in `src/lib/constants.ts`
