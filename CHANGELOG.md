@@ -13,6 +13,12 @@ release to `main` is a minor, and a major is only ever made by hand
 
 ## [Unreleased]
 
+### Changed
+
+- **Dependencies are declared as minimums, and vite-plus is 1.3.0.** Owner direction, 2026-10-21: "mark packages with minimum acceptable, latest shouldn't be a blocker on too old of a version." Every dependency and devDependency in `package.json`, and every security override in `pnpm-workspace.yaml`, is now `>=x.y.z` with no upper bound. Each `x.y.z` is the version `pnpm-lock.yaml` already resolved, so the deployed tree does not move.
+- The one deliberate move is vite-plus, from `^1.0.0` (resolved 1.0.0) to `>=1.3.0` (resolved 1.3.0). It brings oxfmt 0.73.0 and oxlint 1.88.0. The vitest copy that vite-plus carries moves from 5.0.1 to 5.0.5. The app's own vitest stays on 4.1.11.
+- The lockfile was regenerated with pnpm 10.28.0. Apart from vite-plus, no direct dependency's resolved version moved. pnpm collapsed some duplicate transitive copies onto the newer copy already in the tree, such as es-abstract 1.24.1 onto 1.24.2 and tinyglobby 0.2.15 onto 0.2.17.
+
 ## [4.82.0] - 2026-10-10
 
 What merged to `main` after v4.81.0. The first minor under the org versioning policy. (The 2026-10-06 merge to `main` deployed, but its tag run failed because `RELEASE_BUMP_TOKEN` was denied push access, so `v4.82.0` was never cut. It is cut with this release.)
