@@ -19,6 +19,10 @@ release to `main` is a minor, and a major is only ever made by hand
 - The one deliberate move is vite-plus, from `^1.0.0` (resolved 1.0.0) to `>=1.3.0` (resolved 1.3.0). It brings oxfmt 0.73.0 and oxlint 1.88.0. The vitest copy that vite-plus carries moves from 5.0.1 to 5.0.5. The app's own vitest stays on 4.1.11.
 - The lockfile was regenerated with pnpm 10.28.0. Apart from vite-plus, no direct dependency's resolved version moved. pnpm collapsed some duplicate transitive copies onto the newer copy already in the tree, such as es-abstract 1.24.1 onto 1.24.2 and tinyglobby 0.2.15 onto 0.2.17.
 
+### Security
+
+- **Floors for the org `audit` gate.** `next` is `>=15.5.28` (resolved 15.5.25 -> 15.5.28; GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r) and the dev `vite` is `>=7.3.7` (7.3.6 -> 7.3.7; GHSA-587h-7wmj-h5pm). In `pnpm-workspace.yaml` the `sharp` override is now `"sharp@<0.35.5": ">=0.35.5"` (0.35.4 -> 0.35.5, reached through `wrangler` > `miniflare`), and a new override `"source-map-js@<1.2.2": ">=1.2.2"` (1.2.1 -> 1.2.2, through `@tailwindcss/postcss`) closes GHSA-68fv-2mgg-jv7q. All are minimums with no maximum; the lock keeps Next on 15 and vite on 7.
+
 ## [4.82.0] - 2026-10-10
 
 What merged to `main` after v4.81.0. The first minor under the org versioning policy. (The 2026-10-06 merge to `main` deployed, but its tag run failed because `RELEASE_BUMP_TOKEN` was denied push access, so `v4.82.0` was never cut. It is cut with this release.)
