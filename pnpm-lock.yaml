@@ -8,22 +8,22 @@ overrides:
   sharp@<0.35.5: '>=0.35.5'
   source-map-js@<1.2.2: '>=1.2.2'
   postcss@<8.5.23: '>=8.5.28'
-  nanoid@<3.3.18: '>=3.3.18'
+  nanoid@<3.3.18: '>=3.3.18 <4'
   valibot@<1.5.0: '>=1.5.0'
-  brace-expansion@1: '>=1.1.21'
-  brace-expansion@2: '>=2.1.7'
-  minimatch@3: '>=3.1.5'
-  minimatch@9: '>=9.0.9'
-  picomatch@4: '>=4.0.7'
+  brace-expansion@1: '>=1.1.21 <2'
+  brace-expansion@2: '>=2.1.7 <3'
+  minimatch@3: '>=3.1.5 <4'
+  minimatch@9: '>=9.0.9 <10'
+  picomatch@4: '>=4.0.7 <5'
   rollup@<4.59.0: '>=4.63.1'
   browserslist@<4.28.7: '>=4.29.3'
   flatted@<3.4.2: '>=3.4.4'
-  js-yaml@4: '>=4.3.2'
-  ajv@6: '>=6.15.0'
+  js-yaml@4: '>=4.3.2 <5'
+  ajv@6: '>=6.15.0 <7'
   '@humanfs/node@<0.16.8': '>=0.16.8'
   baseline-browser-mapping@<2.11.0: '>=2.11.26'
   '@babel/core@<7.29.1': '>=7.29.7'
-  undici@7: '>=7.30.0'
+  undici@7: '>=7.30.0 <8'
 
 importers:
 
@@ -2920,7 +2920,7 @@ packages:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
     engines: {node: '>=12.0.0'}
     peerDependencies:
-      picomatch: '>=4.0.7'
+      picomatch: '>=4.0.7 <5'
     peerDependenciesMeta:
       picomatch:
         optional: true
