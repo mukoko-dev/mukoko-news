@@ -23,6 +23,7 @@ release to `main` is a minor, and a major is only ever made by hand
 ### Security
 
 - **Floors for the org `audit` gate.** `next` is `>=15.5.28` (resolved 15.5.25 -> 15.5.28; GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r) and the dev `vite` is `>=7.3.7` (7.3.6 -> 7.3.7; GHSA-587h-7wmj-h5pm). In `pnpm-workspace.yaml` the `sharp` override is now `"sharp@<0.35.5": ">=0.35.5"` (0.35.4 -> 0.35.5, reached through `wrangler` > `miniflare`), and a new override `"source-map-js@<1.2.2": ">=1.2.2"` (1.2.1 -> 1.2.2, through `@tailwindcss/postcss`) closes GHSA-68fv-2mgg-jv7q. All are minimums with no maximum; the lock keeps Next on 15 and vite on 7.
+- **zod and undici floors for the same gate (2026-10-24).** `zod` is `>=4.6.6` (resolved 4.6.5 -> 4.6.7; GHSA-mrhx-c7xc-m3w5, high), and the `undici@7` override is `>=7.30.1 <8` (7.30.0 -> 7.30.1, through `wrangler` > `miniflare`; GHSA-xjj6-f33q-929c, high). Nothing else in the lockfile moved.
 
 ## [4.82.0] - 2026-10-10
 
