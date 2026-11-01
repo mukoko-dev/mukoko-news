@@ -1,6 +1,7 @@
 version: 2
 updates:
   - package-ecosystem: "npm"
+    target-branch: "staging"
     directory: "/"
     schedule:
       interval: "weekly"
