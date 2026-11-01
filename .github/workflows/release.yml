@@ -45,7 +45,7 @@ jobs:
       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
       (github.event.workflow_run.conclusion == 'success' &&
        github.event.workflow_run.event == 'push')
-    uses: nyuchi/.github/.github/workflows/reusable-auto-tag.yml@924e5b4d0983d31379aedbec02b990793f29c792 # main, 2026-10-04
+    uses: nyuchi/.github/.github/workflows/reusable-auto-tag.yml@c2be05a22aeb6a98a80a9301f6b3e33bb88b20b0  # v0.2.0
     with:
       version-command: cat VERSION
       channel: main
