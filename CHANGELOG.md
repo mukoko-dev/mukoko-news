@@ -15,7 +15,11 @@ release to `main` is a minor, and a major is only ever made by hand
 
 ## [4.83.0] - 2026-11-01
 
-What merged to `staging` after v4.82.0.
+What merged to `staging` after v4.82.0. `VERSION` is set to 4.83.0 on the release branch, not on `staging`: the org release-version check allows only a patch there.
+
+### Fixed
+
+- **Tests that use Web Storage pass on Node 25 and later.** The org `vite-plus / test` job runs on the runner's current Node (26), whose own `localStorage`/`sessionStorage` globals are not usable without `--localstorage-file` and shadow jsdom's. `src/__tests__/setup.ts` now installs an in-memory Storage when the one in place is unusable. All 2,137 tests pass on Node 22 and Node 26.13.0.
 
 ### Removed
 
