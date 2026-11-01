@@ -5,6 +5,10 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Wait seven days after a release before proposing it, as the org
+    # repositories do: most compromised releases are pulled within days.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     reviewers:
       - "bryanfawcett"
