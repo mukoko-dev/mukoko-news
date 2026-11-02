@@ -1,4 +1,4 @@
-import { SITE_URL, GATEWAY_URL, OAUTH_ISSUER, AGENT_JSON_HEADERS } from '@/lib/agent-discovery'
+import { SITE_URL, GATEWAY_URL, AGENT_JSON_HEADERS, authkitMissingResponse, oauthIssuer } from '@/lib/agent-discovery'
 
 // OAuth 2.0 Protected Resource Metadata (RFC 9728). Tells agents which
 // authorization server(s) issue tokens for Mukoko's protected APIs (the
@@ -7,9 +7,11 @@ import { SITE_URL, GATEWAY_URL, OAUTH_ISSUER, AGENT_JSON_HEADERS } from '@/lib/a
 export const runtime = 'edge'
 
 export function GET() {
+  const issuer = oauthIssuer()
+  if (!issuer) return authkitMissingResponse()
   const metadata = {
     resource: SITE_URL,
-    authorization_servers: [OAUTH_ISSUER],
+    authorization_servers: [issuer],
     scopes_supported: ['openid', 'profile', 'email'],
     bearer_methods_supported: ['header'],
     // The protected product API + MCP live on the gateway host.

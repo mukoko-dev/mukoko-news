@@ -3,9 +3,14 @@
 /**
  * Server Actions for the /analytics query console.
  *
- * Exposes the read-only aggregations in `@/lib/mongodb/analytics` to the
- * `/analytics` page and its export route. Per the repo's data-flow rule these
- * read the `news` DB directly — never through the gateway Worker.
+ * Exposes the console's reads to the `/analytics` page and its export route.
+ *
+ * DATA PATH (2026-10-02): these reads go to the Nyuchi API gateway
+ * (`/v1/news/analytics/*`, answered from Doris) when it is configured, and fall
+ * back to the direct MongoDB aggregations in `@/lib/mongodb/analytics` when it
+ * is not, or when a call fails — see `@/lib/nyuchi-api/client`. The console's
+ * every query timed out on Atlas on 2026-10-02; this is what moves them off it.
+ * `NEWS_DATA_SOURCE=mongo` forces the direct path.
  *
  * Server Actions are a public RPC surface, so every input is validated with the
  * `@/lib/safety` schemas here before it reaches the MongoDB layer. Reads degrade
@@ -42,6 +47,13 @@ import {
   type CoverageConcentration,
   type QueryFacets,
 } from '@/lib/mongodb/analytics'
+import { viaGateway } from '@/lib/nyuchi-api/client'
+import {
+  fetchCorpusPreview,
+  fetchCorpusQuery,
+  fetchCoverageConcentration,
+  fetchQueryFacets,
+} from '@/lib/nyuchi-api/news-analytics'
 import {
   parseOrDefault,
   countriesSchema,
@@ -114,7 +126,12 @@ function safeQueryParams(raw: unknown): CorpusQueryParams {
  */
 export async function runCorpusQueryAction(params: unknown): Promise<CorpusQueryResult> {
   await requireViewer()
-  return runCorpusQuery(safeQueryParams(params))
+  const query = safeQueryParams(params)
+  return viaGateway(
+    'analytics.corpus',
+    () => fetchCorpusQuery(query),
+    () => runCorpusQuery(query)
+  )
 }
 
 /**
@@ -142,7 +159,12 @@ export async function runCorpusQueryAction(params: unknown): Promise<CorpusQuery
  * the gated action, so an unbounded `limit` cannot be used as a load generator.
  */
 export async function runCorpusPreviewAction(params: unknown): Promise<CorpusPreview> {
-  return runCorpusPreview(safeQueryParams(params))
+  const query = safeQueryParams(params)
+  return viaGateway(
+    'analytics.preview',
+    () => fetchCorpusPreview(query),
+    () => runCorpusPreview(query)
+  )
 }
 
 /**
@@ -163,13 +185,23 @@ const FACET_CACHE_SECONDS = 600
  * rather than read inside — two different windows must not share an entry.
  */
 const cachedConcentration = unstable_cache(
-  (days: number) => getCoverageConcentration({ days }),
+  (days: number) =>
+    viaGateway(
+      'analytics.concentration',
+      () => fetchCoverageConcentration(days),
+      () => getCoverageConcentration({ days })
+    ),
   ['analytics-coverage-concentration'],
   { revalidate: FACET_CACHE_SECONDS, tags: ['analytics-facets'] }
 )
 
 const cachedFacets = unstable_cache(
-  (days: number) => getQueryFacets({ days }),
+  (days: number) =>
+    viaGateway(
+      'analytics.facets',
+      () => fetchQueryFacets(days),
+      () => getQueryFacets({ days })
+    ),
   ['analytics-query-facets'],
   { revalidate: FACET_CACHE_SECONDS, tags: ['analytics-facets'] }
 )

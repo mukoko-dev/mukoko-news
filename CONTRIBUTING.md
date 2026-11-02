@@ -1,6 +1,6 @@
 # Contributing to Mukoko News
 
-Thank you for considering a contribution to Mukoko News! This guide covers the **Next.js frontend** in `nyuchi/mukoko-news`. For the gateway API or data pipeline, see those repos.
+Thank you for considering a contribution to Mukoko News! This guide covers the **Next.js frontend** in `mukoko-dev/mukoko-news`. For the gateway API or data pipeline, see those repos.
 
 ## Table of Contents
 
@@ -11,6 +11,7 @@ Thank you for considering a contribution to Mukoko News! This guide covers the *
 - [Coding Standards](#coding-standards)
 - [Commit Messages](#commit-messages)
 - [Testing](#testing)
+- [Versioning](#versioning)
 - [Getting Help](#getting-help)
 
 ## Code of Conduct
@@ -43,7 +44,7 @@ This repo is the Next.js frontend only. It reads data from MongoDB Atlas via Ser
 
 ```bash
 # Clone
-git clone https://github.com/nyuchi/mukoko-news.git
+git clone https://github.com/mukoko-dev/mukoko-news.git
 cd mukoko-news
 
 # Install dependencies
@@ -210,9 +211,29 @@ vi.mock("@/lib/actions/feed", () => ({
 
 **Never** mock `@/lib/api` for page tests — that's the client-side helper used only by the embed widget and route handlers.
 
+## Versioning
+
+Releases follow the org versioning policy ([nyuchi/.github#80](https://github.com/nyuchi/.github/issues/80)):
+
+- A merge into `staging` (the live beta) is a **patch**, tagged by
+  [`staging-version.yml`](.github/workflows/staging-version.yml).
+- A release to `main` is a **minor**: the staging -> main release PR sets
+  `VERSION` to the next minor above the highest tag and adds its
+  `## [x.y.0]` CHANGELOG section. Once CI is green on `main`,
+  [`release.yml`](.github/workflows/release.yml) checks `VERSION` against the
+  policy, tags `vX.Y.0` and publishes a GitHub Release. It commits nothing.
+- A **major** is only ever made by hand: merge `VERSION` set to `X.0.0` to
+  `main` (the automatic release run fails the policy check, by design), then
+  run _Release_ from the Actions tab on `main` with `bump: major`. A manual
+  run on any other branch does nothing.
+- Each segment holds 0–999. Patch 999 rolls into the next minor; minor 999
+  stops and asks for that manual major.
+
+Versions released before 2026-10-04 are not renumbered.
+
 ## Getting Help
 
-- **Issues**: [github.com/nyuchi/mukoko-news/issues](https://github.com/nyuchi/mukoko-news/issues)
+- **Issues**: [github.com/mukoko-dev/mukoko-news/issues](https://github.com/mukoko-dev/mukoko-news/issues)
 - **General**: <support@nyuchi.com>
 - **Security**: <security@nyuchi.com>
 

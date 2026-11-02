@@ -22,6 +22,7 @@ import type {
   TermRow,
 } from '@/lib/mongodb/analytics'
 import { ErrorBoundary } from '@/components/ui/error-boundary'
+import { QueryRunning } from './query-running'
 
 // ---------------------------------------------------------------------------
 // Formatting
@@ -496,6 +497,25 @@ function ConcentrationPanel({ data }: { data: CoverageConcentration }) {
 }
 
 // ---------------------------------------------------------------------------
+// The document-backed panels, when their read timed out
+// ---------------------------------------------------------------------------
+
+/**
+ * Named entities, bylines and the sample are read from documents, in a second
+ * pass that can time out on its own while the counts succeed. An empty list
+ * there would read as "this coverage names nobody", so the panel says what
+ * actually happened.
+ */
+function DeepTimedOut() {
+  return (
+    <p className="text-sm text-text-tertiary" data-testid="analytics-deep-timed-out">
+      This panel timed out — it reads the articles themselves, which took longer than the counts
+      above. Run the query again, or narrow it, to fill it in.
+    </p>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Section shell
 // ---------------------------------------------------------------------------
 
@@ -589,6 +609,36 @@ export default function AnalyticsClient({
     startTransition(() => router.push(`/analytics?${sp.toString()}`))
   }
 
+  /**
+   * Every pivot on this page — the presets, a source bar, a country bar, a
+   * keyword, an entity chip — is a link back into `/analytics` with a new
+   * query. As plain `<Link>`s they navigated outside any transition, so the
+   * page kept showing the OLD result (or the empty one) for the several
+   * seconds the next query took, with nothing to say a query was running.
+   * Routing them through the same transition as "Run" gives one `pending`
+   * flag for every way a query starts. Modified clicks (new tab, etc.) and
+   * links leaving the console are left to the browser.
+   *
+   * Bound in the CAPTURE phase on purpose. `next/link` handles the click
+   * itself in the bubble phase — `preventDefault()` and a navigation inside
+   * React's global `startTransition`, which this component's `pending` never
+   * sees. Capturing first and preventing default makes `<Link>` stand down
+   * (it returns early on `defaultPrevented`), so the navigation runs here.
+   */
+  function onConsoleClickCapture(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
+    const anchor = (e.target as HTMLElement).closest('a')
+    if (!anchor || anchor.hasAttribute('download') || anchor.target === '_blank') return
+    const href = anchor.getAttribute('href') ?? ''
+    if (!/^\/analytics(\?|$)/.test(href)) return
+    e.preventDefault()
+    startTransition(() => router.push(href))
+  }
+
+  function retry() {
+    startTransition(() => router.refresh())
+  }
+
   /** True when the document-backed panels saw less than the whole match. */
   const deepIsPartial = result.deepScanned > 0 && result.deepScanned < result.total
 
@@ -617,7 +667,11 @@ export default function AnalyticsClient({
     <ErrorBoundary
       fallback={<div className="p-8 text-center text-text-secondary">Failed to render analytics</div>}
     >
-      <div className="mx-auto w-full max-w-[var(--width-wide)] px-[var(--page-gutter)] py-[var(--page-block)] sm:px-[var(--page-gutter-sm)]">
+      {/* Delegation only: the anchors inside stay the interactive elements, and Enter on a link fires click. */}
+      <div
+        className="mx-auto w-full max-w-[var(--width-wide)] px-[var(--page-gutter)] py-[var(--page-block)] sm:px-[var(--page-gutter-sm)]"
+        onClickCapture={onConsoleClickCapture}
+      >
         {/* Header */}
         <header className="mb-6">
           <div className="mb-2 flex items-center gap-3">
@@ -701,7 +755,7 @@ export default function AnalyticsClient({
                 ) : (
                   <Search className="h-4 w-4" aria-hidden="true" />
                 )}
-                Run
+                {pending ? 'Running…' : 'Run'}
               </button>
             </div>
           </div>
@@ -742,6 +796,38 @@ export default function AnalyticsClient({
           ))}
         </ul>
 
+        {pending ? (
+          <QueryRunning />
+        ) : !result.ok ? (
+          /*
+           * The query did not finish — NOT an empty match. Before `ok` existed
+           * this rendered "0 articles — Nothing matched", a false statement
+           * about a corpus of 150,000+ articles.
+           */
+          <div
+            className="rounded-2xl border border-warning/40 bg-warning/5 p-6"
+            role="alert"
+            data-testid="analytics-query-failed"
+          >
+            <p className="mb-1.5 flex items-center gap-2 text-lg font-semibold text-foreground">
+              <AlertTriangle className="h-5 w-5 text-warning" aria-hidden="true" />
+              This query didn&apos;t finish
+            </p>
+            <p className="mb-4 text-sm text-text-secondary">
+              {describeQuery} · {formatDay(query.from)} – {formatDay(query.to)}. The database took
+              too long to answer, so we have no figures for it yet — this is not an empty result.
+              Try again, or narrow the date range or add a country to make the query lighter.
+            </p>
+            <button
+              type="button"
+              onClick={retry}
+              className="inline-flex min-h-[var(--touch-default)] items-center justify-center gap-2 rounded-xl bg-primary px-5 text-sm font-semibold text-on-primary transition-opacity hover:opacity-90"
+            >
+              Try again
+            </button>
+          </div>
+        ) : (
+        <>
         {/* Result header */}
         <div className="mb-6 flex flex-wrap items-baseline justify-between gap-3 border-b border-elevated pb-4">
           <div>
@@ -750,11 +836,6 @@ export default function AnalyticsClient({
             </p>
             <p className="text-sm text-text-secondary">
               {describeQuery} · {formatDay(query.from)} – {formatDay(query.to)} ({query.days} days)
-              {query.q && !result.usedSearchIndex && (
-                <span className="ml-2 text-warning">
-                  · substring match (full-text index unavailable)
-                </span>
-              )}
             </p>
             {/*
               A sampled count rendered as a corpus count is the exact failure
@@ -854,7 +935,7 @@ export default function AnalyticsClient({
                     : 'People, organizations and places the enrichment model identified. Click to pivot the query.'
                 }
               >
-                <EntityGroups entities={result.byEntity} />
+                {result.deepFailed ? <DeepTimedOut /> : <EntityGroups entities={result.byEntity} />}
               </Section>
             </div>
 
@@ -863,11 +944,17 @@ export default function AnalyticsClient({
                 title="Sentiment"
                 caption="How the enrichment model scored the tone of this coverage."
               >
-                <SentimentBar sentiment={result.sentiment} />
+                {result.deepFailed && result.sentiment.covered === 0 ? (
+                  <DeepTimedOut />
+                ) : (
+                  <SentimentBar sentiment={result.sentiment} />
+                )}
               </Section>
 
               <Section title="Bylines" caption="Which journalists are credited on this coverage." icon={Users}>
-                {result.byAuthor.length > 0 ? (
+                {result.deepFailed ? (
+                  <DeepTimedOut />
+                ) : result.byAuthor.length > 0 ? (
                   <>
                     <BarList
                       total={result.bylineCoverage.covered}
@@ -918,6 +1005,7 @@ export default function AnalyticsClient({
             </Section>
 
             <Section title="Matching articles" caption="Most recent first.">
+              {result.deepFailed && <DeepTimedOut />}
               <ul className="divide-y divide-elevated">
                 {result.sample.map((a) => (
                   <li key={a.id} className="py-3 first:pt-0 last:pb-0">
@@ -938,6 +1026,8 @@ export default function AnalyticsClient({
               </ul>
             </Section>
           </div>
+        )}
+        </>
         )}
       </div>
     </ErrorBoundary>
