@@ -76,7 +76,7 @@ export const ALLOWED_WEATHER_HOST = 'weather.mukoko.com';
  * `web-share` (share sheet), `clipboard-write` (copy link), `fullscreen`.
  *
  * `publickey-credentials-get` is denied because passkeys live entirely on the
- * WorkOS-hosted AuthKit page (identity.nyuchi.com) — no WebAuthn ceremony ever
+ * WorkOS-hosted AuthKit page (the AuthKit domain) — no WebAuthn ceremony ever
  * runs on this origin. If sign-in is ever inlined again, this must be revisited.
  */
 const PERMISSIONS_POLICY = [

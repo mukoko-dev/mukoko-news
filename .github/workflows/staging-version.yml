@@ -1,0 +1,35 @@
+# Staging version: every merge into `staging` is the next PATCH.
+#
+# Org versioning policy (nyuchi/.github#80): a merge into staging (the live
+# beta) is a PATCH, a release to main is a MINOR, and a MAJOR is only ever
+# made by hand (run this or the release workflow with bump: major). Each
+# segment holds 0..999.
+#
+# The reusable workflow tags the merged commit `v<next patch>` with
+# GITHUB_TOKEN, so no tag-triggered publish runs for a beta build, and
+# commits nothing back. Inert until the repo has a `staging` branch.
+
+name: Staging version
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Override the patch. major is only ever made by hand, here.
+        type: choice
+        options: [patch, minor, major]
+        default: patch
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    if: github.ref == 'refs/heads/staging'
+    uses: nyuchi/.github/.github/workflows/reusable-staging-release.yml@c2be05a22aeb6a98a80a9301f6b3e33bb88b20b0  # v0.2.0
+    with:
+      bump: ${{ inputs.bump || '' }}
+    permissions:
+      contents: write

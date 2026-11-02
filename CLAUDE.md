@@ -10,17 +10,18 @@ Mukoko News is a Pan-African digital news aggregation platform. "Mukoko" means "
 
 ## Three-Repo Architecture
 
-This repo (`nyuchi/mukoko-news`) is the **Next.js frontend only**. It deploys to Vercel.
+This repo (`mukoko-dev/mukoko-news`) is the **Next.js frontend only**. It deploys to Vercel.
 
-| Repo                               | Contents                                | Deploys to          |
-| ---------------------------------- | --------------------------------------- | ------------------- |
-| `nyuchi/mukoko-news`               | Next.js 15 frontend                     | Vercel              |
-| `nyuchi/mukoko-news-gateway`       | Cloudflare Workers API + MCP            | Cloudflare Workers  |
-| `nyuchi/mukoko-ingestion-pipeline` | Fly.io pipeline + Cloudflare processing | Fly.io + Cloudflare |
+| Repo                                   | Contents                                | Deploys to          |
+| -------------------------------------- | --------------------------------------- | ------------------- |
+| `mukoko-dev/mukoko-news`               | Next.js 15 frontend                     | Vercel              |
+| `mukoko-dev/mukoko-news-gateway`       | Cloudflare Workers API + MCP            | Cloudflare Workers  |
+| `mukoko-dev/mukoko-ingestion-pipeline` | Fly.io pipeline + Cloudflare processing | Fly.io + Cloudflare |
 
 **Hard rules for this repo:**
 
 - Frontend reads/writes directly to MongoDB Atlas via Next.js Server Actions — never through the gateway Worker
+- **Reads are moving to the Nyuchi API** (`api.nyuchi.com/v1`, nyuchi/api-gateway — NOT the news gateway Worker), per the owner-agreed plan in that repo's `docs/architecture/data-access.md`: the gateway is the only read path for apps, answering aggregation and search from Doris and single records from MongoDB, cached and rate limited there. Migrated so far: the analytics console, `/insights` and the coverage claim (`/v1/news/analytics/*`), `/topic/[slug]` (`/v1/news/topics/{slug}/articles`), and the article page's related rail (`/v1/news/articles/{id}/related`). `/topic/[slug]` is also crawler-safe: the action never throws (`ok: false` renders "temporarily unavailable"), an empty or degraded page is `noindex`, and a malformed escape in the slug is a 404. Every migrated read goes through `viaGateway()` in `src/lib/nyuchi-api/client.ts`: it uses the API only when `NYUCHI_API_URL` + `NYUCHI_API_CLIENT_ID` + `NYUCHI_API_CLIENT_SECRET` are set (server-only; an internal key), `NEWS_DATA_SOURCE=mongo` forces the direct path, and any API failure falls back to the direct MongoDB read for that call and logs `[gateway-fallback] <name>`. Unconfigured, nothing changes. The fallbacks — and with the last of them `MONGODB_URI` — are removed once each path has run clean for two weeks. Do not add a new direct read; add the endpoint to the API.
 - The gateway (`news.mukoko.com/api/*`, `/mcp`) is a separate product API; the frontend does not call it except for **admin mutations** (see `src/lib/admin/gateway.ts`)
 - **The app never touches the pipeline** (owner rule 2026-09-25). The pipeline sits behind the databases; the gateway Worker is the app's backend. The manual feed refresh (`src/lib/actions/refresh.ts`) calls the gateway's `POST /api/refresh`, which holds the pipeline credential and applies a per-caller cooldown. The app holds no `FLY_*` secret.
 - The header's date/time + weather strip (`src/components/layout/datetime-weather.tsx`) reads the sibling weather app's PUBLIC embed endpoint `weather.mukoko.com/api/embed/current` via `src/lib/weather.ts` — **from the reader's browser only, never server-side**. The endpoint derives the location from the caller's IP, so a server-side call would hand every reader the Vercel datacenter's location (measured: `"Your location"`, 37.751/-97.822, the US centroid). It is not a gateway call, it is fail-soft (any failure renders no weather at all), and it is suppressed on `/newsbytes` and `/embed*`.
@@ -404,6 +405,13 @@ NEXT_PUBLIC_API_URL=
 # Gateway Worker (the app backend: admin mutations + feed refresh)
 GATEWAY_API_URL=https://news.mukoko.dev
 
+# Nyuchi API (api-gateway) — the read path being migrated to. Server-only.
+# Unset = every read stays on MongoDB. NEWS_DATA_SOURCE=mongo forces that.
+NYUCHI_API_URL=https://api.nyuchi.com
+NYUCHI_API_CLIENT_ID=nyk_...        # internal key, scope: news
+NYUCHI_API_CLIENT_SECRET=nys_...
+NEWS_DATA_SOURCE=                   # gateway (default) | mongo
+
 ```
 
 ## Authentication & RBAC (WorkOS AuthKit)
@@ -472,7 +480,7 @@ The ask was _"source trust is really good information... make that public, good 
 - `src-malawivoice-mw` — 45+ foreign-language casino-affiliate pages — scores **85.8 → "Established"**, because a fluent SEO page scores _well_ on `content_depth`. The platform was publishing "Established" over a spam farm.
 - `news.sourceScoreHistory`, which `articles.ts` and this file both described as auditing every change to the score, holds **zero rows**. There has never been a trail.
 
-So it was not gated, it was withdrawn: gating a wrong verdict publishes it to a smaller audience. `ArticleTrustPanel` is deleted. It comes back when the pipeline folds feed reliability into the score — a `nyuchi/mukoko-ingestion-pipeline` change, not one this repo can make.
+So it was not gated, it was withdrawn: gating a wrong verdict publishes it to a smaller audience. `ArticleTrustPanel` is deleted. It comes back when the pipeline folds feed reliability into the score — a `mukoko-dev/mukoko-ingestion-pipeline` change, not one this repo can make.
 
 **`sourceHealth` / `consecutiveFailures` / `lastFetchError` are the second trap, and the sharper one.** They look exactly like the reliability signal a provenance panel wants. Measured the same day: of the 387 active sources sitting in `lastFetchStatus: 'error'`, **351 (91%) carry the platform's OWN MongoDB read timeout** — `…mongodb.net:27017: The read operation timed out` — as the _source's_ fetch error. Only 28 carry a real publisher-side HTTP status. The platform had marked 351 named newsrooms `critical`/`failing` because our database was slow, and that is what the directory's status dot was rendering. **`lastSuccessfulFetchAt` is used instead**: a timestamp of something that demonstrably happened, which cannot blame anyone for an outage. On the same read 138 sources had succeeded within 24h and 238 within a week — the feeds are overwhelmingly fine and the health field was simply wrong.
 
@@ -528,7 +536,7 @@ import { withAuth } from '@workos-inc/authkit-nextjs'
 const { user } = await withAuth()
 ```
 
-The MCP OAuth server (`news.mukoko.com/.well-known/oauth-authorization-server`, `/mcp`) lives in `nyuchi/mukoko-news-gateway`.
+The MCP OAuth server (`news.mukoko.com/.well-known/oauth-authorization-server`, `/mcp`) lives in `mukoko-dev/mukoko-news-gateway`.
 
 ## We are the vehicle, not the publisher (owner decision 2026-09-14)
 
@@ -567,7 +575,7 @@ With neither a masthead nor a feed name the component renders **nothing**: `via 
 
 ## Design System (Mukoko "Swarm" — doctrine v4.1.0)
 
-**Mark**: the **Seed of Life** — one centre cell ringed by six, the first ring of the honeycomb, rendered in the 7 minerals with **tanzanite at the core**. **The full-palette mark is the only icon, at every size.** Bare mark on a transparent ground: `public/mukoko-mark-full-{light,dark}.svg` (used by `AppIcon`). Mark on the deep-tanzanite (`#1A0033`) rounded ground: `public/mukoko-appicon.png` — the app icon, and the source the favicons are downscaled from, so the browser tab, the installed app and every other surface carry identical artwork. (Owner correction 2026-09-01 — this **supersedes** the earlier "mono-tanzanite favicon below 32px" rule. The mono variant made the tab icon a solid purple blob that looked like a different product; `favicon.svg`, `favicon-{16,32,48}.png`, `favicon-180.png`, `apple-touch-icon.png` and `favicon.ico` are now the full-palette mark, and `mukoko-appicon-mono-tanzanite.png` was deleted so it cannot be wired up again. `favicon.svg` carries its own ground, so one file serves both browser themes and there is no `favicon-dark.svg`.) Never add gradients/shadows, recolour petals, reorder the ring, or substitute a mono/single-colour reduction.
+**Mark**: the **Seed of Life** — one centre cell ringed by six, the first ring of the honeycomb, rendered in the 7 minerals with **tanzanite at the core**. **The full-palette mark is the only icon, at every size.** Bare mark on a transparent ground: `public/mukoko-mark-full-{light,dark}.svg` (used by `AppIcon`). Mark on the deep-tanzanite (`#1A0033`) rounded ground: `public/mukoko-appicon.png` — the app icon, and the source the favicons are downscaled from, so the browser tab, the installed app and every other surface carry identical artwork. (Owner correction 2026-09-01 — this **supersedes** the earlier "mono-tanzanite favicon below 32px" rule. The mono variant made the tab icon a solid purple blob that looked like a different product; `favicon.svg`, `favicon-{16,32}.png`, `apple-touch-icon.png` and `favicon.ico` are now the full-palette mark, and `mukoko-appicon-mono-tanzanite.png` was deleted so it cannot be wired up again. `favicon.svg` carries its own ground, so one file serves both browser themes and there is no `favicon-dark.svg`. `favicon-48.png` and `favicon-180.png` were deleted on 2026-10-10 at the owner's request: nothing referenced them, the `.ico` already carries 48px, and `apple-touch-icon.png` is the 180px icon. **This set is the source of truth for mukoko-weather and mukoko-events**, which ship byte-identical copies pinned by hash tests, so change an icon here first.) Never add gradients/shadows, recolour petals, reorder the ring, or substitute a mono/single-colour reduction.
 
 **The minerals stripe** (`.minerals-stripe` / `.minerals-stripe-horizontal`, mounted once in `layout.tsx`) is the band down the page's left edge. It is **theme-aware**, and it was not (owner report 2026-09-11 — _"the mineral strip is not theme aware"_): every stop was a hard-coded **light** mineral hex (`#0047AB`, `#4B0082`, `#004D40`, `#5D4037`, `#A0522D`), so in dark mode the one piece of chrome whose whole job is to carry the brand rendered as deep, muddy bands against a near-black page — at exactly the moment the palette has light steps that would sing there. It was also **five** minerals, not seven: sodalite and copper were missing from the one surface that claims to show the whole palette. Both orientations now read **one shared `--stripe-stops` list** built from `var(--color-<mineral>)` at `100/7` per band, because two copies had already drifted and a mineral added to one and not the other is a stripe that disagrees with itself depending on which way round it is drawn.
 
@@ -728,3 +736,22 @@ Embeddable news widgets for sister apps (e.g., weather.mukoko.com):
 - Iframe renderer: `src/app/embed/iframe/page.tsx` (excluded from auth middleware matcher)
 - 5 layouts (cards, compact, hero, ticker, list) × 4 feed types (top, featured, latest, location)
 - Sandbox: `allow-scripts allow-popups allow-popups-to-escape-sandbox` (no `allow-same-origin`)
+
+## Track big work in GitHub issues
+
+Any substantial build, migration, investigation or multi-step task gets a GitHub issue in the repo that owns it — before or as work starts — so another session, agent or person can pick it up.
+
+- The issue holds the goal, the owner's decisions (verbatim where given), the plan, acceptance criteria, owner-only steps and links.
+- Every PR references its issue (`Refs #n`; `Fixes #n` only when the merge completes it).
+- Post progress, decisions and a hand-off note (what's done, what's left, branch names) as issue comments — at each merge and before a session or agent finishes.
+- Work spanning repos gets a tracking issue that links the per-repo issues.
+- Never put secrets, credential status or exploitable detail in issues on public repos.
+
+## Dev skills, progress reports and the merge gate
+
+Load the Mzizi **dev skills** before starting work: `mzizi_get_skills category=dev` on the Mzizi MCP (`mcp.mzizi.dev`), or `@nyuchi/mzizi-skills` from npm. They are `digital-hygiene` and `progress-report`.
+
+- **Digital hygiene.** Check free disk before starting, clone only under `$TMPDIR`, share build caches, and audit, then delete, your clones once the work merges (`digital-hygiene` skill).
+- **Clone isolation.** Clone only into a directory unique to you; never touch another agent's.
+- **Progress reports.** All dev work runs on a 10-minute progress-report loop (`progress-report` skill): measured bars, what changed, and a final "Needs you:" line. Report ticks never publish, release, merge or deploy without the owner's approval.
+- **Merge gate.** Merge only when the work is complete, CI is green, it's verified at runtime, and `/code-review` has run with findings resolved.

@@ -19,6 +19,10 @@ import { getArticles, getArticleById, getRelatedArticles, getNewsByteArticles, s
 import { getCategories, getTrendingCategories } from '@/lib/mongodb/categories'
 import { getSources, getSourceAuthors, getStats, getTrendingAuthors } from '@/lib/mongodb/sources'
 import { getTopCountriesByRecentVolume } from '@/lib/mongodb/coverage'
+import { viaGateway } from '@/lib/nyuchi-api/client'
+import { fetchWindowCountries } from '@/lib/nyuchi-api/news-analytics'
+import { fetchTopicTimeline } from '@/lib/nyuchi-api/news-topics'
+import { fetchRelatedArticles } from '@/lib/nyuchi-api/news-articles'
 import {
   clampInt,
   countryCodeSchema,
@@ -204,9 +208,17 @@ export async function getArticleAction(id: string) {
 export async function getRelatedArticlesAction(articleId: string, limit = 3) {
   const safeId = parseOrDefault(idSchema, articleId, null)
   if (!safeId) return [] as Article[]
+  const max = clampInt(limit, 1, 12, 3)
   return safeRead(
     'related',
-    () => getRelatedArticles(safeId, clampInt(limit, 1, 12, 3)),
+    // Called from the reader's browser on every article view, uncached on this
+    // side — so the API's per-article hour of cache is most of the win.
+    () =>
+      viaGateway(
+        'articles.related',
+        () => fetchRelatedArticles(safeId, max),
+        () => getRelatedArticles(safeId, max)
+      ),
     [] as Article[]
   )
 }
@@ -340,13 +352,42 @@ export async function getSavedArticlesAction() {
 /** Topic slugs are enrichment-generated: lowercase words joined by hyphens. */
 const topicSlugRe = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-export async function getTopicTimelineAction(slug: string, days = 30) {
+export interface TopicTimeline {
+  topic: string
+  articles: Article[]
+  total: number
+  /**
+   * False when the read did not complete — NOT when nothing matched.
+   *
+   * This action used to be the one feed read without `safeRead`, so a timeout
+   * threw straight through the page as an HTTP 500: ~21.6k of them on
+   * 2026-10-02, mostly to crawlers, and ISR never caches a thrown render, so
+   * every retry paid the full scan again. It now never throws, and this flag
+   * lets the page say "temporarily unavailable" (and tell crawlers not to index
+   * it) instead of claiming nothing was published.
+   */
+  ok: boolean
+}
+
+export async function getTopicTimelineAction(slug: string, days = 30): Promise<TopicTimeline> {
   const trimmed = typeof slug === 'string' ? slug.trim().toLowerCase().slice(0, 64) : ''
   if (!topicSlugRe.test(trimmed)) {
-    return { topic: trimmed, articles: [] as Article[], total: 0 }
+    return { topic: trimmed, articles: [] as Article[], total: 0, ok: true }
   }
-  const result = await getTopicTimeline(trimmed, { days: clampInt(days, 1, 90, 30) })
-  return { topic: trimmed, ...result }
+  const window = clampInt(days, 1, 90, 30)
+  try {
+    // The API matches in Doris and hydrates by `_id`; the direct read is the
+    // fallback while the API path proves itself (see `@/lib/nyuchi-api/client`).
+    const result = await viaGateway(
+      'topic.timeline',
+      () => fetchTopicTimeline(trimmed, window),
+      () => getTopicTimeline(trimmed, { days: window })
+    )
+    return { topic: trimmed, ...result, ok: true }
+  } catch (error) {
+    console.error('[feed:topic]', error)
+    return { topic: trimmed, articles: [] as Article[], total: 0, ok: false }
+  }
 }
 
 /**
@@ -358,7 +399,12 @@ export async function getTopicTimelineAction(slug: string, days = 30) {
  * the same aggregation. An hour is well inside the rate at which coverage moves.
  */
 const cachedTopCountries = unstable_cache(
-  (limit: number) => getTopCountriesByRecentVolume(limit),
+  (limit: number) =>
+    viaGateway(
+      'coverage.top',
+      async () => (await fetchWindowCountries(30)).slice(0, limit),
+      () => getTopCountriesByRecentVolume(limit)
+    ),
   ['onboarding-top-countries'],
   { revalidate: 3600, tags: ['coverage'] }
 )

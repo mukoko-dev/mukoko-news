@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import AnalyticsPage from '../page'
 import type {
   CorpusQueryResult,
@@ -7,9 +7,22 @@ import type {
   QueryFacets,
 } from '@/lib/mongodb/analytics'
 
+// Mirrors the one behaviour of `next/link` the console depends on: it handles
+// its own click in the bubble phase — preventDefault plus a navigation the
+// console's transition cannot see — unless something earlier already
+// prevented default.
+const mockLinkNavigate = vi.fn()
 vi.mock('next/link', () => ({
   default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => (
-    <a href={href} {...props}>
+    <a
+      href={href}
+      {...props}
+      onClick={(e) => {
+        if (e.defaultPrevented) return
+        e.preventDefault()
+        mockLinkNavigate(href)
+      }}
+    >
       {children}
     </a>
   ),
@@ -19,8 +32,10 @@ const mockRedirect = vi.fn((url: string) => {
   // Mirrors next/navigation: redirect() throws to halt rendering.
   throw new Error(`NEXT_REDIRECT:${url}`)
 })
+const mockPush = vi.fn()
+const mockRefresh = vi.fn()
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push: mockPush, replace: vi.fn(), refresh: mockRefresh }),
   useSearchParams: () => new URLSearchParams(),
   usePathname: () => '/analytics',
   redirect: (url: string) => mockRedirect(url),
@@ -60,6 +75,8 @@ const baseResult: CorpusQueryResult = {
     minQuality: null,
     days: 30,
   },
+  ok: true,
+  deepFailed: false,
   total: 412,
   usedSearchIndex: true,
   exact: true,
@@ -247,10 +264,109 @@ describe('AnalyticsPage (query console)', () => {
     expect(screen.getByText(/Burundi/)).toBeInTheDocument()
   })
 
-  it('warns when the text match fell back to a substring scan', async () => {
+  it('never claims a substring fallback — the console has none', async () => {
+    // The old caption "substring match (full-text index unavailable)" fired off
+    // `usedSearchIndex: false`, which only the FAILURE result carried. It told
+    // the owner the Search index was down when the query had simply timed out.
     mockRunCorpusQuery.mockResolvedValue({ ...baseResult, usedSearchIndex: false })
     await renderPage({ q: 'accident' })
-    expect(screen.getByText(/full-text index unavailable/)).toBeInTheDocument()
+    expect(screen.queryByText(/full-text index unavailable/)).not.toBeInTheDocument()
+  })
+
+  describe('a query that did not finish', () => {
+    const failed: CorpusQueryResult = {
+      ...baseResult,
+      ok: false,
+      total: 0,
+      usedSearchIndex: false,
+      series: [],
+      bySource: [],
+      byCountry: [],
+      byKeyword: [],
+      byEntity: [],
+      sample: [],
+    }
+
+    it('says it failed instead of "Nothing matched"', async () => {
+      // Regression, 2026-10-02: every signed-in query hit MaxTimeMSExpired and
+      // the console reported "0 articles — Nothing matched" over a corpus of
+      // 150,935 articles.
+      mockRunCorpusQuery.mockResolvedValue(failed)
+      await renderPage({ country: 'ZW' })
+      expect(screen.getByTestId('analytics-query-failed')).toBeInTheDocument()
+      expect(screen.getByText(/this is not an empty result/)).toBeInTheDocument()
+      expect(screen.queryByText('Nothing matched')).not.toBeInTheDocument()
+      expect(screen.queryByText('0 articles')).not.toBeInTheDocument()
+      expect(screen.queryByText('Export CSV')).not.toBeInTheDocument()
+    })
+
+    it('offers a retry', async () => {
+      mockRunCorpusQuery.mockResolvedValue(failed)
+      await renderPage({ country: 'ZW' })
+      fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+      expect(mockRefresh).toHaveBeenCalled()
+    })
+  })
+
+  describe('when only the document pass timed out', () => {
+    const partial: CorpusQueryResult = {
+      ...baseResult,
+      deepFailed: true,
+      deepScanned: 0,
+      byEntity: [],
+      byAuthor: [],
+      sample: [],
+      sentiment: { positive: 0, neutral: 0, negative: 0, mixed: 0, covered: 0, coverage: 0 },
+    }
+
+    it('still renders the exact counts', async () => {
+      mockRunCorpusQuery.mockResolvedValue(partial)
+      await renderPage({ q: 'accident' })
+      expect(screen.getByText('412 articles')).toBeInTheDocument()
+      expect(screen.getAllByText('The Herald').length).toBeGreaterThan(0)
+    })
+
+    it('marks the document-backed panels as timed out, not as empty findings', async () => {
+      mockRunCorpusQuery.mockResolvedValue(partial)
+      await renderPage({ q: 'accident' })
+      expect(screen.getAllByTestId('analytics-deep-timed-out').length).toBeGreaterThanOrEqual(3)
+      expect(screen.queryByText('No named entities extracted for this query.')).not.toBeInTheDocument()
+      expect(screen.queryByText('No bylines on this result')).not.toBeInTheDocument()
+      expect(screen.queryByText(/has been through AI enrichment yet/)).not.toBeInTheDocument()
+    })
+  })
+
+  describe('while a query is running', () => {
+    it('shows a running state on Run, never the previous total', async () => {
+      // `push` that never settles keeps the transition pending, which is what
+      // a slow server render looks like from the client.
+      mockPush.mockImplementation(() => new Promise(() => {}))
+      await renderPage({ q: 'accident' })
+      fireEvent.submit(screen.getByRole('search'))
+      expect(await screen.findByTestId('analytics-query-running')).toBeInTheDocument()
+      expect(screen.getByText('Analysing the corpus…')).toBeInTheDocument()
+      expect(screen.queryByText('412 articles')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Running/ })).toBeDisabled()
+    })
+
+    it('routes a preset through the same transition, so it shows the running state too', async () => {
+      mockPush.mockImplementation(() => new Promise(() => {}))
+      await renderPage({ q: 'accident' })
+      fireEvent.click(screen.getByText('Zimbabwe, all coverage'))
+      expect(mockPush).toHaveBeenCalledWith('/analytics?country=ZW')
+      // `<Link>` must have stood down, or the navigation would have run outside
+      // the transition and the page would show nothing while it waited.
+      expect(mockLinkNavigate).not.toHaveBeenCalled()
+      expect(await screen.findByTestId('analytics-query-running')).toBeInTheDocument()
+    })
+
+    it('leaves links out of the console, and modified clicks, to Link and the browser', async () => {
+      await renderPage({ q: 'accident' })
+      fireEvent.click(screen.getByText('Insights'))
+      fireEvent.click(screen.getByText('Zimbabwe, all coverage'), { metaKey: true })
+      expect(mockPush).not.toHaveBeenCalled()
+      expect(mockLinkNavigate).toHaveBeenCalledWith('/insights')
+    })
   })
 
   it('carries the active query into the CSV export link', async () => {

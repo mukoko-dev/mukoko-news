@@ -5,9 +5,63 @@ All notable changes to Mukoko News will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+**Versioning policy (from 2026-10-04):** a merge into `staging` is a patch, a
+release to `main` is a minor, and a major is only ever made by hand
+([nyuchi/.github#80](https://github.com/nyuchi/.github/issues/80)). Versions released before then are not renumbered.
+
 ---
 
 ## [Unreleased]
+
+## [4.83.0] - 2026-11-01
+
+What merged to `staging` after v4.82.0. `VERSION` is set to 4.83.0 on the release branch, not on `staging`: the org release-version check allows only a patch there.
+
+### Fixed
+
+- **Tests that use Web Storage pass on Node 25 and later.** The org `vite-plus / test` job runs on the runner's current Node (26), whose own `localStorage`/`sessionStorage` globals are not usable without `--localstorage-file` and shadow jsdom's. `src/__tests__/setup.ts` now installs an in-memory Storage when the one in place is unusable. All 2,137 tests pass on Node 22 and Node 26.13.0.
+
+### Removed
+
+- **`favicon-48.png` and `favicon-180.png`** (#264). Nothing referenced them: `favicon.ico` carries 48px, and `favicon-180.png` was a duplicate of `apple-touch-icon.png`. The remaining 9-file icon set is the source of truth that mukoko-weather and mukoko-events copy byte for byte.
+
+### Changed
+
+- **Dependencies are declared as minimums, and vite-plus is 1.3.0.** Owner direction, 2026-10-21: "mark packages with minimum acceptable, latest shouldn't be a blocker on too old of a version." Every dependency and devDependency in `package.json`, and every security override in `pnpm-workspace.yaml`, is now `>=x.y.z` with no upper bound. Each `x.y.z` is the version `pnpm-lock.yaml` already resolved, so the deployed tree does not move.
+- The one deliberate move is vite-plus, from `^1.0.0` (resolved 1.0.0) to `>=1.3.0` (resolved 1.3.0). It brings oxfmt 0.73.0 and oxlint 1.88.0. The vitest copy that vite-plus carries moves from 5.0.1 to 5.0.5. The app's own vitest stays on 4.1.11.
+- **Major-scoped overrides are capped at the next major.** Owner decision, 2026-10-24 ("caps B"): a third-party selector known to break across majors gets an upper bound, and everything else stays floor-only. Each override in `pnpm-workspace.yaml` keyed to one major (`brace-expansion@1`, `brace-expansion@2`, `minimatch@3`, `minimatch@9`, `picomatch@4`, `js-yaml@4`, `ajv@6`, `undici@7`) now has a replacement of `>=x <N+1`, so a re-resolve cannot lift a consumer that asked for major N onto major N+1. `nanoid@<3.3.18` is `>=3.3.18 <4`, which keeps the CommonJS 3.x line (nanoid 4 and later are ESM-only). The lockfile resolves inside every capped range, and the deployed tree did not move.
+- The lockfile was regenerated with pnpm 10.28.0. Apart from vite-plus, no direct dependency's resolved version moved. pnpm collapsed some duplicate transitive copies onto the newer copy already in the tree, such as es-abstract 1.24.1 onto 1.24.2 and tinyglobby 0.2.15 onto 0.2.17.
+- Dependabot opens update pull requests against `staging` (#268), and the org reusable workflows are pinned to `nyuchi/.github` v0.2.0 (#269).
+
+### Security
+
+- **Floors for the org `audit` gate.** `next` is `>=15.5.28` (resolved 15.5.25 -> 15.5.28; GHSA-2464-fhr4-w9xw, GHSA-p3m5-59mp-jv5r) and the dev `vite` is `>=7.3.7` (7.3.6 -> 7.3.7; GHSA-587h-7wmj-h5pm). In `pnpm-workspace.yaml` the `sharp` override is now `"sharp@<0.35.5": ">=0.35.5"` (0.35.4 -> 0.35.5, reached through `wrangler` > `miniflare`), and a new override `"source-map-js@<1.2.2": ">=1.2.2"` (1.2.1 -> 1.2.2, through `@tailwindcss/postcss`) closes GHSA-68fv-2mgg-jv7q. All are minimums with no maximum; the lock keeps Next on 15 and vite on 7.
+- **zod and undici floors for the same gate (2026-10-24).** `zod` is `>=4.6.6` (resolved 4.6.5 -> 4.6.7; GHSA-mrhx-c7xc-m3w5, high), and the `undici@7` override is `>=7.30.1 <8` (7.30.0 -> 7.30.1, through `wrangler` > `miniflare`; GHSA-xjj6-f33q-929c, high). Nothing else in the lockfile moved.
+
+## [4.82.0] - 2026-10-06
+
+What merged to `main` after v4.81.0. The first minor under the org versioning policy. (The 2026-10-06 merge to `main` deployed, but its tag run failed because `RELEASE_BUMP_TOKEN` was denied push access. Re-running that run on 2026-11-01 cut `v4.82.0` on the commit that deployed, `021c4a4b`.)
+
+### Security
+
+- **Patched transitive dependencies** (tooling and dev server only). The `pnpm-workspace.yaml` overrides now lift `brace-expansion` 1 and 2 to `^1.1.21` / `^2.1.7` and `undici` 7 (pulled in by `miniflare`) to `^7.30.0`, closing the open Dependabot alerts.
+
+### Changed
+
+- **Versioning follows the org policy (nyuchi/.github#80).** Merges into `staging` are tagged as patches (`staging-version.yml`); a release to `main` is the next minor, read from `VERSION` and tagged by the org's `reusable-auto-tag.yml` once CI passes. The release workflow no longer commits to `main`.
+- CI (`Test & Deploy Mukoko News`) and Dependency Review now also run for `staging`. Production still deploys only through Vercel's Git integration on `main`.
+- **Share dialog: X, not Twitter.** lucide-react 0.468 -> 1.49 (#234); lucide 1.x has no brand icons, so X, Facebook and LinkedIn are drawn from simple-icons glyphs (`src/components/brand-icons.tsx`) and the share link is `x.com/intent/tweet`.
+- Dependency updates: React and `@types/react` (#218), Radix UI dialog, dropdown-menu, scroll-area, avatar and toast, `eslint-config-next` 16, `eslint-plugin-react-hooks` 7, `@testing-library/jest-dom` 7, `@types/node` 26.
+- References point at `mukoko-dev/mukoko-news` (#235).
+
+### Fixed
+
+- **The WorkOS session survives a transient refresh failure** (#237) instead of signing the reader out.
+- **The AuthKit domain is read only from configuration** (#227), never hardcoded.
+
+## [4.81.0] - 2026-10-02
+
+What the `[Unreleased]` section held when v4.81.0 was tagged.
 
 ### Added
 
@@ -20,6 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Vite+ tooling** (tooling only, no app change). `vite-plus` ^1.0.0 is a dev dependency and `vite.config.ts` carries the org format settings with type-aware linting and type checking on; `check` / `lint` / `fmt` scripts run `vp`. CI's org-required `vite-plus / check` runs the transitional `ci:check` (`tsc --noEmit`) until the sources are formatted.
 - **Sign-in is the WorkOS-HOSTED AuthKit page (owner correction 2026-07-09 — supersedes the 2026-07-02 inline-form doctrine).** Every sign-in entry point (`/sign-in`, `/admin`, `/dashboard`, `/profile`, the publisher claim form) now funnels through `/sign-in` → `/auth/login` → the hosted page. The hosted page owns the whole flow — Magic Auth, passwords, passkeys, and the environment-required **MFA step-up** — and maintains the shared AuthKit session on the auth domain, giving **continuous sign-in across the Mukoko/Nyuchi apps** (all AuthKit applications in one WorkOS environment). See `auth.md`.
 - `/sign-in` renders a manual-retry error card when the OAuth callback fails (no auto-redirect loop); already-signed-in users still skip straight to `returnTo`.
 
