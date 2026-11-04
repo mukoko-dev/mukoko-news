@@ -1,10 +1,16 @@
 /**
- * Mukoko News service worker.
+ * Mukoko News service worker TEMPLATE.
  *
- * Registered by src/components/pwa/sw-register.tsx as /sw.js?v=<build id>, so
- * every deploy produces a new script URL → the browser installs a fresh worker
- * and `activate` prunes the previous version's caches. The version is read
- * from the registration URL's `v` query param (no build step needed).
+ * scripts/inject-sw-version.mjs generates public/sw.js from this file at
+ * build time with the deploy identity in the BUILD constant below. The
+ * version lives in the script BYTES, not in its URL, because the page calls
+ * registration.update() whenever an installed PWA becomes visible or focused
+ * — and update() re-fetches the registration's existing script URL, so a
+ * URL-versioned worker can never observe a new deploy. /sw.js is served
+ * `Cache-Control: no-store` (src/lib/security-headers.ts) so every update
+ * check byte-compares fresh content. A changed BUILD means a changed script →
+ * the browser installs the new worker → `activate` prunes the previous
+ * version's caches.
  *
  * Strategy summary (see src/lib/pwa/sw-policy.ts for the tested policy):
  *   /_next/static/*            cache-first (immutable hashed chunks)
@@ -18,13 +24,20 @@
  *
  * Update flow: install does NOT call skipWaiting — the page shows an
  * "Update available" banner and posts {type:'SKIP_WAITING'} when the user
- * accepts; the client reloads once on controllerchange.
+ * accepts; the client reloads once on controllerchange. The page asks for
+ * the build it is upgrading TO with {type:'GET_VERSION'}; the reply carries
+ * this BUILD, so the banner names the release rather than a bundle env var
+ * (which names the version being LEFT).
  */
 
 /* eslint-env serviceworker */
 
-const VERSION = new URL(self.location.href).searchParams.get('v') || 'dev';
-const PREFIX = 'mukoko-';
+// Injected by scripts/inject-sw-version.mjs: sha = the deploy's commit
+// (VERCEL_GIT_COMMIT_SHA / git rev-parse), version = the VERSION file.
+// Empty strings only in a build without git and without a VERSION file.
+const BUILD = { sha: "__SW_SHA__", version: "__SW_VERSION__" };
+const VERSION = BUILD.sha || "dev";
+const PREFIX = "mukoko-";
 
 const CACHE_NAMES = {
   precache: `${PREFIX}precache-${VERSION}`,
@@ -41,7 +54,7 @@ const MAX_ENTRIES = {
   [CACHE_NAMES.images]: 150,
 };
 
-const OFFLINE_URL = '/offline';
+const OFFLINE_URL = "/offline";
 
 /**
  * Small, stable-URL assets only. Next's hashed chunks are NOT precached —
@@ -52,14 +65,14 @@ const PRECACHE_URLS = [
   // Served by `app/manifest.ts`, not from public/. Precaching the old
   // '/manifest.json' path would have the service worker cache a 404 and hand
   // it to every installed client thereafter.
-  '/manifest.webmanifest',
-  '/favicon.svg',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/icon-maskable-192.png',
-  '/icon-maskable-512.png',
-  '/mukoko-mark-full-light.svg',
-  '/mukoko-mark-full-dark.svg',
+  "/manifest.webmanifest",
+  "/favicon.svg",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/icon-maskable-192.png",
+  "/icon-maskable-512.png",
+  "/mukoko-mark-full-light.svg",
+  "/mukoko-mark-full-dark.svg",
 ];
 
 // ---------------------------------------------------------------------------
@@ -68,7 +81,7 @@ const PRECACHE_URLS = [
 // Keep both in sync.
 // ---------------------------------------------------------------------------
 
-const ASSETS_IMAGE_ORIGIN = 'https://assets.mukoko.com';
+const ASSETS_IMAGE_ORIGIN = "https://assets.mukoko.com";
 const EXCLUDED_PATHS = /^\/(api|auth|admin|sign-in|mcp)(\/|$)/;
 
 /** True for article detail pages (`/article/{id}`). */
@@ -81,7 +94,7 @@ function isArticlePath(pathname) {
  * @returns {'static-asset'|'navigation'|'image'|null}
  */
 function classifyRequest(info) {
-  if (info.method.toUpperCase() !== 'GET') return null;
+  if (info.method.toUpperCase() !== "GET") return null;
   if (info.hasAuthorization) return null;
 
   let url;
@@ -91,15 +104,15 @@ function classifyRequest(info) {
     return null;
   }
 
-  if (url.origin === ASSETS_IMAGE_ORIGIN && url.pathname.startsWith('/i/')) {
-    return 'image';
+  if (url.origin === ASSETS_IMAGE_ORIGIN && url.pathname.startsWith("/i/")) {
+    return "image";
   }
 
   if (url.origin !== info.swOrigin) return null;
   if (EXCLUDED_PATHS.test(url.pathname)) return null;
 
-  if (url.pathname.startsWith('/_next/static/')) return 'static-asset';
-  if (info.mode === 'navigate') return 'navigation';
+  if (url.pathname.startsWith("/_next/static/")) return "static-asset";
+  if (info.mode === "navigate") return "navigation";
 
   return null;
 }
@@ -160,7 +173,9 @@ async function handleStaticAsset(request) {
  */
 async function handleNavigation(request) {
   const url = new URL(request.url);
-  const cacheName = isArticlePath(url.pathname) ? CACHE_NAMES.articles : CACHE_NAMES.pages;
+  const cacheName = isArticlePath(url.pathname)
+    ? CACHE_NAMES.articles
+    : CACHE_NAMES.pages;
   try {
     const response = await fetch(request);
     if (response.ok) {
@@ -188,7 +203,7 @@ async function handleImage(event) {
   const refresh = fetch(event.request)
     .then(async (response) => {
       // <img> loads are no-cors → opaque responses (ok === false); cache those too.
-      if (response.ok || response.type === 'opaque') {
+      if (response.ok || response.type === "opaque") {
         await putAndTrim(CACHE_NAMES.images, event.request, response.clone());
       }
       return response;
@@ -208,18 +223,20 @@ async function handleImage(event) {
 // Lifecycle
 // ---------------------------------------------------------------------------
 
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   // No skipWaiting here — activation is user-approved via the update banner.
   event.waitUntil(
     caches
       .open(CACHE_NAMES.precache)
       .then((cache) =>
-        cache.addAll(PRECACHE_URLS.map((url) => new Request(url, { cache: 'reload' })))
-      )
+        cache.addAll(
+          PRECACHE_URLS.map((url) => new Request(url, { cache: "reload" })),
+        ),
+      ),
   );
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   const keep = new Set(Object.values(CACHE_NAMES));
   event.waitUntil(
     (async () => {
@@ -227,33 +244,42 @@ self.addEventListener('activate', (event) => {
       await Promise.all(
         names
           .filter((name) => name.startsWith(PREFIX) && !keep.has(name))
-          .map((name) => caches.delete(name))
+          .map((name) => caches.delete(name)),
       );
       await self.clients.claim();
-    })()
+    })(),
   );
 });
 
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
+self.addEventListener("message", (event) => {
+  const data = event.data;
+  if (!data || typeof data !== "object") return;
+  if (data.type === "SKIP_WAITING") {
     self.skipWaiting();
+  }
+  if (data.type === "GET_VERSION" && event.source) {
+    event.source.postMessage({
+      type: "VERSION",
+      sha: BUILD.sha,
+      version: BUILD.version,
+    });
   }
 });
 
-self.addEventListener('fetch', (event) => {
+self.addEventListener("fetch", (event) => {
   const kind = classifyRequest({
     url: event.request.url,
     method: event.request.method,
     mode: event.request.mode,
-    hasAuthorization: event.request.headers.has('authorization'),
+    hasAuthorization: event.request.headers.has("authorization"),
     swOrigin: self.location.origin,
   });
 
-  if (kind === 'static-asset') {
+  if (kind === "static-asset") {
     event.respondWith(handleStaticAsset(event.request));
-  } else if (kind === 'navigation') {
+  } else if (kind === "navigation") {
     event.respondWith(handleNavigation(event.request));
-  } else if (kind === 'image') {
+  } else if (kind === "image") {
     event.respondWith(handleImage(event));
   }
   // null → not handled; the request goes straight to the network.
