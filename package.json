@@ -31,7 +31,7 @@
     "@radix-ui/react-toast": ">=1.2.23",
     "@workos-inc/authkit-js": ">=0.20.1",
     "@workos-inc/authkit-nextjs": ">=4.4.0",
-    "@workos-inc/node": ">=10.13.0",
+    "@workos-inc/node": ">=10.14.0",
     "class-variance-authority": ">=0.7.1",
     "clsx": ">=2.1.1",
     "jose": ">=6.2.12",
