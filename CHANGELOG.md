@@ -13,6 +13,10 @@ release to `main` is a minor, and a major is only ever made by hand
 
 ## [Unreleased]
 
+### Changed
+
+- **Dependabot waits seven days before proposing a release** (`cooldown: default-days: 7` in `.github/dependabot.yml`), as the other org repositories do. Semgrep's `dependabot-missing-cooldown` rule flagged its absence.
+
 ## [4.83.0] - 2026-11-01
 
 What merged to `staging` after v4.82.0. `VERSION` is set to 4.83.0 on the release branch, not on `staging`: the org release-version check allows only a patch there.

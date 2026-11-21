@@ -36,13 +36,13 @@
  * `/embed/iframe?…` inside a sandboxed iframe on sister apps). Everything else
  * is frame-denied.
  */
-export const FRAMEABLE_PREFIX = '/embed';
+export const FRAMEABLE_PREFIX = "/embed";
 
 /** Where CSP violation reports are POSTed (see src/app/api/csp-report/route.ts). */
-export const CSP_REPORT_PATH = '/api/csp-report';
+export const CSP_REPORT_PATH = "/api/csp-report";
 
 /** The single image host `next/image`'s default loader is allowed to fetch. */
-export const ALLOWED_IMAGE_HOST = 'assets.mukoko.com';
+export const ALLOWED_IMAGE_HOST = "assets.mukoko.com";
 
 /**
  * The sibling weather app, which the header's date/time strip fetches from the
@@ -68,7 +68,7 @@ export const ALLOWED_IMAGE_HOST = 'assets.mukoko.com';
  * string. `security-headers.test.ts` asserts the two still name the same host,
  * the same way the appearance bootstrap's literals are held to `appearance.ts`.
  */
-export const ALLOWED_WEATHER_HOST = 'weather.mukoko.com';
+export const ALLOWED_WEATHER_HOST = "weather.mukoko.com";
 
 /**
  * Everything the app does not use gets an empty allowlist. Features the app
@@ -80,25 +80,25 @@ export const ALLOWED_WEATHER_HOST = 'weather.mukoko.com';
  * runs on this origin. If sign-in is ever inlined again, this must be revisited.
  */
 const PERMISSIONS_POLICY = [
-  'accelerometer=()',
-  'autoplay=()',
-  'browsing-topics=()',
-  'camera=()',
-  'display-capture=()',
-  'encrypted-media=()',
-  'geolocation=()',
-  'gyroscope=()',
-  'magnetometer=()',
-  'microphone=()',
-  'midi=()',
-  'payment=()',
-  'picture-in-picture=()',
-  'publickey-credentials-get=()',
-  'screen-wake-lock=()',
-  'serial=()',
-  'usb=()',
-  'xr-spatial-tracking=()',
-].join(', ');
+  "accelerometer=()",
+  "autoplay=()",
+  "browsing-topics=()",
+  "camera=()",
+  "display-capture=()",
+  "encrypted-media=()",
+  "geolocation=()",
+  "gyroscope=()",
+  "magnetometer=()",
+  "microphone=()",
+  "midi=()",
+  "payment=()",
+  "picture-in-picture=()",
+  "publickey-credentials-get=()",
+  "screen-wake-lock=()",
+  "serial=()",
+  "usb=()",
+  "xr-spatial-tracking=()",
+].join(", ");
 
 /**
  * The ENFORCING policy. Deliberately tiny: only directives whose failure mode
@@ -126,7 +126,7 @@ function enforcedCsp(frameAncestors: string): string {
     "object-src 'none'",
     "form-action 'self'",
     `frame-ancestors ${frameAncestors}`,
-  ].join('; ');
+  ].join("; ");
 }
 
 /**
@@ -178,11 +178,11 @@ function reportOnlyCsp(frameAncestors: string, isDev: boolean): string {
   // never needs it, so it is scoped to dev rather than shipped.
   const scriptSrc = [
     "script-src 'self' 'unsafe-inline'",
-    isDev ? "'unsafe-eval'" : '',
-    'https://news.google.com',
+    isDev ? "'unsafe-eval'" : "",
+    "https://news.google.com",
   ]
     .filter(Boolean)
-    .join(' ');
+    .join(" ");
 
   return [
     "default-src 'self'",
@@ -200,8 +200,8 @@ function reportOnlyCsp(frameAncestors: string, isDev: boolean): string {
     "manifest-src 'self'",
     "frame-src 'self' https://news.google.com",
     `report-uri ${CSP_REPORT_PATH}`,
-    'report-to csp',
-  ].join('; ');
+    "report-to csp",
+  ].join("; ");
 }
 
 export interface HeaderEntry {
@@ -216,17 +216,17 @@ export interface HeaderRule {
 
 function commonHeaders(frameAncestors: string, isDev: boolean): HeaderEntry[] {
   return [
-    { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-    { key: 'X-Content-Type-Options', value: 'nosniff' },
-    { key: 'Permissions-Policy', value: PERMISSIONS_POLICY },
+    { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+    { key: "X-Content-Type-Options", value: "nosniff" },
+    { key: "Permissions-Policy", value: PERMISSIONS_POLICY },
     // Severs window.opener for cross-origin popups (XS-Leaks). Ignored inside
     // iframes, so it is harmless on the embed surface. No popup-based OAuth
     // exists here — sign-in is a full-page redirect to the hosted AuthKit page.
-    { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-    { key: 'Reporting-Endpoints', value: `csp="${CSP_REPORT_PATH}"` },
-    { key: 'Content-Security-Policy', value: enforcedCsp(frameAncestors) },
+    { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+    { key: "Reporting-Endpoints", value: `csp="${CSP_REPORT_PATH}"` },
+    { key: "Content-Security-Policy", value: enforcedCsp(frameAncestors) },
     {
-      key: 'Content-Security-Policy-Report-Only',
+      key: "Content-Security-Policy-Report-Only",
       value: reportOnlyCsp(frameAncestors, isDev),
     },
   ];
@@ -243,17 +243,28 @@ function commonHeaders(frameAncestors: string, isDev: boolean): HeaderEntry[] {
  * allowed framing.
  */
 export function buildSecurityHeaders(
-  opts: { isDev?: boolean } = {}
+  opts: { isDev?: boolean } = {},
 ): HeaderRule[] {
-  const isDev = opts.isDev ?? process.env.NODE_ENV !== 'production';
+  const isDev = opts.isDev ?? process.env.NODE_ENV !== "production";
 
   return [
     {
+      // The service worker script must never be served stale: the page calls
+      // registration.update() whenever an installed PWA becomes visible or
+      // focused again, and a cached /sw.js would keep answering with the old
+      // build's bytes until the browser's 24-hour script cache expires — the
+      // exact defect the version-in-script scheme (scripts/sw.template.js)
+      // exists to fix. The deploy identity is IN the script bytes; comparing
+      // it fresh only works if the bytes are not cached.
+      source: "/sw.js",
+      headers: [{ key: "Cache-Control", value: "no-store, must-revalidate" }],
+    },
+    {
       // Everything except /embed and /embed/*.
-      source: '/((?!embed(?:/|$)).*)',
+      source: "/((?!embed(?:/|$)).*)",
       headers: [
         ...commonHeaders("'none'", isDev),
-        { key: 'X-Frame-Options', value: 'DENY' },
+        { key: "X-Frame-Options", value: "DENY" },
       ],
     },
     {
@@ -261,8 +272,8 @@ export function buildSecurityHeaders(
       // it has no "allow any origin" value, and emitting DENY/SAMEORIGIN here
       // would break every sister-app embed. `frame-ancestors *` is the modern,
       // expressive equivalent and every browser that matters honours it.
-      source: '/embed/:path*',
-      headers: commonHeaders('*', isDev),
+      source: "/embed/:path*",
+      headers: commonHeaders("*", isDev),
     },
   ];
 }
