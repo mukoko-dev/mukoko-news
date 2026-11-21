@@ -96,3 +96,8 @@ pids
 
 # Misc
 *.pem
+.env*
+
+# Generated at build time by scripts/inject-sw-version.mjs from
+# scripts/sw.template.js — the template is the source of truth.
+public/sw.js

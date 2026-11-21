@@ -1,12 +1,18 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, act } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import {
+  render,
+  screen,
+  waitFor,
+  fireEvent,
+  act,
+} from "@testing-library/react";
 import {
   ServiceWorkerRegister,
-  getServiceWorkerUrl,
-  incomingVersion,
-} from '@/components/pwa/sw-register';
+  formatIncomingVersion,
+  requestIncomingVersion,
+} from "@/components/pwa/sw-register";
 
-type Listener = () => void;
+type Listener = (event?: unknown) => void;
 
 function createEventTarget() {
   const listeners = new Map<string, Set<Listener>>();
@@ -18,36 +24,45 @@ function createEventTarget() {
     removeEventListener: vi.fn((type: string, cb: Listener) => {
       listeners.get(type)?.delete(cb);
     }),
-    emit(type: string) {
-      listeners.get(type)?.forEach((cb) => cb());
+    emit(type: string, event?: unknown) {
+      listeners.get(type)?.forEach((cb) => cb(event));
     },
   };
 }
 
-function createMockWorker(state = 'installing') {
+function createMockWorker(state = "installing") {
   return { state, postMessage: vi.fn(), ...createEventTarget() };
 }
 
 type MockWorker = ReturnType<typeof createMockWorker>;
 
 function createMockRegistration(
-  overrides: { waiting?: MockWorker | null; installing?: MockWorker | null } = {}
+  overrides: {
+    waiting?: MockWorker | null;
+    installing?: MockWorker | null;
+  } = {},
 ) {
-  return { waiting: null, installing: null, ...createEventTarget(), ...overrides };
+  return {
+    waiting: null,
+    installing: null,
+    update: vi.fn().mockResolvedValue(undefined),
+    ...createEventTarget(),
+    ...overrides,
+  };
 }
 
 type MockRegistration = ReturnType<typeof createMockRegistration>;
 
 function installMockContainer(
   registration: MockRegistration,
-  { controller = {} as object | null } = {}
+  { controller = {} as object | null } = {},
 ) {
   const container = {
     register: vi.fn().mockResolvedValue(registration),
     controller,
     ...createEventTarget(),
   };
-  Object.defineProperty(window.navigator, 'serviceWorker', {
+  Object.defineProperty(window.navigator, "serviceWorker", {
     value: container,
     configurable: true,
   });
@@ -58,30 +73,12 @@ function removeMockContainer() {
   delete (window.navigator as { serviceWorker?: unknown }).serviceWorker;
 }
 
-describe('getServiceWorkerUrl', () => {
-  afterEach(() => vi.unstubAllEnvs());
-
-  it('uses NEXT_PUBLIC_BUILD_ID when set', () => {
-    vi.stubEnv('NEXT_PUBLIC_BUILD_ID', 'build42');
-    expect(getServiceWorkerUrl()).toBe('/sw.js?v=build42');
-  });
-
-  it('falls back to the Vercel commit SHA, then the constant', () => {
-    vi.stubEnv('NEXT_PUBLIC_BUILD_ID', '');
-    vi.stubEnv('NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA', 'abc123def');
-    expect(getServiceWorkerUrl()).toBe('/sw.js?v=abc123def');
-
-    vi.stubEnv('NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA', '');
-    expect(getServiceWorkerUrl()).toBe('/sw.js?v=v1');
-  });
-});
-
-describe('ServiceWorkerRegister', () => {
+describe("ServiceWorkerRegister", () => {
   beforeEach(() => {
     // The component defers registration to the window load event unless the
     // document has already finished loading.
-    Object.defineProperty(document, 'readyState', {
-      value: 'complete',
+    Object.defineProperty(document, "readyState", {
+      value: "complete",
       configurable: true,
     });
   });
@@ -91,95 +88,168 @@ describe('ServiceWorkerRegister', () => {
     removeMockContainer();
   });
 
-  it('does not register outside production', async () => {
+  it("does not register outside production", async () => {
     const container = installMockContainer(createMockRegistration());
     render(<ServiceWorkerRegister />);
     await act(async () => {});
     expect(container.register).not.toHaveBeenCalled();
   });
 
-  it('registers the versioned worker URL in production', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
-    vi.stubEnv('NEXT_PUBLIC_BUILD_ID', 'build42');
+  it("registers the constant /sw.js URL in production (the version is in the script bytes)", async () => {
+    vi.stubEnv("NODE_ENV", "production");
     const container = installMockContainer(createMockRegistration());
     render(<ServiceWorkerRegister />);
-    await waitFor(() => expect(container.register).toHaveBeenCalledWith('/sw.js?v=build42'));
+    await waitFor(() =>
+      expect(container.register).toHaveBeenCalledWith("/sw.js"),
+    );
   });
 
-  it('renders nothing and does not crash when serviceWorker is unsupported', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
+  it("renders nothing and does not crash when serviceWorker is unsupported", async () => {
+    vi.stubEnv("NODE_ENV", "production");
     const { container } = render(<ServiceWorkerRegister />);
     await act(async () => {});
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('shows the update banner for an already-waiting worker and posts SKIP_WAITING', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
-    const waiting = createMockWorker('installed');
+  it("actively checks for updates on mount, on becoming visible and on focus", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const registration = createMockRegistration();
+    installMockContainer(registration);
+    render(<ServiceWorkerRegister />);
+
+    // Mount: a PWA left open across a deploy picks it up without a
+    // navigation. This is the fix for the background-PWA hole.
+    await waitFor(() => expect(registration.update).toHaveBeenCalledTimes(1));
+
+    // Reopening an installed PWA (visibility → visible).
+    act(() => {
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    expect(registration.update).toHaveBeenCalledTimes(2);
+
+    // Focusing the window.
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(registration.update).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not check on visibility when the document is being hidden", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const registration = createMockRegistration();
+    installMockContainer(registration);
+    render(<ServiceWorkerRegister />);
+    await waitFor(() => expect(registration.update).toHaveBeenCalled());
+
+    act(() => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    const calls = registration.update.mock.calls.length;
+    expect(calls).toBe(1);
+
+    Object.defineProperty(document, "visibilityState", {
+      value: "visible",
+      configurable: true,
+    });
+  });
+
+  it("shows the update banner for an already-waiting worker and posts SKIP_WAITING", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const waiting = createMockWorker("installed");
     installMockContainer(createMockRegistration({ waiting }));
     render(<ServiceWorkerRegister />);
 
-    const refresh = await screen.findByRole('button', { name: /refresh/i });
-    expect(screen.getByText('New version available')).toBeInTheDocument();
+    const refresh = await screen.findByRole("button", { name: /refresh/i });
+    expect(screen.getByText("New version available")).toBeInTheDocument();
 
     fireEvent.click(refresh);
-    expect(waiting.postMessage).toHaveBeenCalledWith({ type: 'SKIP_WAITING' });
+    expect(waiting.postMessage).toHaveBeenCalledWith({ type: "SKIP_WAITING" });
   });
 
-  it('shows the banner after updatefound → installed while controlled', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
+  it("names the release the waiting worker reports via GET_VERSION", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const waiting = createMockWorker("installed");
+    const container = installMockContainer(createMockRegistration({ waiting }));
+    render(<ServiceWorkerRegister />);
+
+    await screen.findByText("New version available");
+    await waitFor(() =>
+      expect(waiting.postMessage).toHaveBeenCalledWith({ type: "GET_VERSION" }),
+    );
+
+    act(() => {
+      container.emit("message", {
+        data: {
+          type: "VERSION",
+          sha: "9f2c1ab7d4e5f60718293a4b5c6d7e8f90a1b2c3",
+          version: "4.83.0",
+        },
+      });
+    });
+
+    expect(await screen.findByText("Upgrading to v4.83.0")).toBeInTheDocument();
+  });
+
+  it("shows the banner after updatefound → installed while controlled", async () => {
+    vi.stubEnv("NODE_ENV", "production");
     const registration = createMockRegistration();
     const container = installMockContainer(registration);
     render(<ServiceWorkerRegister />);
     await waitFor(() => expect(container.register).toHaveBeenCalled());
 
-    const installing = createMockWorker('installing');
+    const installing = createMockWorker("installing");
     registration.installing = installing;
-    act(() => registration.emit('updatefound'));
+    act(() => registration.emit("updatefound"));
 
-    installing.state = 'installed';
-    act(() => installing.emit('statechange'));
+    installing.state = "installed";
+    act(() => installing.emit("statechange"));
 
-    expect(await screen.findByText('New version available')).toBeInTheDocument();
+    expect(
+      await screen.findByText("New version available"),
+    ).toBeInTheDocument();
   });
 
-  it('does not prompt on the very first install (no controller yet)', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
+  it("does not prompt on the very first install (no controller yet)", async () => {
+    vi.stubEnv("NODE_ENV", "production");
     const registration = createMockRegistration();
     const container = installMockContainer(registration, { controller: null });
     render(<ServiceWorkerRegister />);
     await waitFor(() => expect(container.register).toHaveBeenCalled());
 
-    const installing = createMockWorker('installing');
+    const installing = createMockWorker("installing");
     registration.installing = installing;
-    act(() => registration.emit('updatefound'));
-    installing.state = 'installed';
-    act(() => installing.emit('statechange'));
+    act(() => registration.emit("updatefound"));
+    installing.state = "installed";
+    act(() => installing.emit("statechange"));
 
-    expect(screen.queryByText('New version available')).not.toBeInTheDocument();
+    expect(screen.queryByText("New version available")).not.toBeInTheDocument();
   });
 
-  it('reloads exactly once on controllerchange', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
+  it("reloads exactly once on controllerchange", async () => {
+    vi.stubEnv("NODE_ENV", "production");
     const container = installMockContainer(createMockRegistration());
     const reloadPage = vi.fn();
     render(<ServiceWorkerRegister reloadPage={reloadPage} />);
     await waitFor(() => expect(container.register).toHaveBeenCalled());
 
-    act(() => container.emit('controllerchange'));
-    act(() => container.emit('controllerchange'));
+    act(() => container.emit("controllerchange"));
+    act(() => container.emit("controllerchange"));
     expect(reloadPage).toHaveBeenCalledTimes(1);
   });
 
-  it('can be dismissed', async () => {
-    vi.stubEnv('NODE_ENV', 'production');
-    const waiting = createMockWorker('installed');
+  it("can be dismissed", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const waiting = createMockWorker("installed");
     installMockContainer(createMockRegistration({ waiting }));
     render(<ServiceWorkerRegister />);
 
-    await screen.findByText('New version available');
-    fireEvent.click(screen.getByRole('button', { name: /dismiss update/i }));
-    expect(screen.queryByText('New version available')).not.toBeInTheDocument();
+    await screen.findByText("New version available");
+    fireEvent.click(screen.getByRole("button", { name: /dismiss update/i }));
+    expect(screen.queryByText("New version available")).not.toBeInTheDocument();
   });
 });
 
@@ -187,74 +257,96 @@ describe('ServiceWorkerRegister', () => {
  * The card names the build it would upgrade you TO.
  *
  * "Update available" alone tells a reader nothing they can check afterwards —
- * they refresh and have no way to confirm they got the thing. The version has
- * to come off the WAITING worker's script URL, because `process.env` is baked
- * into the bundle already running and therefore names the version being left.
+ * they refresh and have no way to confirm they got the thing. The value comes
+ * from the WAITING worker's own reply to GET_VERSION, because `process.env`
+ * is baked into the bundle already running and therefore names the version
+ * being left.
  */
-describe('incomingVersion', () => {
-  it('shortens a commit SHA the way git does', () => {
-    expect(incomingVersion('https://news.mukoko.com/sw.js?v=9f2c1ab7d4e5f60718293a4b5c6d7e8f90a1b2c3')).toBe(
-      '9f2c1ab'
-    )
-  })
+describe("formatIncomingVersion", () => {
+  it("renders the release with the leading v every release page uses", () => {
+    expect(
+      formatIncomingVersion({ sha: "9f2c1ab7d4e5f607", version: "4.60.0" }),
+    ).toBe("v4.60.0");
+  });
 
-  it('keeps a human version tag as written', () => {
-    expect(incomingVersion('/sw.js?v=4.52.0')).toBe('4.52.0')
-    expect(incomingVersion('/sw.js?v=v1')).toBe('v1')
-  })
+  it("prefers the release even though a sha is present and would otherwise parse", () => {
+    // The regression this guards: a reader must never see the SHA while a
+    // real version is available.
+    expect(
+      formatIncomingVersion({ sha: "9f2c1ab7d4e5f607", version: "4.60.0" }),
+    ).not.toBe("9f2c1ab");
+  });
+
+  it("shortens a commit SHA the way git does", () => {
+    expect(
+      formatIncomingVersion({
+        sha: "9f2c1ab7d4e5f60718293a4b5c6d7e8f90a1b2c3",
+        version: "",
+      }),
+    ).toBe("9f2c1ab");
+  });
 
   it.each([
-    ['no query at all', '/sw.js'],
-    ['an empty v', '/sw.js?v='],
-    ['only whitespace', '/sw.js?v=%20%20'],
-    ['nothing to read', undefined],
-    ['null', null],
-  ])('returns null for %s rather than inventing one', (_label, url) => {
+    ["empty", ""],
+    ["not semantic", "main"],
+    ["partial", "4.60"],
+  ])("ignores a %s version and falls back to the sha", (_label, version) => {
+    // The version is ours to set, so a value that is not a plain semantic
+    // version is a bug on our side — show the sha we do trust, not the junk.
+    expect(formatIncomingVersion({ sha: "9f2c1ab7d4e5f607", version })).toBe(
+      "9f2c1ab",
+    );
+  });
+
+  it.each([
+    ["no fields at all", {}],
+    ["nothing but whitespace", { sha: "   ", version: "   " }],
+    ["an implausibly long sha", { sha: "x".repeat(80), version: "" }],
+    ["nullish fields", { sha: null, version: undefined }],
+  ])("returns null for %s rather than inventing one", (_label, build) => {
     // A version line reading "unknown" is worse than no version line.
-    expect(incomingVersion(url as string | undefined)).toBeNull()
-  })
+    expect(formatIncomingVersion(build)).toBeNull();
+  });
+});
 
-  it('refuses an implausibly long value instead of overflowing the card', () => {
-    expect(incomingVersion(`/sw.js?v=${'x'.repeat(80)}`)).toBeNull()
-  })
+describe("requestIncomingVersion", () => {
+  afterEach(() => removeMockContainer());
 
-  it('does not throw on a malformed URL', () => {
-    expect(() => incomingVersion('::::')).not.toThrow()
-  })
+  it("asks the worker for its build and formats the reply", async () => {
+    const waiting = createMockWorker("installed");
+    const container = installMockContainer(createMockRegistration({ waiting }));
 
-  /**
-   * Owner report 2026-09-14: the card was naming a commit id. `v` is the
-   * cache-busting token and on Vercel that is the commit SHA, so the reader
-   * was shown "9f2c1ab" — which answers "which build" and cannot be checked
-   * against anything. `ver` carries the released version instead.
-   */
-  describe('the released version wins over the cache-busting token', () => {
-    it('renders the release with the leading v every release page uses', () => {
-      expect(incomingVersion('/sw.js?v=9f2c1ab7d4e5f607&ver=4.60.0')).toBe('v4.60.0')
-    })
+    const promise = requestIncomingVersion(waiting as unknown as ServiceWorker);
+    await waitFor(() =>
+      expect(waiting.postMessage).toHaveBeenCalledWith({ type: "GET_VERSION" }),
+    );
 
-    it('prefers ver even though v is present and would otherwise parse', () => {
-      // The regression: both params are always present in production, so a
-      // reader must never see the SHA while a real version is available.
-      expect(incomingVersion('/sw.js?v=9f2c1ab7d4e5f607&ver=4.60.0')).not.toBe('9f2c1ab')
-    })
+    act(() => {
+      container.emit("message", {
+        data: {
+          type: "VERSION",
+          sha: "9f2c1ab7d4e5f60718293a4b5c6d7e8f90a1b2c3",
+          version: "4.83.0",
+        },
+      });
+    });
 
-    it('falls back to v when ver is absent, so older deploys still name something', () => {
-      expect(incomingVersion('/sw.js?v=9f2c1ab7d4e5f607')).toBe('9f2c1ab')
-    })
+    await expect(promise).resolves.toBe("v4.83.0");
+  });
 
-    it.each([
-      ['empty', '/sw.js?v=9f2c1ab7d4e5f607&ver='],
-      ['not semantic', '/sw.js?v=9f2c1ab7d4e5f607&ver=main'],
-      ['partial', '/sw.js?v=9f2c1ab7d4e5f607&ver=4.60'],
-    ])('ignores a %s ver and falls back rather than rendering it', (_label, url) => {
-      // `ver` is ours to set, so a value that is not a plain semantic version
-      // is a bug on our side — show the token we do trust, not the junk.
-      expect(incomingVersion(url)).toBe('9f2c1ab')
-    })
+  it("resolves null when the worker predates GET_VERSION and never answers", async () => {
+    vi.useFakeTimers();
+    try {
+      const waiting = createMockWorker("installed");
+      installMockContainer(createMockRegistration({ waiting }));
 
-    it('names the release even when there is no usable v', () => {
-      expect(incomingVersion('/sw.js?v=&ver=4.60.0')).toBe('v4.60.0')
-    })
-  })
-})
+      const promise = requestIncomingVersion(
+        waiting as unknown as ServiceWorker,
+      );
+      await vi.advanceTimersByTimeAsync(1600);
+      await expect(promise).resolves.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
