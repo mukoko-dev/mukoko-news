@@ -13,6 +13,10 @@ release to `main` is a minor, and a major is only ever made by hand
 
 ## [Unreleased]
 
+### Security
+
+- Dependency advisories cleared: next 15.5.29, vitest 4.1.12 (`@vitest/mocker`), `postcss-selector-parser` 6.1.6 and `minimatch` 11 for typescript-estree through scoped overrides; authkit-js 0.20.5, `@workos-inc/node` 10.14.0, wrangler and jsdom 31 refreshed in the lockfile.
+
 ### Changed
 
 - **Dependabot waits seven days before proposing a release** (`cooldown: default-days: 7` in `.github/dependabot.yml`), as the other org repositories do. Semgrep's `dependabot-missing-cooldown` rule flagged its absence.
