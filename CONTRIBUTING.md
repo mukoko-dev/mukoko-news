@@ -215,9 +215,7 @@ vi.mock("@/lib/actions/feed", () => ({
 
 Releases follow the org versioning policy ([nyuchi/.github#80](https://github.com/nyuchi/.github/issues/80)):
 
-- A merge into `staging` (the live beta) is a **patch**, tagged by
-  [`staging-version.yml`](.github/workflows/staging-version.yml).
-- A release to `main` is a **minor**: the staging -> main release PR sets
+- A release to `main` is a **minor**: the PR that releases sets
   `VERSION` to the next minor above the highest tag and adds its
   `## [x.y.0]` CHANGELOG section. Once CI is green on `main`,
   [`release.yml`](.github/workflows/release.yml) checks `VERSION` against the
