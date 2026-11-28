@@ -13,13 +13,24 @@ release to `main` is a minor, and a major is only ever made by hand
 
 ## [Unreleased]
 
-### Security
+## [4.84.0] - 2026-11-28
 
-- Dependency advisories cleared: next 15.5.29, vitest 4.1.12 (`@vitest/mocker`), `postcss-selector-parser` 6.1.6 and `minimatch` 11 for typescript-estree through scoped overrides; authkit-js 0.20.5, `@workos-inc/node` 10.14.0, wrangler and jsdom 31 refreshed in the lockfile.
+What merged to `main` after v4.83.0. This is the next minor above the highest tag, v4.83.5: the staging patch tags v4.83.1 to v4.83.5 pushed the highest tag past `VERSION` (4.83.0), so every push to `main` since 2026-11-07 failed the release policy check ("Version 4.83.0 is not allowed after 4.83.5 on main: the policy allows 4.84.0") and tagged nothing. Staging is retired, so this is the last release to reconcile it.
+
+### Added
+
+- **Installed PWAs pick up a release without a navigation** (#285).
 
 ### Changed
 
+- **TypeScript 6.x**, with a Dependabot ignore for TypeScript 7 (#305).
+- **CI is trunk-based, `main` only**: the dead staging workflow is removed (#303).
+- Staging merges landed on `main` (#298).
 - **Dependabot waits seven days before proposing a release** (`cooldown: default-days: 7` in `.github/dependabot.yml`), as the other org repositories do. Semgrep's `dependabot-missing-cooldown` rule flagged its absence.
+
+### Security
+
+- Dependency advisories cleared: next 15.5.29, vitest 4.1.12 (`@vitest/mocker`), `postcss-selector-parser` 6.1.6 and `minimatch` 11 for typescript-estree through scoped overrides; authkit-js 0.20.5, `@workos-inc/node` 10.14.0, wrangler and jsdom 31 refreshed in the lockfile.
 
 ## [4.83.0] - 2026-11-01
 
