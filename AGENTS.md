@@ -1,6 +1,8 @@
-# agents.md — mukoko-news
+# AGENTS.md — mukoko-news
 
 **Canonical rule set for running tasks in this repo.** Any agent (Claude Code or otherwise) working here must follow this document. `CLAUDE.md` is the Claude-Code entry point and carries the full architecture detail; this file is the task rules + boundaries, `review.md` is the merge gate, and `auth.md` is the trust model.
+
+This file layers on the org-wide guide, [`nyuchi/.github` AGENTS.md](https://github.com/nyuchi/.github/blob/main/AGENTS.md) (mission, engineering bar, security rules). Read that first; where the two conflict, this file wins.
 
 ## What this repo is
 
