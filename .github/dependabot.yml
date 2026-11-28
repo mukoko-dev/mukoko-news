@@ -1,7 +1,6 @@
 version: 2
 updates:
   - package-ecosystem: "npm"
-    target-branch: "staging"
     directory: "/"
     schedule:
       interval: "weekly"
@@ -12,3 +11,7 @@ updates:
     open-pull-requests-limit: 10
     reviewers:
       - "bryanfawcett"
+    ignore:
+      # Until Astro and typescript-eslint support TS 7; remove then.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
