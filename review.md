@@ -1,6 +1,6 @@
 # review.md — mukoko-news
 
-The merge gate and review checklist for the frontend. A change is mergeable only when every applicable box is satisfied. See `agents.md` for the rule set and `auth.md` for the trust model.
+The merge gate and review checklist for the frontend. A change is mergeable only when every applicable box is satisfied. See `AGENTS.md` for the rule set and `auth.md` for the trust model.
 
 ## Automated gate (must pass before merge)
 
@@ -15,7 +15,7 @@ The Husky pre-commit hook runs `vitest related` → `typecheck` → `build` on s
 
 ## Review checklist
 
-### 1. Data-flow boundaries (see `agents.md` Rule 1)
+### 1. Data-flow boundaries (see `AGENTS.md` Rule 1)
 
 - [ ] Reads go through Server Actions → `news` DB, not the gateway Worker.
 - [ ] The only frontend→gateway calls are admin mutations via `src/lib/admin/gateway.ts` (WorkOS token forwarded).
@@ -34,7 +34,7 @@ The Husky pre-commit hook runs `vitest related` → `typecheck` → `build` on s
 - [ ] No layout shift introduced (dynamic offsets measured, not hardcoded); images use `next/image` with sizing.
 - [ ] Client/server boundary correct (`'use client'` only where needed; secrets stay server-side).
 
-### 4. Security patterns (see `agents.md` Rule 5)
+### 4. Security patterns (see `AGENTS.md` Rule 5)
 
 - [ ] JSON-LD via `safeJsonLdStringify()`; image URLs via `isValidImageUrl()`; CSS `url()` via `safeCssUrl()`.
 - [ ] Engagement Route Handlers rate-limited (`checkRateLimit` + `getRequestIp`).
